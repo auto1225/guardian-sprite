@@ -209,28 +209,27 @@ const DeviceCard = ({ device, isMain, onSetAsMain, onToggleMonitoring, onDelete 
   const isMonitoring = device.is_monitoring;
 
   return (
-    <div className={`rounded-xl p-4 ${
-      isMain ? "bg-sky-dark/50 border-2 border-accent" : "bg-sky-dark/30"
-    }`}>
+    <div className="rounded-2xl p-3 bg-[#5BBFCF]">
       {/* Header row */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           {isMain && (
-            <span className="bg-status-active text-white px-2 py-0.5 rounded text-xs font-bold">
+            <span className="bg-[#4CAF50] text-white px-2.5 py-1 rounded text-xs font-bold">
               MAIN
             </span>
           )}
-          <span className="text-primary-foreground font-semibold">{device.name}</span>
+          <span className="text-white font-semibold">{device.name}</span>
           {device.battery_level !== null && (
-            <span className="text-primary-foreground/70 text-sm">
-              {device.battery_level}% 🔋
+            <span className="text-white text-sm flex items-center gap-1">
+              {device.battery_level}%
+              <span className="text-[#4CAF50]">⚡</span>
             </span>
           )}
         </div>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="text-primary-foreground p-1">
+            <button className="text-white p-1">
               <MoreVertical className="w-5 h-5" />
             </button>
           </DropdownMenuTrigger>
@@ -258,38 +257,53 @@ const DeviceCard = ({ device, isMain, onSetAsMain, onToggleMonitoring, onDelete 
 
       {/* Status icons and toggle */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <StatusIcon 
-            iconOn={laptopOn} 
-            iconOff={laptopOff} 
-            active={isOnline} 
-            label="Laptop" 
-          />
-          <StatusIcon 
-            icon={meercopOn}
-            active={isMonitoring} 
-            label="MeerCOP" 
-          />
-          <StatusIcon 
-            iconOn={wifiOn} 
-            iconOff={wifiOff} 
-            active={isOnline} 
-            label="Network" 
-          />
-          <StatusIcon 
-            iconOn={cameraOn} 
-            iconOff={cameraOff} 
-            active={true} 
-            label="Camera" 
-          />
+        <div className="flex items-center gap-4">
+          <StatusIconWithCheck 
+            bgColor="bg-[#2196F3]"
+            isActive={isOnline}
+            label="Laptop"
+          >
+            <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20 18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z"/>
+            </svg>
+          </StatusIconWithCheck>
+          
+          <StatusIconWithCheck 
+            bgColor="bg-[#FDD835]"
+            isActive={isMonitoring}
+            label="MeerCOP"
+          >
+            <span className="text-white text-sm font-bold">M</span>
+          </StatusIconWithCheck>
+          
+          <StatusIconWithCheck 
+            bgColor="bg-[#2196F3]"
+            isActive={isOnline}
+            label="Network"
+          >
+            <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 3C7.5 3 3.5 5 1 8l1.5 1.5C4.5 7.5 8 6 12 6s7.5 1.5 9.5 3.5L23 8c-2.5-3-6.5-5-11-5zm0 6c-3 0-5.5 1.5-7 3.5L6.5 14c1-1.5 3-2.5 5.5-2.5s4.5 1 5.5 2.5l1.5-1.5c-1.5-2-4-3.5-7-3.5zm0 6c-1.5 0-3 .5-4 1.5L12 21l4-4.5c-1-.5-2.5-1.5-4-1.5z" />
+            </svg>
+          </StatusIconWithCheck>
+          
+          <StatusIconWithCheck 
+            bgColor="bg-[#2196F3]"
+            isActive={true}
+            label="Camera"
+          >
+            <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M20 4h-3.2l-1.8-2H9l-1.8 2H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2zm-8 13a5 5 0 110-10 5 5 0 010 10z"/>
+            </svg>
+          </StatusIconWithCheck>
         </div>
 
         <button
           onClick={onToggleMonitoring}
-          className={`px-5 py-2 rounded-lg text-sm font-bold ${
+          className={`px-6 py-2 rounded-lg text-base font-bold ${
             isMonitoring
-              ? "bg-accent text-accent-foreground"
-              : "bg-muted text-muted-foreground"
+              ? "bg-[#C8E600] text-[#333333]"
+              : "bg-gray-400 text-white"
           }`}
         >
           {isMonitoring ? "ON" : "OFF"}
@@ -299,25 +313,29 @@ const DeviceCard = ({ device, isMain, onSetAsMain, onToggleMonitoring, onDelete 
   );
 };
 
-interface StatusIconProps {
-  iconOn?: string;
-  iconOff?: string;
-  icon?: string;
-  active: boolean;
+interface StatusIconWithCheckProps {
+  bgColor: string;
+  isActive: boolean;
   label: string;
+  children: React.ReactNode;
 }
 
-const StatusIcon = ({ iconOn, iconOff, icon, active, label }: StatusIconProps) => {
-  const imgSrc = icon || (active ? iconOn : iconOff);
-  
+const StatusIconWithCheck = ({ bgColor, isActive, label, children }: StatusIconWithCheckProps) => {
   return (
-    <div className="flex flex-col items-center gap-0.5">
-      <img 
-        src={imgSrc} 
-        alt={label} 
-        className="w-10 h-10 object-contain"
-      />
-      <span className="text-primary-foreground text-[10px]">{label}</span>
+    <div className="flex flex-col items-center gap-1">
+      <div className="relative">
+        <div className={`w-10 h-10 rounded-full ${bgColor} flex items-center justify-center`}>
+          {children}
+        </div>
+        {isActive && (
+          <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-[#4CAF50] rounded-full flex items-center justify-center border-2 border-[#5BBFCF]">
+            <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4">
+              <path d="M5 12l5 5L20 7" />
+            </svg>
+          </div>
+        )}
+      </div>
+      <span className="text-white text-[10px] font-medium">{label}</span>
     </div>
   );
 };
