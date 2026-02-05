@@ -49,12 +49,6 @@ const Index = () => {
     
     try {
       await toggleMonitoring(selectedDevice.id, !isMonitoring);
-      toast({
-        title: isMonitoring ? "감시 중지" : "감시 시작",
-        description: isMonitoring 
-          ? "노트북 감시가 중지되었습니다." 
-          : "노트북 감시가 시작되었습니다.",
-      });
     } catch (error) {
       toast({
         title: "오류",
