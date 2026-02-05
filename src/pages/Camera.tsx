@@ -20,10 +20,46 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // 스트리밍 시작 요청 (노트북에게 카메라 켜라고 명령)
+  const requestStreamingStart = useCallback(async () => {
+    try {
+      console.log("Requesting camera streaming start for device:", device.id);
+      const { error: updateError } = await supabase
+        .from("devices")
+        .update({ is_streaming_requested: true })
+        .eq("id", device.id);
+      
+      if (updateError) throw updateError;
+      console.log("Streaming request sent successfully");
+    } catch (err) {
+      console.error("Failed to request streaming:", err);
+      toast({
+        title: "오류",
+        description: "카메라 시작 요청에 실패했습니다",
+        variant: "destructive",
+      });
+    }
+  }, [device.id, toast]);
+
+  // 스트리밍 중지 요청
+  const requestStreamingStop = useCallback(async () => {
+    try {
+      console.log("Requesting camera streaming stop for device:", device.id);
+      const { error: updateError } = await supabase
+        .from("devices")
+        .update({ is_streaming_requested: false })
+        .eq("id", device.id);
+      
+      if (updateError) throw updateError;
+      console.log("Streaming stop request sent successfully");
+    } catch (err) {
+      console.error("Failed to stop streaming:", err);
+    }
+  }, [device.id]);
+
   // 최신 스냅샷 가져오기
   const fetchLatestSnapshot = useCallback(async () => {
     try {
-      console.log("Fetching latest snapshot for device:", device.id);
       const { data, error: fetchError } = await supabase
         .from("camera_captures")
         .select("image_url, captured_at")
@@ -33,56 +69,86 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
         .single();
 
       if (fetchError) {
-        // No data found is not an error for our purposes
         if (fetchError.code === "PGRST116") {
-          console.log("No snapshots found yet");
-          return;
+          return; // No data found
         }
         throw fetchError;
       }
       
       if (data?.image_url) {
-        console.log("Got snapshot:", data.image_url);
-        setImageUrl(data.image_url + "?t=" + Date.now()); // 캐시 방지
+        setImageUrl(data.image_url + "?t=" + Date.now());
         setError(null);
       }
     } catch (err) {
       console.error("Failed to fetch snapshot:", err);
-      setError("스냅샷을 불러올 수 없습니다");
     }
   }, [device.id]);
 
+  // 스냅샷 캡처 요청 (노트북에게 사진 찍으라고 명령)
+  const captureSnapshot = useCallback(async () => {
+    try {
+      toast({
+        title: "스냅샷 요청",
+        description: "스냅샷을 캡처 중입니다...",
+      });
+      
+      const { error: cmdError } = await supabase
+        .from("commands")
+        .insert({
+          device_id: device.id,
+          command_type: "camera_capture",
+          status: "pending",
+        });
+      
+      if (cmdError) throw cmdError;
+      
+      // 잠시 후 새 스냅샷 확인
+      setTimeout(fetchLatestSnapshot, 2000);
+    } catch (err) {
+      console.error("Failed to capture snapshot:", err);
+      toast({
+        title: "오류",
+        description: "스냅샷 캡처에 실패했습니다",
+        variant: "destructive",
+      });
+    }
+  }, [device.id, fetchLatestSnapshot, toast]);
+
   // 스트리밍 시작
-  const startStreaming = useCallback(() => {
-    console.log("Starting camera stream...");
+  const startStreaming = useCallback(async () => {
     setIsStreaming(true);
     setIsLoading(true);
     setError(null);
     
-    // 즉시 첫 스냅샷 가져오기
-    fetchLatestSnapshot().finally(() => setIsLoading(false));
+    // 노트북에게 스트리밍 시작 요청
+    await requestStreamingStart();
+    
+    // 즉시 첫 스냅샷 가져오기 시도
+    await fetchLatestSnapshot();
+    setIsLoading(false);
     
     // 1초마다 새 스냅샷 가져오기
     intervalRef.current = setInterval(() => {
       fetchLatestSnapshot();
     }, 1000);
-  }, [fetchLatestSnapshot]);
+  }, [requestStreamingStart, fetchLatestSnapshot]);
 
   // 스트리밍 중지
-  const stopStreaming = useCallback(() => {
-    console.log("Stopping camera stream...");
+  const stopStreaming = useCallback(async () => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
     setIsStreaming(false);
-  }, []);
+    
+    // 노트북에게 스트리밍 중지 요청
+    await requestStreamingStop();
+  }, [requestStreamingStop]);
 
-  // 실시간 구독 (노트북에서 새 스냅샷 업로드 시)
+  // 실시간 구독 (새 스냅샷 업로드 시)
   useEffect(() => {
     if (!isOpen || !device.id) return;
 
-    console.log("Setting up realtime subscription for camera captures");
     const channel = supabase
       .channel(`camera-${device.id}`)
       .on(
@@ -98,12 +164,11 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
           const newCapture = payload.new as { image_url: string };
           if (newCapture.image_url) {
             setImageUrl(newCapture.image_url + "?t=" + Date.now());
+            setError(null);
           }
         }
       )
-      .subscribe((status) => {
-        console.log("Realtime subscription status:", status);
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
@@ -113,11 +178,13 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
   // 모달 닫힐 때 정리
   useEffect(() => {
     if (!isOpen) {
-      stopStreaming();
+      if (isStreaming) {
+        stopStreaming();
+      }
       setImageUrl(null);
       setError(null);
     }
-  }, [isOpen, stopStreaming]);
+  }, [isOpen, isStreaming, stopStreaming]);
 
   const handleDownload = (url: string) => {
     const link = document.createElement("a");
@@ -182,6 +249,7 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
           <div className="text-center text-white/50 flex flex-col items-center gap-4">
             <RefreshCw className="w-8 h-8 animate-spin" />
             <p>카메라 연결 중...</p>
+            <p className="text-xs">노트북에서 카메라가 시작될 때까지 대기 중</p>
           </div>
         ) : error ? (
           <div className="text-center text-white/50 flex flex-col items-center gap-4">
@@ -206,18 +274,29 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
               <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
               <span className="text-white text-xs font-bold">LIVE</span>
             </div>
-            {/* Download button */}
-            <button
-              onClick={() => handleDownload(imageUrl)}
-              className="absolute bottom-4 right-4 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white"
-            >
-              <Download className="w-5 h-5" />
-            </button>
+            {/* Action buttons */}
+            <div className="absolute bottom-4 right-4 flex gap-2">
+              <button
+                onClick={captureSnapshot}
+                className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white"
+                title="스냅샷 저장"
+              >
+                <Camera className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => handleDownload(imageUrl)}
+                className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white"
+                title="다운로드"
+              >
+                <Download className="w-5 h-5" />
+              </button>
+            </div>
           </>
         ) : (
-          <div className="text-center text-white/50">
-            <p>노트북에서 카메라가 활성화되지 않았습니다</p>
-            <p className="text-xs mt-2">노트북 앱에서 카메라 스트리밍을 시작해주세요</p>
+          <div className="text-center text-white/50 flex flex-col items-center gap-4">
+            <RefreshCw className="w-6 h-6 animate-spin" />
+            <p>노트북에서 카메라 시작 대기 중...</p>
+            <p className="text-xs">노트북 앱이 실행 중인지 확인하세요</p>
           </div>
         )}
       </div>
