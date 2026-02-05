@@ -39,7 +39,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
   };
 
   const cleanup = useCallback(() => {
-    console.log("[WebRTC Viewer] Cleaning up...");
+    console.log("[WebRTC Viewer] Cleaning up... isConnecting:", isConnectingRef.current);
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
@@ -52,6 +52,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     setRemoteStream(null);
     setIsConnected(false);
     setIsConnecting(false);
+    // Don't reset isConnectingRef here - let the caller control it
   }, []);
 
   // 시그널링 메시지를 테이블에 저장
@@ -99,11 +100,17 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     pc.onconnectionstatechange = () => {
       console.log("[WebRTC Viewer] Connection state:", pc.connectionState);
       if (pc.connectionState === "connected") {
+        console.log("[WebRTC Viewer] ✅ Peer connection established!");
+        isConnectingRef.current = false; // Connection complete
         setIsConnected(true);
         setIsConnecting(false);
       } else if (pc.connectionState === "disconnected" || pc.connectionState === "failed") {
-        cleanup();
-        onError?.("연결이 끊어졌습니다");
+        if (isConnectingRef.current) {
+          // Only trigger error if we were actually trying to connect
+          isConnectingRef.current = false;
+          cleanup();
+          onError?.("연결이 끊어졌습니다");
+        }
       }
     };
 
