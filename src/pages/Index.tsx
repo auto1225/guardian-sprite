@@ -17,6 +17,7 @@ import { useAlerts } from "@/hooks/useAlerts";
 import { useCommands } from "@/hooks/useCommands";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import mainBg from "@/assets/main-bg.png";
 
 const Index = () => {
   const { devices, selectedDevice, selectedDeviceId, setSelectedDeviceId, isLoading } = useDevices();
@@ -100,7 +101,16 @@ const Index = () => {
   }
 
   return (
-    <div className="h-screen bg-gradient-to-b from-sky-light to-primary flex flex-col relative overflow-hidden">
+    <div className="h-screen flex flex-col relative overflow-hidden">
+      {/* Full screen background */}
+      <img 
+        src={mainBg} 
+        alt="Background" 
+        className="absolute inset-0 w-full h-full object-cover z-0"
+      />
+      
+      {/* Content overlay */}
+      <div className="relative z-10 flex flex-col h-full">
       <Header 
         onMenuClick={() => setIsSideMenuOpen(true)}
         onDeviceManageClick={() => setIsDeviceManageOpen(true)}
@@ -175,6 +185,7 @@ const Index = () => {
         onClose={() => setIsDeviceManageOpen(false)}
         onSelectDevice={setSelectedDeviceId}
       />
+      </div>
     </div>
   );
 };
