@@ -101,7 +101,7 @@ const Index = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col relative overflow-hidden">
+    <div className="h-[100dvh] flex flex-col relative overflow-hidden">
       {/* Full screen background */}
       <img 
         src={mainBg} 
@@ -111,7 +111,7 @@ const Index = () => {
       
       {/* Content overlay */}
       <div className="relative z-10 flex flex-col h-full">
-      <Header 
+      <Header
         onMenuClick={() => setIsSideMenuOpen(true)}
         onDeviceManageClick={() => setIsDeviceManageOpen(true)}
         unreadCount={unreadCount}

@@ -20,8 +20,8 @@ const StatusMessage = ({ deviceName, isMonitoring, status }: StatusMessageProps)
   };
 
   return (
-    <div className="mx-4 mt-2">
-      <div className={`rounded-2xl px-5 py-3 shadow-lg ${
+    <div className="mx-4 mt-1">
+      <div className={`rounded-xl px-4 py-2 shadow-lg ${
         status === "alert" 
           ? "bg-destructive" 
           : "bg-card/95"
