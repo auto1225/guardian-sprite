@@ -48,7 +48,7 @@ const StatusIcons = ({ device, onIconClick }: StatusIconsProps) => {
   const batteryLevel = device?.battery_level ?? 100;
 
   return (
-    <div className="flex justify-center gap-4 py-2 px-4">
+    <div className="flex justify-center gap-6 py-3 px-4">
       <StatusItem 
         iconOn={laptopOn}
         iconOff={laptopOff}
