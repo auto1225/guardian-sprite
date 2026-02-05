@@ -235,17 +235,20 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
   }, [deviceId, isConnecting, isConnected, cleanup, createPeerConnection, sendSignalingMessage, handleSignalingMessage, onError]);
 
   const disconnect = useCallback(async () => {
-    // 시그널링 테이블에서 viewer 메시지 정리
+    console.log("[WebRTC Viewer] Disconnecting...");
+    // 먼저 연결 정리
+    cleanup();
+    
+    // 시그널링 테이블에서 viewer 메시지 정리 (연결 종료 후)
     try {
       await supabase
         .from("webrtc_signaling")
         .delete()
         .eq("device_id", deviceId)
-        .eq("session_id", sessionIdRef.current);
+        .eq("sender_type", "viewer");
     } catch (err) {
       console.error("[WebRTC Viewer] Cleanup error:", err);
     }
-    cleanup();
   }, [deviceId, cleanup]);
 
   // Cleanup on unmount
