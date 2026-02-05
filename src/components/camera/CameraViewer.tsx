@@ -1,4 +1,4 @@
-import { Camera, RefreshCw, Download } from "lucide-react";
+import { Camera, RefreshCw, Download, Video } from "lucide-react";
 import { useRef, useEffect } from "react";
 
 interface CameraViewerProps {
@@ -45,16 +45,15 @@ const CameraViewer = ({
     }
   };
 
-  // Not streaming yet
+  // Not streaming yet - show placeholder
   if (!isStreaming) {
     return (
-      <div className="flex-1 bg-black flex items-center justify-center">
-        <div className="text-center text-white/50 flex flex-col items-center gap-4">
-          <Camera className="w-12 h-12 opacity-50" />
-          <div>
-            <p>노트북 카메라를 보려면</p>
-            <p className="text-sm mt-1">아래 버튼을 눌러주세요</p>
-          </div>
+      <div className="flex-1 bg-black/50 rounded-xl mx-4 flex items-center justify-center aspect-video">
+        <div className="text-center flex flex-col items-center gap-4">
+          <Video className="w-12 h-12 text-white/50" />
+          <p className="text-white/70 text-sm px-4">
+            카메라를 시작하려면 아래 버튼을 눌러주세요
+          </p>
         </div>
       </div>
     );
@@ -63,11 +62,11 @@ const CameraViewer = ({
   // Connecting
   if (isConnecting && !isConnected) {
     return (
-      <div className="flex-1 bg-black flex items-center justify-center">
-        <div className="text-center text-white/50 flex flex-col items-center gap-4">
-          <RefreshCw className="w-8 h-8 animate-spin" />
-          <p>카메라 연결 중...</p>
-          <p className="text-xs">노트북에서 카메라가 시작될 때까지 대기 중</p>
+      <div className="flex-1 bg-black/50 rounded-xl mx-4 flex items-center justify-center aspect-video">
+        <div className="text-center flex flex-col items-center gap-4">
+          <RefreshCw className="w-8 h-8 text-white/50 animate-spin" />
+          <p className="text-white/70 text-sm">카메라 연결 중...</p>
+          <p className="text-white/50 text-xs">노트북에서 카메라가 시작될 때까지 대기 중</p>
         </div>
       </div>
     );
@@ -76,12 +75,12 @@ const CameraViewer = ({
   // Error state
   if (error) {
     return (
-      <div className="flex-1 bg-black flex items-center justify-center">
-        <div className="text-center text-white/50 flex flex-col items-center gap-4">
-          <p>{error}</p>
+      <div className="flex-1 bg-black/50 rounded-xl mx-4 flex items-center justify-center aspect-video">
+        <div className="text-center flex flex-col items-center gap-4">
+          <p className="text-white/70 text-sm">{error}</p>
           <button
             onClick={onRetry}
-            className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg flex items-center gap-2"
+            className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg flex items-center gap-2 text-white/70 text-sm hover:bg-white/20 transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             다시 시도
@@ -94,31 +93,31 @@ const CameraViewer = ({
   // Connected with stream
   if (isConnected && remoteStream) {
     return (
-      <div className="flex-1 bg-black flex items-center justify-center relative">
+      <div className="flex-1 bg-black rounded-xl mx-4 flex items-center justify-center relative overflow-hidden aspect-video">
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
-          className="max-w-full max-h-full object-contain"
+          className="w-full h-full object-contain"
         />
         {/* LIVE indicator */}
-        <div className="absolute top-4 right-4 flex items-center gap-1 bg-black/60 px-2 py-1 rounded">
+        <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded">
           <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
           <span className="text-white text-xs font-bold">LIVE</span>
         </div>
         {/* Action buttons */}
-        <div className="absolute bottom-4 right-4 flex gap-2">
+        <div className="absolute bottom-3 right-3 flex gap-2">
           <button
             onClick={onCapture}
-            className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white"
+            className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
             title="스냅샷 저장"
           >
             <Camera className="w-5 h-5" />
           </button>
           <button
             onClick={handleDownload}
-            className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white"
+            className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
             title="다운로드"
           >
             <Download className="w-5 h-5" />
@@ -130,11 +129,11 @@ const CameraViewer = ({
 
   // Waiting for connection
   return (
-    <div className="flex-1 bg-black flex items-center justify-center">
-      <div className="text-center text-white/50 flex flex-col items-center gap-4">
-        <RefreshCw className="w-6 h-6 animate-spin" />
-        <p>노트북에서 카메라 시작 대기 중...</p>
-        <p className="text-xs">노트북 앱이 실행 중인지 확인하세요</p>
+    <div className="flex-1 bg-black/50 rounded-xl mx-4 flex items-center justify-center aspect-video">
+      <div className="text-center flex flex-col items-center gap-4">
+        <RefreshCw className="w-6 h-6 text-white/50 animate-spin" />
+        <p className="text-white/70 text-sm">노트북에서 카메라 시작 대기 중...</p>
+        <p className="text-white/50 text-xs">노트북 앱이 실행 중인지 확인하세요</p>
       </div>
     </div>
   );
