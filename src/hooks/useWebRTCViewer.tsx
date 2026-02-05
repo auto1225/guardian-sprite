@@ -195,8 +195,11 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       });
 
       // Realtime으로 broadcaster의 응답 구독
+      const channelName = `webrtc-signaling-${deviceId}-${Date.now()}`;
+      console.log("[WebRTC Viewer] Subscribing to channel:", channelName);
+      
       const channel = supabase
-        .channel(`webrtc-signaling-${deviceId}`)
+        .channel(channelName)
         .on(
           "postgres_changes",
           {
@@ -207,33 +210,49 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
           },
           (payload) => {
             const record = payload.new as SignalingRecord;
+            console.log("[WebRTC Viewer] Received signaling:", record.type, "from:", record.sender_type);
             // broadcaster의 메시지만 처리
             if (record.sender_type === "broadcaster") {
-              console.log("[WebRTC Viewer] Received from broadcaster:", record.type);
+              console.log("[WebRTC Viewer] ✅ Processing broadcaster message:", record.type);
               handleSignalingMessage(record);
             }
           }
         )
         .subscribe((status) => {
           console.log("[WebRTC Viewer] Signaling channel status:", status);
+          
+          // 구독 완료 후 기존 offer 확인
+          if (status === "SUBSCRIBED") {
+            console.log("[WebRTC Viewer] Channel subscribed, checking for existing offer...");
+            checkForExistingOffer();
+          }
         });
 
       channelRef.current = channel;
 
-      // 기존 offer가 있는지 확인 (노트북이 먼저 offer를 보냈을 수 있음)
-      const { data: existingOffers } = await supabase
-        .from("webrtc_signaling")
-        .select("*")
-        .eq("device_id", deviceId)
-        .eq("sender_type", "broadcaster")
-        .eq("type", "offer")
-        .order("created_at", { ascending: false })
-        .limit(1);
+      // 기존 offer 확인 함수
+      const checkForExistingOffer = async () => {
+        const { data: existingOffers, error } = await supabase
+          .from("webrtc_signaling")
+          .select("*")
+          .eq("device_id", deviceId)
+          .eq("sender_type", "broadcaster")
+          .eq("type", "offer")
+          .order("created_at", { ascending: false })
+          .limit(1);
 
-      if (existingOffers && existingOffers.length > 0) {
-        console.log("[WebRTC Viewer] Found existing offer, processing...");
-        handleSignalingMessage(existingOffers[0] as SignalingRecord);
-      }
+        if (error) {
+          console.error("[WebRTC Viewer] Error checking existing offer:", error);
+          return;
+        }
+
+        if (existingOffers && existingOffers.length > 0) {
+          console.log("[WebRTC Viewer] ✅ Found existing offer, processing...");
+          handleSignalingMessage(existingOffers[0] as SignalingRecord);
+        } else {
+          console.log("[WebRTC Viewer] No existing offer found, waiting for broadcaster...");
+        }
+      };
 
       // 30초 타임아웃
       setTimeout(() => {
