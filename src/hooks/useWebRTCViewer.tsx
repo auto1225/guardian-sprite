@@ -6,11 +6,18 @@ interface WebRTCViewerOptions {
   onError?: (error: string) => void;
 }
 
-interface SignalingMessage {
-  type: "offer" | "answer" | "ice-candidate";
-  payload: RTCSessionDescriptionInit | RTCIceCandidateInit;
-  from: string;
-  to: string;
+interface SignalingRecord {
+  id: string;
+  device_id: string;
+  session_id: string;
+  type: string;
+  sender_type: string;
+  data: {
+    type?: string;
+    sdp?: string;
+    candidate?: RTCIceCandidateInit;
+  };
+  created_at: string;
 }
 
 export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
@@ -19,8 +26,9 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const sessionIdRef = useRef<string>(`viewer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const viewerIdRef = useRef<string>(`viewer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+  const processedMessagesRef = useRef<Set<string>>(new Set());
 
   const ICE_SERVERS: RTCConfiguration = {
     iceServers: [
@@ -30,6 +38,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
   };
 
   const cleanup = useCallback(() => {
+    console.log("[WebRTC Viewer] Cleaning up...");
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
@@ -38,29 +47,40 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
+    processedMessagesRef.current.clear();
     setRemoteStream(null);
     setIsConnected(false);
     setIsConnecting(false);
   }, []);
 
-  const sendSignalingMessage = useCallback(async (message: Omit<SignalingMessage, "from">) => {
-    if (!channelRef.current) return;
-    
-    await channelRef.current.send({
-      type: "broadcast",
-      event: "signaling",
-      payload: {
-        ...message,
-        from: viewerIdRef.current,
-      },
-    });
-  }, []);
+  // 시그널링 메시지를 테이블에 저장
+  const sendSignalingMessage = useCallback(async (type: string, data: object) => {
+    try {
+      console.log("[WebRTC Viewer] Sending signaling:", type);
+      const { error } = await supabase.from("webrtc_signaling").insert([{
+        device_id: deviceId,
+        session_id: sessionIdRef.current,
+        type,
+        sender_type: "viewer",
+        data: JSON.parse(JSON.stringify(data)),
+      }]);
+      
+      if (error) {
+        console.error("[WebRTC Viewer] Failed to send signaling:", error);
+        throw error;
+      }
+      console.log("[WebRTC Viewer] ✅ Signaling sent:", type);
+    } catch (err) {
+      console.error("[WebRTC Viewer] Signaling error:", err);
+    }
+  }, [deviceId]);
 
   const createPeerConnection = useCallback(() => {
+    console.log("[WebRTC Viewer] Creating peer connection...");
     const pc = new RTCPeerConnection(ICE_SERVERS);
 
     pc.ontrack = (event) => {
-      console.log("Received remote track:", event.track.kind);
+      console.log("[WebRTC Viewer] ✅ Received remote track:", event.track.kind);
       if (event.streams && event.streams[0]) {
         setRemoteStream(event.streams[0]);
         setIsConnected(true);
@@ -70,55 +90,64 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
 
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        sendSignalingMessage({
-          type: "ice-candidate",
-          payload: event.candidate.toJSON(),
-          to: deviceId,
-        });
+        console.log("[WebRTC Viewer] Sending ICE candidate");
+        sendSignalingMessage("ice-candidate", { candidate: event.candidate.toJSON() });
       }
     };
 
     pc.onconnectionstatechange = () => {
-      console.log("Connection state:", pc.connectionState);
-      if (pc.connectionState === "disconnected" || pc.connectionState === "failed") {
+      console.log("[WebRTC Viewer] Connection state:", pc.connectionState);
+      if (pc.connectionState === "connected") {
+        setIsConnected(true);
+        setIsConnecting(false);
+      } else if (pc.connectionState === "disconnected" || pc.connectionState === "failed") {
         cleanup();
         onError?.("연결이 끊어졌습니다");
       }
     };
 
     pc.oniceconnectionstatechange = () => {
-      console.log("ICE connection state:", pc.iceConnectionState);
+      console.log("[WebRTC Viewer] ICE state:", pc.iceConnectionState);
     };
 
     return pc;
-  }, [deviceId, sendSignalingMessage, cleanup, onError]);
+  }, [sendSignalingMessage, cleanup, onError]);
 
-  const handleSignalingMessage = useCallback(async (message: SignalingMessage) => {
-    // Only process messages meant for this viewer
-    if (message.to !== viewerIdRef.current && message.to !== "all") return;
-    
+  // broadcaster의 시그널링 메시지 처리
+  const handleSignalingMessage = useCallback(async (record: SignalingRecord) => {
+    // 이미 처리한 메시지 스킵
+    if (processedMessagesRef.current.has(record.id)) return;
+    processedMessagesRef.current.add(record.id);
+
     const pc = peerConnectionRef.current;
-    if (!pc) return;
+    if (!pc) {
+      console.warn("[WebRTC Viewer] No peer connection for message:", record.type);
+      return;
+    }
 
     try {
-      if (message.type === "offer") {
-        console.log("Received offer from broadcaster");
-        await pc.setRemoteDescription(new RTCSessionDescription(message.payload as RTCSessionDescriptionInit));
+      if (record.type === "offer" && record.data.sdp) {
+        console.log("[WebRTC Viewer] ✅ Received offer from broadcaster");
+        await pc.setRemoteDescription(new RTCSessionDescription({
+          type: "offer",
+          sdp: record.data.sdp,
+        }));
         
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         
-        await sendSignalingMessage({
-          type: "answer",
-          payload: answer,
-          to: message.from,
+        console.log("[WebRTC Viewer] Sending answer...");
+        await sendSignalingMessage("answer", { 
+          type: "answer", 
+          sdp: answer.sdp,
+          target_session: record.session_id,
         });
-      } else if (message.type === "ice-candidate") {
-        console.log("Received ICE candidate");
-        await pc.addIceCandidate(new RTCIceCandidate(message.payload as RTCIceCandidateInit));
+      } else if (record.type === "ice-candidate" && record.data.candidate) {
+        console.log("[WebRTC Viewer] Received ICE candidate from broadcaster");
+        await pc.addIceCandidate(new RTCIceCandidate(record.data.candidate));
       }
     } catch (error) {
-      console.error("Error handling signaling message:", error);
+      console.error("[WebRTC Viewer] Error handling signaling:", error);
       onError?.("시그널링 오류가 발생했습니다");
     }
   }, [sendSignalingMessage, onError]);
@@ -126,55 +155,71 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
   const connect = useCallback(async () => {
     if (isConnecting || isConnected) return;
     
+    console.log("[WebRTC Viewer] Starting connection...");
     setIsConnecting(true);
     cleanup();
 
+    // 새 세션 ID 생성
+    sessionIdRef.current = `viewer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
     try {
-      // Create peer connection
+      // 이전 시그널링 메시지 정리
+      await supabase
+        .from("webrtc_signaling")
+        .delete()
+        .eq("device_id", deviceId)
+        .eq("sender_type", "viewer");
+
+      // PeerConnection 생성
       peerConnectionRef.current = createPeerConnection();
 
-      // Subscribe to signaling channel
-      const channel = supabase.channel(`webrtc-${deviceId}`);
-      channelRef.current = channel;
+      // viewer-join 메시지 전송 (broadcaster에게 알림)
+      await sendSignalingMessage("viewer-join", { 
+        viewerId: sessionIdRef.current,
+      });
 
-      channel
-        .on("broadcast", { event: "signaling" }, ({ payload }) => {
-          console.log("[WebRTC Viewer] Received signaling message:", (payload as SignalingMessage).type);
-          handleSignalingMessage(payload as SignalingMessage);
-        })
-        .subscribe(async (status) => {
-          if (status === "SUBSCRIBED") {
-            console.log("[WebRTC Viewer] Connected to signaling channel");
-            
-            // 노트북이 브로드캐스팅 준비될 때까지 잠시 대기 후 viewer-join 전송
-            // 여러 번 재시도하여 타이밍 문제 해결
-            const sendJoinRequest = async (attempt: number = 1) => {
-              if (attempt > 5) return; // 최대 5번 시도
-              
-              console.log(`[WebRTC Viewer] Sending viewer-join (attempt ${attempt})`);
-              await channel.send({
-                type: "broadcast",
-                event: "viewer-join",
-                payload: {
-                  viewerId: viewerIdRef.current,
-                },
-              });
-              
-              // 2초 후에도 연결 안되면 재시도
-              setTimeout(() => {
-                if (!peerConnectionRef.current?.remoteDescription) {
-                  console.log("[WebRTC Viewer] No offer received, retrying...");
-                  sendJoinRequest(attempt + 1);
-                }
-              }, 2000);
-            };
-            
-            // 500ms 후 첫 요청 (노트북이 채널 구독할 시간 확보)
-            setTimeout(() => sendJoinRequest(1), 500);
+      // Realtime으로 broadcaster의 응답 구독
+      const channel = supabase
+        .channel(`webrtc-signaling-${deviceId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "webrtc_signaling",
+            filter: `device_id=eq.${deviceId}`,
+          },
+          (payload) => {
+            const record = payload.new as SignalingRecord;
+            // broadcaster의 메시지만 처리
+            if (record.sender_type === "broadcaster") {
+              console.log("[WebRTC Viewer] Received from broadcaster:", record.type);
+              handleSignalingMessage(record);
+            }
           }
+        )
+        .subscribe((status) => {
+          console.log("[WebRTC Viewer] Signaling channel status:", status);
         });
 
-      // Timeout if no connection after 30 seconds
+      channelRef.current = channel;
+
+      // 기존 offer가 있는지 확인 (노트북이 먼저 offer를 보냈을 수 있음)
+      const { data: existingOffers } = await supabase
+        .from("webrtc_signaling")
+        .select("*")
+        .eq("device_id", deviceId)
+        .eq("sender_type", "broadcaster")
+        .eq("type", "offer")
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (existingOffers && existingOffers.length > 0) {
+        console.log("[WebRTC Viewer] Found existing offer, processing...");
+        handleSignalingMessage(existingOffers[0] as SignalingRecord);
+      }
+
+      // 30초 타임아웃
       setTimeout(() => {
         if (!isConnected && isConnecting) {
           cleanup();
@@ -187,11 +232,21 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       cleanup();
       onError?.("연결 중 오류가 발생했습니다");
     }
-  }, [deviceId, isConnecting, isConnected, cleanup, createPeerConnection, handleSignalingMessage, onError]);
+  }, [deviceId, isConnecting, isConnected, cleanup, createPeerConnection, sendSignalingMessage, handleSignalingMessage, onError]);
 
-  const disconnect = useCallback(() => {
+  const disconnect = useCallback(async () => {
+    // 시그널링 테이블에서 viewer 메시지 정리
+    try {
+      await supabase
+        .from("webrtc_signaling")
+        .delete()
+        .eq("device_id", deviceId)
+        .eq("session_id", sessionIdRef.current);
+    } catch (err) {
+      console.error("[WebRTC Viewer] Cleanup error:", err);
+    }
     cleanup();
-  }, [cleanup]);
+  }, [deviceId, cleanup]);
 
   // Cleanup on unmount
   useEffect(() => {
