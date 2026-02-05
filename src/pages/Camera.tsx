@@ -1,9 +1,8 @@
-import { ArrowLeft, Download, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, Download, Camera, RefreshCw } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useCommands } from "@/hooks/useCommands";
 import { useToast } from "@/hooks/use-toast";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
@@ -15,50 +14,105 @@ interface CameraPageProps {
 }
 
 const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
-  const { captureCamera } = useCommands();
   const { toast } = useToast();
-  const [isCapturing, setIsCapturing] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { data: captures = [], refetch } = useQuery({
-    queryKey: ["camera-captures", device.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
+  // 최신 스냅샷 가져오기
+  const fetchLatestSnapshot = useCallback(async () => {
+    try {
+      const { data, error: fetchError } = await supabase
         .from("camera_captures")
-        .select("*")
+        .select("image_url, captured_at")
         .eq("device_id", device.id)
         .order("captured_at", { ascending: false })
-        .limit(10);
+        .limit(1)
+        .single();
+
+      if (fetchError) {
+        // No data found is not an error for our purposes
+        if (fetchError.code === "PGRST116") {
+          return;
+        }
+        throw fetchError;
+      }
       
-      if (error) throw error;
-      return data;
-    },
-    enabled: isOpen,
-  });
-
-  const handleCapture = async () => {
-    setIsCapturing(true);
-    try {
-      await captureCamera(device.id);
-      toast({
-        title: "촬영 요청",
-        description: "노트북에 촬영 요청을 보냈습니다.",
-      });
-      // Refetch after a short delay to get the new capture
-      setTimeout(() => refetch(), 3000);
-    } catch (error) {
-      toast({
-        title: "오류",
-        description: "촬영 요청에 실패했습니다.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsCapturing(false);
+      if (data?.image_url) {
+        setImageUrl(data.image_url + "?t=" + Date.now()); // 캐시 방지
+        setError(null);
+      }
+    } catch (err) {
+      console.error("Failed to fetch snapshot:", err);
+      setError("스냅샷을 불러올 수 없습니다");
     }
-  };
+  }, [device.id]);
 
-  const handleDownload = (imageUrl: string) => {
+  // 스트리밍 시작
+  const startStreaming = useCallback(() => {
+    setIsStreaming(true);
+    setIsLoading(true);
+    
+    // 즉시 첫 스냅샷 가져오기
+    fetchLatestSnapshot().finally(() => setIsLoading(false));
+    
+    // 1초마다 새 스냅샷 가져오기
+    intervalRef.current = setInterval(() => {
+      fetchLatestSnapshot();
+    }, 1000);
+  }, [fetchLatestSnapshot]);
+
+  // 스트리밍 중지
+  const stopStreaming = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setIsStreaming(false);
+  }, []);
+
+  // 실시간 구독 (노트북에서 새 스냅샷 업로드 시)
+  useEffect(() => {
+    if (!isOpen || !device.id) return;
+
+    const channel = supabase
+      .channel(`camera-${device.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "camera_captures",
+          filter: `device_id=eq.${device.id}`,
+        },
+        (payload) => {
+          const newCapture = payload.new as { image_url: string };
+          if (newCapture.image_url) {
+            setImageUrl(newCapture.image_url + "?t=" + Date.now());
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isOpen, device.id]);
+
+  // 모달 닫힐 때 정리
+  useEffect(() => {
+    if (!isOpen) {
+      stopStreaming();
+      setImageUrl(null);
+      setError(null);
+    }
+  }, [isOpen, stopStreaming]);
+
+  const handleDownload = (url: string) => {
     const link = document.createElement("a");
-    link.href = imageUrl;
+    link.href = url;
     link.download = `meercop-capture-${Date.now()}.jpg`;
     document.body.appendChild(link);
     link.click();
@@ -100,47 +154,82 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
         <div>
           <p className="text-primary-foreground font-bold text-sm">Camera</p>
           <p className="text-primary-foreground/70 text-xs">
-            "카메라"는 노트북 카메라의 정상 작동 및 스냅사진 촬영 가능 여부를 나타냅니다.
+            노트북 카메라를 실시간으로 확인할 수 있습니다.
           </p>
         </div>
       </div>
 
       {/* Main image area */}
       <div className="flex-1 bg-black flex items-center justify-center relative">
-        {captures.length > 0 ? (
-          <img
-            src={captures[0].image_url}
-            alt="최근 캡처"
-            className="max-w-full max-h-full object-contain"
-          />
+        {!isStreaming ? (
+          <div className="text-center text-white/50 flex flex-col items-center gap-4">
+            <Camera className="w-12 h-12 opacity-50" />
+            <div>
+              <p>노트북 카메라를 보려면</p>
+              <p className="text-sm mt-1">아래 버튼을 눌러주세요</p>
+            </div>
+          </div>
+        ) : isLoading && !imageUrl ? (
+          <div className="text-center text-white/50 flex flex-col items-center gap-4">
+            <RefreshCw className="w-8 h-8 animate-spin" />
+            <p>카메라 연결 중...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center text-white/50 flex flex-col items-center gap-4">
+            <p>{error}</p>
+            <button
+              onClick={fetchLatestSnapshot}
+              className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              다시 시도
+            </button>
+          </div>
+        ) : imageUrl ? (
+          <>
+            <img
+              src={imageUrl}
+              alt="실시간 카메라"
+              className="max-w-full max-h-full object-contain"
+            />
+            {/* LIVE indicator */}
+            <div className="absolute top-4 right-4 flex items-center gap-1 bg-black/60 px-2 py-1 rounded">
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-white text-xs font-bold">LIVE</span>
+            </div>
+            {/* Download button */}
+            <button
+              onClick={() => handleDownload(imageUrl)}
+              className="absolute bottom-4 right-4 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white"
+            >
+              <Download className="w-5 h-5" />
+            </button>
+          </>
         ) : (
           <div className="text-center text-white/50">
-            <p>캡처된 이미지가 없습니다</p>
-            <p className="text-sm mt-2">아래 버튼을 눌러 촬영하세요</p>
+            <p>노트북에서 카메라가 활성화되지 않았습니다</p>
           </div>
-        )}
-
-        {/* Download button */}
-        {captures.length > 0 && (
-          <button
-            onClick={() => handleDownload(captures[0].image_url)}
-            className="absolute bottom-4 right-4 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white"
-          >
-            <Download className="w-5 h-5" />
-          </button>
         )}
       </div>
 
-      {/* Capture button */}
+      {/* Stream control button */}
       <div className="p-4 bg-card">
-        <button
-          onClick={handleCapture}
-          disabled={isCapturing}
-          className="w-full py-3 bg-primary text-primary-foreground rounded-lg font-medium flex items-center justify-center gap-2"
-        >
-          <RefreshCw className={`w-4 h-4 ${isCapturing ? "animate-spin" : ""}`} />
-          {isCapturing ? "촬영 중..." : "재 촬영"}
-        </button>
+        {!isStreaming ? (
+          <button
+            onClick={startStreaming}
+            className="w-full py-3 bg-primary text-primary-foreground rounded-lg font-medium flex items-center justify-center gap-2"
+          >
+            <Camera className="w-4 h-4" />
+            카메라 보기
+          </button>
+        ) : (
+          <button
+            onClick={stopStreaming}
+            className="w-full py-3 bg-destructive text-destructive-foreground rounded-lg font-medium flex items-center justify-center gap-2"
+          >
+            스트리밍 중지
+          </button>
+        )}
       </div>
     </div>
   );
