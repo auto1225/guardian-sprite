@@ -1,4 +1,5 @@
-import { Check, Shield } from "lucide-react";
+import toggleOffIcon from "@/assets/toggle-off-icon.png";
+import toggleOnIcon from "@/assets/toggle-on-icon.png";
 
 interface ToggleButtonProps {
   isOn: boolean;
@@ -16,15 +17,11 @@ const ToggleButton = ({ isOn, onToggle }: ToggleButtonProps) => {
             : 'bg-muted text-muted-foreground'
         }`}
       >
-        <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-          isOn ? 'bg-status-active' : 'bg-muted-foreground'
-        }`}>
-          {isOn ? (
-            <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
-          ) : (
-            <Shield className="w-3.5 h-3.5 text-white" />
-          )}
-        </div>
+        <img 
+          src={isOn ? toggleOnIcon : toggleOffIcon} 
+          alt={isOn ? "ON" : "OFF"} 
+          className="w-6 h-6 object-contain"
+        />
         <span>MeerCOP {isOn ? 'ON' : 'OFF'}</span>
       </button>
     </div>
