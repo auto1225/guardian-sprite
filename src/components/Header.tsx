@@ -1,4 +1,4 @@
-import { Menu, Plus } from "lucide-react";
+import { Menu } from "lucide-react";
 import AlertPanel from "@/components/AlertPanel";
 
 interface HeaderProps {
@@ -10,24 +10,19 @@ interface HeaderProps {
 
 const Header = ({ onMenuClick, onDeviceManageClick, unreadCount = 0, deviceId }: HeaderProps) => {
   return (
-    <header className="flex items-center justify-between px-4 py-3">
+    <header className="flex items-center justify-between px-4 py-3 border-b border-white/20">
       <button className="p-2 text-primary-foreground" onClick={onMenuClick}>
-        <Menu className="w-6 h-6" />
+        <Menu className="w-7 h-7" strokeWidth={2.5} />
       </button>
       
       <div className="flex flex-col items-center">
-        <span className="text-primary-foreground font-bold text-xl tracking-wide" style={{ fontFamily: 'system-ui' }}>
-          <span className="italic">Meer</span>
+        <span className="text-primary-foreground font-bold text-2xl tracking-wide italic">
+          Meer
         </span>
-        <span className="text-primary-foreground font-black text-lg -mt-1">COP</span>
+        <span className="text-primary-foreground font-black text-xl -mt-2">COP</span>
       </div>
       
-      <div className="flex items-center gap-2">
-        <AlertPanel deviceId={deviceId || null} />
-        <button className="p-2 text-primary-foreground" onClick={onDeviceManageClick}>
-          <Plus className="w-6 h-6" />
-        </button>
-      </div>
+      <AlertPanel deviceId={deviceId || null} />
     </header>
   );
 };
