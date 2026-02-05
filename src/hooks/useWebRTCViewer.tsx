@@ -29,7 +29,9 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
   const sessionIdRef = useRef<string>(`viewer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const processedMessagesRef = useRef<Set<string>>(new Set());
-  const isConnectingRef = useRef(false); // Sync guard for race conditions
+  const isConnectingRef = useRef(false);
+  const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]); // Buffer for ICE candidates
+  const hasRemoteDescriptionRef = useRef(false); // Track if remote description is set
 
   const ICE_SERVERS: RTCConfiguration = {
     iceServers: [
@@ -49,10 +51,11 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       channelRef.current = null;
     }
     processedMessagesRef.current.clear();
+    pendingIceCandidatesRef.current = [];
+    hasRemoteDescriptionRef.current = false;
     setRemoteStream(null);
     setIsConnected(false);
     setIsConnecting(false);
-    // Don't reset isConnectingRef here - let the caller control it
   }, []);
 
   // 시그널링 메시지를 테이블에 저장
@@ -121,6 +124,23 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     return pc;
   }, [sendSignalingMessage, cleanup, onError]);
 
+  // Process buffered ICE candidates after remote description is set
+  const processPendingIceCandidates = useCallback(async () => {
+    const pc = peerConnectionRef.current;
+    if (!pc || !hasRemoteDescriptionRef.current) return;
+
+    console.log("[WebRTC Viewer] Processing", pendingIceCandidatesRef.current.length, "pending ICE candidates");
+    
+    for (const candidate of pendingIceCandidatesRef.current) {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (err) {
+        console.warn("[WebRTC Viewer] Failed to add buffered ICE candidate:", err);
+      }
+    }
+    pendingIceCandidatesRef.current = [];
+  }, []);
+
   // broadcaster의 시그널링 메시지 처리
   const handleSignalingMessage = useCallback(async (record: SignalingRecord) => {
     // 이미 처리한 메시지 스킵
@@ -134,12 +154,34 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     }
 
     try {
-      if (record.type === "offer" && record.data.sdp) {
-        console.log("[WebRTC Viewer] ✅ Received offer from broadcaster");
+      if (record.type === "offer") {
+        // Debug: log the data structure
+        console.log("[WebRTC Viewer] ✅ Received offer, data:", JSON.stringify(record.data));
+        
+        // Extract SDP - handle both nested and flat structures
+        let sdp = record.data.sdp;
+        if (typeof sdp !== 'string' && record.data.type === 'offer') {
+          // Try to get sdp from the data directly if it's in the wrong format
+          sdp = (record.data as any).sdp;
+        }
+        
+        if (!sdp || typeof sdp !== 'string') {
+          console.error("[WebRTC Viewer] Invalid SDP format:", typeof sdp, sdp);
+          onError?.("잘못된 SDP 형식입니다");
+          return;
+        }
+
+        console.log("[WebRTC Viewer] Setting remote description with SDP length:", sdp.length);
         await pc.setRemoteDescription(new RTCSessionDescription({
           type: "offer",
-          sdp: record.data.sdp,
+          sdp: sdp,
         }));
+        
+        hasRemoteDescriptionRef.current = true;
+        console.log("[WebRTC Viewer] Remote description set successfully");
+        
+        // Process any buffered ICE candidates
+        await processPendingIceCandidates();
         
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
@@ -151,14 +193,20 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
           target_session: record.session_id,
         });
       } else if (record.type === "ice-candidate" && record.data.candidate) {
-        console.log("[WebRTC Viewer] Received ICE candidate from broadcaster");
-        await pc.addIceCandidate(new RTCIceCandidate(record.data.candidate));
+        if (!hasRemoteDescriptionRef.current) {
+          // Buffer the ICE candidate for later
+          console.log("[WebRTC Viewer] Buffering ICE candidate (remote description not set yet)");
+          pendingIceCandidatesRef.current.push(record.data.candidate);
+        } else {
+          console.log("[WebRTC Viewer] Adding ICE candidate");
+          await pc.addIceCandidate(new RTCIceCandidate(record.data.candidate));
+        }
       }
     } catch (error) {
       console.error("[WebRTC Viewer] Error handling signaling:", error);
       onError?.("시그널링 오류가 발생했습니다");
     }
-  }, [sendSignalingMessage, onError]);
+  }, [sendSignalingMessage, onError, processPendingIceCandidates]);
 
   const connect = useCallback(async () => {
     // Use ref for synchronous check to prevent race conditions
