@@ -26,7 +26,7 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
       
       {/* Speech bubble above character */}
       {statusMessage && (
-        <div className="absolute bottom-[82%] left-1/2 -translate-x-1/2 w-[85%] max-w-sm z-10">
+        <div className="absolute bottom-[85%] left-1/2 -translate-x-1/2 w-[85%] max-w-sm z-10">
           <div className="bg-card/95 rounded-xl px-4 py-2 shadow-lg">
             <p className="text-center font-medium text-sm text-card-foreground">
               {statusMessage}
