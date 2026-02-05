@@ -118,10 +118,6 @@ const Index = () => {
         deviceId={selectedDeviceId}
       />
       
-      <DeviceSelector 
-        deviceName={selectedDevice?.name || "회사 노트북"}
-        onClick={() => setIsDeviceListExpanded(!isDeviceListExpanded)}
-      />
       
       <DeviceList 
         isExpanded={isDeviceListExpanded}
