@@ -158,12 +158,8 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         // Debug: log the data structure
         console.log("[WebRTC Viewer] ✅ Received offer, data:", JSON.stringify(record.data));
         
-        // Extract SDP - handle both nested and flat structures
-        let sdp = record.data.sdp;
-        if (typeof sdp !== 'string' && record.data.type === 'offer') {
-          // Try to get sdp from the data directly if it's in the wrong format
-          sdp = (record.data as any).sdp;
-        }
+        // Extract SDP - Broadcaster sends { type: "offer", sdp: "v=0..." }
+        const sdp = record.data.sdp;
         
         if (!sdp || typeof sdp !== 'string') {
           console.error("[WebRTC Viewer] Invalid SDP format:", typeof sdp, sdp);
