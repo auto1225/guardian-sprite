@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -18,7 +18,10 @@ interface CameraPageProps {
 const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
   const { toast } = useToast();
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isWaitingForCamera, setIsWaitingForCamera] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const waitingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const subscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const {
     isConnecting,
@@ -41,23 +44,23 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
   // 스트리밍 시작 요청 (노트북에게 카메라 켜라고 명령)
   const requestStreamingStart = useCallback(async () => {
     try {
-      console.log("Requesting camera streaming start for device:", device.id);
+      console.log("[Camera] Requesting streaming start for device:", device.id);
       const { error: updateError } = await supabase
         .from("devices")
         .update({ is_streaming_requested: true })
         .eq("id", device.id);
 
       if (updateError) throw updateError;
-      console.log("Streaming request sent successfully");
+      console.log("[Camera] Streaming request sent successfully");
     } catch (err) {
-      console.error("Failed to request streaming:", err);
+      console.error("[Camera] Failed to request streaming:", err);
     }
   }, [device.id]);
 
   // 스트리밍 중지 요청
   const requestStreamingStop = useCallback(async () => {
     try {
-      console.log("Requesting camera streaming stop for device:", device.id);
+      console.log("[Camera] Requesting streaming stop for device:", device.id);
       const { error: updateError } = await supabase
         .from("devices")
         .update({ is_streaming_requested: false })
@@ -65,32 +68,105 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
 
       if (updateError) throw updateError;
     } catch (err) {
-      console.error("Failed to stop streaming:", err);
+      console.error("[Camera] Failed to stop streaming:", err);
     }
   }, [device.id]);
 
-  // 스트리밍 시작
+  // Cleanup subscription
+  const cleanupSubscription = useCallback(() => {
+    if (waitingTimeoutRef.current) {
+      clearTimeout(waitingTimeoutRef.current);
+      waitingTimeoutRef.current = null;
+    }
+    if (subscriptionRef.current) {
+      supabase.removeChannel(subscriptionRef.current);
+      subscriptionRef.current = null;
+    }
+  }, []);
+
+  // 스트리밍 시작 - 카메라 준비 대기 후 연결
   const startStreaming = useCallback(async () => {
     setIsStreaming(true);
+    setIsWaitingForCamera(true);
     setError(null);
 
     // 노트북에게 스트리밍 시작 요청
     await requestStreamingStart();
 
-    // WebRTC 연결 시작
-    await connect();
-  }, [requestStreamingStart, connect]);
+    // 먼저 현재 상태 확인
+    const { data: currentDevice } = await supabase
+      .from("devices")
+      .select("is_camera_connected")
+      .eq("id", device.id)
+      .single();
+
+    if (currentDevice?.is_camera_connected) {
+      console.log("[Camera] Camera already connected, starting WebRTC...");
+      setIsWaitingForCamera(false);
+      await connect();
+      return;
+    }
+
+    // is_camera_connected가 true가 될 때까지 대기
+    console.log("[Camera] Waiting for broadcaster to be ready...");
+    
+    const channel = supabase
+      .channel(`camera-ready-${device.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "devices",
+          filter: `id=eq.${device.id}`,
+        },
+        async (payload) => {
+          const updated = payload.new as Device;
+          console.log("[Camera] Device updated, is_camera_connected:", updated.is_camera_connected);
+          
+          if (updated.is_camera_connected) {
+            console.log("[Camera] ✅ Broadcaster ready, starting WebRTC...");
+            cleanupSubscription();
+            setIsWaitingForCamera(false);
+            await connect();
+          }
+        }
+      )
+      .subscribe();
+
+    subscriptionRef.current = channel;
+
+    // 30초 타임아웃
+    waitingTimeoutRef.current = setTimeout(() => {
+      if (isWaitingForCamera) {
+        console.log("[Camera] Timeout waiting for broadcaster");
+        cleanupSubscription();
+        setIsWaitingForCamera(false);
+        setIsStreaming(false);
+        setError("노트북 카메라 응답 시간 초과. 노트북 앱이 실행 중인지 확인하세요.");
+      }
+    }, 30000);
+  }, [device.id, requestStreamingStart, connect, cleanupSubscription, isWaitingForCamera]);
 
   // 스트리밍 중지
   const stopStreaming = useCallback(async () => {
     setIsStreaming(false);
+    setIsWaitingForCamera(false);
+    cleanupSubscription();
 
     // WebRTC 연결 종료
     disconnect();
 
     // 노트북에게 스트리밍 중지 요청
     await requestStreamingStop();
-  }, [disconnect, requestStreamingStop]);
+  }, [disconnect, requestStreamingStop, cleanupSubscription]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cleanupSubscription();
+    };
+  }, [cleanupSubscription]);
 
   // 스냅샷 캡처 요청
   const captureSnapshot = useCallback(async () => {
@@ -137,7 +213,7 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
         <div className="p-4 flex flex-col gap-4">
           <CameraViewer
             isStreaming={isStreaming}
-            isConnecting={isConnecting}
+            isConnecting={isConnecting || isWaitingForCamera}
             isConnected={isConnected}
             remoteStream={remoteStream}
             error={error}
