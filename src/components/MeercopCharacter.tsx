@@ -17,9 +17,16 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
 
   return (
     <div className="flex-1 relative min-h-0">
+      {/* Character */}
+      <img 
+        src={getCharacterImage()} 
+        alt="MeerCOP Character" 
+        className="absolute bottom-[-26%] left-1/2 -translate-x-1/2 w-64 h-auto object-contain transition-all duration-300"
+      />
+      
       {/* Speech bubble above character */}
       {statusMessage && (
-        <div className="absolute bottom-[45%] left-1/2 -translate-x-1/2 w-[85%] max-w-sm z-10">
+        <div className="absolute bottom-[18%] left-1/2 -translate-x-1/2 w-[85%] max-w-sm z-10">
           <div className="bg-card/95 rounded-xl px-4 py-2 shadow-lg">
             <p className="text-center font-medium text-sm text-card-foreground">
               {statusMessage}
@@ -27,13 +34,6 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
           </div>
         </div>
       )}
-      
-      {/* Character */}
-      <img 
-        src={getCharacterImage()} 
-        alt="MeerCOP Character" 
-        className="absolute bottom-[4%] left-1/2 -translate-x-1/2 w-64 h-auto object-contain transition-all duration-300"
-      />
     </div>
   );
 };
