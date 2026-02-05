@@ -15,11 +15,11 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false }: MeercopChar
   };
 
   return (
-    <div className="flex-1 flex items-end justify-center min-h-0 pb-4">
+    <div className="flex-1 relative min-h-0">
       <img 
         src={getCharacterImage()} 
         alt="MeerCOP Character" 
-        className="w-40 max-h-[30vh] h-auto object-contain transition-all duration-300"
+        className="absolute bottom-[15%] left-1/2 -translate-x-1/2 w-64 h-auto object-contain transition-all duration-300"
       />
     </div>
   );
