@@ -47,6 +47,17 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        sky: {
+          light: "hsl(var(--sky-light))",
+          dark: "hsl(var(--sky-dark))",
+        },
+        ground: "hsl(var(--ground))",
+        rock: "hsl(var(--rock))",
+        cloud: "hsl(var(--cloud))",
+        status: {
+          active: "hsl(var(--status-active))",
+          badge: "hsl(var(--status-badge))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
