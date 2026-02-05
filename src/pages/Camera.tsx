@@ -130,24 +130,28 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-card z-50 flex flex-col">
-      <CameraHeader onClose={handleClose} deviceName={device.name} />
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+      <div className="bg-primary rounded-2xl w-full max-w-[400px] overflow-hidden flex flex-col">
+        <CameraHeader onClose={handleClose} deviceName={device.name} />
 
-      <CameraViewer
-        isStreaming={isStreaming}
-        isConnecting={isConnecting}
-        isConnected={isConnected}
-        remoteStream={remoteStream}
-        error={error}
-        onRetry={startStreaming}
-        onCapture={captureSnapshot}
-      />
+        <div className="p-4 flex flex-col gap-4">
+          <CameraViewer
+            isStreaming={isStreaming}
+            isConnecting={isConnecting}
+            isConnected={isConnected}
+            remoteStream={remoteStream}
+            error={error}
+            onRetry={startStreaming}
+            onCapture={captureSnapshot}
+          />
 
-      <CameraControls
-        isStreaming={isStreaming}
-        onStart={startStreaming}
-        onStop={stopStreaming}
-      />
+          <CameraControls
+            isStreaming={isStreaming}
+            onStart={startStreaming}
+            onStop={stopStreaming}
+          />
+        </div>
+      </div>
     </div>
   );
 };
