@@ -14,7 +14,275 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      alerts: {
+        Row: {
+          alert_type: Database["public"]["Enums"]["alert_type"]
+          created_at: string
+          device_id: string
+          id: string
+          is_read: boolean
+          message: string | null
+          title: string
+        }
+        Insert: {
+          alert_type: Database["public"]["Enums"]["alert_type"]
+          created_at?: string
+          device_id: string
+          id?: string
+          is_read?: boolean
+          message?: string | null
+          title: string
+        }
+        Update: {
+          alert_type?: Database["public"]["Enums"]["alert_type"]
+          created_at?: string
+          device_id?: string
+          id?: string
+          is_read?: boolean
+          message?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alerts_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      camera_captures: {
+        Row: {
+          captured_at: string
+          command_id: string | null
+          device_id: string
+          id: string
+          image_url: string
+        }
+        Insert: {
+          captured_at?: string
+          command_id?: string | null
+          device_id: string
+          id?: string
+          image_url: string
+        }
+        Update: {
+          captured_at?: string
+          command_id?: string | null
+          device_id?: string
+          id?: string
+          image_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "camera_captures_command_id_fkey"
+            columns: ["command_id"]
+            isOneToOne: false
+            referencedRelation: "commands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "camera_captures_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commands: {
+        Row: {
+          command_type: Database["public"]["Enums"]["command_type"]
+          created_at: string
+          device_id: string
+          executed_at: string | null
+          id: string
+          payload: Json | null
+          status: Database["public"]["Enums"]["command_status"]
+        }
+        Insert: {
+          command_type: Database["public"]["Enums"]["command_type"]
+          created_at?: string
+          device_id: string
+          executed_at?: string | null
+          id?: string
+          payload?: Json | null
+          status?: Database["public"]["Enums"]["command_status"]
+        }
+        Update: {
+          command_type?: Database["public"]["Enums"]["command_type"]
+          created_at?: string
+          device_id?: string
+          executed_at?: string | null
+          id?: string
+          payload?: Json | null
+          status?: Database["public"]["Enums"]["command_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commands_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      device_locations: {
+        Row: {
+          city: string | null
+          country: string | null
+          device_id: string
+          id: string
+          ip_address: string | null
+          latitude: number | null
+          longitude: number | null
+          recorded_at: string
+        }
+        Insert: {
+          city?: string | null
+          country?: string | null
+          device_id: string
+          id?: string
+          ip_address?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          recorded_at?: string
+        }
+        Update: {
+          city?: string | null
+          country?: string | null
+          device_id?: string
+          id?: string
+          ip_address?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          recorded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_locations_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      device_peripherals: {
+        Row: {
+          connected_at: string
+          device_id: string
+          disconnected_at: string | null
+          id: string
+          is_authorized: boolean
+          name: string
+          peripheral_type: Database["public"]["Enums"]["peripheral_type"]
+          product_id: string | null
+          status: Database["public"]["Enums"]["peripheral_status"]
+          vendor_id: string | null
+        }
+        Insert: {
+          connected_at?: string
+          device_id: string
+          disconnected_at?: string | null
+          id?: string
+          is_authorized?: boolean
+          name: string
+          peripheral_type: Database["public"]["Enums"]["peripheral_type"]
+          product_id?: string | null
+          status?: Database["public"]["Enums"]["peripheral_status"]
+          vendor_id?: string | null
+        }
+        Update: {
+          connected_at?: string
+          device_id?: string
+          disconnected_at?: string | null
+          id?: string
+          is_authorized?: boolean
+          name?: string
+          peripheral_type?: Database["public"]["Enums"]["peripheral_type"]
+          product_id?: string | null
+          status?: Database["public"]["Enums"]["peripheral_status"]
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_peripherals_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      devices: {
+        Row: {
+          battery_level: number | null
+          created_at: string
+          device_type: Database["public"]["Enums"]["device_type"]
+          id: string
+          is_monitoring: boolean
+          last_seen_at: string | null
+          name: string
+          status: Database["public"]["Enums"]["device_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          battery_level?: number | null
+          created_at?: string
+          device_type: Database["public"]["Enums"]["device_type"]
+          id?: string
+          is_monitoring?: boolean
+          last_seen_at?: string | null
+          name: string
+          status?: Database["public"]["Enums"]["device_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          battery_level?: number | null
+          created_at?: string
+          device_type?: Database["public"]["Enums"]["device_type"]
+          id?: string
+          is_monitoring?: boolean
+          last_seen_at?: string | null
+          name?: string
+          status?: Database["public"]["Enums"]["device_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +291,26 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      alert_type:
+        | "intrusion"
+        | "unauthorized_peripheral"
+        | "location_change"
+        | "offline"
+        | "low_battery"
+      command_status: "pending" | "sent" | "executed" | "failed"
+      command_type: "alarm" | "camera_capture" | "lock" | "locate" | "message"
+      device_status: "online" | "offline" | "monitoring" | "alert"
+      device_type: "laptop" | "desktop" | "smartphone"
+      peripheral_status: "connected" | "disconnected" | "unauthorized"
+      peripheral_type:
+        | "usb"
+        | "keyboard"
+        | "mouse"
+        | "microphone"
+        | "camera"
+        | "network"
+        | "bluetooth"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +437,29 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      alert_type: [
+        "intrusion",
+        "unauthorized_peripheral",
+        "location_change",
+        "offline",
+        "low_battery",
+      ],
+      command_status: ["pending", "sent", "executed", "failed"],
+      command_type: ["alarm", "camera_capture", "lock", "locate", "message"],
+      device_status: ["online", "offline", "monitoring", "alert"],
+      device_type: ["laptop", "desktop", "smartphone"],
+      peripheral_status: ["connected", "disconnected", "unauthorized"],
+      peripheral_type: [
+        "usb",
+        "keyboard",
+        "mouse",
+        "microphone",
+        "camera",
+        "network",
+        "bluetooth",
+        "other",
+      ],
+    },
   },
 } as const
