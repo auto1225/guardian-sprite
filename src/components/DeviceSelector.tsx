@@ -7,7 +7,7 @@ interface DeviceSelectorProps {
 
 const DeviceSelector = ({ deviceName, onClick }: DeviceSelectorProps) => {
   return (
-    <div className="flex justify-center mt-2">
+    <div className="flex justify-center mt-4 mb-3">
       <button 
         onClick={onClick}
         className="flex items-center gap-2 bg-accent hover:bg-accent/90 text-accent-foreground px-5 py-2 rounded-full font-semibold text-sm transition-all shadow-md"

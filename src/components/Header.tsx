@@ -11,7 +11,7 @@ interface HeaderProps {
 
 const Header = ({ onMenuClick, onDeviceManageClick, unreadCount = 0, deviceId }: HeaderProps) => {
   return (
-    <header className="flex items-center justify-between px-4 py-2">
+    <header className="flex items-center justify-between px-4 py-4">
       <div className="w-10" /> {/* Spacer */}
       
       <img src={logo} alt="MeerCOP" className="h-10 object-contain" />
