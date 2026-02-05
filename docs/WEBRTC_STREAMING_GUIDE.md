@@ -2,6 +2,14 @@
 
 MeerCOP 시스템의 WebRTC 기반 실시간 카메라 스트리밍 구현 가이드입니다.
 
+## 🚨 중요: 영상이 안 보이는 경우
+
+**영상이 보이지 않는다면, 노트북 앱에 AutoBroadcaster 컴포넌트가 구현되어 있는지 확인하세요!**
+
+스마트폰 앱만으로는 영상을 볼 수 없습니다. **노트북 앱이 반드시 실행 중이어야 하며**, 아래의 AutoBroadcaster 코드가 노트북 앱에 추가되어 있어야 합니다.
+
+---
+
 ## 아키텍처 개요
 
 ```
@@ -14,7 +22,114 @@ MeerCOP 시스템의 WebRTC 기반 실시간 카메라 스트리밍 구현 가�
          └─────────── Video Stream ───────────────────►│
 ```
 
-## 스마트폰 앱 (Viewer) - React Web
+### 동작 흐름
+
+1. **[스마트폰]** "카메라 보기" 클릭 → `devices.is_streaming_requested = true`
+2. **[노트북]** `is_streaming_requested` 변경 감지 → 카메라 시작
+3. **[스마트폰]** `viewer-join` 이벤트 전송
+4. **[노트북]** offer 생성 및 전송
+5. **[스마트폰]** answer 전송
+6. **[양쪽]** ICE candidate 교환
+7. **[스마트폰]** 비디오 스트림 수신 → 화면에 표시
+
+---
+
+## 🔴 노트북 앱 (Broadcaster) - 필수 구현!
+
+### AutoBroadcaster 컴포넌트
+
+이 컴포넌트를 **노트북 앱의 최상위**에 추가하세요. 이 컴포넌트가 없으면 스마트폰에서 영상을 볼 수 없습니다!
+
+```tsx
+// src/components/AutoBroadcaster.tsx
+import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useWebRTCBroadcaster } from "@/hooks/useWebRTCBroadcaster";
+
+interface AutoBroadcasterProps {
+  deviceId: string;
+}
+
+export const AutoBroadcaster = ({ deviceId }: AutoBroadcasterProps) => {
+  const { isBroadcasting, startBroadcasting, stopBroadcasting } =
+    useWebRTCBroadcaster({ deviceId });
+
+  useEffect(() => {
+    // 초기 상태 확인
+    const checkInitialState = async () => {
+      const { data } = await supabase
+        .from("devices")
+        .select("is_streaming_requested")
+        .eq("id", deviceId)
+        .single();
+      
+      if (data?.is_streaming_requested && !isBroadcasting) {
+        console.log("Initial state: streaming requested, starting...");
+        startBroadcasting();
+      }
+    };
+    checkInitialState();
+
+    // 실시간으로 is_streaming_requested 변경 감지
+    const channel = supabase
+      .channel(`device-streaming-${deviceId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "devices",
+          filter: `id=eq.${deviceId}`,
+        },
+        (payload) => {
+          const { is_streaming_requested } = payload.new as {
+            is_streaming_requested: boolean;
+          };
+          
+          console.log("Streaming request changed:", is_streaming_requested);
+
+          if (is_streaming_requested && !isBroadcasting) {
+            startBroadcasting();
+          } else if (!is_streaming_requested && isBroadcasting) {
+            stopBroadcasting();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [deviceId, isBroadcasting, startBroadcasting, stopBroadcasting]);
+
+  // 백그라운드에서 작동하므로 UI 없음
+  return null;
+};
+```
+
+### 노트북 앱에서 사용
+
+```tsx
+// App.tsx
+import { AutoBroadcaster } from "./components/AutoBroadcaster";
+
+function App() {
+  const deviceId = "your-registered-device-id";
+
+  return (
+    <div>
+      {/* 다른 UI 컴포넌트들 */}
+      
+      {/* 🔴 이 컴포넌트가 반드시 있어야 함! */}
+      <AutoBroadcaster deviceId={deviceId} />
+    </div>
+  );
+}
+```
+
+---
+
+## 스마트폰 앱 (Viewer) - 이미 구현됨
 
 이 프로젝트에 이미 구현되어 있습니다.
 
