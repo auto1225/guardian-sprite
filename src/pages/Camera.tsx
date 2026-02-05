@@ -22,7 +22,22 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
   const [error, setError] = useState<string | null>(null);
   const waitingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const subscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const isConnectingRef = useRef(false); // Guard against race conditions
+  const isConnectingRef = useRef(false);
+  const connectionStartTimeRef = useRef<number>(0); // Track when connection started
+
+  const handleWebRTCError = useCallback((err: string) => {
+    // Ignore errors if we're no longer trying to connect
+    if (!isConnectingRef.current) {
+      console.log("[Camera] Ignoring error, not connecting:", err);
+      return;
+    }
+    setError(err);
+    toast({
+      title: "연결 오류",
+      description: err,
+      variant: "destructive",
+    });
+  }, [toast]);
 
   const {
     isConnecting,
@@ -32,14 +47,7 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
     disconnect,
   } = useWebRTCViewer({
     deviceId: device.id,
-    onError: (err) => {
-      setError(err);
-      toast({
-        title: "연결 오류",
-        description: err,
-        variant: "destructive",
-      });
-    },
+    onError: handleWebRTCError,
   });
 
   // 스트리밍 시작 요청 (노트북에게 카메라 켜라고 명령)
@@ -92,7 +100,9 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
       return;
     }
     
+    console.log("[Camera] Starting streaming flow...");
     isConnectingRef.current = true;
+    connectionStartTimeRef.current = Date.now();
     setIsStreaming(true);
     setIsWaitingForCamera(true);
     setError(null);
@@ -110,16 +120,17 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
     if (currentDevice?.is_camera_connected) {
       console.log("[Camera] Camera already connected, starting WebRTC...");
       setIsWaitingForCamera(false);
-      await connect();
-      // Don't reset isConnectingRef here - wait for actual connection
+      // connect is async but we don't need to await - it manages its own lifecycle
+      connect();
       return;
     }
 
     // is_camera_connected가 true가 될 때까지 대기
     console.log("[Camera] Waiting for broadcaster to be ready...");
     
+    const channelId = `camera-ready-${device.id}-${Date.now()}`;
     const channel = supabase
-      .channel(`camera-ready-${device.id}-${Date.now()}`)
+      .channel(channelId)
       .on(
         "postgres_changes",
         {
@@ -128,7 +139,7 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
           table: "devices",
           filter: `id=eq.${device.id}`,
         },
-        async (payload) => {
+        (payload) => {
           const updated = payload.new as Device;
           console.log("[Camera] Device updated, is_camera_connected:", updated.is_camera_connected);
           
@@ -136,11 +147,13 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
             console.log("[Camera] ✅ Broadcaster ready, starting WebRTC...");
             cleanupSubscription();
             setIsWaitingForCamera(false);
-            await connect();
+            connect();
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("[Camera] Device subscription status:", status);
+      });
 
     subscriptionRef.current = channel;
 
@@ -159,7 +172,14 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
 
   // 스트리밍 중지
   const stopStreaming = useCallback(async () => {
-    console.log("[Camera] stopStreaming called, isConnectingRef:", isConnectingRef.current);
+    // Prevent stopping too quickly after starting (minimum 3 seconds)
+    const elapsed = Date.now() - connectionStartTimeRef.current;
+    if (elapsed < 3000 && isConnectingRef.current) {
+      console.log("[Camera] Ignoring stop request, connection just started", elapsed, "ms ago");
+      return;
+    }
+    
+    console.log("[Camera] stopStreaming called");
     isConnectingRef.current = false;
     setIsStreaming(false);
     setIsWaitingForCamera(false);
@@ -208,11 +228,19 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
 
   // 모달 닫힐 때 정리
   const handleClose = useCallback(() => {
+    console.log("[Camera] handleClose called, isStreaming:", isStreaming);
     if (isStreaming) {
-      stopStreaming();
+      // Force stop regardless of timing
+      isConnectingRef.current = false;
+      connectionStartTimeRef.current = 0;
+      setIsStreaming(false);
+      setIsWaitingForCamera(false);
+      cleanupSubscription();
+      disconnect();
+      requestStreamingStop();
     }
     onClose();
-  }, [isStreaming, stopStreaming, onClose]);
+  }, [isStreaming, disconnect, cleanupSubscription, requestStreamingStop, onClose]);
 
   if (!isOpen) return null;
 
