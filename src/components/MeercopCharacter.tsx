@@ -19,7 +19,7 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false }: MeercopChar
       <img 
         src={getCharacterImage()} 
         alt="MeerCOP Character" 
-        className="absolute bottom-[15%] left-1/2 -translate-x-1/2 w-64 h-auto object-contain transition-all duration-300"
+        className="absolute bottom-[8%] left-1/2 -translate-x-1/2 w-64 h-auto object-contain transition-all duration-300"
       />
     </div>
   );
