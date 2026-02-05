@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
+import DeviceSelector from "@/components/DeviceSelector";
 import StatusIcons from "@/components/StatusIcons";
 import StatusMessage from "@/components/StatusMessage";
 import MeercopCharacter from "@/components/MeercopCharacter";
@@ -105,6 +106,11 @@ const Index = () => {
         onDeviceManageClick={() => setIsDeviceManageOpen(true)}
         unreadCount={unreadCount}
         deviceId={selectedDeviceId}
+      />
+      
+      <DeviceSelector 
+        deviceName={selectedDevice?.name || "회사 노트북"}
+        onClick={() => setIsDeviceListExpanded(!isDeviceListExpanded)}
       />
       
       <DeviceList 
