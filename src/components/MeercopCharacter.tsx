@@ -21,7 +21,7 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
       <img 
         src={getCharacterImage()} 
         alt="MeerCOP Character" 
-        className="absolute bottom-[-16%] left-1/2 -translate-x-1/2 w-[22rem] h-auto object-contain transition-all duration-300"
+        className="absolute bottom-[-21%] left-1/2 -translate-x-1/2 w-[22rem] h-auto object-contain transition-all duration-300"
       />
       
       {/* Speech bubble above character */}
