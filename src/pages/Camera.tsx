@@ -93,6 +93,32 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
     }
   }, []);
 
+  // Broadcaster가 준비될 때까지 폴링으로 대기
+  const waitForBroadcaster = useCallback(async (): Promise<boolean> => {
+    console.log("[Camera] Polling for broadcaster ready state...");
+    for (let i = 0; i < 30; i++) { // 최대 15초 대기 (0.5초 * 30)
+      if (!isConnectingRef.current) {
+        console.log("[Camera] Connection cancelled during wait");
+        return false;
+      }
+      
+      const { data } = await supabase
+        .from("devices")
+        .select("is_camera_connected")
+        .eq("id", device.id)
+        .single();
+      
+      if (data?.is_camera_connected) {
+        console.log("[Camera] ✅ Broadcaster is ready! (poll attempt:", i + 1, ")");
+        return true;
+      }
+      
+      console.log("[Camera] Broadcaster not ready, waiting... (attempt:", i + 1, ")");
+      await new Promise(r => setTimeout(r, 500)); // 0.5초 대기
+    }
+    return false;
+  }, [device.id]);
+
   // 스트리밍 시작 - 카메라 준비 대기 후 연결
   const startStreaming = useCallback(async () => {
     if (isConnectingRef.current) {
@@ -107,68 +133,41 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
     setIsWaitingForCamera(true);
     setError(null);
 
-    // 노트북에게 스트리밍 시작 요청
+    // 1. 노트북에게 스트리밍 시작 요청
     await requestStreamingStart();
 
-    // 먼저 현재 상태 확인
-    const { data: currentDevice } = await supabase
-      .from("devices")
-      .select("is_camera_connected")
-      .eq("id", device.id)
-      .single();
-
-    if (currentDevice?.is_camera_connected) {
-      console.log("[Camera] Camera already connected, starting WebRTC...");
+    // 2. is_camera_connected가 true가 될 때까지 폴링으로 대기
+    const isReady = await waitForBroadcaster();
+    
+    if (!isReady) {
+      console.log("[Camera] Broadcaster not ready after 15s");
+      isConnectingRef.current = false;
       setIsWaitingForCamera(false);
-      // connect is async but we don't need to await - it manages its own lifecycle
-      connect();
+      setIsStreaming(false);
+      setError("노트북 카메라 응답 시간 초과. 노트북 앱이 실행 중인지 확인하세요.");
       return;
     }
 
-    // is_camera_connected가 true가 될 때까지 대기
-    console.log("[Camera] Waiting for broadcaster to be ready...");
-    
-    const channelId = `camera-ready-${device.id}-${Date.now()}`;
-    const channel = supabase
-      .channel(channelId)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "devices",
-          filter: `id=eq.${device.id}`,
-        },
-        (payload) => {
-          const updated = payload.new as Device;
-          console.log("[Camera] Device updated, is_camera_connected:", updated.is_camera_connected);
-          
-          if (updated.is_camera_connected && isConnectingRef.current) {
-            console.log("[Camera] ✅ Broadcaster ready, starting WebRTC...");
-            cleanupSubscription();
-            setIsWaitingForCamera(false);
-            connect();
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log("[Camera] Device subscription status:", status);
-      });
+    // 3. 추가로 500ms 대기 (broadcaster의 Realtime 구독이 완전히 준비되도록)
+    console.log("[Camera] Waiting additional 500ms for broadcaster subscription...");
+    await new Promise(r => setTimeout(r, 500));
 
-    subscriptionRef.current = channel;
+    // 4. 이제 viewer-join 전송
+    console.log("[Camera] ✅ Starting WebRTC connection...");
+    setIsWaitingForCamera(false);
+    connect();
 
-    // 30초 타임아웃
+    // 30초 WebRTC 연결 타임아웃
     waitingTimeoutRef.current = setTimeout(() => {
       if (isConnectingRef.current && !isConnected) {
-        console.log("[Camera] Timeout waiting for broadcaster");
+        console.log("[Camera] WebRTC connection timeout");
         isConnectingRef.current = false;
         cleanupSubscription();
-        setIsWaitingForCamera(false);
         setIsStreaming(false);
-        setError("노트북 카메라 응답 시간 초과. 노트북 앱이 실행 중인지 확인하세요.");
+        setError("WebRTC 연결 시간 초과. 다시 시도해주세요.");
       }
     }, 30000);
-  }, [device.id, requestStreamingStart, connect, cleanupSubscription, isConnected]);
+  }, [device.id, requestStreamingStart, waitForBroadcaster, connect, cleanupSubscription, isConnected]);
 
   // 스트리밍 중지
   const stopStreaming = useCallback(async () => {
