@@ -29,6 +29,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
   const sessionIdRef = useRef<string>(`viewer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const processedMessagesRef = useRef<Set<string>>(new Set());
+  const isConnectingRef = useRef(false); // Sync guard for race conditions
 
   const ICE_SERVERS: RTCConfiguration = {
     iceServers: [
@@ -153,22 +154,30 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
   }, [sendSignalingMessage, onError]);
 
   const connect = useCallback(async () => {
-    if (isConnecting || isConnected) return;
+    // Use ref for synchronous check to prevent race conditions
+    if (isConnectingRef.current || isConnected) {
+      console.log("[WebRTC Viewer] Already connecting or connected, skipping...");
+      return;
+    }
     
+    isConnectingRef.current = true;
     console.log("[WebRTC Viewer] Starting connection...");
     setIsConnecting(true);
-    cleanup();
+    
+    // Don't cleanup at start - just reset refs
+    processedMessagesRef.current.clear();
 
     // 새 세션 ID 생성
     sessionIdRef.current = `viewer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     try {
-      // 이전 시그널링 메시지 정리
-      await supabase
+      // 이전 시그널링 메시지 정리 (don't await to avoid delay)
+      supabase
         .from("webrtc_signaling")
         .delete()
         .eq("device_id", deviceId)
-        .eq("sender_type", "viewer");
+        .eq("sender_type", "viewer")
+        .then(() => console.log("[WebRTC Viewer] Old signaling cleaned"));
 
       // PeerConnection 생성
       peerConnectionRef.current = createPeerConnection();
@@ -221,7 +230,9 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
 
       // 30초 타임아웃
       setTimeout(() => {
-        if (!isConnected && isConnecting) {
+        if (isConnectingRef.current && !isConnected) {
+          console.log("[WebRTC Viewer] Connection timeout");
+          isConnectingRef.current = false;
           cleanup();
           onError?.("연결 시간이 초과되었습니다. 노트북 카메라가 활성화되어 있는지 확인하세요.");
         }
@@ -229,13 +240,16 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
 
     } catch (error) {
       console.error("[WebRTC Viewer] Error connecting:", error);
+      isConnectingRef.current = false;
       cleanup();
       onError?.("연결 중 오류가 발생했습니다");
     }
-  }, [deviceId, isConnecting, isConnected, cleanup, createPeerConnection, sendSignalingMessage, handleSignalingMessage, onError]);
+  }, [deviceId, isConnected, cleanup, createPeerConnection, sendSignalingMessage, handleSignalingMessage, onError]);
 
   const disconnect = useCallback(async () => {
-    console.log("[WebRTC Viewer] Disconnecting...");
+    console.log("[WebRTC Viewer] Disconnecting..., wasConnecting:", isConnectingRef.current);
+    isConnectingRef.current = false;
+    
     // 먼저 연결 정리
     cleanup();
     
