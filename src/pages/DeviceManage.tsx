@@ -209,12 +209,12 @@ const DeviceCard = ({ device, isMain, onSetAsMain, onToggleMonitoring, onDelete 
   const isMonitoring = device.is_monitoring;
 
   return (
-    <div className="rounded-2xl p-3 bg-[#5BBFCF]">
+    <div className="rounded-2xl p-3" style={{ backgroundColor: '#5BBFCF' }}>
       {/* Header row */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           {isMain && (
-            <span className="bg-[#4CAF50] text-white px-2.5 py-1 rounded text-xs font-bold">
+            <span className="text-white px-2.5 py-1 rounded text-xs font-bold" style={{ backgroundColor: '#4CAF50' }}>
               MAIN
             </span>
           )}
@@ -222,7 +222,7 @@ const DeviceCard = ({ device, isMain, onSetAsMain, onToggleMonitoring, onDelete 
           {device.battery_level !== null && (
             <span className="text-white text-sm flex items-center gap-1">
               {device.battery_level}%
-              <span className="text-[#4CAF50]">⚡</span>
+              <span style={{ color: '#4CAF50' }}>⚡</span>
             </span>
           )}
         </div>
@@ -257,54 +257,34 @@ const DeviceCard = ({ device, isMain, onSetAsMain, onToggleMonitoring, onDelete 
 
       {/* Status icons and toggle */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <StatusIconWithCheck 
-            bgColor="bg-[#2196F3]"
+        <div className="flex items-center gap-6">
+          <StatusIconItem 
+            iconOn={laptopOn}
+            iconOff={laptopOff}
             isActive={isOnline}
             label="Laptop"
-          >
-            <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M20 18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z"/>
-            </svg>
-          </StatusIconWithCheck>
-          
-          <StatusIconWithCheck 
-            bgColor="bg-[#FDD835]"
-            isActive={isMonitoring}
-            label="MeerCOP"
-          >
-            <span className="text-white text-sm font-bold">M</span>
-          </StatusIconWithCheck>
-          
-          <StatusIconWithCheck 
-            bgColor="bg-[#2196F3]"
+          />
+          <StatusIconItem 
+            iconOn={wifiOn}
+            iconOff={wifiOff}
             isActive={isOnline}
             label="Network"
-          >
-            <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 3C7.5 3 3.5 5 1 8l1.5 1.5C4.5 7.5 8 6 12 6s7.5 1.5 9.5 3.5L23 8c-2.5-3-6.5-5-11-5zm0 6c-3 0-5.5 1.5-7 3.5L6.5 14c1-1.5 3-2.5 5.5-2.5s4.5 1 5.5 2.5l1.5-1.5c-1.5-2-4-3.5-7-3.5zm0 6c-1.5 0-3 .5-4 1.5L12 21l4-4.5c-1-.5-2.5-1.5-4-1.5z" />
-            </svg>
-          </StatusIconWithCheck>
-          
-          <StatusIconWithCheck 
-            bgColor="bg-[#2196F3]"
+          />
+          <StatusIconItem 
+            iconOn={cameraOn}
+            iconOff={cameraOff}
             isActive={true}
             label="Camera"
-          >
-            <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M20 4h-3.2l-1.8-2H9l-1.8 2H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2zm-8 13a5 5 0 110-10 5 5 0 010 10z"/>
-            </svg>
-          </StatusIconWithCheck>
+          />
         </div>
 
         <button
           onClick={onToggleMonitoring}
-          className={`px-6 py-2 rounded-lg text-base font-bold ${
-            isMonitoring
-              ? "bg-[#C8E600] text-[#333333]"
-              : "bg-gray-400 text-white"
-          }`}
+          className="px-6 py-2 rounded-lg text-base font-bold"
+          style={{ 
+            backgroundColor: isMonitoring ? '#C8E600' : '#9E9E9E',
+            color: isMonitoring ? '#333333' : '#FFFFFF'
+          }}
         >
           {isMonitoring ? "ON" : "OFF"}
         </button>
@@ -313,28 +293,21 @@ const DeviceCard = ({ device, isMain, onSetAsMain, onToggleMonitoring, onDelete 
   );
 };
 
-interface StatusIconWithCheckProps {
-  bgColor: string;
+interface StatusIconItemProps {
+  iconOn: string;
+  iconOff: string;
   isActive: boolean;
   label: string;
-  children: React.ReactNode;
 }
 
-const StatusIconWithCheck = ({ bgColor, isActive, label, children }: StatusIconWithCheckProps) => {
+const StatusIconItem = ({ iconOn, iconOff, isActive, label }: StatusIconItemProps) => {
   return (
     <div className="flex flex-col items-center gap-1">
-      <div className="relative">
-        <div className={`w-10 h-10 rounded-full ${bgColor} flex items-center justify-center`}>
-          {children}
-        </div>
-        {isActive && (
-          <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-[#4CAF50] rounded-full flex items-center justify-center border-2 border-[#5BBFCF]">
-            <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4">
-              <path d="M5 12l5 5L20 7" />
-            </svg>
-          </div>
-        )}
-      </div>
+      <img 
+        src={isActive ? iconOn : iconOff} 
+        alt={label} 
+        className="w-10 h-10 object-contain"
+      />
       <span className="text-white text-[10px] font-medium">{label}</span>
     </div>
   );
