@@ -209,7 +209,7 @@ const DeviceCard = ({ device, isMain, onSetAsMain, onToggleMonitoring, onDelete 
   const isMonitoring = device.is_monitoring;
 
   return (
-    <div className="rounded-2xl p-3" style={{ backgroundColor: '#5BBFCF' }}>
+    <div className="rounded-2xl p-3" style={{ backgroundColor: '#6BC5D2' }}>
       {/* Header row */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
@@ -282,8 +282,8 @@ const DeviceCard = ({ device, isMain, onSetAsMain, onToggleMonitoring, onDelete 
           onClick={onToggleMonitoring}
           className="px-6 py-2 rounded-lg text-base font-bold"
           style={{ 
-            backgroundColor: isMonitoring ? '#C8E600' : '#9E9E9E',
-            color: isMonitoring ? '#333333' : '#FFFFFF'
+            backgroundColor: isMonitoring ? '#D4E157' : '#9E9E9E',
+            color: isMonitoring ? '#424242' : '#FFFFFF'
           }}
         >
           {isMonitoring ? "ON" : "OFF"}
