@@ -86,25 +86,79 @@ export const useDevices = () => {
     },
   });
 
-  // Subscribe to realtime updates
+  // Subscribe to realtime updates - 즉시 상태 업데이트
   useEffect(() => {
     if (!user) return;
 
     const channel = supabase
-      .channel("devices-changes")
+      .channel("devices-realtime")
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "UPDATE",
           schema: "public",
           table: "devices",
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ["devices", user.id] });
+        (payload) => {
+          console.log("[Realtime] Device updated:", payload.new);
+          // 즉시 캐시 업데이트 (refetch 없이)
+          queryClient.setQueryData(
+            ["devices", user.id],
+            (oldDevices: Device[] | undefined) => {
+              if (!oldDevices) return oldDevices;
+              return oldDevices.map((device) =>
+                device.id === payload.new.id
+                  ? { ...device, ...payload.new }
+                  : device
+              );
+            }
+          );
         }
       )
-      .subscribe();
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "devices",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log("[Realtime] Device inserted:", payload.new);
+          queryClient.setQueryData(
+            ["devices", user.id],
+            (oldDevices: Device[] | undefined) => {
+              if (!oldDevices) return [payload.new as Device];
+              return [...oldDevices, payload.new as Device];
+            }
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "devices",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log("[Realtime] Device deleted:", payload.old);
+          queryClient.setQueryData(
+            ["devices", user.id],
+            (oldDevices: Device[] | undefined) => {
+              if (!oldDevices) return oldDevices;
+              return oldDevices.filter(
+                (device) => device.id !== (payload.old as Device).id
+              );
+            }
+          );
+        }
+      )
+      .subscribe((status) => {
+        console.log("[Realtime] Devices channel status:", status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
