@@ -38,14 +38,20 @@ export const useCommands = () => {
   });
 
   const toggleMonitoring = async (deviceId: string, enable: boolean) => {
+    console.log("[useCommands] toggleMonitoring called:", deviceId, "enable:", enable);
+    
     // Update device monitoring status
     const { error } = await supabase
       .from("devices")
       .update({ is_monitoring: enable })
       .eq("id", deviceId);
     
-    if (error) throw error;
+    if (error) {
+      console.error("[useCommands] toggleMonitoring error:", error);
+      throw error;
+    }
     
+    console.log("[useCommands] toggleMonitoring success, is_monitoring set to:", enable);
     queryClient.invalidateQueries({ queryKey: ["devices"] });
   };
 
