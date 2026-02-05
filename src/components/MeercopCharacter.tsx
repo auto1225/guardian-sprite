@@ -1,10 +1,19 @@
-import meercopCharacter from "@/assets/meercop-character.png";
+import meercopOff from "@/assets/meercop-off.png";
+import meercopOn from "@/assets/meercop-on.png";
+import meercopAlert from "@/assets/meercop-alert.png";
 
 interface MeercopCharacterProps {
   isMonitoring?: boolean;
+  isAlert?: boolean;
 }
 
-const MeercopCharacter = ({ isMonitoring = false }: MeercopCharacterProps) => {
+const MeercopCharacter = ({ isMonitoring = false, isAlert = false }: MeercopCharacterProps) => {
+  const getCharacterImage = () => {
+    if (isAlert) return meercopAlert;
+    if (isMonitoring) return meercopOn;
+    return meercopOff;
+  };
+
   return (
     <div className="flex-1 flex items-end justify-center relative overflow-hidden min-h-0">
       {/* Clouds */}
@@ -21,11 +30,9 @@ const MeercopCharacter = ({ isMonitoring = false }: MeercopCharacterProps) => {
       
       {/* Character */}
       <img 
-        src={meercopCharacter} 
+        src={getCharacterImage()} 
         alt="MeerCOP Character" 
-        className={`relative z-10 w-48 max-h-[40vh] h-auto object-contain -mb-4 transition-all duration-300 ${
-          isMonitoring ? "opacity-100" : "opacity-80 grayscale-[30%]"
-        }`}
+        className="relative z-10 w-48 max-h-[40vh] h-auto object-contain -mb-4 transition-all duration-300"
       />
     </div>
   );
