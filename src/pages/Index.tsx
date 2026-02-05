@@ -133,13 +133,17 @@ const Index = () => {
         onIconClick={handleStatusIconClick}
       />
       
-      <StatusMessage 
-        deviceName={selectedDevice?.name || "노트북"}
-        isMonitoring={isMonitoring}
-        status={selectedDevice?.status}
+      <MeercopCharacter 
+        isMonitoring={isMonitoring} 
+        isAlert={selectedDevice?.status === "alert"}
+        statusMessage={
+          selectedDevice?.status === "alert" 
+            ? "노트북에 충격이 감지되었습니다!"
+            : isMonitoring 
+              ? "미어캅이 당신의 노트북을 감시중입니다."
+              : "미어캅 감시 준비 완료! 언제든지 감시를 시작할 수 있습니다."
+        }
       />
-      
-      <MeercopCharacter isMonitoring={isMonitoring} isAlert={selectedDevice?.status === "alert"} />
       
       <ToggleButton 
         isOn={isMonitoring}
