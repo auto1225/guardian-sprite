@@ -292,12 +292,45 @@ export type Database = {
         }
         Relationships: []
       }
+      webrtc_signaling: {
+        Row: {
+          created_at: string
+          data: Json
+          device_id: string
+          expires_at: string
+          id: string
+          sender_type: string
+          session_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          data: Json
+          device_id: string
+          expires_at?: string
+          id?: string
+          sender_type: string
+          session_id: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          device_id?: string
+          expires_at?: string
+          id?: string
+          sender_type?: string
+          session_id?: string
+          type?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_expired_signaling: { Args: never; Returns: undefined }
     }
     Enums: {
       alert_type:
