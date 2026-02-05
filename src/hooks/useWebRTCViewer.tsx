@@ -139,33 +139,51 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
 
       channel
         .on("broadcast", { event: "signaling" }, ({ payload }) => {
+          console.log("[WebRTC Viewer] Received signaling message:", (payload as SignalingMessage).type);
           handleSignalingMessage(payload as SignalingMessage);
         })
         .subscribe(async (status) => {
           if (status === "SUBSCRIBED") {
-            console.log("Connected to signaling channel, requesting stream...");
+            console.log("[WebRTC Viewer] Connected to signaling channel");
             
-            // Request stream from broadcaster
-            await channel.send({
-              type: "broadcast",
-              event: "viewer-join",
-              payload: {
-                viewerId: viewerIdRef.current,
-              },
-            });
+            // 노트북이 브로드캐스팅 준비될 때까지 잠시 대기 후 viewer-join 전송
+            // 여러 번 재시도하여 타이밍 문제 해결
+            const sendJoinRequest = async (attempt: number = 1) => {
+              if (attempt > 5) return; // 최대 5번 시도
+              
+              console.log(`[WebRTC Viewer] Sending viewer-join (attempt ${attempt})`);
+              await channel.send({
+                type: "broadcast",
+                event: "viewer-join",
+                payload: {
+                  viewerId: viewerIdRef.current,
+                },
+              });
+              
+              // 2초 후에도 연결 안되면 재시도
+              setTimeout(() => {
+                if (!peerConnectionRef.current?.remoteDescription) {
+                  console.log("[WebRTC Viewer] No offer received, retrying...");
+                  sendJoinRequest(attempt + 1);
+                }
+              }, 2000);
+            };
+            
+            // 500ms 후 첫 요청 (노트북이 채널 구독할 시간 확보)
+            setTimeout(() => sendJoinRequest(1), 500);
           }
         });
 
-      // Timeout if no connection after 15 seconds
+      // Timeout if no connection after 30 seconds
       setTimeout(() => {
         if (!isConnected && isConnecting) {
           cleanup();
           onError?.("연결 시간이 초과되었습니다. 노트북 카메라가 활성화되어 있는지 확인하세요.");
         }
-      }, 15000);
+      }, 30000);
 
     } catch (error) {
-      console.error("Error connecting:", error);
+      console.error("[WebRTC Viewer] Error connecting:", error);
       cleanup();
       onError?.("연결 중 오류가 발생했습니다");
     }
