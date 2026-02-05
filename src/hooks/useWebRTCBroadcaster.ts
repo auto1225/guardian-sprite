@@ -128,7 +128,13 @@ export const useWebRTCBroadcaster = ({
 
   const handleViewerJoin = useCallback(
     async (viewerId: string) => {
-      console.log("Viewer joined:", viewerId);
+      console.log("[WebRTC Broadcaster] 👋 Viewer joined:", viewerId);
+      console.log("[WebRTC Broadcaster] Local stream available:", !!localStreamRef.current);
+      
+      if (!localStreamRef.current) {
+        console.error("[WebRTC Broadcaster] ❌ No local stream available, cannot create offer");
+        return;
+      }
 
       // Create peer connection for this viewer
       const pc = createPeerConnectionForViewer(viewerId);
@@ -137,18 +143,21 @@ export const useWebRTCBroadcaster = ({
 
       try {
         // Create and send offer
+        console.log("[WebRTC Broadcaster] Creating offer for viewer:", viewerId);
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
+        console.log("[WebRTC Broadcaster] Offer created, sending to viewer...");
 
         await sendSignalingMessage({
           type: "offer",
           payload: offer,
           to: viewerId,
         });
-
+        
+        console.log("[WebRTC Broadcaster] ✅ Offer sent to viewer:", viewerId);
         onViewerConnected?.(viewerId);
       } catch (error) {
-        console.error("Error creating offer for viewer:", error);
+        console.error("[WebRTC Broadcaster] ❌ Error creating offer for viewer:", error);
         pc.close();
         viewerConnectionsRef.current.delete(viewerId);
         setViewerCount(viewerConnectionsRef.current.size);
@@ -192,8 +201,11 @@ export const useWebRTCBroadcaster = ({
   const startBroadcasting = useCallback(async () => {
     if (isBroadcasting) return;
 
+    console.log("[WebRTC Broadcaster] Starting broadcast...");
+
     try {
       // Get local camera stream
+      console.log("[WebRTC Broadcaster] Requesting camera access...");
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: 1280 },
@@ -203,25 +215,34 @@ export const useWebRTCBroadcaster = ({
         audio: false,
       });
 
+      console.log("[WebRTC Broadcaster] ✅ Camera access granted, tracks:", stream.getTracks().length);
       localStreamRef.current = stream;
       setLocalStream(stream);
 
       // Subscribe to signaling channel
-      const channel = supabase.channel(`webrtc-${deviceId}`);
+      const channelName = `webrtc-${deviceId}`;
+      console.log("[WebRTC Broadcaster] Subscribing to channel:", channelName);
+      const channel = supabase.channel(channelName);
       channelRef.current = channel;
 
       channel
         .on("broadcast", { event: "signaling" }, ({ payload }) => {
+          console.log("[WebRTC Broadcaster] Received signaling event:", (payload as SignalingMessage).type);
           handleSignalingMessage(payload as SignalingMessage);
         })
         .on("broadcast", { event: "viewer-join" }, ({ payload }) => {
           const { viewerId } = payload as { viewerId: string };
+          console.log("[WebRTC Broadcaster] Received viewer-join from:", viewerId);
           handleViewerJoin(viewerId);
         })
         .subscribe((status) => {
+          console.log("[WebRTC Broadcaster] Channel subscription status:", status);
           if (status === "SUBSCRIBED") {
-            console.log("Broadcaster connected to signaling channel");
+            console.log("[WebRTC Broadcaster] ✅ Successfully subscribed to signaling channel");
             setIsBroadcasting(true);
+          } else if (status === "CHANNEL_ERROR") {
+            console.error("[WebRTC Broadcaster] ❌ Channel subscription error");
+            onError?.("시그널링 채널 연결 실패");
           }
         });
     } catch (error) {
