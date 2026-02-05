@@ -11,7 +11,7 @@ const Index = () => {
   const deviceName = "Laptop1";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-light to-primary flex flex-col relative overflow-hidden">
+    <div className="h-screen bg-gradient-to-b from-sky-light to-primary flex flex-col relative overflow-hidden">
       <Header />
       <DeviceSelector deviceName={deviceName} />
       <StatusIcons />

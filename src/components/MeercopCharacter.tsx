@@ -1,8 +1,8 @@
  import meercopCharacter from "@/assets/meercop-character.png";
  
- const MeercopCharacter = () => {
-   return (
-     <div className="flex-1 flex items-end justify-center relative overflow-hidden">
+const MeercopCharacter = () => {
+  return (
+    <div className="flex-1 flex items-end justify-center relative overflow-hidden min-h-0">
        {/* Clouds */}
        <div className="absolute inset-0 pointer-events-none">
          <div className="absolute top-8 left-4 w-16 h-6 bg-cloud/30 rounded-full blur-sm" />
@@ -15,12 +15,12 @@
        {/* Ground/Rock */}
        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-ground to-rock/80 rounded-t-[50%]" />
        
-       {/* Character */}
-       <img 
-         src={meercopCharacter} 
-         alt="MeerCOP Character" 
-         className="relative z-10 w-64 h-auto object-contain -mb-4"
-       />
+        {/* Character */}
+        <img 
+          src={meercopCharacter} 
+          alt="MeerCOP Character" 
+          className="relative z-10 w-48 max-h-[40vh] h-auto object-contain -mb-4"
+        />
      </div>
    );
  };
