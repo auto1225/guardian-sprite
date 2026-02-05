@@ -129,7 +129,7 @@ const Index = () => {
         status={selectedDevice?.status}
       />
       
-      <MeercopCharacter isMonitoring={isMonitoring} />
+      <MeercopCharacter isMonitoring={isMonitoring} isAlert={selectedDevice?.status === "alert"} />
       
       <ToggleButton 
         isOn={isMonitoring}
