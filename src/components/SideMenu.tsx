@@ -1,6 +1,7 @@
-import { X, User, Share2, HelpCircle, Mail, Info, LogOut } from "lucide-react";
+import { X, Home, Image, Bell, Settings, MessageCircle, Mail, Info, Share2, LogOut, Menu } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface SideMenuProps {
   isOpen: boolean;
@@ -8,8 +9,9 @@ interface SideMenuProps {
 }
 
 const SideMenu = ({ isOpen, onClose }: SideMenuProps) => {
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSignOut = async () => {
     await signOut();
@@ -17,6 +19,11 @@ const SideMenu = ({ isOpen, onClose }: SideMenuProps) => {
       title: "로그아웃",
       description: "안전하게 로그아웃되었습니다.",
     });
+    onClose();
+  };
+
+  const handleNavigate = (path: string) => {
+    navigate(path);
     onClose();
   };
 
@@ -31,43 +38,30 @@ const SideMenu = ({ isOpen, onClose }: SideMenuProps) => {
       />
 
       {/* Menu */}
-      <div className="fixed left-0 top-0 h-full w-72 bg-sidebar z-50 shadow-xl flex flex-col">
-        {/* Header */}
-        <div className="bg-primary p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary-foreground/20 rounded-full flex items-center justify-center">
-              <User className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <div>
-              <p className="text-primary-foreground font-semibold text-sm truncate max-w-[160px]">
-                {user?.email}
-              </p>
-              <p className="text-primary-foreground/70 text-xs">Normal member</p>
-            </div>
-          </div>
+      <div className="fixed left-0 top-0 h-full w-72 bg-sky-dark z-50 shadow-xl flex flex-col">
+        {/* Header with hamburger */}
+        <div className="p-4">
           <button onClick={onClose} className="text-primary-foreground">
-            <X className="w-5 h-5" />
+            <Menu className="w-7 h-7" />
           </button>
         </div>
 
         {/* Menu Items */}
-        <div className="flex-1 py-2">
-          <MenuItem icon={Share2} label="앱 공유" />
-          <MenuItem icon={HelpCircle} label="Q&A" />
-          <MenuItem icon={Mail} label="문의" />
+        <nav className="flex-1 px-2">
+          <MenuItem icon={Home} label="홈" onClick={() => handleNavigate("/")} />
+          <MenuItem icon={Image} label="갤러리" onClick={() => handleNavigate("/camera")} />
+          <MenuItem icon={Bell} label="알림 내역" onClick={() => handleNavigate("/")} />
+          <MenuItem icon={Settings} label="설정" onClick={() => handleNavigate("/settings")} />
+          <MenuItem icon={MessageCircle} label="FAQ" />
+          <MenuItem icon={Mail} label="피드백" />
           <MenuItem icon={Info} label="앱 정보" />
-        </div>
-
-        {/* Logout */}
-        <div className="border-t border-sidebar-border p-2">
-          <button
+          <MenuItem icon={Share2} label="앱 공유" />
+          <MenuItem 
+            icon={LogOut} 
+            label="로그아웃" 
             onClick={handleSignOut}
-            className="flex items-center gap-3 w-full px-4 py-3 text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            <span className="font-medium">로그아웃</span>
-          </button>
-        </div>
+          />
+        </nav>
       </div>
     </>
   );
@@ -82,10 +76,10 @@ interface MenuItemProps {
 const MenuItem = ({ icon: Icon, label, onClick }: MenuItemProps) => (
   <button
     onClick={onClick}
-    className="flex items-center gap-3 w-full px-4 py-3 text-sidebar-foreground hover:bg-sidebar-accent rounded-lg transition-colors"
+    className="flex items-center gap-4 w-full px-4 py-4 text-primary-foreground hover:bg-white/10 transition-colors"
   >
-    <Icon className="w-5 h-5" />
-    <span className="font-medium">{label}</span>
+    <Icon className="w-6 h-6" />
+    <span className="text-lg font-medium">{label}</span>
   </button>
 );
 
