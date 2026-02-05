@@ -9,7 +9,7 @@ import { Mail, Lock, Eye, EyeOff, Shield } from "lucide-react";
 import meercopCharacter from "@/assets/meercop-character.png";
 
 const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
