@@ -22,6 +22,7 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
   const [error, setError] = useState<string | null>(null);
   const waitingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const subscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const isConnectingRef = useRef(false); // Guard against race conditions
 
   const {
     isConnecting,
@@ -86,6 +87,12 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
 
   // 스트리밍 시작 - 카메라 준비 대기 후 연결
   const startStreaming = useCallback(async () => {
+    if (isConnectingRef.current) {
+      console.log("[Camera] Already connecting, ignoring...");
+      return;
+    }
+    
+    isConnectingRef.current = true;
     setIsStreaming(true);
     setIsWaitingForCamera(true);
     setError(null);
@@ -104,6 +111,7 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
       console.log("[Camera] Camera already connected, starting WebRTC...");
       setIsWaitingForCamera(false);
       await connect();
+      // Don't reset isConnectingRef here - wait for actual connection
       return;
     }
 
@@ -111,7 +119,7 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
     console.log("[Camera] Waiting for broadcaster to be ready...");
     
     const channel = supabase
-      .channel(`camera-ready-${device.id}`)
+      .channel(`camera-ready-${device.id}-${Date.now()}`)
       .on(
         "postgres_changes",
         {
@@ -124,7 +132,7 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
           const updated = payload.new as Device;
           console.log("[Camera] Device updated, is_camera_connected:", updated.is_camera_connected);
           
-          if (updated.is_camera_connected) {
+          if (updated.is_camera_connected && isConnectingRef.current) {
             console.log("[Camera] ✅ Broadcaster ready, starting WebRTC...");
             cleanupSubscription();
             setIsWaitingForCamera(false);
@@ -138,18 +146,21 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
 
     // 30초 타임아웃
     waitingTimeoutRef.current = setTimeout(() => {
-      if (isWaitingForCamera) {
+      if (isConnectingRef.current && !isConnected) {
         console.log("[Camera] Timeout waiting for broadcaster");
+        isConnectingRef.current = false;
         cleanupSubscription();
         setIsWaitingForCamera(false);
         setIsStreaming(false);
         setError("노트북 카메라 응답 시간 초과. 노트북 앱이 실행 중인지 확인하세요.");
       }
     }, 30000);
-  }, [device.id, requestStreamingStart, connect, cleanupSubscription, isWaitingForCamera]);
+  }, [device.id, requestStreamingStart, connect, cleanupSubscription, isConnected]);
 
   // 스트리밍 중지
   const stopStreaming = useCallback(async () => {
+    console.log("[Camera] stopStreaming called, isConnectingRef:", isConnectingRef.current);
+    isConnectingRef.current = false;
     setIsStreaming(false);
     setIsWaitingForCamera(false);
     cleanupSubscription();
