@@ -1,8 +1,7 @@
-import { ArrowLeft, Download, Camera, RefreshCw } from "lucide-react";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { ArrowLeft, Camera, RefreshCw } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { Database } from "@/integrations/supabase/types";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useWebRTCViewer } from "@/hooks/useWebRTCViewer";
 import { useToast } from "@/hooks/use-toast";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
@@ -15,109 +14,35 @@ interface CameraPageProps {
 
 const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
   const { toast } = useToast();
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 최신 스냅샷 가져오기
-  const fetchLatestSnapshot = useCallback(async () => {
-    try {
-      const { data, error: fetchError } = await supabase
-        .from("camera_captures")
-        .select("image_url, captured_at")
-        .eq("device_id", device.id)
-        .order("captured_at", { ascending: false })
-        .limit(1)
-        .single();
+  const { isConnecting, isConnected, remoteStream, connect, disconnect } = useWebRTCViewer({
+    deviceId: device.id,
+    onError: (err) => {
+      setError(err);
+      toast({
+        title: "연결 오류",
+        description: err,
+        variant: "destructive",
+      });
+    },
+  });
 
-      if (fetchError) {
-        // No data found is not an error for our purposes
-        if (fetchError.code === "PGRST116") {
-          return;
-        }
-        throw fetchError;
-      }
-      
-      if (data?.image_url) {
-        setImageUrl(data.image_url + "?t=" + Date.now()); // 캐시 방지
-        setError(null);
-      }
-    } catch (err) {
-      console.error("Failed to fetch snapshot:", err);
-      setError("스냅샷을 불러올 수 없습니다");
-    }
-  }, [device.id]);
-
-  // 스트리밍 시작
-  const startStreaming = useCallback(() => {
-    setIsStreaming(true);
-    setIsLoading(true);
-    
-    // 즉시 첫 스냅샷 가져오기
-    fetchLatestSnapshot().finally(() => setIsLoading(false));
-    
-    // 1초마다 새 스냅샷 가져오기
-    intervalRef.current = setInterval(() => {
-      fetchLatestSnapshot();
-    }, 1000);
-  }, [fetchLatestSnapshot]);
-
-  // 스트리밍 중지
-  const stopStreaming = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    setIsStreaming(false);
-  }, []);
-
-  // 실시간 구독 (노트북에서 새 스냅샷 업로드 시)
+  // Attach stream to video element
   useEffect(() => {
-    if (!isOpen || !device.id) return;
+    if (videoRef.current && remoteStream) {
+      videoRef.current.srcObject = remoteStream;
+    }
+  }, [remoteStream]);
 
-    const channel = supabase
-      .channel(`camera-${device.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "camera_captures",
-          filter: `device_id=eq.${device.id}`,
-        },
-        (payload) => {
-          const newCapture = payload.new as { image_url: string };
-          if (newCapture.image_url) {
-            setImageUrl(newCapture.image_url + "?t=" + Date.now());
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [isOpen, device.id]);
-
-  // 모달 닫힐 때 정리
+  // Cleanup when modal closes
   useEffect(() => {
     if (!isOpen) {
-      stopStreaming();
-      setImageUrl(null);
+      disconnect();
       setError(null);
     }
-  }, [isOpen, stopStreaming]);
-
-  const handleDownload = (url: string) => {
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `meercop-capture-${Date.now()}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  }, [isOpen, disconnect]);
 
   if (!isOpen) return null;
 
@@ -134,7 +59,7 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
           <span className="font-bold text-lg italic">Meer</span>
           <span className="font-black text-lg -mt-1">COP</span>
         </div>
-        <div className="w-6" /> {/* Spacer */}
+        <div className="w-6" />
       </div>
 
       {/* Device name */}
@@ -159,9 +84,9 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
         </div>
       </div>
 
-      {/* Main image area */}
+      {/* Main video area */}
       <div className="flex-1 bg-black flex items-center justify-center relative">
-        {!isStreaming ? (
+        {!isConnecting && !isConnected ? (
           <div className="text-center text-white/50 flex flex-col items-center gap-4">
             <Camera className="w-12 h-12 opacity-50" />
             <div>
@@ -169,7 +94,7 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
               <p className="text-sm mt-1">아래 버튼을 눌러주세요</p>
             </div>
           </div>
-        ) : isLoading && !imageUrl ? (
+        ) : isConnecting ? (
           <div className="text-center text-white/50 flex flex-col items-center gap-4">
             <RefreshCw className="w-8 h-8 animate-spin" />
             <p>카메라 연결 중...</p>
@@ -178,18 +103,20 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
           <div className="text-center text-white/50 flex flex-col items-center gap-4">
             <p>{error}</p>
             <button
-              onClick={fetchLatestSnapshot}
+              onClick={connect}
               className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg flex items-center gap-2"
             >
               <RefreshCw className="w-4 h-4" />
               다시 시도
             </button>
           </div>
-        ) : imageUrl ? (
+        ) : isConnected ? (
           <>
-            <img
-              src={imageUrl}
-              alt="실시간 카메라"
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
               className="max-w-full max-h-full object-contain"
             />
             {/* LIVE indicator */}
@@ -197,13 +124,6 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
               <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
               <span className="text-white text-xs font-bold">LIVE</span>
             </div>
-            {/* Download button */}
-            <button
-              onClick={() => handleDownload(imageUrl)}
-              className="absolute bottom-4 right-4 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white"
-            >
-              <Download className="w-5 h-5" />
-            </button>
           </>
         ) : (
           <div className="text-center text-white/50">
@@ -214,17 +134,18 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
 
       {/* Stream control button */}
       <div className="p-4 bg-card">
-        {!isStreaming ? (
+        {!isConnected ? (
           <button
-            onClick={startStreaming}
-            className="w-full py-3 bg-primary text-primary-foreground rounded-lg font-medium flex items-center justify-center gap-2"
+            onClick={connect}
+            disabled={isConnecting}
+            className="w-full py-3 bg-primary text-primary-foreground rounded-lg font-medium flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <Camera className="w-4 h-4" />
-            카메라 보기
+            {isConnecting ? "연결 중..." : "카메라 보기"}
           </button>
         ) : (
           <button
-            onClick={stopStreaming}
+            onClick={disconnect}
             className="w-full py-3 bg-destructive text-destructive-foreground rounded-lg font-medium flex items-center justify-center gap-2"
           >
             스트리밍 중지
