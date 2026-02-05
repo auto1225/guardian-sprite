@@ -1,5 +1,6 @@
 import { Plus } from "lucide-react";
 import AlertPanel from "@/components/AlertPanel";
+import logo from "@/assets/logo.png";
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -13,12 +14,7 @@ const Header = ({ onMenuClick, onDeviceManageClick, unreadCount = 0, deviceId }:
     <header className="flex items-center justify-between px-4 py-2">
       <div className="w-10" /> {/* Spacer */}
       
-      <div className="flex flex-col items-center">
-        <span className="text-primary-foreground font-bold text-xl italic">
-          Meer
-        </span>
-        <span className="text-primary-foreground font-black text-base -mt-1">COP</span>
-      </div>
+      <img src={logo} alt="MeerCOP" className="h-10 object-contain" />
       
       <div className="flex items-center gap-1">
         <AlertPanel deviceId={deviceId || null} />

@@ -1,5 +1,10 @@
-import { Laptop, Shield, Wifi, Camera, Check, Battery } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
+import laptopOn from "@/assets/laptop-on.png";
+import laptopOff from "@/assets/laptop-off.png";
+import wifiOn from "@/assets/wifi-on.png";
+import wifiOff from "@/assets/wifi-off.png";
+import cameraOn from "@/assets/camera-on.png";
+import cameraOff from "@/assets/camera-off.png";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 
@@ -9,37 +14,28 @@ interface StatusIconsProps {
 }
 
 interface StatusItemProps {
-  icon: React.ReactNode;
+  iconOn: string;
+  iconOff: string;
   label: string;
   isActive: boolean;
   batteryLevel?: number;
   onClick?: () => void;
 }
 
-const StatusItem = ({ icon, label, isActive, batteryLevel, onClick }: StatusItemProps) => {
+const StatusItem = ({ iconOn, iconOff, label, isActive, batteryLevel, onClick }: StatusItemProps) => {
   return (
     <button onClick={onClick} className="flex flex-col items-center gap-1">
       <div className="relative">
         {batteryLevel !== undefined && (
-          <div className="absolute -top-3 -left-2 flex items-center gap-0.5 text-primary-foreground text-[10px]">
-            <span>{batteryLevel}%</span>
-            <Battery className="w-3 h-3" />
+          <div className="absolute -top-3 left-0 text-primary-foreground text-[10px] font-medium">
+            {batteryLevel}%
           </div>
         )}
-        <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-          isActive ? "bg-sky-light/50 text-primary-foreground" : "bg-destructive/30 text-primary-foreground"
-        }`}>
-          {icon}
-        </div>
-        <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center ${
-          isActive ? "bg-accent" : "bg-destructive"
-        }`}>
-          {isActive ? (
-            <Check className="w-2.5 h-2.5 text-accent-foreground" strokeWidth={3} />
-          ) : (
-            <span className="text-white text-[10px]">✕</span>
-          )}
-        </div>
+        <img 
+          src={isActive ? iconOn : iconOff} 
+          alt={label} 
+          className="w-14 h-14 object-contain"
+        />
       </div>
       <span className="text-primary-foreground text-xs font-medium">{label}</span>
     </button>
@@ -52,28 +48,25 @@ const StatusIcons = ({ device, onIconClick }: StatusIconsProps) => {
   const batteryLevel = device?.battery_level ?? 100;
 
   return (
-    <div className="flex justify-center gap-5 py-3 px-4">
+    <div className="flex justify-center gap-6 py-3 px-4">
       <StatusItem 
-        icon={<Laptop className="w-6 h-6" />} 
+        iconOn={laptopOn}
+        iconOff={laptopOff}
         label="Laptop" 
         isActive={isOnline}
         batteryLevel={batteryLevel}
         onClick={() => onIconClick?.("laptop")}
       />
       <StatusItem 
-        icon={<Shield className="w-6 h-6" />} 
-        label="MeerCOP" 
-        isActive={isMonitoring}
-        onClick={() => onIconClick?.("meercop")}
-      />
-      <StatusItem 
-        icon={<Wifi className="w-6 h-6" />} 
+        iconOn={wifiOn}
+        iconOff={wifiOff}
         label="Network" 
         isActive={isOnline}
         onClick={() => onIconClick?.("network")}
       />
       <StatusItem 
-        icon={<Camera className="w-6 h-6" />} 
+        iconOn={cameraOn}
+        iconOff={cameraOff}
         label="Camera" 
         isActive={true}
         onClick={() => onIconClick?.("camera")}
