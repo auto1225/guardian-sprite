@@ -44,8 +44,9 @@ const StatusItem = ({ iconOn, iconOff, label, isActive, batteryLevel, onClick }:
 
 const StatusIcons = ({ device, onIconClick }: StatusIconsProps) => {
   const isOnline = device?.status !== "offline";
-  const isMonitoring = device?.is_monitoring ?? false;
   const batteryLevel = device?.battery_level ?? 100;
+  const isNetworkConnected = device?.is_network_connected ?? false;
+  const isCameraConnected = device?.is_camera_connected ?? false;
 
   return (
     <div className="flex justify-center gap-10 py-3 px-4">
@@ -61,14 +62,14 @@ const StatusIcons = ({ device, onIconClick }: StatusIconsProps) => {
         iconOn={wifiOn}
         iconOff={wifiOff}
         label="Network" 
-        isActive={isOnline}
+        isActive={isOnline && isNetworkConnected}
         onClick={() => onIconClick?.("network")}
       />
       <StatusItem 
         iconOn={cameraOn}
         iconOff={cameraOff}
         label="Camera" 
-        isActive={true}
+        isActive={isOnline && isCameraConnected}
         onClick={() => onIconClick?.("camera")}
       />
     </div>
