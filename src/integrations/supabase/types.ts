@@ -226,6 +226,7 @@ export type Database = {
           is_camera_connected: boolean
           is_monitoring: boolean
           is_network_connected: boolean
+          is_streaming_requested: boolean | null
           last_seen_at: string | null
           name: string
           status: Database["public"]["Enums"]["device_status"]
@@ -240,6 +241,7 @@ export type Database = {
           is_camera_connected?: boolean
           is_monitoring?: boolean
           is_network_connected?: boolean
+          is_streaming_requested?: boolean | null
           last_seen_at?: string | null
           name: string
           status?: Database["public"]["Enums"]["device_status"]
@@ -254,6 +256,7 @@ export type Database = {
           is_camera_connected?: boolean
           is_monitoring?: boolean
           is_network_connected?: boolean
+          is_streaming_requested?: boolean | null
           last_seen_at?: string | null
           name?: string
           status?: Database["public"]["Enums"]["device_status"]
