@@ -100,11 +100,11 @@ const Index = () => {
 
   return (
     <div className="h-[100dvh] flex flex-col relative overflow-hidden">
-      {/* Full screen background */}
+      {/* Background layer - anchored to bottom */}
       <img 
         src={mainBg} 
         alt="Background" 
-        className="absolute inset-0 w-full h-full object-cover z-0"
+        className="absolute bottom-0 left-0 w-full h-auto min-h-full object-cover object-bottom z-0"
       />
       
       {/* Content overlay */}
