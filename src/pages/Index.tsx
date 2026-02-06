@@ -100,14 +100,19 @@ const Index = () => {
 
   return (
     <div className="h-[100dvh] flex flex-col relative overflow-hidden">
-      {/* Background layer - anchored to bottom */}
+      {/* 
+        Background with mountain - anchored to bottom
+        Using object-position: bottom to ensure mountain stays at screen bottom
+        regardless of screen aspect ratio
+      */}
       <img 
         src={mainBg} 
         alt="Background" 
-        className="absolute bottom-0 left-0 w-full h-auto min-h-full object-cover object-bottom z-0"
+        className="absolute inset-0 w-full h-full object-cover z-0"
+        style={{ objectPosition: 'center bottom' }}
       />
       
-      {/* Content overlay */}
+      {/* Content overlay - z-index layered above background */}
       <div className="relative z-10 flex flex-col h-full">
       <Header
         onMenuClick={() => setIsSideMenuOpen(true)}
