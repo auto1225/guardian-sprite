@@ -173,14 +173,26 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         isConnectingRef.current = false;
         setIsConnected(true);
         setIsConnecting(false);
-      } else if (pc.connectionState === "disconnected" || pc.connectionState === "failed") {
-        if (isConnectingRef.current) {
-          // Only trigger error if we were actually trying to connect
-          isConnectingRef.current = false;
-          isConnectedRef.current = false;
-          cleanup();
-          onError?.("연결이 끊어졌습니다");
-        }
+      } else if (pc.connectionState === "disconnected") {
+        // disconnected는 일시적일 수 있으므로 바로 종료하지 않음
+        // 10초 대기 후에도 복구되지 않으면 종료
+        console.log("[WebRTC Viewer] ⚠️ Connection disconnected, waiting for recovery...");
+        setTimeout(() => {
+          if (peerConnectionRef.current?.connectionState === "disconnected") {
+            console.log("[WebRTC Viewer] Connection did not recover after 10s");
+            isConnectingRef.current = false;
+            isConnectedRef.current = false;
+            cleanup();
+            onError?.("연결이 끊어졌습니다");
+          }
+        }, 10000);
+      } else if (pc.connectionState === "failed") {
+        // failed는 즉시 종료
+        console.log("[WebRTC Viewer] Connection failed");
+        isConnectingRef.current = false;
+        isConnectedRef.current = false;
+        cleanup();
+        onError?.("연결에 실패했습니다");
       }
     };
 
