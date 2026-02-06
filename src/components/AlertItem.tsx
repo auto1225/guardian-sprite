@@ -1,16 +1,14 @@
-import { Database } from "@/integrations/supabase/types";
+import { LocalActivityLog, LocalAlertType } from "@/lib/localActivityLogs";
 import { AlertTriangle, MapPin, Wifi, Battery, Usb } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 
-type Alert = Database["public"]["Tables"]["alerts"]["Row"];
-
 interface AlertItemProps {
-  alert: Alert;
+  alert: LocalActivityLog;
   onMarkRead: (id: string) => void;
 }
 
-const getAlertIcon = (type: Alert["alert_type"]) => {
+const getAlertIcon = (type: LocalAlertType) => {
   switch (type) {
     case "intrusion":
       return AlertTriangle;
@@ -27,7 +25,7 @@ const getAlertIcon = (type: Alert["alert_type"]) => {
   }
 };
 
-const getAlertColor = (type: Alert["alert_type"]) => {
+const getAlertColor = (type: LocalAlertType) => {
   switch (type) {
     case "intrusion":
       return "bg-destructive";

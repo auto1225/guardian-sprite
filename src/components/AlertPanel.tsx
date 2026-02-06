@@ -1,4 +1,4 @@
-import { Bell, X } from "lucide-react";
+import { Bell } from "lucide-react";
 import { useAlerts } from "@/hooks/useAlerts";
 import AlertItem from "./AlertItem";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";

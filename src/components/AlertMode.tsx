@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { useCommands } from "@/hooks/useCommands";
 import { useToast } from "@/hooks/use-toast";
+import { LocalActivityLog } from "@/lib/localActivityLogs";
 
-type Alert = Database["public"]["Tables"]["alerts"]["Row"];
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 
 interface AlertModeProps {
   device: Device;
-  latestAlert: Alert | null;
+  latestAlert: LocalActivityLog | null;
   onDismiss: () => void;
 }
 

@@ -35,7 +35,7 @@ const Index = () => {
 
   const isMonitoring = selectedDevice?.is_monitoring ?? false;
 
-  // Check for active alerts
+  // Check for active alerts (로컬 저장소 기반)
   const latestAlert = alerts.find((a) => !a.is_read && a.alert_type === "intrusion");
   
   useEffect(() => {
