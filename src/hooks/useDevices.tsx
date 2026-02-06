@@ -101,15 +101,20 @@ export const useDevices = () => {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log("[Realtime] Device updated:", payload.new);
+          const updatedDevice = payload.new as Device;
+          console.log("[Realtime] Device updated:", updatedDevice.id, {
+            is_camera_connected: updatedDevice.is_camera_connected,
+            is_network_connected: updatedDevice.is_network_connected,
+            status: updatedDevice.status,
+          });
           // 즉시 캐시 업데이트 (refetch 없이)
           queryClient.setQueryData(
             ["devices", user.id],
             (oldDevices: Device[] | undefined) => {
               if (!oldDevices) return oldDevices;
               return oldDevices.map((device) =>
-                device.id === payload.new.id
-                  ? { ...device, ...payload.new }
+                device.id === updatedDevice.id
+                  ? { ...device, ...updatedDevice }
                   : device
               );
             }
