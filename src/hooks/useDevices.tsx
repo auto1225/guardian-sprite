@@ -159,7 +159,7 @@ export const useDevices = () => {
             broadcast: { self: false },
           },
         })
-        .on(
+      .on(
           "postgres_changes",
           {
             event: "UPDATE",
@@ -169,14 +169,25 @@ export const useDevices = () => {
           },
           (payload) => {
             const updatedDevice = payload.new as Device;
-            console.log("[Realtime] Device updated:", updatedDevice.id);
+            // 카메라 상태 변경 시 명시적 로깅
+            console.log("[Realtime] Device updated:", {
+              id: updatedDevice.id,
+              is_camera_connected: updatedDevice.is_camera_connected,
+              is_network_connected: updatedDevice.is_network_connected,
+              status: updatedDevice.status,
+            });
             queryClient.setQueryData(
               ["devices", user.id],
               (oldDevices: Device[] | undefined) => {
                 if (!oldDevices) return oldDevices;
                 return oldDevices.map((device) =>
                   device.id === updatedDevice.id
-                    ? { ...device, ...updatedDevice }
+                    ? { 
+                        ...device, 
+                        ...updatedDevice,
+                        // 카메라 상태는 명시적으로 업데이트 (undefined 방지)
+                        is_camera_connected: updatedDevice.is_camera_connected ?? device.is_camera_connected,
+                      }
                     : device
                 );
               }
@@ -251,7 +262,6 @@ export const useDevices = () => {
       presenceChannel
         .on('presence', { event: 'sync' }, () => {
           const state = presenceChannel.presenceState();
-          console.log("[Presence] Full state for device", device.id, ":", state);
           
           const presenceList = state[device.id] as Array<{
             status?: string;
@@ -269,27 +279,51 @@ export const useDevices = () => {
               return currentTime > latestTime ? current : latest;
             });
             
-            console.log("[Presence] ✅ Using latest presence:", device.id, laptopPresence);
+            // 카메라 상태 변경 시만 로그 출력
+            console.log("[Presence] Sync:", device.id, {
+              camera: laptopPresence.is_camera_connected,
+              network: laptopPresence.is_network_connected,
+              status: laptopPresence.status,
+            });
             
-            // 로컬 캐시 업데이트 (DB 쿼리 없이)
+            // 함수형 업데이트로 최신 상태 기반 업데이트 (stale closure 방지)
             queryClient.setQueryData(
               ["devices", user.id],
               (oldDevices: Device[] | undefined) => {
                 if (!oldDevices) return oldDevices;
-                return oldDevices.map((d) =>
-                  d.id === device.id
-                    ? {
-                        ...d,
-                        status: laptopPresence.status === 'online' ? 'online' : 'offline',
-                        is_network_connected: laptopPresence.is_network_connected ?? d.is_network_connected,
-                        is_camera_connected: laptopPresence.is_camera_connected ?? d.is_camera_connected,
-                      }
-                    : d
-                ) as Device[];
+                return oldDevices.map((d) => {
+                  if (d.id !== device.id) return d;
+                  
+                  // 상태 변경이 있을 때만 업데이트
+                  const newCameraConnected = laptopPresence.is_camera_connected;
+                  const newNetworkConnected = laptopPresence.is_network_connected;
+                  const newStatus = laptopPresence.status === 'online' ? 'online' : 'offline';
+                  
+                  // 실제 변경이 있는지 확인
+                  const hasChanges = 
+                    d.is_camera_connected !== newCameraConnected ||
+                    d.is_network_connected !== newNetworkConnected ||
+                    d.status !== newStatus;
+                  
+                  if (!hasChanges) return d;
+                  
+                  console.log("[Presence] ✅ Updating device state:", {
+                    id: device.id,
+                    camera: `${d.is_camera_connected} → ${newCameraConnected}`,
+                    network: `${d.is_network_connected} → ${newNetworkConnected}`,
+                  });
+                  
+                  return {
+                    ...d,
+                    status: newStatus as Device["status"],
+                    is_network_connected: newNetworkConnected ?? d.is_network_connected,
+                    is_camera_connected: newCameraConnected ?? d.is_camera_connected,
+                  };
+                });
               }
             );
           } else {
-            console.log("[Presence] No presence data for device:", device.id, "keys:", Object.keys(state));
+            console.log("[Presence] No presence data for device:", device.id);
           }
         })
         .on('presence', { event: 'join' }, ({ key, newPresences }) => {
