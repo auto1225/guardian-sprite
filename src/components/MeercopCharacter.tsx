@@ -18,53 +18,44 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
 
   return (
     <div 
-      className="scene-container"
+      className="ratio-container"
       style={{
         position: 'fixed',
         bottom: 0,
         left: 0,
         width: '100%',
-        // CRITICAL: Also set position: relative so absolute children use this as reference
-        // Height is NOT set - it's determined solely by the mountain image
+        // CRITICAL: aspect-ratio locks the container's proportions
+        // When width shrinks, height shrinks proportionally
+        aspectRatio: '375 / 667', // Approximate ratio of main-bg.png (mobile portrait)
+        backgroundImage: `url(${mainBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'bottom center',
+        backgroundRepeat: 'no-repeat',
       }}
     >
       {/* 
-        Mountain Image - This determines the container height.
-        When screen width shrinks, image height shrinks proportionally,
-        and container height follows.
-      */}
-      <img 
-        src={mainBg} 
-        alt="Mountain Background" 
-        style={{
-          width: '100%',
-          height: 'auto',
-          display: 'block', // Remove bottom gap
-        }}
-      />
-      
-      {/* 
-        Character Wrapper - Positioned relative to container (mountain image height)
-        Using % for bottom ensures character scales with mountain
+        Character Group - Positioned using % relative to the ratio-locked container.
+        Because the container maintains its aspect ratio, the % position
+        will always land at the same visual spot on the mountain.
       */}
       <div 
-        className="character-wrapper"
+        className="character-group"
         style={{
           position: 'absolute',
           left: '50%',
           transform: 'translateX(-50%)',
-          bottom: '58%', // % of container height (mountain image height)
+          bottom: '28%', // % of container height - adjust to match mountain peak
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           gap: 0,
         }}
       >
-        {/* Speech Bubble - Glued to character hat with negative margin */}
+        {/* Speech Bubble - Negative margin glues it to character's hat */}
         {statusMessage && (
           <div 
             className="speech-bubble w-[85vw] max-w-sm"
-            style={{ marginBottom: '-8px' }}
+            style={{ marginBottom: '-5px' }}
           >
             <div className="bg-card/95 rounded-xl px-4 py-2 shadow-lg">
               <p className="text-center font-medium text-sm text-card-foreground">
