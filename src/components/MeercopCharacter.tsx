@@ -80,7 +80,7 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
               position: 'absolute',
               left: '50%',
               transform: 'translateX(-50%)',
-              bottom: '19%',
+              bottom: '12%', // Lowered from 19% to ground character on mountain peak
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -93,7 +93,7 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
             {statusMessage && (
               <div 
                 className="w-[85vw] max-w-sm"
-                style={{ marginBottom: '-5px' }}
+                style={{ marginBottom: '-15px' }}
               >
                 <div className="bg-card/95 rounded-xl px-4 py-2 shadow-lg">
                   <p className="text-center font-medium text-sm text-card-foreground">
