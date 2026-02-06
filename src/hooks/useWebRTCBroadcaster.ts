@@ -112,10 +112,24 @@ export const useWebRTCBroadcaster = ({
 
       // Add local stream tracks to the connection
       if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((track) => {
-          console.log("[WebRTC Broadcaster] Adding track:", track.kind);
+        console.log("[WebRTC Broadcaster] 📹 Local stream status:", {
+          streamId: localStreamRef.current.id,
+          active: localStreamRef.current.active,
+          trackCount: localStreamRef.current.getTracks().length,
+        });
+        
+        localStreamRef.current.getTracks().forEach((track, i) => {
+          console.log(`[WebRTC Broadcaster] 📹 Adding track ${i}:`, {
+            kind: track.kind,
+            enabled: track.enabled,
+            muted: track.muted,
+            readyState: track.readyState,
+            id: track.id,
+          });
           pc.addTrack(track, localStreamRef.current!);
         });
+      } else {
+        console.error("[WebRTC Broadcaster] ❌ No local stream available!");
       }
 
       pc.onicecandidate = (event) => {
