@@ -48,6 +48,14 @@ const StatusIcons = ({ device, onIconClick }: StatusIconsProps) => {
   const isNetworkConnected = device?.is_network_connected ?? false;
   const isCameraConnected = device?.is_camera_connected ?? false;
 
+  // 디버깅: 카메라 상태 변경 추적
+  console.log("[StatusIcons] Device state:", {
+    id: device?.id?.slice(0, 8),
+    camera: isCameraConnected,
+    network: isNetworkConnected,
+    status: device?.status,
+  });
+
   return (
     <div className="flex justify-center gap-10 py-3 px-4">
       <StatusItem 
