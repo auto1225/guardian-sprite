@@ -27,6 +27,7 @@ interface SignalingRecord {
 interface ViewerConnection {
   pc: RTCPeerConnection;
   viewerId: string;
+  hasRemoteDescription: boolean;
 }
 
 export const useWebRTCBroadcaster = ({
@@ -195,7 +196,7 @@ export const useWebRTCBroadcaster = ({
 
       // Create peer connection for this viewer
       const pc = createPeerConnectionForViewer(viewerId);
-      viewerConnectionsRef.current.set(viewerId, { pc, viewerId });
+      viewerConnectionsRef.current.set(viewerId, { pc, viewerId, hasRemoteDescription: false });
       setViewerCount(viewerConnectionsRef.current.size);
 
       try {
@@ -253,10 +254,16 @@ export const useWebRTCBroadcaster = ({
           return;
         }
         
-        const { pc } = foundConnection;
+        const { pc, hasRemoteDescription } = foundConnection;
         
         try {
           if (record.type === "answer") {
+            // Skip if already processed
+            if (hasRemoteDescription) {
+              console.log("[WebRTC Broadcaster] ⏭️ Skipping duplicate answer (already set)");
+              return;
+            }
+            
             // Extract SDP - handle multiple formats
             let sdp: string | undefined;
             if (typeof record.data.sdp === 'string') {
@@ -271,6 +278,7 @@ export const useWebRTCBroadcaster = ({
                 type: "answer",
                 sdp: sdp,
               }));
+              foundConnection.hasRemoteDescription = true;
               console.log("[WebRTC Broadcaster] ✅ Remote description set successfully");
             } else {
               console.error("[WebRTC Broadcaster] ❌ Invalid answer SDP format:", record.data);
@@ -285,10 +293,16 @@ export const useWebRTCBroadcaster = ({
         return;
       }
 
-      const { pc } = viewerConnection;
+      const { pc, hasRemoteDescription } = viewerConnection;
 
       try {
         if (record.type === "answer") {
+          // Skip if already processed
+          if (hasRemoteDescription) {
+            console.log("[WebRTC Broadcaster] ⏭️ Skipping duplicate answer for viewer:", viewerId);
+            return;
+          }
+          
           // Extract SDP - handle multiple formats
           let sdp: string | undefined;
           if (typeof record.data.sdp === 'string') {
@@ -303,6 +317,7 @@ export const useWebRTCBroadcaster = ({
               type: "answer",
               sdp: sdp,
             }));
+            viewerConnection.hasRemoteDescription = true;
             console.log("[WebRTC Broadcaster] ✅ Remote description set successfully for viewer:", viewerId);
           } else {
             console.error("[WebRTC Broadcaster] ❌ Invalid answer SDP format:", record.data);
