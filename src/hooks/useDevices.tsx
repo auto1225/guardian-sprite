@@ -131,33 +131,32 @@ export const useDevices = () => {
     }
   };
 
-  // Subscribe to realtime updates - DB Realtime + Presence 기반 상태 수신 (폴링 없음)
+  // Subscribe to realtime updates - DB Realtime + Presence 기반 상태 수신 (싱글톤 채널)
   useEffect(() => {
     if (!user) return;
 
     let dbChannel: ReturnType<typeof supabase.channel> | null = null;
     const presenceChannels: Map<string, ReturnType<typeof supabase.channel>> = new Map();
-    let retryCount = 0;
-    let retryTimeout: NodeJS.Timeout | null = null;
-    const maxRetries = 5;
-    let isChannelActive = true; // 채널 활성 상태 추적
+    let isChannelActive = true;
 
+    // 싱글톤 DB 채널 - 고정된 이름 사용 (Date.now() 제거)
+    const channelName = `devices-db-${user.id}`;
+    
     const setupDbChannel = () => {
-      if (!isChannelActive) return; // 컴포넌트 언마운트 시 중단
+      if (!isChannelActive) return;
       
-      // 기존 채널 정리
-      if (dbChannel) {
-        supabase.removeChannel(dbChannel);
+      // 이미 같은 이름의 채널이 있으면 재사용
+      const existingChannel = supabase.getChannels().find(ch => ch.topic === `realtime:${channelName}`);
+      if (existingChannel) {
+        console.log("[Realtime] Reusing existing DB channel");
+        dbChannel = existingChannel as ReturnType<typeof supabase.channel>;
+        return;
       }
-
-      // 고유한 채널명 + params 설정
-      const channelName = `devices-db-${user.id}-${Date.now()}`;
       
       dbChannel = supabase
         .channel(channelName, {
           config: {
             broadcast: { self: false },
-            presence: { key: user.id },
           },
         })
         .on(
@@ -170,11 +169,7 @@ export const useDevices = () => {
           },
           (payload) => {
             const updatedDevice = payload.new as Device;
-            console.log("[Realtime] Device updated:", updatedDevice.id, {
-              is_camera_connected: updatedDevice.is_camera_connected,
-              is_network_connected: updatedDevice.is_network_connected,
-              status: updatedDevice.status,
-            });
+            console.log("[Realtime] Device updated:", updatedDevice.id);
             queryClient.setQueryData(
               ["devices", user.id],
               (oldDevices: Device[] | undefined) => {
@@ -197,7 +192,7 @@ export const useDevices = () => {
             filter: `user_id=eq.${user.id}`,
           },
           (payload) => {
-            console.log("[Realtime] Device inserted:", payload.new);
+            console.log("[Realtime] Device inserted");
             queryClient.setQueryData(
               ["devices", user.id],
               (oldDevices: Device[] | undefined) => {
@@ -216,7 +211,7 @@ export const useDevices = () => {
             filter: `user_id=eq.${user.id}`,
           },
           (payload) => {
-            console.log("[Realtime] Device deleted:", payload.old);
+            console.log("[Realtime] Device deleted");
             queryClient.setQueryData(
               ["devices", user.id],
               (oldDevices: Device[] | undefined) => {
@@ -229,28 +224,9 @@ export const useDevices = () => {
           }
         )
         .subscribe((status) => {
-          console.log("[Realtime] Devices DB channel status:", status);
-          
-          if (status === "SUBSCRIBED") {
-            retryCount = 0; // 성공 시 재시도 카운트 리셋
-            // 구독 성공 시 최신 데이터 한 번 fetch
-            refreshDeviceStatus();
-          } else if (status === "CHANNEL_ERROR" || status === "CLOSED") {
-            if (!isChannelActive) return; // 언마운트 시 재연결 안 함
-            
-            // 재연결 시도
-            if (retryCount < maxRetries) {
-              const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
-              console.log(`[Realtime] Reconnecting in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries})`);
-              retryTimeout = setTimeout(() => {
-                retryCount++;
-                setupDbChannel();
-              }, delay);
-            } else {
-              console.error("[Realtime] Max retries reached, doing one-time refresh");
-              // Fallback: 한 번만 데이터 갱신
-              refreshDeviceStatus();
-            }
+          // 최소 로깅 - 에러만 표시
+          if (status === "CHANNEL_ERROR") {
+            console.error("[Realtime] DB channel error");
           }
         });
     };
@@ -337,23 +313,9 @@ export const useDevices = () => {
           }
         })
         .subscribe((status) => {
-          console.log(`[Presence] Device ${device.id} channel status:`, status);
-          
-          // 연결 실패 시 재시도
-          if (status === "CHANNEL_ERROR" || status === "CLOSED") {
-            if (!isChannelActive) return;
-            
-            // 재설정을 위해 ID 제거
-            setupDeviceIds.delete(device.id);
-            presenceChannels.delete(device.id);
-            
-            // 3초 후 재연결 시도
-            setTimeout(() => {
-              if (isChannelActive) {
-                console.log(`[Presence] Reconnecting device ${device.id}...`);
-                setupPresenceChannel(device);
-              }
-            }, 3000);
+          // 최소 로깅 - 에러만 표시
+          if (status === "CHANNEL_ERROR") {
+            console.error(`[Presence] Device ${device.id} channel error`);
           }
         });
 
@@ -391,11 +353,8 @@ export const useDevices = () => {
     });
 
     return () => {
-      isChannelActive = false; // 언마운트 표시
+      isChannelActive = false;
       unsubscribe();
-      if (retryTimeout) {
-        clearTimeout(retryTimeout);
-      }
       if (dbChannel) {
         supabase.removeChannel(dbChannel);
       }

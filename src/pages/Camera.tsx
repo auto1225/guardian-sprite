@@ -195,9 +195,15 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
     setIsWaitingForCamera(false);
     connect();
 
-    // 30초 WebRTC 연결 타임아웃
+    // 30초 WebRTC 연결 타임아웃 - isConnected 상태도 체크
     waitingTimeoutRef.current = setTimeout(() => {
-      if (isConnectingRef.current && !isConnected) {
+      // 이미 연결되었거나 remoteStream이 있으면 타임아웃 무시
+      if (isConnectedRef.current) {
+        console.log("[Camera] Timeout ignored - already connected");
+        return;
+      }
+      
+      if (isConnectingRef.current && !isConnectedRef.current) {
         console.log("[Camera] WebRTC connection timeout");
         isConnectingRef.current = false;
         cleanupSubscription();
