@@ -238,23 +238,46 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
     };
   }, [cleanupSubscription]);
 
-  // 스냅샷 캡처 요청
-  const captureSnapshot = useCallback(async () => {
-    try {
-      toast({ title: "스냅샷 요청 중..." });
-
-      const { error: cmdError } = await supabase.from("commands").insert({
-        device_id: device.id,
-        command_type: "camera_capture",
-        status: "pending",
-      });
-
-      if (cmdError) throw cmdError;
-
+  // 스냅샷 캡처 - 로컬 저장 (서버 부하 없음)
+  const captureSnapshot = useCallback(() => {
+    if (!remoteStream) {
       toast({
-        title: "스냅샷 요청 완료",
-        description: "잠시 후 이미지가 저장됩니다.",
+        title: "오류",
+        description: "스트리밍이 활성화되지 않았습니다",
+        variant: "destructive",
       });
+      return;
+    }
+
+    try {
+      // 비디오 요소에서 현재 프레임 캡처
+      const video = document.querySelector('video');
+      if (!video || video.videoWidth === 0) {
+        toast({
+          title: "오류",
+          description: "비디오가 준비되지 않았습니다",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth || 1280;
+      canvas.height = video.videoHeight || 720;
+      const ctx = canvas.getContext("2d");
+
+      if (ctx) {
+        ctx.drawImage(video, 0, 0);
+        const link = document.createElement("a");
+        link.href = canvas.toDataURL("image/jpeg", 0.9);
+        link.download = `meercop-snapshot-${device.name}-${Date.now()}.jpg`;
+        link.click();
+
+        toast({
+          title: "스냅샷 저장 완료",
+          description: "갤러리에서 확인하세요",
+        });
+      }
     } catch (err) {
       console.error("Failed to capture snapshot:", err);
       toast({
@@ -263,7 +286,7 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
         variant: "destructive",
       });
     }
-  }, [device.id, toast]);
+  }, [remoteStream, device.name, toast]);
 
   // 모달 닫힐 때 정리
   const handleClose = useCallback(() => {
