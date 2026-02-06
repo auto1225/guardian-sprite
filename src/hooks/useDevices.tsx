@@ -294,30 +294,29 @@ export const useDevices = () => {
                 return oldDevices.map((d) => {
                   if (d.id !== device.id) return d;
                   
-                  // 상태 변경이 있을 때만 업데이트
-                  const newCameraConnected = laptopPresence.is_camera_connected;
+                  // Presence에서는 status와 network만 업데이트
+                  // ⚠️ is_camera_connected는 DB Realtime에서만 업데이트 (Presence가 덮어쓰는 문제 방지)
                   const newNetworkConnected = laptopPresence.is_network_connected;
                   const newStatus = laptopPresence.status === 'online' ? 'online' : 'offline';
                   
-                  // 실제 변경이 있는지 확인
+                  // 실제 변경이 있는지 확인 (camera 제외)
                   const hasChanges = 
-                    d.is_camera_connected !== newCameraConnected ||
                     d.is_network_connected !== newNetworkConnected ||
                     d.status !== newStatus;
                   
                   if (!hasChanges) return d;
                   
-                  console.log("[Presence] ✅ Updating device state:", {
-                    id: device.id,
-                    camera: `${d.is_camera_connected} → ${newCameraConnected}`,
+                  console.log("[Presence] ✅ Updating device state (status/network only):", {
+                    id: device.id.slice(0, 8),
                     network: `${d.is_network_connected} → ${newNetworkConnected}`,
+                    status: `${d.status} → ${newStatus}`,
                   });
                   
                   return {
                     ...d,
                     status: newStatus as Device["status"],
                     is_network_connected: newNetworkConnected ?? d.is_network_connected,
-                    is_camera_connected: newCameraConnected ?? d.is_camera_connected,
+                    // is_camera_connected는 DB Realtime에서만 관리 - 여기서 업데이트 안 함!
                   };
                 });
               }
