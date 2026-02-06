@@ -86,6 +86,51 @@ export const useDevices = () => {
     },
   });
 
+  // 디바이스 상태 새로고침 함수 (외부에서 호출 가능)
+  const refreshDeviceStatus = async (deviceId?: string) => {
+    if (!user) return;
+    
+    try {
+      const query = supabase
+        .from("devices")
+        .select("*")
+        .eq("user_id", user.id);
+      
+      if (deviceId) {
+        query.eq("id", deviceId);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error("[Devices] Refresh error:", error);
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        console.log("[Devices] Refreshed from DB:", data.map(d => ({
+          id: d.id,
+          is_camera_connected: d.is_camera_connected,
+          is_network_connected: d.is_network_connected,
+          status: d.status,
+        })));
+        
+        queryClient.setQueryData(
+          ["devices", user.id],
+          (oldDevices: Device[] | undefined) => {
+            if (!oldDevices) return data;
+            return oldDevices.map((device) => {
+              const updated = data.find((d) => d.id === device.id);
+              return updated ? { ...device, ...updated } : device;
+            });
+          }
+        );
+      }
+    } catch (err) {
+      console.error("[Devices] Refresh failed:", err);
+    }
+  };
+
   // Subscribe to realtime updates - DB Realtime + Presence 기반 상태 수신 (폴링 없음)
   useEffect(() => {
     if (!user) return;
@@ -95,15 +140,26 @@ export const useDevices = () => {
     let retryCount = 0;
     let retryTimeout: NodeJS.Timeout | null = null;
     const maxRetries = 5;
+    let isChannelActive = true; // 채널 활성 상태 추적
 
     const setupDbChannel = () => {
+      if (!isChannelActive) return; // 컴포넌트 언마운트 시 중단
+      
       // 기존 채널 정리
       if (dbChannel) {
         supabase.removeChannel(dbChannel);
       }
 
+      // 고유한 채널명 + params 설정
+      const channelName = `devices-db-${user.id}-${Date.now()}`;
+      
       dbChannel = supabase
-        .channel(`devices-realtime-${Date.now()}`) // 고유한 채널명
+        .channel(channelName, {
+          config: {
+            broadcast: { self: false },
+            presence: { key: user.id },
+          },
+        })
         .on(
           "postgres_changes",
           {
@@ -177,7 +233,11 @@ export const useDevices = () => {
           
           if (status === "SUBSCRIBED") {
             retryCount = 0; // 성공 시 재시도 카운트 리셋
+            // 구독 성공 시 최신 데이터 한 번 fetch
+            refreshDeviceStatus();
           } else if (status === "CHANNEL_ERROR" || status === "CLOSED") {
+            if (!isChannelActive) return; // 언마운트 시 재연결 안 함
+            
             // 재연결 시도
             if (retryCount < maxRetries) {
               const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
@@ -187,9 +247,9 @@ export const useDevices = () => {
                 setupDbChannel();
               }, delay);
             } else {
-              console.error("[Realtime] Max retries reached, falling back to polling");
-              // Fallback: 폴링으로 데이터 갱신
-              queryClient.invalidateQueries({ queryKey: ["devices", user.id] });
+              console.error("[Realtime] Max retries reached, doing one-time refresh");
+              // Fallback: 한 번만 데이터 갱신
+              refreshDeviceStatus();
             }
           }
         });
@@ -256,6 +316,7 @@ export const useDevices = () => {
     });
 
     return () => {
+      isChannelActive = false; // 언마운트 표시
       unsubscribe();
       if (retryTimeout) {
         clearTimeout(retryTimeout);
@@ -277,5 +338,6 @@ export const useDevices = () => {
     addDevice,
     updateDevice,
     deleteDevice,
+    refreshDeviceStatus, // 외부에서 수동 새로고침 가능
   };
 };
