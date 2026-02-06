@@ -86,87 +86,123 @@ export const useDevices = () => {
     },
   });
 
-  // Subscribe to realtime updates - 즉시 상태 업데이트
+  // Subscribe to realtime updates - 즉시 상태 업데이트 + 재연결 로직
   useEffect(() => {
     if (!user) return;
 
-    const channel = supabase
-      .channel("devices-realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "devices",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const updatedDevice = payload.new as Device;
-          console.log("[Realtime] Device updated:", updatedDevice.id, {
-            is_camera_connected: updatedDevice.is_camera_connected,
-            is_network_connected: updatedDevice.is_network_connected,
-            status: updatedDevice.status,
-          });
-          // 즉시 캐시 업데이트 (refetch 없이)
-          queryClient.setQueryData(
-            ["devices", user.id],
-            (oldDevices: Device[] | undefined) => {
-              if (!oldDevices) return oldDevices;
-              return oldDevices.map((device) =>
-                device.id === updatedDevice.id
-                  ? { ...device, ...updatedDevice }
-                  : device
-              );
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let retryCount = 0;
+    let retryTimeout: NodeJS.Timeout | null = null;
+    const maxRetries = 5;
+
+    const setupChannel = () => {
+      // 기존 채널 정리
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+
+      channel = supabase
+        .channel(`devices-realtime-${Date.now()}`) // 고유한 채널명
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "devices",
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            const updatedDevice = payload.new as Device;
+            console.log("[Realtime] Device updated:", updatedDevice.id, {
+              is_camera_connected: updatedDevice.is_camera_connected,
+              is_network_connected: updatedDevice.is_network_connected,
+              status: updatedDevice.status,
+            });
+            queryClient.setQueryData(
+              ["devices", user.id],
+              (oldDevices: Device[] | undefined) => {
+                if (!oldDevices) return oldDevices;
+                return oldDevices.map((device) =>
+                  device.id === updatedDevice.id
+                    ? { ...device, ...updatedDevice }
+                    : device
+                );
+              }
+            );
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "devices",
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            console.log("[Realtime] Device inserted:", payload.new);
+            queryClient.setQueryData(
+              ["devices", user.id],
+              (oldDevices: Device[] | undefined) => {
+                if (!oldDevices) return [payload.new as Device];
+                return [...oldDevices, payload.new as Device];
+              }
+            );
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "DELETE",
+            schema: "public",
+            table: "devices",
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            console.log("[Realtime] Device deleted:", payload.old);
+            queryClient.setQueryData(
+              ["devices", user.id],
+              (oldDevices: Device[] | undefined) => {
+                if (!oldDevices) return oldDevices;
+                return oldDevices.filter(
+                  (device) => device.id !== (payload.old as Device).id
+                );
+              }
+            );
+          }
+        )
+        .subscribe((status) => {
+          console.log("[Realtime] Devices channel status:", status);
+          
+          if (status === "SUBSCRIBED") {
+            retryCount = 0; // 성공 시 재시도 카운트 리셋
+          } else if (status === "CHANNEL_ERROR" || status === "CLOSED") {
+            // 재연결 시도
+            if (retryCount < maxRetries) {
+              const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
+              console.log(`[Realtime] Reconnecting in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries})`);
+              retryTimeout = setTimeout(() => {
+                retryCount++;
+                setupChannel();
+              }, delay);
+            } else {
+              console.error("[Realtime] Max retries reached, falling back to polling");
+              // Fallback: 폴링으로 데이터 갱신
+              queryClient.invalidateQueries({ queryKey: ["devices", user.id] });
             }
-          );
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "devices",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          console.log("[Realtime] Device inserted:", payload.new);
-          queryClient.setQueryData(
-            ["devices", user.id],
-            (oldDevices: Device[] | undefined) => {
-              if (!oldDevices) return [payload.new as Device];
-              return [...oldDevices, payload.new as Device];
-            }
-          );
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "DELETE",
-          schema: "public",
-          table: "devices",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          console.log("[Realtime] Device deleted:", payload.old);
-          queryClient.setQueryData(
-            ["devices", user.id],
-            (oldDevices: Device[] | undefined) => {
-              if (!oldDevices) return oldDevices;
-              return oldDevices.filter(
-                (device) => device.id !== (payload.old as Device).id
-              );
-            }
-          );
-        }
-      )
-      .subscribe((status) => {
-        console.log("[Realtime] Devices channel status:", status);
-      });
+          }
+        });
+    };
+
+    setupChannel();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+      }
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [user, queryClient]);
 
