@@ -17,83 +17,108 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
   };
 
   return (
-    <div 
-      className="scene-wrapper"
-      style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        width: '100%',
-        zIndex: 0,
-        // Clip the sky portion on tall screens, keep mountain anchored at bottom
-        maxHeight: '100vh',
-        overflow: 'hidden',
-      }}
-    >
+    <>
       {/* 
-        Mountain Image - Determines container height.
-        Image structure: 80% sky (top) + 20% mountain (bottom)
-        Width 100% ensures proportional scaling.
-      */}
-      <img 
-        src={mainBg} 
-        alt="Mountain Background" 
-        style={{
-          width: '100%',
-          height: 'auto',
-          display: 'block',
-          // Anchor image to bottom so sky gets clipped, not mountain
-          position: 'relative',
-        }}
-      />
-      
-      {/* 
-        Character Group - Math-based positioning:
-        Mountain occupies bottom 20% of image.
-        Character feet should land at ~19% (just above mountain peak).
+        LAYER 1: Scene Mask (The Frame)
+        - Fixed to bottom 40% of viewport
+        - Acts as a window showing only the mountain portion
+        - Content aligns to bottom (flex-end)
       */}
       <div 
-        className="character-group"
+        className="scene-mask"
         style={{
-          position: 'absolute',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          bottom: '19%', // Calculated: mountain peak is at ~20% of image height
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          width: '100%',
+          height: '40vh',
+          overflow: 'visible',
           display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 0,
-          zIndex: 1,
+          alignItems: 'flex-end',
+          pointerEvents: 'none',
+          zIndex: 0,
         }}
       >
-        {/* Speech Bubble - Glued to character hat with negative margin */}
-        {statusMessage && (
-          <div 
-            className="w-[85vw] max-w-sm"
-            style={{ marginBottom: '-5px' }}
-          >
-            <div className="bg-card/95 rounded-xl px-4 py-2 shadow-lg">
-              <p className="text-center font-medium text-sm text-card-foreground">
-                {statusMessage}
-              </p>
-            </div>
-          </div>
-        )}
-        
-        {/* Meerkat Character - Feet on mountain peak */}
-        <img 
-          src={getCharacterImage()} 
-          alt="MeerCOP Character" 
+        {/* 
+          LAYER 2: Content Wrapper (The Content)
+          - Relative positioning for absolute children
+          - Centers content horizontally
+        */}
+        <div 
+          className="content-wrapper"
           style={{
-            width: '18rem',
-            maxWidth: '65vw',
-            height: 'auto',
-            objectFit: 'contain',
-            transition: 'all 0.3s',
+            width: '100%',
+            position: 'relative',
+            display: 'flex',
+            justifyContent: 'center',
           }}
-        />
+        >
+          {/* 
+            Mountain Background Image
+            - Drives the layout height
+            - min-width prevents image from becoming too small on mobile
+          */}
+          <img 
+            src={mainBg} 
+            alt="Mountain Background" 
+            style={{
+              width: '100%',
+              minWidth: '600px',
+              height: 'auto',
+              display: 'block',
+            }}
+          />
+          
+          {/* 
+            Character Group
+            - Positioned at 19% from bottom (mountain peak location)
+            - Stays glued to mountain regardless of screen size
+          */}
+          <div 
+            className="character-group"
+            style={{
+              position: 'absolute',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              bottom: '19%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 0,
+              zIndex: 10,
+              pointerEvents: 'auto',
+            }}
+          >
+            {/* Speech Bubble - Glued to character hat */}
+            {statusMessage && (
+              <div 
+                className="w-[85vw] max-w-sm"
+                style={{ marginBottom: '-5px' }}
+              >
+                <div className="bg-card/95 rounded-xl px-4 py-2 shadow-lg">
+                  <p className="text-center font-medium text-sm text-card-foreground">
+                    {statusMessage}
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            {/* Meerkat Character */}
+            <img 
+              src={getCharacterImage()} 
+              alt="MeerCOP Character" 
+              style={{
+                width: '18rem',
+                maxWidth: '65vw',
+                height: 'auto',
+                objectFit: 'contain',
+                transition: 'all 0.3s',
+              }}
+            />
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
