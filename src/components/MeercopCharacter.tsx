@@ -17,9 +17,9 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
 
   return (
     <div className="flex flex-col items-center justify-end flex-1 min-h-0 pb-0">
-      {/* Speech bubble - fixed position above character */}
+      {/* Speech bubble - touching character's hat */}
       {statusMessage && (
-        <div className="w-[85%] max-w-sm z-10 mb-2">
+        <div className="w-[85%] max-w-sm z-10 -mb-1">
           <div className="bg-card/95 rounded-xl px-4 py-2 shadow-lg">
             <p className="text-center font-medium text-sm text-card-foreground">
               {statusMessage}
