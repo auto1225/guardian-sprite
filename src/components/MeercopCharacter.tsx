@@ -16,24 +16,27 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
   };
 
   return (
-    <div className="flex-1 relative min-h-0">
-      {/* Speech bubble - positioned above character's hat */}
-      {statusMessage && (
-        <div className="absolute bottom-[58%] left-1/2 -translate-x-1/2 w-[85%] max-w-sm z-10">
-          <div className="bg-card/95 rounded-xl px-4 py-2 shadow-lg">
-            <p className="text-center font-medium text-sm text-card-foreground">
-              {statusMessage}
-            </p>
+    <div className="flex-1 relative min-h-0 overflow-visible">
+      {/* Character wrapper - positioned at bottom, standing ON the rock */}
+      <div className="absolute bottom-[12%] left-1/2 -translate-x-1/2 flex flex-col items-center">
+        {/* Speech bubble - follows character's hat */}
+        {statusMessage && (
+          <div className="w-[85vw] max-w-sm z-10 mb-1">
+            <div className="bg-card/95 rounded-xl px-4 py-2 shadow-lg">
+              <p className="text-center font-medium text-sm text-card-foreground">
+                {statusMessage}
+              </p>
+            </div>
           </div>
-        </div>
-      )}
-      
-      {/* Character - positioned at bottom touching rock mountain */}
-      <img 
-        src={getCharacterImage()} 
-        alt="MeerCOP Character" 
-        className="absolute bottom-[-18%] left-1/2 -translate-x-1/2 w-[22rem] max-w-[85vw] h-auto object-contain transition-all duration-300"
-      />
+        )}
+        
+        {/* Character image */}
+        <img 
+          src={getCharacterImage()} 
+          alt="MeerCOP Character" 
+          className="w-[20rem] max-w-[75vw] h-auto object-contain transition-all duration-300"
+        />
+      </div>
     </div>
   );
 };
