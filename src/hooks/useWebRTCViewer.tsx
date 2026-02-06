@@ -143,6 +143,20 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
           console.log("[WebRTC Viewer] ✅ Connection timeout cleared - track received");
         }
         
+        // Track ended 이벤트 모니터링 - 트랙이 끝나도 바로 종료하지 않음
+        track.onended = () => {
+          console.log("[WebRTC Viewer] ⚠️ Track ended:", track.kind);
+          // 트랙이 끝나도 연결은 유지 - broadcaster에서 다시 보낼 수 있음
+        };
+        
+        track.onmute = () => {
+          console.log("[WebRTC Viewer] ⚠️ Track muted:", track.kind);
+        };
+        
+        track.onunmute = () => {
+          console.log("[WebRTC Viewer] ✅ Track unmuted:", track.kind);
+        };
+        
         isConnectedRef.current = true;
         isConnectingRef.current = false;
         setRemoteStream(stream);
@@ -198,6 +212,16 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
 
     pc.oniceconnectionstatechange = () => {
       console.log("[WebRTC Viewer] ICE state:", pc.iceConnectionState);
+      
+      // ICE 연결이 disconnected가 되어도 바로 종료하지 않음
+      // checking -> connected -> completed 흐름이 정상
+      // disconnected는 일시적일 수 있음
+      if (pc.iceConnectionState === "failed") {
+        console.log("[WebRTC Viewer] ❌ ICE connection failed");
+        // failed만 즉시 처리, disconnected는 connectionState에서 처리
+      } else if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
+        console.log("[WebRTC Viewer] ✅ ICE connection established");
+      }
     };
 
     return pc;
