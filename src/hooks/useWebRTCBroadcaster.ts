@@ -182,11 +182,19 @@ export const useWebRTCBroadcaster = ({
 
   const handleViewerJoin = useCallback(
     async (viewerId: string) => {
-      // Prevent duplicate viewer-join handling (race condition from React StrictMode)
+      // Prevent duplicate viewer-join handling (race condition from React StrictMode or Realtime)
       if (processedViewerJoinsRef.current.has(viewerId)) {
         console.log("[WebRTC Broadcaster] ⏭️ Skipping duplicate viewer-join:", viewerId);
         return;
       }
+      
+      // 이미 연결된 viewer인지 확인 (더 강력한 중복 체크)
+      if (viewerConnectionsRef.current.has(viewerId)) {
+        console.log("[WebRTC Broadcaster] ⏭️ Viewer already has connection:", viewerId);
+        return;
+      }
+      
+      // 먼저 Set에 추가하여 동시 호출 방지
       processedViewerJoinsRef.current.add(viewerId);
       
       console.log("[WebRTC Broadcaster] 👋 Viewer joined:", viewerId);
@@ -195,12 +203,6 @@ export const useWebRTCBroadcaster = ({
       if (!localStreamRef.current) {
         console.error("[WebRTC Broadcaster] ❌ No local stream available, cannot create offer");
         processedViewerJoinsRef.current.delete(viewerId); // Allow retry
-        return;
-      }
-
-      // 이미 연결된 viewer인지 확인
-      if (viewerConnectionsRef.current.has(viewerId)) {
-        console.log("[WebRTC Broadcaster] Viewer already connected:", viewerId);
         return;
       }
 
@@ -227,6 +229,7 @@ export const useWebRTCBroadcaster = ({
         console.error("[WebRTC Broadcaster] ❌ Error creating offer for viewer:", error);
         pc.close();
         viewerConnectionsRef.current.delete(viewerId);
+        processedViewerJoinsRef.current.delete(viewerId); // Allow retry on error
         setViewerCount(viewerConnectionsRef.current.size);
       }
     },
@@ -236,8 +239,11 @@ export const useWebRTCBroadcaster = ({
   // viewer의 시그널링 메시지 처리
   const handleSignalingMessage = useCallback(
     async (record: SignalingRecord) => {
-      // 이미 처리한 메시지 스킵
-      if (processedMessagesRef.current.has(record.id)) return;
+      // 이미 처리한 메시지 스킵 (메시지 ID 기반)
+      if (processedMessagesRef.current.has(record.id)) {
+        console.log("[WebRTC Broadcaster] ⏭️ Skipping already processed message:", record.id);
+        return;
+      }
       processedMessagesRef.current.add(record.id);
 
       console.log("[WebRTC Broadcaster] Processing message:", record.type, "from:", record.session_id);
@@ -248,62 +254,34 @@ export const useWebRTCBroadcaster = ({
         return;
       }
 
-      // answer 또는 ice-candidate 처리
-      const viewerId = record.session_id;
-      const viewerConnection = viewerConnectionsRef.current.get(record.data.viewerId || viewerId);
+      // answer의 경우 target_session을 확인하여 정확한 viewer 찾기
+      const targetSession = record.data.target_session;
+      const senderId = record.session_id;
+      
+      // viewer 연결 찾기: target_session > session_id > 첫 번째 연결
+      let viewerConnection: ViewerConnection | undefined;
+      
+      if (targetSession && viewerConnectionsRef.current.has(targetSession)) {
+        viewerConnection = viewerConnectionsRef.current.get(targetSession);
+        console.log("[WebRTC Broadcaster] Found viewer by target_session:", targetSession);
+      } else if (viewerConnectionsRef.current.has(senderId)) {
+        viewerConnection = viewerConnectionsRef.current.get(senderId);
+        console.log("[WebRTC Broadcaster] Found viewer by sender session_id:", senderId);
+      } else {
+        // 첫 번째 연결 사용 (단일 viewer 시나리오)
+        const firstEntry = viewerConnectionsRef.current.entries().next().value;
+        if (firstEntry) {
+          viewerConnection = firstEntry[1];
+          console.log("[WebRTC Broadcaster] Using first available viewer connection");
+        }
+      }
       
       if (!viewerConnection) {
-        // viewerId로 찾지 못하면 모든 연결에서 찾기
-        let foundConnection: ViewerConnection | undefined;
-        viewerConnectionsRef.current.forEach((conn) => {
-          if (!foundConnection) foundConnection = conn;
-        });
-        
-        if (!foundConnection) {
-          console.warn("[WebRTC Broadcaster] Received message from unknown viewer:", viewerId);
-          return;
-        }
-        
-        const { pc, hasRemoteDescription } = foundConnection;
-        
-        try {
-          if (record.type === "answer") {
-            // Skip if already processed
-            if (hasRemoteDescription) {
-              console.log("[WebRTC Broadcaster] ⏭️ Skipping duplicate answer (already set)");
-              return;
-            }
-            
-            // Extract SDP - handle multiple formats
-            let sdp: string | undefined;
-            if (typeof record.data.sdp === 'string') {
-              sdp = record.data.sdp;
-            } else if (record.data.sdp && typeof record.data.sdp === 'object' && 'sdp' in record.data.sdp) {
-              sdp = (record.data.sdp as { sdp: string }).sdp;
-            }
-            
-            if (sdp) {
-              console.log("[WebRTC Broadcaster] ✅ Received answer, SDP length:", sdp.length);
-              await pc.setRemoteDescription(new RTCSessionDescription({
-                type: "answer",
-                sdp: sdp,
-              }));
-              foundConnection.hasRemoteDescription = true;
-              console.log("[WebRTC Broadcaster] ✅ Remote description set successfully");
-            } else {
-              console.error("[WebRTC Broadcaster] ❌ Invalid answer SDP format:", record.data);
-            }
-          } else if (record.type === "ice-candidate" && record.data.candidate) {
-            console.log("[WebRTC Broadcaster] Received ICE candidate from viewer");
-            await pc.addIceCandidate(new RTCIceCandidate(record.data.candidate));
-          }
-        } catch (error) {
-          console.error("[WebRTC Broadcaster] Error handling signaling message:", error);
-        }
+        console.warn("[WebRTC Broadcaster] ⚠️ No viewer connection found for message:", record.type);
         return;
       }
 
-      const { pc, hasRemoteDescription } = viewerConnection;
+      const { pc, hasRemoteDescription, viewerId } = viewerConnection;
 
       try {
         if (record.type === "answer") {
@@ -322,7 +300,7 @@ export const useWebRTCBroadcaster = ({
           }
           
           if (sdp) {
-            console.log("[WebRTC Broadcaster] ✅ Received answer from viewer:", viewerId, "SDP length:", sdp.length);
+            console.log("[WebRTC Broadcaster] ✅ Setting answer for viewer:", viewerId, "SDP length:", sdp.length);
             await pc.setRemoteDescription(new RTCSessionDescription({
               type: "answer",
               sdp: sdp,
@@ -333,8 +311,26 @@ export const useWebRTCBroadcaster = ({
             console.error("[WebRTC Broadcaster] ❌ Invalid answer SDP format:", record.data);
           }
         } else if (record.type === "ice-candidate" && record.data.candidate) {
-          console.log("[WebRTC Broadcaster] Received ICE candidate from viewer:", viewerId);
+          // ICE candidate는 remote description 설정 후에만 추가
+          if (!hasRemoteDescription) {
+            console.log("[WebRTC Broadcaster] ⏳ Buffering ICE candidate (remote description not set yet)");
+            // 잠시 후 다시 시도
+            setTimeout(async () => {
+              const conn = viewerConnectionsRef.current.get(viewerId);
+              if (conn?.hasRemoteDescription) {
+                try {
+                  await conn.pc.addIceCandidate(new RTCIceCandidate(record.data.candidate!));
+                  console.log("[WebRTC Broadcaster] ✅ Added buffered ICE candidate");
+                } catch (e) {
+                  console.warn("[WebRTC Broadcaster] Failed to add buffered ICE candidate:", e);
+                }
+              }
+            }, 500);
+            return;
+          }
+          console.log("[WebRTC Broadcaster] Adding ICE candidate from viewer:", viewerId);
           await pc.addIceCandidate(new RTCIceCandidate(record.data.candidate));
+          console.log("[WebRTC Broadcaster] ✅ ICE candidate added");
         }
       } catch (error) {
         console.error("[WebRTC Broadcaster] Error handling signaling message:", error);
