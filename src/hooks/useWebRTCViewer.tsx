@@ -315,6 +315,71 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     // 새 세션 ID 생성
     sessionIdRef.current = `viewer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+    // 기존 offer 확인 함수 - 먼저 정의
+    const checkForExistingOffer = async (): Promise<boolean> => {
+      const { data: existingOffers, error: fetchError } = await supabase
+        .from("webrtc_signaling")
+        .select("*")
+        .eq("device_id", deviceId)
+        .eq("sender_type", "broadcaster")
+        .eq("type", "offer")
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (fetchError) {
+        console.error("[WebRTC Viewer] Error checking existing offer:", fetchError);
+        return false;
+      }
+
+      if (existingOffers && existingOffers.length > 0) {
+        console.log("[WebRTC Viewer] ✅ Found existing offer, processing...");
+        handleSignalingMessage(existingOffers[0] as SignalingRecord);
+        return true;
+      } else {
+        console.log("[WebRTC Viewer] No existing offer found, waiting for broadcaster...");
+        return false;
+      }
+    };
+
+    // Offer 재요청 로직 - 2초마다 최대 5회 viewer-join 재전송
+    const startOfferRetry = () => {
+      offerRetryCountRef.current = 0;
+      offerRetryIntervalRef.current = setInterval(async () => {
+        // 이미 offer를 받았거나 연결됐으면 중지
+        if (hasRemoteDescriptionRef.current || isConnectedRef.current || !isConnectingRef.current) {
+          if (offerRetryIntervalRef.current) {
+            clearInterval(offerRetryIntervalRef.current);
+            offerRetryIntervalRef.current = null;
+          }
+          return;
+        }
+        
+        offerRetryCountRef.current++;
+        console.log(`[WebRTC Viewer] 🔄 Retry ${offerRetryCountRef.current}/5: Checking for offer or re-sending viewer-join...`);
+        
+        // 먼저 기존 offer 확인
+        const foundOffer = await checkForExistingOffer();
+        
+        if (!foundOffer && offerRetryCountRef.current <= 5) {
+          // offer가 없으면 viewer-join 재전송
+          console.log("[WebRTC Viewer] Re-sending viewer-join...");
+          await sendSignalingMessage("viewer-join", { 
+            viewerId: sessionIdRef.current,
+            retry: offerRetryCountRef.current,
+          });
+        }
+        
+        // 5회 초과하면 중지
+        if (offerRetryCountRef.current >= 5) {
+          if (offerRetryIntervalRef.current) {
+            clearInterval(offerRetryIntervalRef.current);
+            offerRetryIntervalRef.current = null;
+          }
+          console.log("[WebRTC Viewer] ⚠️ Max retries reached, waiting for realtime subscription...");
+        }
+      }, 2000);
+    };
+
     try {
       // 이전 시그널링 메시지 정리 (don't await to avoid delay)
       supabase
@@ -367,71 +432,6 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         });
 
       channelRef.current = channel;
-
-      // 기존 offer 확인 함수
-      const checkForExistingOffer = async (): Promise<boolean> => {
-        const { data: existingOffers, error } = await supabase
-          .from("webrtc_signaling")
-          .select("*")
-          .eq("device_id", deviceId)
-          .eq("sender_type", "broadcaster")
-          .eq("type", "offer")
-          .order("created_at", { ascending: false })
-          .limit(1);
-
-        if (error) {
-          console.error("[WebRTC Viewer] Error checking existing offer:", error);
-          return false;
-        }
-
-        if (existingOffers && existingOffers.length > 0) {
-          console.log("[WebRTC Viewer] ✅ Found existing offer, processing...");
-          handleSignalingMessage(existingOffers[0] as SignalingRecord);
-          return true;
-        } else {
-          console.log("[WebRTC Viewer] No existing offer found, waiting for broadcaster...");
-          return false;
-        }
-      };
-
-      // Offer 재요청 로직 - 2초마다 최대 5회 viewer-join 재전송
-      const startOfferRetry = () => {
-        offerRetryCountRef.current = 0;
-        offerRetryIntervalRef.current = setInterval(async () => {
-          // 이미 offer를 받았거나 연결됐으면 중지
-          if (hasRemoteDescriptionRef.current || isConnectedRef.current || !isConnectingRef.current) {
-            if (offerRetryIntervalRef.current) {
-              clearInterval(offerRetryIntervalRef.current);
-              offerRetryIntervalRef.current = null;
-            }
-            return;
-          }
-          
-          offerRetryCountRef.current++;
-          console.log(`[WebRTC Viewer] 🔄 Retry ${offerRetryCountRef.current}/5: Checking for offer or re-sending viewer-join...`);
-          
-          // 먼저 기존 offer 확인
-          const foundOffer = await checkForExistingOffer();
-          
-          if (!foundOffer && offerRetryCountRef.current <= 5) {
-            // offer가 없으면 viewer-join 재전송
-            console.log("[WebRTC Viewer] Re-sending viewer-join...");
-            await sendSignalingMessage("viewer-join", { 
-              viewerId: sessionIdRef.current,
-              retry: offerRetryCountRef.current,
-            });
-          }
-          
-          // 5회 초과하면 중지
-          if (offerRetryCountRef.current >= 5) {
-            if (offerRetryIntervalRef.current) {
-              clearInterval(offerRetryIntervalRef.current);
-              offerRetryIntervalRef.current = null;
-            }
-            console.log("[WebRTC Viewer] ⚠️ Max retries reached, waiting for realtime subscription...");
-          }
-        }, 2000);
-      };
 
       // 초기 offer 체크 후 없으면 재시도 시작
       const initialOfferFound = await checkForExistingOffer();
