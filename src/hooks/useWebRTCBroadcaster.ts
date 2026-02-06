@@ -44,6 +44,7 @@ export const useWebRTCBroadcaster = ({
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const processedMessagesRef = useRef<Set<string>>(new Set());
+  const processedViewerJoinsRef = useRef<Set<string>>(new Set()); // Prevent duplicate viewer-join handling
   const sessionIdRef = useRef<string>(`broadcaster-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
 
   const ICE_SERVERS: RTCConfiguration = {
@@ -76,6 +77,7 @@ export const useWebRTCBroadcaster = ({
     }
 
     processedMessagesRef.current.clear();
+    processedViewerJoinsRef.current.clear();
     setLocalStream(null);
     setIsBroadcasting(false);
     setViewerCount(0);
@@ -180,11 +182,19 @@ export const useWebRTCBroadcaster = ({
 
   const handleViewerJoin = useCallback(
     async (viewerId: string) => {
+      // Prevent duplicate viewer-join handling (race condition from React StrictMode)
+      if (processedViewerJoinsRef.current.has(viewerId)) {
+        console.log("[WebRTC Broadcaster] ⏭️ Skipping duplicate viewer-join:", viewerId);
+        return;
+      }
+      processedViewerJoinsRef.current.add(viewerId);
+      
       console.log("[WebRTC Broadcaster] 👋 Viewer joined:", viewerId);
       console.log("[WebRTC Broadcaster] Local stream available:", !!localStreamRef.current);
       
       if (!localStreamRef.current) {
         console.error("[WebRTC Broadcaster] ❌ No local stream available, cannot create offer");
+        processedViewerJoinsRef.current.delete(viewerId); // Allow retry
         return;
       }
 
