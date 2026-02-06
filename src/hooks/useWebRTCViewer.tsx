@@ -158,11 +158,22 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         // Debug: log the data structure
         console.log("[WebRTC Viewer] ✅ Received offer, data:", JSON.stringify(record.data));
         
-        // Extract SDP - Broadcaster sends { type: "offer", sdp: "v=0..." }
-        const sdp = record.data.sdp;
+        // Extract SDP - handle both formats:
+        // Format 1: { type: "offer", sdp: "v=0..." }
+        // Format 2: { sdp: { type: "offer", sdp: "v=0..." } } (nested)
+        let sdp: string | undefined;
+        
+        if (typeof record.data.sdp === 'string') {
+          // Format 1: sdp is a string
+          sdp = record.data.sdp;
+        } else if (record.data.sdp && typeof record.data.sdp === 'object' && 'sdp' in record.data.sdp) {
+          // Format 2: sdp is nested object
+          sdp = (record.data.sdp as { sdp: string }).sdp;
+          console.log("[WebRTC Viewer] Using nested SDP format");
+        }
         
         if (!sdp || typeof sdp !== 'string') {
-          console.error("[WebRTC Viewer] Invalid SDP format:", typeof sdp, sdp);
+          console.error("[WebRTC Viewer] Invalid SDP format:", typeof record.data.sdp, record.data.sdp);
           onError?.("잘못된 SDP 형식입니다");
           return;
         }
@@ -174,7 +185,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         }));
         
         hasRemoteDescriptionRef.current = true;
-        console.log("[WebRTC Viewer] Remote description set successfully");
+        console.log("[WebRTC Viewer] ✅ Remote description set successfully");
         
         // Process any buffered ICE candidates
         await processPendingIceCandidates();
