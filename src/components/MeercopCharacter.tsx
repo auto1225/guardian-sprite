@@ -16,15 +16,29 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
   };
 
   return (
-    <div className="flex-1 relative min-h-0 overflow-visible z-20">
-      {/* CharacterWrapper - anchored to bottom center, above the mountain */}
+    <div className="flex-1 relative min-h-0 overflow-visible">
+      {/* 
+        Character Wrapper - Precisely positioned to stand ON the mountain peak
+        Mountain occupies roughly bottom 25% of main-bg.png
+        Character's feet should touch the mountain top, so bottom = ~22% of viewport height
+      */}
       <div 
-        className="absolute bottom-0 left-1/2 -translate-x-1/2 flex flex-col items-center"
-        style={{ marginBottom: '8vh' }}
+        className="absolute left-1/2 z-20"
+        style={{
+          transform: 'translateX(-50%)',
+          bottom: 'calc(22vh)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 0,
+        }}
       >
-        {/* Speech bubble - directly above character's hat with minimal gap */}
+        {/* Speech Bubble - negative margin to stick directly to character's hat */}
         {statusMessage && (
-          <div className="w-[85vw] max-w-sm z-30 mb-0">
+          <div 
+            className="w-[85vw] max-w-sm z-30"
+            style={{ marginBottom: '-8px' }}
+          >
             <div className="bg-card/95 rounded-xl px-4 py-2 shadow-lg">
               <p className="text-center font-medium text-sm text-card-foreground">
                 {statusMessage}
@@ -33,11 +47,11 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
           </div>
         )}
         
-        {/* Character image - feet touch the mountain top */}
+        {/* Character Image - feet touch the mountain peak */}
         <img 
           src={getCharacterImage()} 
           alt="MeerCOP Character" 
-          className="w-[18rem] max-w-[70vw] h-auto object-contain transition-all duration-300 z-20"
+          className="w-[18rem] max-w-[70vw] h-auto object-contain transition-all duration-300"
         />
       </div>
     </div>
