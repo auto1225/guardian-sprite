@@ -255,102 +255,137 @@ export const useDevices = () => {
         });
     };
 
+    // 이미 설정된 디바이스 ID 추적
+    const setupDeviceIds = new Set<string>();
+
     // Presence 채널 설정 (각 디바이스별 상태 수신)
-    const setupPresenceChannels = (deviceList: Device[]) => {
+    const setupPresenceChannel = (device: Device) => {
       if (!isChannelActive) return;
+      if (setupDeviceIds.has(device.id)) return; // 이미 설정된 디바이스는 스킵
       
-      // 기존 채널 정리
-      presenceChannels.forEach((ch) => supabase.removeChannel(ch));
-      presenceChannels.clear();
-
-      deviceList.forEach((device) => {
-        // 노트북 앱과 동일한 설정 사용
-        const presenceChannel = supabase.channel(`device-presence-${device.id}`, {
-          config: {
-            presence: { key: device.id },
-          },
+      setupDeviceIds.add(device.id);
+      
+      // 노트북 앱과 동일한 설정 사용
+      const presenceChannel = supabase.channel(`device-presence-${device.id}`, {
+        config: {
+          presence: { key: device.id },
+        },
+      });
+      
+      presenceChannel
+        .on('presence', { event: 'sync' }, () => {
+          const state = presenceChannel.presenceState();
+          console.log("[Presence] Full state for device", device.id, ":", state);
+          
+          const presenceList = state[device.id] as Array<{
+            status?: string;
+            is_network_connected?: boolean;
+            is_camera_connected?: boolean;
+            last_seen_at?: string;
+            presence_ref?: string;
+          }> | undefined;
+          
+          if (presenceList && presenceList.length > 0) {
+            // 가장 최신 Presence 항목 선택 (last_seen_at 기준)
+            const laptopPresence = presenceList.reduce((latest, current) => {
+              const latestTime = latest.last_seen_at ? new Date(latest.last_seen_at).getTime() : 0;
+              const currentTime = current.last_seen_at ? new Date(current.last_seen_at).getTime() : 0;
+              return currentTime > latestTime ? current : latest;
+            });
+            
+            console.log("[Presence] ✅ Using latest presence:", device.id, laptopPresence);
+            
+            // 로컬 캐시 업데이트 (DB 쿼리 없이)
+            queryClient.setQueryData(
+              ["devices", user.id],
+              (oldDevices: Device[] | undefined) => {
+                if (!oldDevices) return oldDevices;
+                return oldDevices.map((d) =>
+                  d.id === device.id
+                    ? {
+                        ...d,
+                        status: laptopPresence.status === 'online' ? 'online' : 'offline',
+                        is_network_connected: laptopPresence.is_network_connected ?? d.is_network_connected,
+                        is_camera_connected: laptopPresence.is_camera_connected ?? d.is_camera_connected,
+                      }
+                    : d
+                ) as Device[];
+              }
+            );
+          } else {
+            console.log("[Presence] No presence data for device:", device.id, "keys:", Object.keys(state));
+          }
+        })
+        .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+          console.log("[Presence] 👋 Device joined:", key, newPresences);
+        })
+        .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+          console.log("[Presence] 👋 Device left:", key, leftPresences);
+          // 노트북이 떠나면 오프라인으로 표시
+          if (key === device.id) {
+            queryClient.setQueryData(
+              ["devices", user.id],
+              (oldDevices: Device[] | undefined) => {
+                if (!oldDevices) return oldDevices;
+                return oldDevices.map((d) =>
+                  d.id === device.id
+                    ? { ...d, status: 'offline' as const, is_camera_connected: false }
+                    : d
+                );
+              }
+            );
+          }
+        })
+        .subscribe((status) => {
+          console.log(`[Presence] Device ${device.id} channel status:`, status);
+          
+          // 연결 실패 시 재시도
+          if (status === "CHANNEL_ERROR" || status === "CLOSED") {
+            if (!isChannelActive) return;
+            
+            // 재설정을 위해 ID 제거
+            setupDeviceIds.delete(device.id);
+            presenceChannels.delete(device.id);
+            
+            // 3초 후 재연결 시도
+            setTimeout(() => {
+              if (isChannelActive) {
+                console.log(`[Presence] Reconnecting device ${device.id}...`);
+                setupPresenceChannel(device);
+              }
+            }, 3000);
+          }
         });
-        
-        presenceChannel
-          .on('presence', { event: 'sync' }, () => {
-            const state = presenceChannel.presenceState();
-            console.log("[Presence] Full state for device", device.id, ":", state);
-            
-            const presenceList = state[device.id] as Array<{
-              status?: string;
-              is_network_connected?: boolean;
-              is_camera_connected?: boolean;
-              last_seen_at?: string;
-              presence_ref?: string;
-            }> | undefined;
-            
-            if (presenceList && presenceList.length > 0) {
-              // 가장 최신 Presence 항목 선택 (last_seen_at 기준)
-              const laptopPresence = presenceList.reduce((latest, current) => {
-                const latestTime = latest.last_seen_at ? new Date(latest.last_seen_at).getTime() : 0;
-                const currentTime = current.last_seen_at ? new Date(current.last_seen_at).getTime() : 0;
-                return currentTime > latestTime ? current : latest;
-              });
-              
-              console.log("[Presence] ✅ Using latest presence:", device.id, laptopPresence);
-              
-              // 로컬 캐시 업데이트 (DB 쿼리 없이)
-              queryClient.setQueryData(
-                ["devices", user.id],
-                (oldDevices: Device[] | undefined) => {
-                  if (!oldDevices) return oldDevices;
-                  return oldDevices.map((d) =>
-                    d.id === device.id
-                      ? {
-                          ...d,
-                          status: laptopPresence.status === 'online' ? 'online' : 'offline',
-                          is_network_connected: laptopPresence.is_network_connected ?? d.is_network_connected,
-                          is_camera_connected: laptopPresence.is_camera_connected ?? d.is_camera_connected,
-                        }
-                      : d
-                  ) as Device[];
-                }
-              );
-            } else {
-              console.log("[Presence] No presence data for device:", device.id, "keys:", Object.keys(state));
-            }
-          })
-          .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-            console.log("[Presence] 👋 Device joined:", key, newPresences);
-          })
-          .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-            console.log("[Presence] 👋 Device left:", key, leftPresences);
-            // 노트북이 떠나면 오프라인으로 표시
-            if (key === device.id) {
-              queryClient.setQueryData(
-                ["devices", user.id],
-                (oldDevices: Device[] | undefined) => {
-                  if (!oldDevices) return oldDevices;
-                  return oldDevices.map((d) =>
-                    d.id === device.id
-                      ? { ...d, status: 'offline' as const, is_camera_connected: false }
-                      : d
-                  );
-                }
-              );
-            }
-          })
-          .subscribe((status) => {
-            console.log(`[Presence] Device ${device.id} channel status:`, status);
-          });
 
-        presenceChannels.set(device.id, presenceChannel);
+      presenceChannels.set(device.id, presenceChannel);
+    };
+
+    // 초기 디바이스 목록으로 Presence 채널 설정
+    const setupAllPresenceChannels = (deviceList: Device[]) => {
+      deviceList.forEach((device) => {
+        setupPresenceChannel(device);
       });
     };
 
     setupDbChannel();
 
-    // 디바이스 목록이 변경되면 Presence 채널 재설정
+    // 초기 디바이스 로드 후 Presence 채널 설정 (한 번만)
+    const currentDevices = queryClient.getQueryData<Device[]>(["devices", user.id]);
+    if (currentDevices && currentDevices.length > 0) {
+      setupAllPresenceChannels(currentDevices);
+    }
+
+    // 새 디바이스가 추가될 때만 Presence 채널 설정
     const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
       if (event.query.queryKey[0] === "devices" && event.query.queryKey[1] === user.id) {
         const deviceList = event.query.state.data as Device[] | undefined;
         if (deviceList && deviceList.length > 0) {
-          setupPresenceChannels(deviceList);
+          // 새 디바이스만 추가 (기존 것은 스킵됨)
+          deviceList.forEach((device) => {
+            if (!setupDeviceIds.has(device.id)) {
+              setupPresenceChannel(device);
+            }
+          });
         }
       }
     });
