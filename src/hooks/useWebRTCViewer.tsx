@@ -258,6 +258,12 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
 
     try {
       if (record.type === "offer") {
+        // 자신의 세션 ID와 일치하는 offer만 처리
+        if (record.session_id !== sessionIdRef.current) {
+          console.log("[WebRTC Viewer] ⏭️ Ignoring offer for different session:", record.session_id, "my session:", sessionIdRef.current);
+          return;
+        }
+        
         // Skip duplicate offers - if we already sent an answer
         if (hasSentAnswerRef.current) {
           console.log("[WebRTC Viewer] ⏭️ Skipping duplicate offer (already sent answer)");
@@ -269,7 +275,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
           return;
         }
         // Debug: log the data structure
-        console.log("[WebRTC Viewer] ✅ Received offer, data:", JSON.stringify(record.data));
+        console.log("[WebRTC Viewer] ✅ Received offer for my session:", record.session_id);
         
         // Extract SDP - handle both formats:
         // Format 1: { type: "offer", sdp: "v=0..." }
@@ -309,16 +315,22 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
           
-          console.log("[WebRTC Viewer] Sending answer...");
+          console.log("[WebRTC Viewer] Sending answer for session:", sessionIdRef.current);
           await sendSignalingMessage("answer", { 
             type: "answer", 
             sdp: answer.sdp,
-            target_session: record.session_id,
+            target_session: sessionIdRef.current, // 자신의 세션 ID 사용
           });
         } else {
           console.log("[WebRTC Viewer] ⏭️ Answer already sent, skipping...");
         }
       } else if (record.type === "ice-candidate" && record.data.candidate) {
+        // ICE candidate도 자신의 세션과 일치하는 것만 처리
+        if (record.session_id !== sessionIdRef.current) {
+          console.log("[WebRTC Viewer] ⏭️ Ignoring ICE candidate for different session");
+          return;
+        }
+        
         if (!hasRemoteDescriptionRef.current) {
           // Buffer the ICE candidate for later
           console.log("[WebRTC Viewer] Buffering ICE candidate (remote description not set yet)");
