@@ -33,6 +33,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
   const isConnectedRef = useRef(false); // Track connection status with ref
   const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]); // Buffer for ICE candidates
   const hasRemoteDescriptionRef = useRef(false); // Track if remote description is set
+  const hasSentAnswerRef = useRef(false); // Track if answer has been sent
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Timeout reference
 
   const ICE_SERVERS: RTCConfiguration = {
@@ -62,6 +63,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     processedMessagesRef.current.clear();
     pendingIceCandidatesRef.current = [];
     hasRemoteDescriptionRef.current = false;
+    hasSentAnswerRef.current = false;
     isConnectedRef.current = false;
     setRemoteStream(null);
     setIsConnected(false);
@@ -211,7 +213,12 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
 
     try {
       if (record.type === "offer") {
-        // Skip duplicate offers - if we already have a remote description set
+        // Skip duplicate offers - if we already sent an answer
+        if (hasSentAnswerRef.current) {
+          console.log("[WebRTC Viewer] ⏭️ Skipping duplicate offer (already sent answer)");
+          return;
+        }
+        // Also skip if we already have a remote description set
         if (hasRemoteDescriptionRef.current) {
           console.log("[WebRTC Viewer] ⏭️ Skipping duplicate offer (already have remote description)");
           return;
@@ -251,15 +258,21 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         // Process any buffered ICE candidates
         await processPendingIceCandidates();
         
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        
-        console.log("[WebRTC Viewer] Sending answer...");
-        await sendSignalingMessage("answer", { 
-          type: "answer", 
-          sdp: answer.sdp,
-          target_session: record.session_id,
-        });
+        // Only create and send answer if we haven't already
+        if (!hasSentAnswerRef.current) {
+          hasSentAnswerRef.current = true;
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          
+          console.log("[WebRTC Viewer] Sending answer...");
+          await sendSignalingMessage("answer", { 
+            type: "answer", 
+            sdp: answer.sdp,
+            target_session: record.session_id,
+          });
+        } else {
+          console.log("[WebRTC Viewer] ⏭️ Answer already sent, skipping...");
+        }
       } else if (record.type === "ice-candidate" && record.data.candidate) {
         if (!hasRemoteDescriptionRef.current) {
           // Buffer the ICE candidate for later
