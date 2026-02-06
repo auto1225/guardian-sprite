@@ -18,19 +18,22 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
 
   return (
     <div 
+      className="scene-wrapper"
       style={{
         position: 'fixed',
         bottom: 0,
         left: 0,
         width: '100%',
         zIndex: 0,
-        // NO height, NO aspectRatio - height is determined by the img tag inside
+        // Clip the sky portion on tall screens, keep mountain anchored at bottom
+        maxHeight: '100vh',
+        overflow: 'hidden',
       }}
     >
       {/* 
-        Mountain Image - THIS determines the container height.
-        When screen width changes, image height changes proportionally,
-        and the container height follows 1:1.
+        Mountain Image - Determines container height.
+        Image structure: 80% sky (top) + 20% mountain (bottom)
+        Width 100% ensures proportional scaling.
       */}
       <img 
         src={mainBg} 
@@ -38,21 +41,24 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
         style={{
           width: '100%',
           height: 'auto',
-          display: 'block', // Removes bottom gap
+          display: 'block',
+          // Anchor image to bottom so sky gets clipped, not mountain
+          position: 'relative',
         }}
       />
       
       {/* 
-        Character Group - Positioned relative to container (= image height).
-        Since container height = image height, bottom % will always land
-        at the exact same visual spot on the mountain.
+        Character Group - Math-based positioning:
+        Mountain occupies bottom 20% of image.
+        Character feet should land at ~19% (just above mountain peak).
       */}
       <div 
+        className="character-group"
         style={{
           position: 'absolute',
           left: '50%',
           transform: 'translateX(-50%)',
-          bottom: '18%', // Adjust this to match mountain peak position
+          bottom: '19%', // Calculated: mountain peak is at ~20% of image height
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -60,7 +66,7 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
           zIndex: 1,
         }}
       >
-        {/* Speech Bubble - Negative margin glues it to character's hat */}
+        {/* Speech Bubble - Glued to character hat with negative margin */}
         {statusMessage && (
           <div 
             className="w-[85vw] max-w-sm"
@@ -74,7 +80,7 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
           </div>
         )}
         
-        {/* Meerkat Character */}
+        {/* Meerkat Character - Feet on mountain peak */}
         <img 
           src={getCharacterImage()} 
           alt="MeerCOP Character" 
