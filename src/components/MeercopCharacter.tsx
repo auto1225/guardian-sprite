@@ -17,61 +17,63 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
   };
 
   return (
-    <>
-      {/* 
-        Scene Container - The mountain image determines the container height.
-        Character position is set in % relative to this container,
-        so when the mountain shrinks, the character position scales proportionally.
-      */}
+    <div 
+      className="scene-wrapper"
+      style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        width: '100%',
+        // NO height - determined only by the mountain image
+      }}
+    >
+      {/* Mountain Image - drives the wrapper height */}
+      <img 
+        src={mainBg} 
+        alt="Mountain Background" 
+        style={{
+          width: '100%',
+          display: 'block',
+          height: 'auto',
+        }}
+      />
+      
+      {/* Character Group - positioned relative to mountain image height */}
       <div 
-        className="scene-container absolute bottom-0 left-0 w-full"
-        style={{ zIndex: 1 }}
+        className="character-group"
+        style={{
+          position: 'absolute',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          bottom: '55%', // Adjust this to align with mountain peak
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+        }}
       >
-        {/* Mountain Background - drives the container height */}
-        <img 
-          src={mainBg} 
-          alt="Mountain Background" 
-          className="w-full h-auto block"
-          style={{ display: 'block' }}
-        />
-        
-        {/* Character Group - positioned relative to mountain container */}
-        <div 
-          className="character-group absolute left-1/2"
-          style={{
-            transform: 'translateX(-50%)',
-            bottom: '42%',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            height: 'fit-content',
-            gap: '2px',
-            zIndex: 2,
-          }}
-        >
-          {/* Speech Bubble - tightly attached to character hat */}
-          {statusMessage && (
-            <div 
-              className="speech-bubble w-[85vw] max-w-sm"
-              style={{ margin: 0 }}
-            >
-              <div className="bg-card/95 rounded-xl px-4 py-2 shadow-lg">
-                <p className="text-center font-medium text-sm text-card-foreground">
-                  {statusMessage}
-                </p>
-              </div>
+        {/* Speech Bubble - attached to character hat */}
+        {statusMessage && (
+          <div 
+            className="speech-bubble w-[85vw] max-w-sm"
+            style={{ marginBottom: '-5px' }}
+          >
+            <div className="bg-card/95 rounded-xl px-4 py-2 shadow-lg">
+              <p className="text-center font-medium text-sm text-card-foreground">
+                {statusMessage}
+              </p>
             </div>
-          )}
-          
-          {/* Character - feet touch mountain peak */}
-          <img 
-            src={getCharacterImage()} 
-            alt="MeerCOP Character" 
-            className="character w-[18rem] max-w-[65vw] h-auto object-contain transition-all duration-300"
-          />
-        </div>
+          </div>
+        )}
+        
+        {/* Meerkat Character - feet on mountain peak */}
+        <img 
+          src={getCharacterImage()} 
+          alt="MeerCOP Character" 
+          className="w-[18rem] max-w-[65vw] h-auto object-contain transition-all duration-300"
+        />
       </div>
-    </>
+    </div>
   );
 };
 
