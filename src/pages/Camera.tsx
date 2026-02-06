@@ -135,7 +135,13 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
       return;
     }
     
-    console.log("[Camera] Starting streaming flow...");
+    // 이미 스트리밍 중이면 무시
+    if (isStreaming) {
+      console.log("[Camera] Already streaming, ignoring...");
+      return;
+    }
+    
+    console.log("[Camera] 🚀 Starting streaming flow...");
     isConnectingRef.current = true;
     connectionStartTimeRef.current = Date.now();
     setIsStreaming(true);
@@ -157,9 +163,15 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
       return;
     }
 
-    // 3. 추가로 500ms 대기 (broadcaster의 Realtime 구독이 완전히 준비되도록)
-    console.log("[Camera] Waiting additional 500ms for broadcaster subscription...");
-    await new Promise(r => setTimeout(r, 500));
+    // 3. 추가로 1초 대기 (broadcaster의 Realtime 구독이 완전히 준비되도록)
+    console.log("[Camera] Waiting additional 1s for broadcaster subscription...");
+    await new Promise(r => setTimeout(r, 1000));
+    
+    // 연결이 취소되었는지 확인
+    if (!isConnectingRef.current) {
+      console.log("[Camera] Connection was cancelled during wait");
+      return;
+    }
 
     // 4. 이제 viewer-join 전송
     console.log("[Camera] ✅ Starting WebRTC connection...");
@@ -176,7 +188,7 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
         setError("WebRTC 연결 시간 초과. 다시 시도해주세요.");
       }
     }, 30000);
-  }, [device.id, requestStreamingStart, waitForBroadcaster, connect, cleanupSubscription, isConnected]);
+  }, [device.id, isStreaming, requestStreamingStart, waitForBroadcaster, connect, cleanupSubscription, isConnected]);
 
   // 스트리밍 중지 - 사용자 명시적 요청 시에만
   const stopStreaming = useCallback(async () => {
