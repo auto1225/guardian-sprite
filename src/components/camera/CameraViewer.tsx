@@ -1,4 +1,5 @@
-import { Camera, RefreshCw, Download, Video } from "lucide-react";
+import { Camera, RefreshCw, Download, Video, Play } from "lucide-react";
+import { useState } from "react";
 import { useRef, useEffect } from "react";
 
 interface CameraViewerProps {
@@ -21,6 +22,7 @@ const CameraViewer = ({
   onCapture,
 }: CameraViewerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
   useEffect(() => {
     if (videoRef.current && remoteStream) {
@@ -199,22 +201,41 @@ const CameraViewer = ({
 
   // Connected with stream
   if (isConnected && remoteStream) {
+    const handlePlayClick = () => {
+      if (videoRef.current) {
+        videoRef.current.play()
+          .then(() => setIsVideoPlaying(true))
+          .catch(console.error);
+      }
+    };
+
     return (
       <div className="flex-1 bg-black rounded-xl mx-4 flex items-center justify-center relative overflow-hidden aspect-video">
         <video
           ref={videoRef}
-          autoPlay={false}
+          autoPlay
           playsInline
           muted
           preload="auto"
           className="w-full h-full object-contain"
-          onClick={() => {
-            // 사용자 제스처로 재생 시도 (모바일 브라우저 제한 우회)
-            if (videoRef.current) {
-              videoRef.current.play().catch(console.error);
-            }
-          }}
+          onPlay={() => setIsVideoPlaying(true)}
+          onPause={() => setIsVideoPlaying(false)}
+          onClick={handlePlayClick}
         />
+        
+        {/* 터치하여 재생 오버레이 - 비디오가 재생되지 않을 때만 표시 */}
+        {!isVideoPlaying && (
+          <div 
+            className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 cursor-pointer"
+            onClick={handlePlayClick}
+          >
+            <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mb-2">
+              <Play className="w-8 h-8 text-white ml-1" fill="white" />
+            </div>
+            <p className="text-white text-sm">터치하여 재생</p>
+          </div>
+        )}
+        
         {/* LIVE indicator */}
         <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded">
           <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
