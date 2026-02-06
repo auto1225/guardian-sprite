@@ -53,14 +53,15 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
   // 스트리밍 시작 요청 (노트북에게 카메라 켜라고 명령)
   const requestStreamingStart = useCallback(async () => {
     try {
-      console.log("[Camera] Requesting streaming start for device:", device.id);
+      console.log("[Camera] 📤 Setting is_streaming_requested = TRUE for device:", device.id);
+      console.trace("[Camera] requestStreamingStart called from:");
       const { error: updateError } = await supabase
         .from("devices")
         .update({ is_streaming_requested: true })
         .eq("id", device.id);
 
       if (updateError) throw updateError;
-      console.log("[Camera] Streaming request sent successfully");
+      console.log("[Camera] ✅ is_streaming_requested = TRUE set successfully");
     } catch (err) {
       console.error("[Camera] Failed to request streaming:", err);
     }
@@ -69,7 +70,8 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
   // 스트리밍 중지 요청 - 최소 연결 시간 체크
   const requestStreamingStop = useCallback(async () => {
     const elapsed = Date.now() - connectionStartTimeRef.current;
-    console.log("[Camera] requestStreamingStop called, elapsed:", elapsed, "ms, isConnecting:", isConnectingRef.current);
+    console.log("[Camera] 📤 requestStreamingStop called, elapsed:", elapsed, "ms, isConnecting:", isConnectingRef.current);
+    console.trace("[Camera] requestStreamingStop called from:");
     
     // 연결 시작 후 5초 이내면 중지 요청 무시 (연결이 안정화될 때까지 대기)
     if (elapsed < 5000 && isConnectingRef.current) {
@@ -78,13 +80,14 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
     }
     
     try {
-      console.log("[Camera] ✅ Requesting streaming stop for device:", device.id);
+      console.log("[Camera] 🛑 Setting is_streaming_requested = FALSE for device:", device.id);
       const { error: updateError } = await supabase
         .from("devices")
         .update({ is_streaming_requested: false })
         .eq("id", device.id);
 
       if (updateError) throw updateError;
+      console.log("[Camera] ✅ is_streaming_requested = FALSE set successfully");
     } catch (err) {
       console.error("[Camera] Failed to stop streaming:", err);
     }
@@ -251,7 +254,8 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
   // 모달 닫힐 때 정리
   const handleClose = useCallback(() => {
     const elapsed = Date.now() - connectionStartTimeRef.current;
-    console.log("[Camera] handleClose called, isStreaming:", isStreaming, "elapsed:", elapsed, "ms");
+    console.log("[Camera] 🚪 handleClose called, isStreaming:", isStreaming, "elapsed:", elapsed, "ms");
+    console.trace("[Camera] handleClose called from:");
     
     if (isStreaming) {
       // 연결 시작 후 5초 이내면 강제 종료하지 않음
@@ -268,11 +272,12 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
       disconnect();
       
       // is_streaming_requested를 false로 설정 (강제)
+      console.log("[Camera] 🛑 Setting is_streaming_requested = FALSE on modal close");
       supabase
         .from("devices")
         .update({ is_streaming_requested: false })
         .eq("id", device.id)
-        .then(() => console.log("[Camera] Streaming stopped on modal close"));
+        .then(() => console.log("[Camera] ✅ is_streaming_requested = FALSE set on modal close"));
     }
     onClose();
   }, [isStreaming, disconnect, cleanupSubscription, device.id, onClose]);
