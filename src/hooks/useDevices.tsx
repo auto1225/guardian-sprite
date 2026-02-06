@@ -257,16 +257,25 @@ export const useDevices = () => {
 
     // Presence 채널 설정 (각 디바이스별 상태 수신)
     const setupPresenceChannels = (deviceList: Device[]) => {
+      if (!isChannelActive) return;
+      
       // 기존 채널 정리
       presenceChannels.forEach((ch) => supabase.removeChannel(ch));
       presenceChannels.clear();
 
       deviceList.forEach((device) => {
-        const presenceChannel = supabase.channel(`device-presence-${device.id}`);
+        // 노트북 앱과 동일한 설정 사용
+        const presenceChannel = supabase.channel(`device-presence-${device.id}`, {
+          config: {
+            presence: { key: device.id },
+          },
+        });
         
         presenceChannel
           .on('presence', { event: 'sync' }, () => {
             const state = presenceChannel.presenceState();
+            console.log("[Presence] Full state for device", device.id, ":", state);
+            
             const laptopPresence = state[device.id]?.[0] as {
               status?: string;
               is_network_connected?: boolean;
@@ -274,7 +283,7 @@ export const useDevices = () => {
             } | undefined;
             
             if (laptopPresence) {
-              console.log("[Presence] Device status received:", device.id, laptopPresence);
+              console.log("[Presence] ✅ Device status received:", device.id, laptopPresence);
               
               // 로컬 캐시 업데이트 (DB 쿼리 없이)
               queryClient.setQueryData(
@@ -291,6 +300,28 @@ export const useDevices = () => {
                         }
                       : d
                   ) as Device[];
+                }
+              );
+            } else {
+              console.log("[Presence] No presence data for device:", device.id, "keys:", Object.keys(state));
+            }
+          })
+          .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+            console.log("[Presence] 👋 Device joined:", key, newPresences);
+          })
+          .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+            console.log("[Presence] 👋 Device left:", key, leftPresences);
+            // 노트북이 떠나면 오프라인으로 표시
+            if (key === device.id) {
+              queryClient.setQueryData(
+                ["devices", user.id],
+                (oldDevices: Device[] | undefined) => {
+                  if (!oldDevices) return oldDevices;
+                  return oldDevices.map((d) =>
+                    d.id === device.id
+                      ? { ...d, status: 'offline' as const, is_camera_connected: false }
+                      : d
+                  );
                 }
               );
             }
