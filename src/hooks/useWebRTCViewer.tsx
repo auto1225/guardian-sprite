@@ -35,6 +35,8 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
   const hasRemoteDescriptionRef = useRef(false); // Track if remote description is set
   const hasSentAnswerRef = useRef(false); // Track if answer has been sent
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Timeout reference
+  const offerRetryCountRef = useRef(0); // Track offer retry count
+  const offerRetryIntervalRef = useRef<NodeJS.Timeout | null>(null); // Retry interval
 
   const ICE_SERVERS: RTCConfiguration = {
     iceServers: [
@@ -52,6 +54,12 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       connectionTimeoutRef.current = null;
     }
     
+    // Clear retry interval
+    if (offerRetryIntervalRef.current) {
+      clearInterval(offerRetryIntervalRef.current);
+      offerRetryIntervalRef.current = null;
+    }
+    
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
@@ -64,6 +72,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     pendingIceCandidatesRef.current = [];
     hasRemoteDescriptionRef.current = false;
     hasSentAnswerRef.current = false;
+    offerRetryCountRef.current = 0;
     isConnectedRef.current = false;
     setRemoteStream(null);
     setIsConnected(false);
@@ -360,7 +369,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       channelRef.current = channel;
 
       // 기존 offer 확인 함수
-      const checkForExistingOffer = async () => {
+      const checkForExistingOffer = async (): Promise<boolean> => {
         const { data: existingOffers, error } = await supabase
           .from("webrtc_signaling")
           .select("*")
@@ -372,16 +381,63 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
 
         if (error) {
           console.error("[WebRTC Viewer] Error checking existing offer:", error);
-          return;
+          return false;
         }
 
         if (existingOffers && existingOffers.length > 0) {
           console.log("[WebRTC Viewer] ✅ Found existing offer, processing...");
           handleSignalingMessage(existingOffers[0] as SignalingRecord);
+          return true;
         } else {
           console.log("[WebRTC Viewer] No existing offer found, waiting for broadcaster...");
+          return false;
         }
       };
+
+      // Offer 재요청 로직 - 2초마다 최대 5회 viewer-join 재전송
+      const startOfferRetry = () => {
+        offerRetryCountRef.current = 0;
+        offerRetryIntervalRef.current = setInterval(async () => {
+          // 이미 offer를 받았거나 연결됐으면 중지
+          if (hasRemoteDescriptionRef.current || isConnectedRef.current || !isConnectingRef.current) {
+            if (offerRetryIntervalRef.current) {
+              clearInterval(offerRetryIntervalRef.current);
+              offerRetryIntervalRef.current = null;
+            }
+            return;
+          }
+          
+          offerRetryCountRef.current++;
+          console.log(`[WebRTC Viewer] 🔄 Retry ${offerRetryCountRef.current}/5: Checking for offer or re-sending viewer-join...`);
+          
+          // 먼저 기존 offer 확인
+          const foundOffer = await checkForExistingOffer();
+          
+          if (!foundOffer && offerRetryCountRef.current <= 5) {
+            // offer가 없으면 viewer-join 재전송
+            console.log("[WebRTC Viewer] Re-sending viewer-join...");
+            await sendSignalingMessage("viewer-join", { 
+              viewerId: sessionIdRef.current,
+              retry: offerRetryCountRef.current,
+            });
+          }
+          
+          // 5회 초과하면 중지
+          if (offerRetryCountRef.current >= 5) {
+            if (offerRetryIntervalRef.current) {
+              clearInterval(offerRetryIntervalRef.current);
+              offerRetryIntervalRef.current = null;
+            }
+            console.log("[WebRTC Viewer] ⚠️ Max retries reached, waiting for realtime subscription...");
+          }
+        }, 2000);
+      };
+
+      // 초기 offer 체크 후 없으면 재시도 시작
+      const initialOfferFound = await checkForExistingOffer();
+      if (!initialOfferFound) {
+        startOfferRetry();
+      }
 
       // 30초 타임아웃 - ref를 사용하여 올바른 상태 확인
       connectionTimeoutRef.current = setTimeout(() => {
