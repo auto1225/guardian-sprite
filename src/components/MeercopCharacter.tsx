@@ -18,43 +18,52 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
 
   return (
     <div 
-      className="ratio-container"
       style={{
         position: 'fixed',
         bottom: 0,
         left: 0,
         width: '100%',
-        // CRITICAL: aspect-ratio locks the container's proportions
-        // When width shrinks, height shrinks proportionally
-        aspectRatio: '375 / 667', // Approximate ratio of main-bg.png (mobile portrait)
-        backgroundImage: `url(${mainBg})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'bottom center',
-        backgroundRepeat: 'no-repeat',
+        zIndex: 0,
+        // NO height, NO aspectRatio - height is determined by the img tag inside
       }}
     >
       {/* 
-        Character Group - Positioned using % relative to the ratio-locked container.
-        Because the container maintains its aspect ratio, the % position
-        will always land at the same visual spot on the mountain.
+        Mountain Image - THIS determines the container height.
+        When screen width changes, image height changes proportionally,
+        and the container height follows 1:1.
+      */}
+      <img 
+        src={mainBg} 
+        alt="Mountain Background" 
+        style={{
+          width: '100%',
+          height: 'auto',
+          display: 'block', // Removes bottom gap
+        }}
+      />
+      
+      {/* 
+        Character Group - Positioned relative to container (= image height).
+        Since container height = image height, bottom % will always land
+        at the exact same visual spot on the mountain.
       */}
       <div 
-        className="character-group"
         style={{
           position: 'absolute',
           left: '50%',
           transform: 'translateX(-50%)',
-          bottom: '28%', // % of container height - adjust to match mountain peak
+          bottom: '18%', // Adjust this to match mountain peak position
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           gap: 0,
+          zIndex: 1,
         }}
       >
         {/* Speech Bubble - Negative margin glues it to character's hat */}
         {statusMessage && (
           <div 
-            className="speech-bubble w-[85vw] max-w-sm"
+            className="w-[85vw] max-w-sm"
             style={{ marginBottom: '-5px' }}
           >
             <div className="bg-card/95 rounded-xl px-4 py-2 shadow-lg">
@@ -69,7 +78,13 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
         <img 
           src={getCharacterImage()} 
           alt="MeerCOP Character" 
-          className="w-[18rem] max-w-[65vw] h-auto object-contain transition-all duration-300"
+          style={{
+            width: '18rem',
+            maxWidth: '65vw',
+            height: 'auto',
+            objectFit: 'contain',
+            transition: 'all 0.3s',
+          }}
         />
       </div>
     </div>
