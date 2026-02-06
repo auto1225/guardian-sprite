@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import mainBg from "@/assets/main-bg.png";
 
 const Index = () => {
-  const { devices, selectedDevice, selectedDeviceId, setSelectedDeviceId, isLoading } = useDevices();
+  const { devices, selectedDevice, selectedDeviceId, setSelectedDeviceId, isLoading, refreshDeviceStatus } = useDevices();
   const { alerts, unreadCount } = useAlerts(selectedDeviceId);
   const { toggleMonitoring } = useCommands();
   const { toast } = useToast();
@@ -58,12 +58,16 @@ const Index = () => {
     }
   };
 
-  const handleStatusIconClick = (type: "laptop" | "meercop" | "network" | "camera") => {
+  const handleStatusIconClick = async (type: "laptop" | "meercop" | "network" | "camera") => {
     switch (type) {
       case "laptop":
         setIsLocationOpen(true);
         break;
       case "camera":
+        // 카메라 페이지 열기 전 최신 상태 새로고침
+        if (selectedDeviceId) {
+          await refreshDeviceStatus(selectedDeviceId);
+        }
         setIsCameraOpen(true);
         break;
       case "meercop":
