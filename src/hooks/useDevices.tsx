@@ -276,14 +276,23 @@ export const useDevices = () => {
             const state = presenceChannel.presenceState();
             console.log("[Presence] Full state for device", device.id, ":", state);
             
-            const laptopPresence = state[device.id]?.[0] as {
+            const presenceList = state[device.id] as Array<{
               status?: string;
               is_network_connected?: boolean;
               is_camera_connected?: boolean;
-            } | undefined;
+              last_seen_at?: string;
+              presence_ref?: string;
+            }> | undefined;
             
-            if (laptopPresence) {
-              console.log("[Presence] ✅ Device status received:", device.id, laptopPresence);
+            if (presenceList && presenceList.length > 0) {
+              // 가장 최신 Presence 항목 선택 (last_seen_at 기준)
+              const laptopPresence = presenceList.reduce((latest, current) => {
+                const latestTime = latest.last_seen_at ? new Date(latest.last_seen_at).getTime() : 0;
+                const currentTime = current.last_seen_at ? new Date(current.last_seen_at).getTime() : 0;
+                return currentTime > latestTime ? current : latest;
+              });
+              
+              console.log("[Presence] ✅ Using latest presence:", device.id, laptopPresence);
               
               // 로컬 캐시 업데이트 (DB 쿼리 없이)
               queryClient.setQueryData(
