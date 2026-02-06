@@ -20,7 +20,7 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
     <>
       {/* 
         LAYER 1: Scene Mask (The Frame)
-        - Fixed to bottom 40% of viewport
+        - Fixed to bottom 50% of viewport (increased for tall phones)
         - Acts as a window showing only the mountain portion
         - Content aligns to bottom (flex-end)
       */}
@@ -31,7 +31,7 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
           bottom: 0,
           left: 0,
           width: '100%',
-          height: '40vh',
+          height: '50vh',
           overflow: 'visible',
           display: 'flex',
           alignItems: 'flex-end',
