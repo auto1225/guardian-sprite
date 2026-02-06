@@ -30,8 +30,10 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const processedMessagesRef = useRef<Set<string>>(new Set());
   const isConnectingRef = useRef(false);
+  const isConnectedRef = useRef(false); // Track connection status with ref
   const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]); // Buffer for ICE candidates
   const hasRemoteDescriptionRef = useRef(false); // Track if remote description is set
+  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Timeout reference
 
   const ICE_SERVERS: RTCConfiguration = {
     iceServers: [
@@ -42,6 +44,13 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
 
   const cleanup = useCallback(() => {
     console.log("[WebRTC Viewer] Cleaning up... isConnecting:", isConnectingRef.current);
+    
+    // Clear timeout
+    if (connectionTimeoutRef.current) {
+      clearTimeout(connectionTimeoutRef.current);
+      connectionTimeoutRef.current = null;
+    }
+    
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
@@ -53,6 +62,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     processedMessagesRef.current.clear();
     pendingIceCandidatesRef.current = [];
     hasRemoteDescriptionRef.current = false;
+    isConnectedRef.current = false;
     setRemoteStream(null);
     setIsConnected(false);
     setIsConnecting(false);
@@ -87,6 +97,15 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     pc.ontrack = (event) => {
       console.log("[WebRTC Viewer] ✅ Received remote track:", event.track.kind);
       if (event.streams && event.streams[0]) {
+        // Clear timeout - connection successful!
+        if (connectionTimeoutRef.current) {
+          clearTimeout(connectionTimeoutRef.current);
+          connectionTimeoutRef.current = null;
+          console.log("[WebRTC Viewer] ✅ Connection timeout cleared - track received");
+        }
+        
+        isConnectedRef.current = true;
+        isConnectingRef.current = false;
         setRemoteStream(event.streams[0]);
         setIsConnected(true);
         setIsConnecting(false);
@@ -104,13 +123,22 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       console.log("[WebRTC Viewer] Connection state:", pc.connectionState);
       if (pc.connectionState === "connected") {
         console.log("[WebRTC Viewer] ✅ Peer connection established!");
-        isConnectingRef.current = false; // Connection complete
+        
+        // Clear timeout on successful connection
+        if (connectionTimeoutRef.current) {
+          clearTimeout(connectionTimeoutRef.current);
+          connectionTimeoutRef.current = null;
+        }
+        
+        isConnectedRef.current = true;
+        isConnectingRef.current = false;
         setIsConnected(true);
         setIsConnecting(false);
       } else if (pc.connectionState === "disconnected" || pc.connectionState === "failed") {
         if (isConnectingRef.current) {
           // Only trigger error if we were actually trying to connect
           isConnectingRef.current = false;
+          isConnectedRef.current = false;
           cleanup();
           onError?.("연결이 끊어졌습니다");
         }
@@ -309,10 +337,10 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         }
       };
 
-      // 30초 타임아웃
-      setTimeout(() => {
-        if (isConnectingRef.current && !isConnected) {
-          console.log("[WebRTC Viewer] Connection timeout");
+      // 30초 타임아웃 - ref를 사용하여 올바른 상태 확인
+      connectionTimeoutRef.current = setTimeout(() => {
+        if (isConnectingRef.current && !isConnectedRef.current) {
+          console.log("[WebRTC Viewer] Connection timeout - isConnecting:", isConnectingRef.current, "isConnected:", isConnectedRef.current);
           isConnectingRef.current = false;
           cleanup();
           onError?.("연결 시간이 초과되었습니다. 노트북 카메라가 활성화되어 있는지 확인하세요.");
