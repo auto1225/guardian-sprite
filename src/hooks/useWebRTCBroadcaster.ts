@@ -105,6 +105,19 @@ export const useWebRTCBroadcaster = ({
     }
   }, [deviceId]);
 
+  // Helper function to extract SDP string from various formats
+  const extractSdpFromData = useCallback((data: SignalingRecord['data']): string | undefined => {
+    // Format 1: data.sdp is a string directly
+    if (typeof data.sdp === 'string') {
+      return data.sdp;
+    }
+    // Format 2: data.sdp is an object with sdp property (nested)
+    if (data.sdp && typeof data.sdp === 'object' && 'sdp' in data.sdp) {
+      return (data.sdp as { sdp: string }).sdp;
+    }
+    return undefined;
+  }, []);
+
   const createPeerConnectionForViewer = useCallback(
     (viewerId: string) => {
       console.log("[WebRTC Broadcaster] Creating peer connection for viewer:", viewerId);
