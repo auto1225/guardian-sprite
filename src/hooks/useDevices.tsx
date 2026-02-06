@@ -86,7 +86,7 @@ export const useDevices = () => {
     },
   });
 
-  // Subscribe to realtime updates - DB 변경 + Presence 기반 상태 수신
+  // Subscribe to realtime updates - DB 변경 + Presence 기반 상태 수신 + 폴링 폴백
   useEffect(() => {
     if (!user) return;
 
@@ -94,7 +94,74 @@ export const useDevices = () => {
     const presenceChannels: Map<string, ReturnType<typeof supabase.channel>> = new Map();
     let retryCount = 0;
     let retryTimeout: NodeJS.Timeout | null = null;
+    let pollTimeoutId: NodeJS.Timeout | null = null;
+    let pollInterval = 3000; // 초기 폴링 간격 3초
+    let lastSyncTimestamp: string | null = null;
     const maxRetries = 5;
+
+    // 폴링 폴백 - Presence가 실패해도 DB에서 상태를 가져옴
+    const pollDeviceStatus = async () => {
+      try {
+        const query = supabase
+          .from("devices")
+          .select("id, is_camera_connected, is_network_connected, status, updated_at")
+          .eq("user_id", user.id);
+        
+        // 마지막 동기화 이후 변경된 데이터만 가져오기
+        if (lastSyncTimestamp) {
+          query.gt("updated_at", lastSyncTimestamp);
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) {
+          console.error("[Polling] Error fetching device status:", error);
+          pollInterval = Math.min(pollInterval * 1.5, 30000);
+        } else if (data && data.length > 0) {
+          console.log("[Polling] Device status updated:", data);
+          
+          // 로컬 캐시 업데이트
+          queryClient.setQueryData(
+            ["devices", user.id],
+            (oldDevices: Device[] | undefined) => {
+              if (!oldDevices) return oldDevices;
+              return oldDevices.map((device) => {
+                const updated = data.find((d) => d.id === device.id);
+                if (updated) {
+                  return {
+                    ...device,
+                    is_camera_connected: updated.is_camera_connected,
+                    is_network_connected: updated.is_network_connected,
+                    status: updated.status,
+                  };
+                }
+                return device;
+              });
+            }
+          );
+          
+          // 가장 최신 timestamp 저장
+          const latestTimestamp = data.reduce((latest, d) => 
+            d.updated_at > latest ? d.updated_at : latest, 
+            lastSyncTimestamp || ""
+          );
+          if (latestTimestamp) {
+            lastSyncTimestamp = latestTimestamp;
+          }
+          
+          pollInterval = 3000; // 변경이 있으면 폴링 간격 리셋
+        } else {
+          // 변경 없으면 폴링 간격 증가 (최대 30초)
+          pollInterval = Math.min(pollInterval * 1.2, 30000);
+        }
+      } catch (error) {
+        console.error("[Polling] Unexpected error:", error);
+        pollInterval = Math.min(pollInterval * 1.5, 30000);
+      }
+      
+      // 다음 폴링 예약
+      pollTimeoutId = setTimeout(pollDeviceStatus, pollInterval);
+    };
 
     const setupDbChannel = () => {
       // 기존 채널 정리
@@ -244,6 +311,9 @@ export const useDevices = () => {
     };
 
     setupDbChannel();
+    
+    // 폴링 시작 (3초 후 첫 폴링)
+    pollTimeoutId = setTimeout(pollDeviceStatus, 3000);
 
     // 디바이스 목록이 변경되면 Presence 채널 재설정
     const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
@@ -259,6 +329,9 @@ export const useDevices = () => {
       unsubscribe();
       if (retryTimeout) {
         clearTimeout(retryTimeout);
+      }
+      if (pollTimeoutId) {
+        clearTimeout(pollTimeoutId);
       }
       if (dbChannel) {
         supabase.removeChannel(dbChannel);
