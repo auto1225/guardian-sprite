@@ -44,11 +44,9 @@ const CameraViewer = ({
       
       const video = videoRef.current;
       
-      // 모바일 브라우저 제한 우회를 위한 설정
+      // 모바일 브라우저 제한 우회를 위한 설정 - autoplay는 true 유지!
       video.muted = true;
       video.playsInline = true;
-      video.autoplay = false;
-      video.preload = "auto";
       
       video.srcObject = remoteStream;
       
@@ -57,63 +55,57 @@ const CameraViewer = ({
         console.log("[CameraViewer] 📹 Video metadata loaded:", {
           videoWidth: video.videoWidth,
           videoHeight: video.videoHeight,
-          duration: video.duration,
         });
         // 메타데이터 로드 후 재생 시도
-        video.play().catch(err => {
-          console.warn("[CameraViewer] ⚠️ Play after metadata failed:", err);
-        });
+        video.play()
+          .then(() => {
+            console.log("[CameraViewer] ✅ Auto-play succeeded after metadata");
+            setIsVideoPlaying(true);
+          })
+          .catch(err => {
+            console.warn("[CameraViewer] ⚠️ Play after metadata failed:", err);
+            setIsVideoPlaying(false);
+          });
       };
       
       video.onplay = () => {
         console.log("[CameraViewer] ▶️ Video started playing");
+        setIsVideoPlaying(true);
       };
       
       video.onplaying = () => {
-        console.log("[CameraViewer] ▶️ Video is now playing, dimensions:", video.videoWidth, "x", video.videoHeight);
+        console.log("[CameraViewer] ▶️ Video is now playing");
+        setIsVideoPlaying(true);
       };
       
-      video.onerror = (e) => {
-        console.error("[CameraViewer] ❌ Video error:", e);
-      };
-      
-      video.onstalled = () => {
-        console.warn("[CameraViewer] ⚠️ Video stalled");
-      };
-      
-      video.onwaiting = () => {
-        console.log("[CameraViewer] ⏳ Video waiting for data...");
-      };
-      
-      // 비디오 일시정지 감지 - 자동 재개 시도
       video.onpause = () => {
-        console.log("[CameraViewer] ⏸️ Video paused, attempting to resume...");
+        console.log("[CameraViewer] ⏸️ Video paused");
+        setIsVideoPlaying(false);
         // 스트림이 여전히 활성 상태면 재생 재시도
         if (remoteStream.active && video.srcObject) {
           setTimeout(() => {
-            video.play().catch(err => {
-              console.warn("[CameraViewer] ⚠️ Resume play failed:", err);
-            });
+            video.play()
+              .then(() => setIsVideoPlaying(true))
+              .catch(err => console.warn("[CameraViewer] Resume failed:", err));
           }, 100);
         }
       };
       
-      // Try to play immediately with user gesture simulation
-      const attemptPlay = () => {
-        video.play().then(() => {
-          console.log("[CameraViewer] ✅ Video play() succeeded");
-        }).catch(err => {
-          console.warn("[CameraViewer] ⚠️ Video play() failed:", err);
-          // 실패 시 1초 후 재시도
-          setTimeout(() => {
-            if (video.srcObject && remoteStream.active) {
-              video.play().catch(e => console.error("[CameraViewer] ❌ Retry play failed:", e));
-            }
-          }, 1000);
-        });
+      video.onerror = (e) => {
+        console.error("[CameraViewer] ❌ Video error:", e);
+        setIsVideoPlaying(false);
       };
       
-      attemptPlay();
+      // 즉시 재생 시도
+      video.play()
+        .then(() => {
+          console.log("[CameraViewer] ✅ Immediate play() succeeded");
+          setIsVideoPlaying(true);
+        })
+        .catch(err => {
+          console.warn("[CameraViewer] ⚠️ Immediate play() failed, will retry:", err);
+          setIsVideoPlaying(false);
+        });
     }
   }, [remoteStream]);
 
