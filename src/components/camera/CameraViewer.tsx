@@ -78,8 +78,31 @@ const CameraViewer = ({
         console.log("[CameraViewer] ✅ Video play() succeeded");
       }).catch(err => {
         console.warn("[CameraViewer] ⚠️ Video play() failed:", err);
+        // 자동 재생 실패 시 muted 상태로 다시 시도
+        video.muted = true;
+        video.play().catch(e => console.error("[CameraViewer] ❌ Muted play also failed:", e));
       });
     }
+  }, [remoteStream]);
+
+  // Stream 상태 모니터링 - 비활성화되면 UI에 표시
+  useEffect(() => {
+    if (!remoteStream) return;
+    
+    const checkStreamHealth = () => {
+      const videoTracks = remoteStream.getVideoTracks();
+      if (videoTracks.length > 0) {
+        const track = videoTracks[0];
+        if (track.readyState === 'ended') {
+          console.log("[CameraViewer] ⚠️ Video track ended");
+        }
+      }
+    };
+    
+    // 주기적으로 stream 상태 체크
+    const interval = setInterval(checkStreamHealth, 5000);
+    
+    return () => clearInterval(interval);
   }, [remoteStream]);
 
   const handleDownload = () => {

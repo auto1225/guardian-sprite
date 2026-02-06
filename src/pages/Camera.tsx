@@ -23,14 +23,23 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
   const waitingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const subscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const isConnectingRef = useRef(false);
-  const connectionStartTimeRef = useRef<number>(0); // Track when connection started
+  const connectionStartTimeRef = useRef<number>(0);
+  const streamHealthCheckRef = useRef<NodeJS.Timeout | null>(null);
+  const isConnectedRef = useRef(false); // 연결 상태 추적
 
   const handleWebRTCError = useCallback((err: string) => {
-    // Ignore errors if we're no longer trying to connect
-    if (!isConnectingRef.current) {
+    // 연결이 성공한 후에는 에러 무시 (일시적인 disconnected 등)
+    if (isConnectedRef.current && !err.includes("실패")) {
+      console.log("[Camera] Ignoring transient error while connected:", err);
+      return;
+    }
+    
+    // 연결 시도 중이 아니면 에러 무시
+    if (!isConnectingRef.current && !isConnectedRef.current) {
       console.log("[Camera] Ignoring error, not connecting:", err);
       return;
     }
+    
     setError(err);
     toast({
       title: "연결 오류",
@@ -49,6 +58,11 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
     deviceId: device.id,
     onError: handleWebRTCError,
   });
+
+  // isConnectedRef를 isConnected 상태와 동기화
+  useEffect(() => {
+    isConnectedRef.current = isConnected;
+  }, [isConnected]);
 
   // 스트리밍 시작 요청 (노트북에게 카메라 켜라고 명령)
   const requestStreamingStart = useCallback(async () => {
