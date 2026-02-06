@@ -17,7 +17,6 @@ import { useAlerts } from "@/hooks/useAlerts";
 import { useCommands } from "@/hooks/useCommands";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import mainBg from "@/assets/main-bg.png";
 
 const Index = () => {
   const { devices, selectedDevice, selectedDeviceId, setSelectedDeviceId, isLoading, refreshDeviceStatus } = useDevices();
@@ -100,38 +99,7 @@ const Index = () => {
 
   return (
     <div className="h-[100dvh] flex flex-col relative overflow-hidden">
-      {/* 
-        Background with mountain - anchored to bottom
-        Using object-position: bottom to ensure mountain stays at screen bottom
-        regardless of screen aspect ratio
-      */}
-      <img 
-        src={mainBg} 
-        alt="Background" 
-        className="absolute inset-0 w-full h-full object-cover z-0"
-        style={{ objectPosition: 'center bottom' }}
-      />
-      
-      {/* Content overlay - z-index layered above background */}
-      <div className="relative z-10 flex flex-col h-full">
-      <Header
-        onMenuClick={() => setIsSideMenuOpen(true)}
-        onDeviceManageClick={() => setIsDeviceManageOpen(true)}
-        unreadCount={unreadCount}
-        deviceId={selectedDeviceId}
-      />
-      
-      
-      <DeviceList 
-        isExpanded={isDeviceListExpanded}
-        onToggle={() => setIsDeviceListExpanded(!isDeviceListExpanded)}
-      />
-      
-      <StatusIcons 
-        device={selectedDevice}
-        onIconClick={handleStatusIconClick}
-      />
-      
+      {/* Scene Container - Mountain + Character (aspect ratio preserved) */}
       <MeercopCharacter 
         isMonitoring={isMonitoring} 
         isAlert={selectedDevice?.status === "alert"}
@@ -144,10 +112,39 @@ const Index = () => {
         }
       />
       
-      <ToggleButton 
-        isOn={isMonitoring}
-        onToggle={handleToggleMonitoring}
-      />
+      {/* UI Layer - positioned above scene */}
+      <div className="absolute inset-0 z-10 flex flex-col pointer-events-none">
+        <div className="pointer-events-auto">
+          <Header
+            onMenuClick={() => setIsSideMenuOpen(true)}
+            onDeviceManageClick={() => setIsDeviceManageOpen(true)}
+            unreadCount={unreadCount}
+            deviceId={selectedDeviceId}
+          />
+        </div>
+        
+        <div className="pointer-events-auto">
+          <DeviceList 
+            isExpanded={isDeviceListExpanded}
+            onToggle={() => setIsDeviceListExpanded(!isDeviceListExpanded)}
+          />
+        </div>
+        
+        <div className="pointer-events-auto">
+          <StatusIcons 
+            device={selectedDevice}
+            onIconClick={handleStatusIconClick}
+          />
+        </div>
+      </div>
+      
+      {/* Toggle Button - highest z-index */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20">
+        <ToggleButton 
+          isOn={isMonitoring}
+          onToggle={handleToggleMonitoring}
+        />
+      </div>
 
       {/* Side Menu */}
       <SideMenu 
@@ -188,7 +185,6 @@ const Index = () => {
         onClose={() => setIsDeviceManageOpen(false)}
         onSelectDevice={setSelectedDeviceId}
       />
-      </div>
     </div>
   );
 };
