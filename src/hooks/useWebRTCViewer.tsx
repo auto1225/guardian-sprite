@@ -211,6 +211,11 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
 
     try {
       if (record.type === "offer") {
+        // Skip duplicate offers - if we already have a remote description set
+        if (hasRemoteDescriptionRef.current) {
+          console.log("[WebRTC Viewer] ⏭️ Skipping duplicate offer (already have remote description)");
+          return;
+        }
         // Debug: log the data structure
         console.log("[WebRTC Viewer] ✅ Received offer, data:", JSON.stringify(record.data));
         
