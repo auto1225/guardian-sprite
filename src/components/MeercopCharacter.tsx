@@ -93,7 +93,7 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
             {statusMessage && (
               <div 
                 className="w-[85vw] max-w-sm"
-                style={{ marginBottom: '-30px' }}
+                style={{ marginBottom: '-50px' }}
               >
                 <div className="bg-card/95 rounded-xl px-4 py-2 shadow-lg">
                   <p className="text-center font-medium text-sm text-card-foreground">
