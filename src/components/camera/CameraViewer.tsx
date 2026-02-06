@@ -24,7 +24,61 @@ const CameraViewer = ({
 
   useEffect(() => {
     if (videoRef.current && remoteStream) {
+      console.log("[CameraViewer] 📹 Setting video srcObject:", {
+        streamId: remoteStream.id,
+        active: remoteStream.active,
+        trackCount: remoteStream.getTracks().length,
+      });
+      
+      // Log all tracks
+      remoteStream.getTracks().forEach((track, i) => {
+        console.log(`[CameraViewer] 📹 Track ${i}:`, {
+          kind: track.kind,
+          enabled: track.enabled,
+          muted: track.muted,
+          readyState: track.readyState,
+        });
+      });
+      
       videoRef.current.srcObject = remoteStream;
+      
+      // Add event listeners for video playback debugging
+      const video = videoRef.current;
+      
+      video.onloadedmetadata = () => {
+        console.log("[CameraViewer] 📹 Video metadata loaded:", {
+          videoWidth: video.videoWidth,
+          videoHeight: video.videoHeight,
+          duration: video.duration,
+        });
+      };
+      
+      video.onplay = () => {
+        console.log("[CameraViewer] ▶️ Video started playing");
+      };
+      
+      video.onplaying = () => {
+        console.log("[CameraViewer] ▶️ Video is now playing, dimensions:", video.videoWidth, "x", video.videoHeight);
+      };
+      
+      video.onerror = (e) => {
+        console.error("[CameraViewer] ❌ Video error:", e);
+      };
+      
+      video.onstalled = () => {
+        console.warn("[CameraViewer] ⚠️ Video stalled");
+      };
+      
+      video.onwaiting = () => {
+        console.log("[CameraViewer] ⏳ Video waiting for data...");
+      };
+      
+      // Try to play immediately
+      video.play().then(() => {
+        console.log("[CameraViewer] ✅ Video play() succeeded");
+      }).catch(err => {
+        console.warn("[CameraViewer] ⚠️ Video play() failed:", err);
+      });
     }
   }, [remoteStream]);
 

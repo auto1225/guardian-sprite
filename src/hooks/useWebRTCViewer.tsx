@@ -96,7 +96,35 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
 
     pc.ontrack = (event) => {
       console.log("[WebRTC Viewer] ✅ Received remote track:", event.track.kind);
+      
+      // Debug track status
+      const track = event.track;
+      console.log("[WebRTC Viewer] 📹 Track details:", {
+        kind: track.kind,
+        enabled: track.enabled,
+        muted: track.muted,
+        readyState: track.readyState,
+        id: track.id,
+      });
+      
       if (event.streams && event.streams[0]) {
+        const stream = event.streams[0];
+        console.log("[WebRTC Viewer] 📹 Stream details:", {
+          id: stream.id,
+          active: stream.active,
+          trackCount: stream.getTracks().length,
+        });
+        
+        // Log all tracks in the stream
+        stream.getTracks().forEach((t, i) => {
+          console.log(`[WebRTC Viewer] 📹 Stream track ${i}:`, {
+            kind: t.kind,
+            enabled: t.enabled,
+            muted: t.muted,
+            readyState: t.readyState,
+          });
+        });
+        
         // Clear timeout - connection successful!
         if (connectionTimeoutRef.current) {
           clearTimeout(connectionTimeoutRef.current);
@@ -106,7 +134,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         
         isConnectedRef.current = true;
         isConnectingRef.current = false;
-        setRemoteStream(event.streams[0]);
+        setRemoteStream(stream);
         setIsConnected(true);
         setIsConnecting(false);
       }
