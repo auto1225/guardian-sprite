@@ -18,45 +18,53 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
 
   return (
     <div 
-      className="scene-wrapper"
+      className="scene-container"
       style={{
         position: 'fixed',
         bottom: 0,
         left: 0,
         width: '100%',
-        // NO height - determined only by the mountain image
+        // CRITICAL: Also set position: relative so absolute children use this as reference
+        // Height is NOT set - it's determined solely by the mountain image
       }}
     >
-      {/* Mountain Image - drives the wrapper height */}
+      {/* 
+        Mountain Image - This determines the container height.
+        When screen width shrinks, image height shrinks proportionally,
+        and container height follows.
+      */}
       <img 
         src={mainBg} 
         alt="Mountain Background" 
         style={{
           width: '100%',
-          display: 'block',
           height: 'auto',
+          display: 'block', // Remove bottom gap
         }}
       />
       
-      {/* Character Group - positioned relative to mountain image height */}
+      {/* 
+        Character Wrapper - Positioned relative to container (mountain image height)
+        Using % for bottom ensures character scales with mountain
+      */}
       <div 
-        className="character-group"
+        className="character-wrapper"
         style={{
           position: 'absolute',
           left: '50%',
           transform: 'translateX(-50%)',
-          bottom: '55%', // Adjust this to align with mountain peak
+          bottom: '58%', // % of container height (mountain image height)
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'flex-end',
+          gap: 0,
         }}
       >
-        {/* Speech Bubble - attached to character hat */}
+        {/* Speech Bubble - Glued to character hat with negative margin */}
         {statusMessage && (
           <div 
             className="speech-bubble w-[85vw] max-w-sm"
-            style={{ marginBottom: '-5px' }}
+            style={{ marginBottom: '-8px' }}
           >
             <div className="bg-card/95 rounded-xl px-4 py-2 shadow-lg">
               <p className="text-center font-medium text-sm text-card-foreground">
@@ -66,7 +74,7 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
           </div>
         )}
         
-        {/* Meerkat Character - feet on mountain peak */}
+        {/* Meerkat Character */}
         <img 
           src={getCharacterImage()} 
           alt="MeerCOP Character" 
