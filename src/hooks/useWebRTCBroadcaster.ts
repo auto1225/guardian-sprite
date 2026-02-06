@@ -314,10 +314,27 @@ export const useWebRTCBroadcaster = ({
             }
           }
         )
-        .subscribe((status) => {
+        .subscribe(async (status) => {
           console.log("[WebRTC Broadcaster] Signaling channel status:", status);
           if (status === "SUBSCRIBED") {
             console.log("[WebRTC Broadcaster] ✅ Successfully subscribed to signaling channel");
+            
+            // 구독이 완전히 준비된 후에 기존 viewer-join 확인
+            const { data: existingViewerJoins } = await supabase
+              .from("webrtc_signaling")
+              .select("*")
+              .eq("device_id", deviceId)
+              .eq("sender_type", "viewer")
+              .eq("type", "viewer-join")
+              .order("created_at", { ascending: false });
+
+            if (existingViewerJoins && existingViewerJoins.length > 0) {
+              console.log("[WebRTC Broadcaster] Found existing viewer-join requests:", existingViewerJoins.length);
+              for (const record of existingViewerJoins) {
+                handleSignalingMessage(record as SignalingRecord);
+              }
+            }
+            
             setIsBroadcasting(true);
           } else if (status === "CHANNEL_ERROR") {
             console.error("[WebRTC Broadcaster] ❌ Channel subscription error");
@@ -327,23 +344,7 @@ export const useWebRTCBroadcaster = ({
 
       channelRef.current = channel;
 
-      // 기존 viewer-join이 있는지 확인 (viewer가 먼저 요청했을 수 있음)
-      const { data: existingViewerJoins } = await supabase
-        .from("webrtc_signaling")
-        .select("*")
-        .eq("device_id", deviceId)
-        .eq("sender_type", "viewer")
-        .eq("type", "viewer-join")
-        .order("created_at", { ascending: false });
-
-      if (existingViewerJoins && existingViewerJoins.length > 0) {
-        console.log("[WebRTC Broadcaster] Found existing viewer-join requests:", existingViewerJoins.length);
-        for (const record of existingViewerJoins) {
-          handleSignalingMessage(record as SignalingRecord);
-        }
-      }
-
-      console.log("[WebRTC Broadcaster] Started broadcasting");
+      console.log("[WebRTC Broadcaster] Waiting for subscription to complete...");
     } catch (error) {
       console.error("[WebRTC Broadcaster] Error starting broadcast:", error);
       cleanup();
