@@ -243,12 +243,25 @@ export const useWebRTCBroadcaster = ({
         const { pc } = foundConnection;
         
         try {
-          if (record.type === "answer" && record.data.sdp) {
-            console.log("[WebRTC Broadcaster] ✅ Received answer from viewer");
-            await pc.setRemoteDescription(new RTCSessionDescription({
-              type: "answer",
-              sdp: record.data.sdp,
-            }));
+          if (record.type === "answer") {
+            // Extract SDP - handle multiple formats
+            let sdp: string | undefined;
+            if (typeof record.data.sdp === 'string') {
+              sdp = record.data.sdp;
+            } else if (record.data.sdp && typeof record.data.sdp === 'object' && 'sdp' in record.data.sdp) {
+              sdp = (record.data.sdp as { sdp: string }).sdp;
+            }
+            
+            if (sdp) {
+              console.log("[WebRTC Broadcaster] ✅ Received answer, SDP length:", sdp.length);
+              await pc.setRemoteDescription(new RTCSessionDescription({
+                type: "answer",
+                sdp: sdp,
+              }));
+              console.log("[WebRTC Broadcaster] ✅ Remote description set successfully");
+            } else {
+              console.error("[WebRTC Broadcaster] ❌ Invalid answer SDP format:", record.data);
+            }
           } else if (record.type === "ice-candidate" && record.data.candidate) {
             console.log("[WebRTC Broadcaster] Received ICE candidate from viewer");
             await pc.addIceCandidate(new RTCIceCandidate(record.data.candidate));
@@ -262,12 +275,25 @@ export const useWebRTCBroadcaster = ({
       const { pc } = viewerConnection;
 
       try {
-        if (record.type === "answer" && record.data.sdp) {
-          console.log("[WebRTC Broadcaster] ✅ Received answer from viewer:", viewerId);
-          await pc.setRemoteDescription(new RTCSessionDescription({
-            type: "answer",
-            sdp: record.data.sdp,
-          }));
+        if (record.type === "answer") {
+          // Extract SDP - handle multiple formats
+          let sdp: string | undefined;
+          if (typeof record.data.sdp === 'string') {
+            sdp = record.data.sdp;
+          } else if (record.data.sdp && typeof record.data.sdp === 'object' && 'sdp' in record.data.sdp) {
+            sdp = (record.data.sdp as { sdp: string }).sdp;
+          }
+          
+          if (sdp) {
+            console.log("[WebRTC Broadcaster] ✅ Received answer from viewer:", viewerId, "SDP length:", sdp.length);
+            await pc.setRemoteDescription(new RTCSessionDescription({
+              type: "answer",
+              sdp: sdp,
+            }));
+            console.log("[WebRTC Broadcaster] ✅ Remote description set successfully for viewer:", viewerId);
+          } else {
+            console.error("[WebRTC Broadcaster] ❌ Invalid answer SDP format:", record.data);
+          }
         } else if (record.type === "ice-candidate" && record.data.candidate) {
           console.log("[WebRTC Broadcaster] Received ICE candidate from viewer:", viewerId);
           await pc.addIceCandidate(new RTCIceCandidate(record.data.candidate));
