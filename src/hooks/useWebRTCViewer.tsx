@@ -446,40 +446,50 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       });
 
       // Realtime으로 broadcaster의 응답 구독
-      const channelName = `webrtc-signaling-${deviceId}-${Date.now()}`;
-      console.log("[WebRTC Viewer] Subscribing to channel:", channelName);
+      // 싱글톤 채널 이름 - Date.now() 제거하여 안정적인 연결 유지
+      const channelName = `webrtc-signaling-viewer-${deviceId}`;
       
-      const channel = supabase
-        .channel(channelName)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "webrtc_signaling",
-            filter: `device_id=eq.${deviceId}`,
-          },
-          (payload) => {
-            const record = payload.new as SignalingRecord;
-            console.log("[WebRTC Viewer] Received signaling:", record.type, "from:", record.sender_type);
-            // broadcaster의 메시지만 처리
-            if (record.sender_type === "broadcaster") {
-              console.log("[WebRTC Viewer] ✅ Processing broadcaster message:", record.type);
-              handleSignalingMessage(record);
+      // 기존 채널 확인 및 재사용
+      const existingChannels = supabase.getChannels();
+      const existingChannel = existingChannels.find(ch => ch.topic === `realtime:${channelName}`);
+      
+      if (existingChannel) {
+        console.log("[WebRTC Viewer] Reusing existing channel");
+        channelRef.current = existingChannel;
+      } else {
+        console.log("[WebRTC Viewer] Creating new signaling channel:", channelName);
+        
+        const channel = supabase
+          .channel(channelName)
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "webrtc_signaling",
+              filter: `device_id=eq.${deviceId}`,
+            },
+            (payload) => {
+              const record = payload.new as SignalingRecord;
+              // broadcaster의 메시지만 처리 (자신의 viewer 메시지 무시)
+              if (record.sender_type === "broadcaster") {
+                console.log("[WebRTC Viewer] ✅ Received:", record.type, "from broadcaster");
+                handleSignalingMessage(record);
+              }
+              // viewer 메시지는 로그도 출력하지 않음 (자신의 메시지)
             }
-          }
-        )
-        .subscribe((status) => {
-          console.log("[WebRTC Viewer] Signaling channel status:", status);
-          
-          // 구독 완료 후 기존 offer 확인
-          if (status === "SUBSCRIBED") {
-            console.log("[WebRTC Viewer] Channel subscribed, checking for existing offer...");
-            checkForExistingOffer();
-          }
-        });
+          )
+          .subscribe((status) => {
+            if (status === "CHANNEL_ERROR") {
+              console.error("[WebRTC Viewer] Channel error");
+            } else if (status === "SUBSCRIBED") {
+              console.log("[WebRTC Viewer] Channel subscribed, checking for existing offer...");
+              checkForExistingOffer();
+            }
+          });
 
-      channelRef.current = channel;
+        channelRef.current = channel;
+      }
 
       // 초기 offer 체크 후 없으면 재시도 시작
       const initialOfferFound = await checkForExistingOffer();
