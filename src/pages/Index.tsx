@@ -177,25 +177,18 @@ const Index = () => {
             onClick={async () => {
               try {
                 const channel = supabase.channel(`device-alerts-${selectedDevice.id}`);
-                channel
-                  .on('broadcast', { event: 'remote_alarm_off' }, () => {})
-                  .subscribe((status) => {
-                    if (status === 'SUBSCRIBED') {
-                      channel.send({
-                        type: 'broadcast',
-                        event: 'remote_alarm_off',
-                        payload: {
-                          dismissed_at: new Date().toISOString(),
-                          remote_alarm_off: true,
-                        },
-                      });
-                      toast({ title: "컴퓨터 경보 해제", description: "컴퓨터의 경보음이 해제되었습니다." });
-                      setTimeout(() => {
-                        supabase.removeChannel(channel);
-                      }, 2000);
-                    }
-                  });
-              } catch {
+                await channel.send({
+                  type: 'broadcast',
+                  event: 'remote_alarm_off',
+                  payload: {
+                    dismissed_at: new Date().toISOString(),
+                    remote_alarm_off: true,
+                  },
+                });
+                console.log("[Index] remote_alarm_off broadcast sent");
+                toast({ title: "컴퓨터 경보 해제", description: "컴퓨터의 경보음이 해제되었습니다." });
+              } catch (err) {
+                console.error("[Index] remote_alarm_off failed:", err);
                 toast({ title: "오류", description: "컴퓨터 경보 해제에 실패했습니다.", variant: "destructive" });
               }
             }}
