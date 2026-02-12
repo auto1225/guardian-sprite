@@ -70,9 +70,13 @@ function stopAlertSound() {
   }
   (window as any).__meercop_ivals = [];
 
-  // 모든 AudioContext 정리
+  // 모든 AudioContext 정리 — destination 연결 끊기 + 즉시 close
   for (const ctx of getAllContexts()) {
-    try { ctx.close().catch(() => {}); } catch { /* already closed */ }
+    try {
+      // suspend로 즉시 오디오 출력 중단 (이미 스케줄된 오실레이터 포함)
+      ctx.suspend().catch(() => {});
+      ctx.close().catch(() => {});
+    } catch { /* already closed */ }
   }
   (window as any).__meercop_ctxs = [];
 
@@ -109,8 +113,19 @@ function playAlertSoundLoop() {
 
     const playOnce = () => {
       const cur = getAlarmState();
-      // 세대가 바뀌었으면 이 루프는 좀비 → 즉시 중단
-      if (cur.generation !== myGen || cur.muted || !cur.playing) {
+      // 세대가 바뀌었거나, muted이거나, 재생 중이 아니거나, suppress 중이면 즉시 중단
+      if (cur.generation !== myGen || cur.muted || !cur.playing || cur.suppressUntil > Date.now()) {
+        // 좀비 루프면 완전히 정리
+        if (cur.generation !== myGen || !cur.playing) {
+          try { ctx.suspend().catch(() => {}); ctx.close().catch(() => {}); } catch {}
+        }
+        return;
+      }
+      // 재확인: localStorage 직접 읽기
+      const mutedNow = localStorage.getItem('meercop_alarm_muted') === 'true';
+      if (mutedNow) {
+        cur.muted = true;
+        stopAlertSound();
         return;
       }
       if (ctx.state === 'closed') return;
@@ -336,15 +351,21 @@ export const useAlerts = (deviceId?: string | null) => {
   };
 
   const dismissActiveAlert = useCallback(async () => {
+    // 1차 정지
     stopAlertSound();
     const s = getAlarmState();
-    // dismiss 후 5초간 새 알람 차단 (presence 재동기화로 인한 재트리거 방지)
-    s.suppressUntil = Date.now() + 5000;
+    // dismiss 후 30초간 새 알람 차단 (presence 재동기화로 인한 재트리거 방지)
+    s.suppressUntil = Date.now() + 30000;
     if (activeAlertRef.current) {
       s.dismissedIds.add(activeAlertRef.current.id);
     }
+    s.playing = false;
     safeSetActiveAlert(null);
     activeAlertRef.current = null;
+
+    // 2차 정지 (비동기 오디오 잔여물 제거)
+    setTimeout(() => stopAlertSound(), 100);
+    setTimeout(() => stopAlertSound(), 500);
     
     const did = deviceIdRef.current;
     if (!did) return;
