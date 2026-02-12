@@ -66,10 +66,11 @@ const DEFAULT_SENSOR_SETTINGS: SensorSettings = {
   power: true,
 };
 
-function playBuiltinSound(sound: typeof ALARM_SOUNDS[number], duration = 2): { stop: () => void } {
+async function playBuiltinSound(sound: typeof ALARM_SOUNDS[number], duration = 2): Promise<{ stop: () => void }> {
   const ctx = new AudioContext();
-  // Resume AudioContext (required by browsers after user gesture)
-  ctx.resume();
+  // Must await resume for mobile browsers
+  await ctx.resume();
+  
   let t = 0;
   const nodes: OscillatorNode[] = [];
   while (t < duration) {
@@ -80,7 +81,7 @@ function playBuiltinSound(sound: typeof ALARM_SOUNDS[number], duration = 2): { s
       gain.connect(ctx.destination);
       osc.frequency.value = sound.freq[i];
       osc.type = "square";
-      gain.gain.value = 0.25;
+      gain.gain.value = 0.3;
       osc.start(ctx.currentTime + t);
       osc.stop(ctx.currentTime + t + sound.pattern[i]);
       nodes.push(osc);
@@ -155,21 +156,24 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
     setPlayingSoundId(null);
   };
 
-  const previewSound = (soundId: string) => {
+  const previewSound = async (soundId: string) => {
     stopAllSounds();
     if (playingSoundId === soundId) return; // was playing, just stop
 
     setPlayingSoundId(soundId);
 
     if (soundId === "custom" && customSoundDataUrl) {
-      const audio = new Audio(customSoundDataUrl);
+      const audio = new Audio();
+      // Unlock on iOS by calling play immediately in gesture context
+      audio.play().catch(() => {});
+      audio.src = customSoundDataUrl;
       audioRef.current = audio;
-      audio.play();
+      try { await audio.play(); } catch (e) { console.warn("Custom sound play failed:", e); }
       setTimeout(() => { audio.pause(); setPlayingSoundId(null); }, 2000);
     } else {
       const sound = ALARM_SOUNDS.find((s) => s.id === soundId);
       if (sound) {
-        synthRef.current = playBuiltinSound(sound, 2);
+        synthRef.current = await playBuiltinSound(sound, 2);
         setTimeout(() => { stopAllSounds(); }, 2000);
       }
     }
