@@ -252,173 +252,133 @@ export const useAlerts = (deviceId?: string | null) => {
     if (!deviceId) return;
 
     const channelName = `device-alerts-${deviceId}`;
+    let intentionalClose = false; // cleanup 시 CLOSED 이벤트 무시용
 
-    // 기존 동일 이름 채널이 있으면 모두 제거
-    const existingChannels = supabase.getChannels();
-    for (const ch of existingChannels) {
-      if (ch.topic === `realtime:${channelName}`) {
-        try { supabase.removeChannel(ch); } catch {}
-      }
-    }
+    // 이전 채널 정리
     if (channelRef.current) {
       try { supabase.removeChannel(channelRef.current); } catch {}
       channelRef.current = null;
     }
 
-    let retryCount = 0;
-    const maxRetries = 3;
-    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+    const channel = supabase.channel(channelName);
+    channelRef.current = channel;
 
-    const setupChannel = () => {
-      // 재시도 전 기존 채널 정리
-      if (channelRef.current) {
-        try { supabase.removeChannel(channelRef.current); } catch {}
-        channelRef.current = null;
-      }
-
-      const channel = supabase.channel(channelName);
-      channelRef.current = channel;
-
-      channel
-        .on('presence', { event: 'sync' }, () => {
-          if (!mountedRef.current) return;
-          const presState = channel.presenceState();
-          
-          let foundAlert: ActiveAlert | null = null;
-          for (const key of Object.keys(presState)) {
-            const entries = presState[key] as Array<{ active_alert?: ActiveAlert }>;
-            for (const entry of entries) {
-              if (entry.active_alert) {
-                foundAlert = entry.active_alert;
-                break;
-              }
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        if (!mountedRef.current) return;
+        const presState = channel.presenceState();
+        
+        let foundAlert: ActiveAlert | null = null;
+        for (const key of Object.keys(presState)) {
+          const entries = presState[key] as Array<{ active_alert?: ActiveAlert }>;
+          for (const entry of entries) {
+            if (entry.active_alert) {
+              foundAlert = entry.active_alert;
+              break;
             }
-            if (foundAlert) break;
           }
-          
-          if (foundAlert) {
-            const s = getAlarmState();
-            if (s.dismissedIds.has(foundAlert.id)) {
-              console.log("[useAlerts] ⏭️ Already dismissed:", foundAlert.id);
-              return;
+          if (foundAlert) break;
+        }
+        
+        if (foundAlert) {
+          const s = getAlarmState();
+          if (s.dismissedIds.has(foundAlert.id)) return;
+          if (s.suppressUntil > Date.now()) return;
+          const alertAge = Date.now() - new Date(foundAlert.created_at).getTime();
+          const isStale = alertAge > 5 * 60 * 1000;
+          if (isStale) {
+            s.dismissedIds.add(foundAlert.id);
+            saveDismissedIds(s.dismissedIds);
+            if (!activeAlertRef.current || activeAlertRef.current.id !== foundAlert.id) {
+              safeSetActiveAlert(foundAlert);
+              activeAlertRef.current = foundAlert;
             }
-            if (s.suppressUntil > Date.now()) {
-              console.log("[useAlerts] ⏭️ Suppressed, skipping");
-              return;
+            return;
+          }
+          if (s.lastPlayedId === foundAlert.id) {
+            if (!activeAlertRef.current || activeAlertRef.current.id !== foundAlert.id) {
+              safeSetActiveAlert(foundAlert);
+              activeAlertRef.current = foundAlert;
             }
-            // 5분 이상 지난 경보는 stale로 간주 — 소리 안 울림
-            const alertAge = Date.now() - new Date(foundAlert.created_at).getTime();
-            const isStale = alertAge > 5 * 60 * 1000;
-            if (isStale) {
-              console.log("[useAlerts] ⏭️ Stale alert (age:", Math.round(alertAge / 1000), "s), skipping sound");
-              s.dismissedIds.add(foundAlert.id);
-              saveDismissedIds(s.dismissedIds);
-              if (!activeAlertRef.current || activeAlertRef.current.id !== foundAlert.id) {
-                safeSetActiveAlert(foundAlert);
-                activeAlertRef.current = foundAlert;
-              }
-              return;
-            }
-            if (s.lastPlayedId === foundAlert.id) {
-              if (!activeAlertRef.current || activeAlertRef.current.id !== foundAlert.id) {
-                safeSetActiveAlert(foundAlert);
-                activeAlertRef.current = foundAlert;
-              }
-              return;
-            }
-            const isMuted = readMuted();
-            console.log("[useAlerts] New alert from Presence:", foundAlert.id, "muted:", isMuted);
-            safeSetActiveAlert(foundAlert);
-            activeAlertRef.current = foundAlert;
-            s.lastPlayedId = foundAlert.id;
-            if (!isMuted && !s.muted) {
-              playAlertSoundLoop();
-            } else {
-              console.log("[useAlerts] ⏭️ Skipping sound (muted)");
-            }
-            try {
-              addActivityLog(deviceId, foundAlert.type, {
-                title: foundAlert.title,
-                message: foundAlert.message,
-                alertType: foundAlert.type,
-              });
-            } catch { /* storage quota */ }
-            loadAlerts();
+            return;
+          }
+          const isMuted = readMuted();
+          console.log("[useAlerts] New alert from Presence:", foundAlert.id, "muted:", isMuted);
+          safeSetActiveAlert(foundAlert);
+          activeAlertRef.current = foundAlert;
+          s.lastPlayedId = foundAlert.id;
+          if (!isMuted && !s.muted) {
+            playAlertSoundLoop();
           } else {
-            stopAlertSound();
-            safeSetActiveAlert(null);
-            activeAlertRef.current = null;
+            console.log("[useAlerts] ⏭️ Skipping sound (muted)");
           }
-        })
-        .on('broadcast', { event: 'active_alert' }, (payload) => {
-          if (!mountedRef.current) return;
-          const alert = payload?.payload?.active_alert as ActiveAlert | undefined;
-          if (alert) {
-            const s = getAlarmState();
-            if (s.dismissedIds.has(alert.id)) return;
-            if (s.suppressUntil > Date.now()) return;
-            const alertAge = Date.now() - new Date(alert.created_at).getTime();
-            if (alertAge > 5 * 60 * 1000) {
-              s.dismissedIds.add(alert.id);
-              saveDismissedIds(s.dismissedIds);
-              return;
-            }
-            if (s.lastPlayedId === alert.id) {
-              if (!activeAlertRef.current || activeAlertRef.current.id !== alert.id) {
-                safeSetActiveAlert(alert);
-                activeAlertRef.current = alert;
-              }
-              return;
-            }
-            const isMuted = readMuted();
-            safeSetActiveAlert(alert);
-            activeAlertRef.current = alert;
-            s.lastPlayedId = alert.id;
-            if (!isMuted && !s.muted) {
-              playAlertSoundLoop();
-            }
-            try {
-              addActivityLog(deviceId, alert.type, {
-                title: alert.title,
-                message: alert.message,
-                alertType: alert.type,
-              });
-            } catch { /* storage quota */ }
-            loadAlerts();
+          try {
+            addActivityLog(deviceId, foundAlert.type, {
+              title: foundAlert.title,
+              message: foundAlert.message,
+              alertType: foundAlert.type,
+            });
+          } catch { /* storage quota */ }
+          loadAlerts();
+        } else {
+          stopAlertSound();
+          safeSetActiveAlert(null);
+          activeAlertRef.current = null;
+        }
+      })
+      .on('broadcast', { event: 'active_alert' }, (payload) => {
+        if (!mountedRef.current) return;
+        const alert = payload?.payload?.active_alert as ActiveAlert | undefined;
+        if (alert) {
+          const s = getAlarmState();
+          if (s.dismissedIds.has(alert.id)) return;
+          if (s.suppressUntil > Date.now()) return;
+          const alertAge = Date.now() - new Date(alert.created_at).getTime();
+          if (alertAge > 5 * 60 * 1000) {
+            s.dismissedIds.add(alert.id);
+            saveDismissedIds(s.dismissedIds);
+            return;
           }
-        })
-        .on('broadcast', { event: 'remote_alarm_off' }, () => {
-          console.log("[useAlerts] remote_alarm_off received (no-op on phone)");
-        })
-        .subscribe(async (status) => {
-          console.log("[useAlerts] Channel status:", status);
-          if (status === 'SUBSCRIBED' && mountedRef.current) {
-            retryCount = 0; // 성공 시 재시도 카운터 초기화
-            await channel.track({ role: 'phone', joined_at: new Date().toISOString() });
-          } else if ((status === 'TIMED_OUT' || status === 'CHANNEL_ERROR' || status === 'CLOSED') && mountedRef.current) {
-            console.warn("[useAlerts] Channel failed:", status, "retry:", retryCount);
-            if (retryCount < maxRetries) {
-              retryCount++;
-              const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
-              retryTimeout = setTimeout(() => {
-                if (mountedRef.current) {
-                  console.log("[useAlerts] Retrying channel connection...", retryCount);
-                  setupChannel();
-                }
-              }, delay);
+          if (s.lastPlayedId === alert.id) {
+            if (!activeAlertRef.current || activeAlertRef.current.id !== alert.id) {
+              safeSetActiveAlert(alert);
+              activeAlertRef.current = alert;
             }
+            return;
           }
-        });
-    };
-
-    setupChannel();
+          const isMuted = readMuted();
+          safeSetActiveAlert(alert);
+          activeAlertRef.current = alert;
+          s.lastPlayedId = alert.id;
+          if (!isMuted && !s.muted) {
+            playAlertSoundLoop();
+          }
+          try {
+            addActivityLog(deviceId, alert.type, {
+              title: alert.title,
+              message: alert.message,
+              alertType: alert.type,
+            });
+          } catch { /* storage quota */ }
+          loadAlerts();
+        }
+      })
+      .on('broadcast', { event: 'remote_alarm_off' }, () => {
+        console.log("[useAlerts] remote_alarm_off received (no-op on phone)");
+      })
+      .subscribe(async (status) => {
+        console.log("[useAlerts] Channel status:", status);
+        if (status === 'SUBSCRIBED' && mountedRef.current) {
+          await channel.track({ role: 'phone', joined_at: new Date().toISOString() });
+        }
+        // 의도적 cleanup에 의한 CLOSED는 무시 — 재시도 루프 방지
+        if (status === 'CLOSED' && intentionalClose) return;
+      });
 
     return () => {
-      if (retryTimeout) clearTimeout(retryTimeout);
-      if (channelRef.current) {
-        try { supabase.removeChannel(channelRef.current); } catch {}
-      }
+      intentionalClose = true; // cleanup CLOSED 이벤트 무시
       channelRef.current = null;
+      try { supabase.removeChannel(channel); } catch {}
     };
   }, [deviceId]);
 
