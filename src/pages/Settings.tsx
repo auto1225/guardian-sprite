@@ -68,6 +68,8 @@ const DEFAULT_SENSOR_SETTINGS: SensorSettings = {
 
 function playBuiltinSound(sound: typeof ALARM_SOUNDS[number], duration = 2): { stop: () => void } {
   const ctx = new AudioContext();
+  // Resume AudioContext (required by browsers after user gesture)
+  ctx.resume();
   let t = 0;
   const nodes: OscillatorNode[] = [];
   while (t < duration) {
@@ -303,7 +305,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
             {/* Alarm PIN */}
             <SettingItem
               label="경보해제 비밀번호"
-              value={alarmPin.replace(/./g, "•")}
+              value={alarmPin}
               onClick={() => { setTempPin(""); setShowPinDialog(true); }}
             />
 
