@@ -14,9 +14,12 @@ import LocationMapModal from "@/components/LocationMapModal";
 import NetworkInfoModal from "@/components/NetworkInfoModal";
 import CameraPage from "@/pages/Camera";
 import DeviceManagePage from "@/pages/DeviceManage";
+import PhotoAlertOverlay from "@/components/PhotoAlertOverlay";
+import PhotoAlertHistory from "@/components/PhotoAlertHistory";
 import { useDevices } from "@/hooks/useDevices";
 import { useAlerts } from "@/hooks/useAlerts";
 import { useCommands } from "@/hooks/useCommands";
+import { usePhotoReceiver } from "@/hooks/usePhotoReceiver";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -25,6 +28,17 @@ const Index = () => {
   const { alerts, unreadCount } = useAlerts(selectedDeviceId);
   const { toggleMonitoring } = useCommands();
   const { toast } = useToast();
+  const {
+    receiving: photoReceiving,
+    progress: photoProgress,
+    latestAlert: latestPhotoAlert,
+    alerts: photoAlerts,
+    dismissLatest: dismissPhotoAlert,
+    viewAlert: viewPhotoAlert,
+    viewingAlert: viewingPhotoAlert,
+    dismissViewing: dismissViewingPhoto,
+    removeAlert: removePhotoAlert,
+  } = usePhotoReceiver(selectedDeviceId);
 
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
   const [isDeviceListExpanded, setIsDeviceListExpanded] = useState(false);
@@ -35,6 +49,7 @@ const Index = () => {
   const [isNetworkInfoOpen, setIsNetworkInfoOpen] = useState(false);
   const [isDeviceManageOpen, setIsDeviceManageOpen] = useState(false);
   const [isAlertMode, setIsAlertMode] = useState(false);
+  const [isPhotoHistoryOpen, setIsPhotoHistoryOpen] = useState(false);
 
   const isMonitoring = selectedDevice?.is_monitoring ?? false;
 
@@ -157,6 +172,7 @@ const Index = () => {
       <SideMenu 
         isOpen={isSideMenuOpen}
         onClose={() => setIsSideMenuOpen(false)}
+        onPhotoHistoryClick={() => setIsPhotoHistoryOpen(true)}
       />
 
       {/* Settings Page */}
@@ -207,6 +223,34 @@ const Index = () => {
         isOpen={isDeviceManageOpen}
         onClose={() => setIsDeviceManageOpen(false)}
         onSelectDevice={setSelectedDeviceId}
+      />
+
+      {/* Photo Alert Overlay */}
+      {(latestPhotoAlert || viewingPhotoAlert) && (
+        <PhotoAlertOverlay
+          alert={(viewingPhotoAlert || latestPhotoAlert)!}
+          onDismiss={() => {
+            if (viewingPhotoAlert) {
+              dismissViewingPhoto();
+            } else {
+              dismissPhotoAlert();
+            }
+          }}
+          receiving={photoReceiving}
+          progress={photoProgress}
+        />
+      )}
+
+      {/* Photo Alert History */}
+      <PhotoAlertHistory
+        isOpen={isPhotoHistoryOpen}
+        onClose={() => setIsPhotoHistoryOpen(false)}
+        alerts={photoAlerts}
+        onViewAlert={(alert) => {
+          setIsPhotoHistoryOpen(false);
+          viewPhotoAlert(alert);
+        }}
+        onDeleteAlert={removePhotoAlert}
       />
     </div>
   );
