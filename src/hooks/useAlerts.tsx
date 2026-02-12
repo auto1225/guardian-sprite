@@ -9,29 +9,53 @@ import {
   LocalAlertType 
 } from "@/lib/localActivityLogs";
 
-function playAlertSound() {
+let alarmIntervalId: ReturnType<typeof setInterval> | null = null;
+let alarmAudioCtx: AudioContext | null = null;
+
+function playAlertSoundLoop() {
+  stopAlertSound(); // 기존 경보 중복 방지
   try {
-    const ctx = new AudioContext();
-    // 반복 경보음 (3회)
-    const playBeep = (time: number, freq: number) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = freq;
-      osc.type = "square";
-      gain.gain.value = 0.4;
-      osc.start(ctx.currentTime + time);
-      osc.stop(ctx.currentTime + time + 0.2);
+    alarmAudioCtx = new AudioContext();
+    const playOnce = () => {
+      if (!alarmAudioCtx) return;
+      const ctx = alarmAudioCtx;
+      const playBeep = (time: number, freq: number) => {
+        try {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.value = freq;
+          osc.type = "square";
+          gain.gain.value = 0.4;
+          osc.start(ctx.currentTime + time);
+          osc.stop(ctx.currentTime + time + 0.2);
+        } catch {
+          // context closed
+        }
+      };
+      playBeep(0, 880);
+      playBeep(0.3, 1100);
+      playBeep(0.6, 880);
+      playBeep(0.9, 1100);
+      playBeep(1.2, 880);
+      playBeep(1.5, 1100);
     };
-    playBeep(0, 880);
-    playBeep(0.3, 1100);
-    playBeep(0.6, 880);
-    playBeep(0.9, 1100);
-    playBeep(1.2, 880);
-    playBeep(1.5, 1100);
+    playOnce(); // 즉시 1회
+    alarmIntervalId = setInterval(playOnce, 2500); // 2.5초 간격 반복
   } catch {
     // Audio not available
+  }
+}
+
+function stopAlertSound() {
+  if (alarmIntervalId) {
+    clearInterval(alarmIntervalId);
+    alarmIntervalId = null;
+  }
+  if (alarmAudioCtx) {
+    alarmAudioCtx.close().catch(() => {});
+    alarmAudioCtx = null;
   }
 }
 
@@ -105,7 +129,7 @@ export const useAlerts = (deviceId?: string | null) => {
           activeAlertRef.current = foundAlert;
           
           if (!prevAlert || prevAlert.id !== foundAlert.id) {
-            playAlertSound();
+            playAlertSoundLoop();
             addActivityLog(deviceId, foundAlert.type, {
               title: foundAlert.title,
               message: foundAlert.message,
@@ -116,6 +140,7 @@ export const useAlerts = (deviceId?: string | null) => {
         } else {
           // 노트북이 경보를 해제했으므로 dismissed 목록도 클리어
           dismissedAlertIdsRef.current.clear();
+          stopAlertSound();
           setActiveAlert(null);
           activeAlertRef.current = null;
         }
@@ -133,7 +158,7 @@ export const useAlerts = (deviceId?: string | null) => {
           activeAlertRef.current = alert;
           
           if (!prevAlert || prevAlert.id !== alert.id) {
-            playAlertSound();
+            playAlertSoundLoop();
             addActivityLog(deviceId, alert.type, {
               title: alert.title,
               message: alert.message,
@@ -157,6 +182,7 @@ export const useAlerts = (deviceId?: string | null) => {
       });
 
     return () => {
+      stopAlertSound();
       supabase.removeChannel(channel);
     };
   }, [deviceId, loadAlerts]);
@@ -180,6 +206,7 @@ export const useAlerts = (deviceId?: string | null) => {
 
   // 활성 알림 해제 + Presence로 랩탑에 동기화
   const dismissActiveAlert = useCallback(async () => {
+    stopAlertSound();
     // 해제한 경보 ID 기록 → Presence 재sync 시 무시
     if (activeAlertRef.current) {
       dismissedAlertIdsRef.current.add(activeAlertRef.current.id);
