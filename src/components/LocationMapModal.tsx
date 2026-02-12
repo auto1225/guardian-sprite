@@ -86,10 +86,16 @@ const LocationMapModal = ({ isOpen, onClose, deviceId, deviceName }: LocationMap
         }
       }
 
-      // 노트북에 locate 명령 전송 (metadata.locate_requested 방식)
+      // 노트북에 locate 명령 전송 (기존 metadata 보존)
+      const { data: devMeta } = await supabase
+        .from("devices")
+        .select("metadata")
+        .eq("id", deviceId)
+        .maybeSingle();
+      const existingMeta = (devMeta?.metadata as Record<string, unknown>) || {};
       await supabase
         .from("devices")
-        .update({ metadata: { locate_requested: new Date().toISOString() } })
+        .update({ metadata: { ...existingMeta, locate_requested: new Date().toISOString() } })
         .eq("id", deviceId);
 
       setCommandSent(true);
