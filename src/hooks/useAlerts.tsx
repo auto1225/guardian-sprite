@@ -190,7 +190,7 @@ export const useAlerts = (deviceId?: string | null) => {
       });
 
     return () => {
-      stopAlertSound();
+      // 채널 재연결 시 경보음을 끊지 않음 — 명시적 해제만 stopAlertSound 호출
       supabase.removeChannel(channel);
     };
   }, [deviceId, loadAlerts]);
