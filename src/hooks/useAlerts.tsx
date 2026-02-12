@@ -47,6 +47,7 @@ export const useAlerts = (deviceId?: string | null) => {
   const [alerts, setAlerts] = useState<LocalActivityLog[]>([]);
   const [activeAlert, setActiveAlert] = useState<ActiveAlert | null>(null);
   const activeAlertRef = useRef<ActiveAlert | null>(null);
+  const dismissedAlertIdsRef = useRef<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
 
   // 로컬 저장소에서 알림 로그 로드
@@ -94,6 +95,10 @@ export const useAlerts = (deviceId?: string | null) => {
         }
         
         if (foundAlert) {
+          // 이미 해제한 경보는 무시
+          if (dismissedAlertIdsRef.current.has(foundAlert.id)) {
+            return;
+          }
           console.log("[useAlerts] Active alert from Presence:", foundAlert);
           const prevAlert = activeAlertRef.current;
           setActiveAlert(foundAlert);
@@ -109,6 +114,8 @@ export const useAlerts = (deviceId?: string | null) => {
             loadAlerts();
           }
         } else {
+          // 노트북이 경보를 해제했으므로 dismissed 목록도 클리어
+          dismissedAlertIdsRef.current.clear();
           setActiveAlert(null);
           activeAlertRef.current = null;
         }
@@ -118,6 +125,9 @@ export const useAlerts = (deviceId?: string | null) => {
         console.log("[useAlerts] Broadcast active_alert:", payload);
         const alert = payload?.payload?.active_alert as ActiveAlert | undefined;
         if (alert) {
+          if (dismissedAlertIdsRef.current.has(alert.id)) {
+            return;
+          }
           const prevAlert = activeAlertRef.current;
           setActiveAlert(alert);
           activeAlertRef.current = alert;
@@ -170,6 +180,10 @@ export const useAlerts = (deviceId?: string | null) => {
 
   // 활성 알림 해제 + Presence로 랩탑에 동기화
   const dismissActiveAlert = useCallback(async () => {
+    // 해제한 경보 ID 기록 → Presence 재sync 시 무시
+    if (activeAlertRef.current) {
+      dismissedAlertIdsRef.current.add(activeAlertRef.current.id);
+    }
     setActiveAlert(null);
     activeAlertRef.current = null;
     
