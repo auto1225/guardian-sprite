@@ -56,7 +56,7 @@ const Index = () => {
 
   const isMonitoring = selectedDevice?.is_monitoring ?? false;
 
-  // 경보 해제 상태 리셋
+  // 경보 해제 상태 리셋 - activeAlert 또는 새 사진 경보 시
   useEffect(() => {
     if (activeAlert) {
       setPhoneAlarmDismissed(false);
@@ -66,6 +66,14 @@ const Index = () => {
       setShowFallbackAlarmButtons(false);
     }
   }, [activeAlert]);
+
+  useEffect(() => {
+    if (latestPhotoAlert) {
+      setPhoneAlarmDismissed(false);
+      setRemoteAlarmDismissed(false);
+      setShowFallbackAlarmButtons(false);
+    }
+  }, [latestPhotoAlert?.id]);
 
   const handleToggleMonitoring = async () => {
     if (!selectedDevice) return;
