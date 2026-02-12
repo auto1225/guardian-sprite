@@ -364,6 +364,25 @@ export const useAlerts = (deviceId?: string | null) => {
     }
   }, []);
 
+  /** 컴퓨터 경보음 원격 해제 — 이미 구독된 채널에서 broadcast 전송 */
+  const sendRemoteAlarmOff = useCallback(async () => {
+    const ch = channelRef.current;
+    if (!ch) {
+      console.error("[useAlerts] No subscribed channel for remote_alarm_off");
+      throw new Error("채널 미연결");
+    }
+    await ch.send({
+      type: 'broadcast',
+      event: 'remote_alarm_off',
+      payload: {
+        dismissed_at: new Date().toISOString(),
+        dismissed_by: 'smartphone',
+        remote_alarm_off: true,
+      },
+    });
+    console.log("[useAlerts] remote_alarm_off sent via subscribed channel");
+  }, []);
+
   return {
     alerts,
     activeAlert,
@@ -373,6 +392,7 @@ export const useAlerts = (deviceId?: string | null) => {
     markAsRead,
     markAllAsRead,
     dismissActiveAlert,
+    sendRemoteAlarmOff,
     refreshAlerts: loadAlerts,
   };
 };
