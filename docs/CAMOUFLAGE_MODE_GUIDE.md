@@ -37,14 +37,57 @@ supabase
   .subscribe();
 ```
 
-### 2. 위장 오버레이 구현 (Electron/Tauri)
+### 2. 위장 오버레이 구현
+
+> ⚠️ **중요**: 브라우저의 `requestFullscreen()`은 반드시 사용자 클릭 이벤트 내에서 호출해야 합니다.
+> `useEffect`나 Realtime 콜백에서 직접 호출하면 `Permissions check failed` 에러가 발생합니다.
+> **Electron/Tauri를 사용하는 경우 이 제한이 없으므로, Electron API를 사용하세요.**
+
+#### 방법 A: Electron 사용 시 (권장 — 모니터 전체 덮기 가능)
+
+Realtime 콜백에서 바로 전체화면 + 키오스크 진입이 가능합니다:
+
+```typescript
+// === Main Process (electron main.ts) ===
+import { BrowserWindow, ipcMain } from 'electron';
+
+let mainWindow: BrowserWindow;
+
+ipcMain.on('camouflage:activate', () => {
+  mainWindow.setFullScreen(true);
+  mainWindow.setAlwaysOnTop(true, 'screen-saver'); // 최상위 레벨
+  mainWindow.setKiosk(true);         // 태스크바까지 숨김
+  mainWindow.setClosable(false);
+  mainWindow.setMinimizable(false);
+});
+
+ipcMain.on('camouflage:deactivate', () => {
+  mainWindow.setKiosk(false);
+  mainWindow.setAlwaysOnTop(false);
+  mainWindow.setClosable(true);
+  mainWindow.setMinimizable(true);
+  mainWindow.setFullScreen(false);
+});
+
+// === Renderer Process (React 컴포넌트) ===
+// Realtime 콜백에서 직접 호출 가능 (Electron은 브라우저 권한 제한 없음)
+useEffect(() => {
+  if (camouflageMode) {
+    window.electron.ipcRenderer.send('camouflage:activate');
+  } else {
+    window.electron.ipcRenderer.send('camouflage:deactivate');
+  }
+}, [camouflageMode]);
+```
+
+#### 방법 B: 순수 웹 브라우저 사용 시 (제한적)
+
+`requestFullscreen()`은 사용자 제스처 없이 호출 불가하므로, **검은 오버레이만** 표시합니다.
+(앱 창 영역만 덮이며, 태스크바 등은 숨기지 못합니다)
 
 ```typescript
 function activateCamouflage() {
-  // 1. 전체화면(Fullscreen) 진입 — 모니터 전체를 덮음
-  document.documentElement.requestFullscreen?.().catch(() => {});
-
-  // 2. 검은 오버레이 생성
+  // requestFullscreen()은 호출하지 않음 — Realtime 콜백에서 불가
   const overlay = document.createElement('div');
   overlay.id = 'camouflage-overlay';
   overlay.style.cssText = `
@@ -55,24 +98,16 @@ function activateCamouflage() {
     cursor: none;
   `;
   overlay.tabIndex = 0;
-  
-  // 모든 입력 이벤트 차단 (ESC 포함)
+
   const blockEvent = (e: Event) => {
     e.preventDefault();
     e.stopPropagation();
   };
-  
+
   ['keydown', 'keyup', 'mousedown', 'mouseup', 'mousemove', 'click', 'contextmenu', 'wheel'].forEach(evt => {
     overlay.addEventListener(evt, blockEvent, true);
   });
 
-  // ESC로 전체화면 해제 방지
-  document.addEventListener('fullscreenchange', () => {
-    if (!document.fullscreenElement && document.getElementById('camouflage-overlay')) {
-      document.documentElement.requestFullscreen?.().catch(() => {});
-    }
-  });
-  
   document.body.appendChild(overlay);
   overlay.focus();
 }
@@ -80,34 +115,6 @@ function activateCamouflage() {
 function deactivateCamouflage() {
   const overlay = document.getElementById('camouflage-overlay');
   if (overlay) overlay.remove();
-  
-  // 전체화면 해제
-  if (document.fullscreenElement) {
-    document.exitFullscreen?.().catch(() => {});
-  }
-}
-```
-
-### Electron/Tauri 추가 설정 (권장)
-
-Electron의 경우 더 완벽한 전체화면 제어가 가능합니다:
-
-```typescript
-// Electron main process
-const { BrowserWindow } = require('electron');
-
-function activateCamouflageElectron(win: BrowserWindow) {
-  win.setFullScreen(true);        // 모니터 전체 화면
-  win.setAlwaysOnTop(true);       // 항상 최상위
-  win.setClosable(false);         // 닫기 방지
-  win.setKiosk(true);             // 키오스크 모드 (태스크바 숨김)
-}
-
-function deactivateCamouflageElectron(win: BrowserWindow) {
-  win.setKiosk(false);
-  win.setAlwaysOnTop(false);
-  win.setClosable(true);
-  win.setFullScreen(false);
 }
 ```
 
