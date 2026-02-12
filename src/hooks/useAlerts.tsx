@@ -11,6 +11,9 @@ import {
 
 let alarmIntervalId: ReturnType<typeof setInterval> | null = null;
 let alarmAudioCtx: AudioContext | null = null;
+// 모듈 레벨 — 채널 재연결/컴포넌트 리마운트에도 유지
+const dismissedAlertIds = new Set<string>();
+let lastPlayedAlertId: string | null = null;
 
 function playAlertSoundLoop() {
   stopAlertSound(); // 기존 경보 중복 방지
@@ -79,7 +82,6 @@ export const useAlerts = (deviceId?: string | null) => {
   const [alerts, setAlerts] = useState<LocalActivityLog[]>([]);
   const [activeAlert, setActiveAlert] = useState<ActiveAlert | null>(null);
   const activeAlertRef = useRef<ActiveAlert | null>(null);
-  const dismissedAlertIdsRef = useRef<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
 
   // 로컬 저장소에서 알림 로그 로드
@@ -128,26 +130,33 @@ export const useAlerts = (deviceId?: string | null) => {
         
         if (foundAlert) {
           // 이미 해제한 경보는 무시
-          if (dismissedAlertIdsRef.current.has(foundAlert.id)) {
+          if (dismissedAlertIds.has(foundAlert.id)) {
+            return;
+          }
+          // 이미 같은 경보를 재생 중이면 무시
+          if (lastPlayedAlertId === foundAlert.id) {
+            // 상태만 동기화 (UI 표시용)
+            if (!activeAlertRef.current || activeAlertRef.current.id !== foundAlert.id) {
+              setActiveAlert(foundAlert);
+              activeAlertRef.current = foundAlert;
+            }
             return;
           }
           console.log("[useAlerts] Active alert from Presence:", foundAlert);
-          const prevAlert = activeAlertRef.current;
           setActiveAlert(foundAlert);
           activeAlertRef.current = foundAlert;
-          
-          if (!prevAlert || prevAlert.id !== foundAlert.id) {
-            playAlertSoundLoop();
-            addActivityLog(deviceId, foundAlert.type, {
-              title: foundAlert.title,
-              message: foundAlert.message,
-              alertType: foundAlert.type,
-            });
-            loadAlerts();
-          }
+          lastPlayedAlertId = foundAlert.id;
+          playAlertSoundLoop();
+          addActivityLog(deviceId, foundAlert.type, {
+            title: foundAlert.title,
+            message: foundAlert.message,
+            alertType: foundAlert.type,
+          });
+          loadAlerts();
         } else {
           // 노트북이 경보를 해제했으므로 dismissed 목록도 클리어
-          dismissedAlertIdsRef.current.clear();
+          dismissedAlertIds.clear();
+          lastPlayedAlertId = null;
           stopAlertSound();
           setActiveAlert(null);
           activeAlertRef.current = null;
@@ -158,22 +167,26 @@ export const useAlerts = (deviceId?: string | null) => {
         console.log("[useAlerts] Broadcast active_alert:", payload);
         const alert = payload?.payload?.active_alert as ActiveAlert | undefined;
         if (alert) {
-          if (dismissedAlertIdsRef.current.has(alert.id)) {
+          if (dismissedAlertIds.has(alert.id)) {
             return;
           }
-          const prevAlert = activeAlertRef.current;
+          if (lastPlayedAlertId === alert.id) {
+            if (!activeAlertRef.current || activeAlertRef.current.id !== alert.id) {
+              setActiveAlert(alert);
+              activeAlertRef.current = alert;
+            }
+            return;
+          }
           setActiveAlert(alert);
           activeAlertRef.current = alert;
-          
-          if (!prevAlert || prevAlert.id !== alert.id) {
-            playAlertSoundLoop();
-            addActivityLog(deviceId, alert.type, {
-              title: alert.title,
-              message: alert.message,
-              alertType: alert.type,
-            });
-            loadAlerts();
-          }
+          lastPlayedAlertId = alert.id;
+          playAlertSoundLoop();
+          addActivityLog(deviceId, alert.type, {
+            title: alert.title,
+            message: alert.message,
+            alertType: alert.type,
+          });
+          loadAlerts();
         }
       })
       // remote_alarm_off 수신 시 알림 해제하지 않음 (컴퓨터 경보음만 해제)
@@ -217,7 +230,8 @@ export const useAlerts = (deviceId?: string | null) => {
     stopAlertSound();
     // 해제한 경보 ID 기록 → Presence 재sync 시 무시
     if (activeAlertRef.current) {
-      dismissedAlertIdsRef.current.add(activeAlertRef.current.id);
+      dismissedAlertIds.add(activeAlertRef.current.id);
+      lastPlayedAlertId = null;
     }
     setActiveAlert(null);
     activeAlertRef.current = null;
