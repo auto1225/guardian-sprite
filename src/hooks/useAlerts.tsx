@@ -11,8 +11,7 @@ import {
 
 // ── 전역 경보음 상태 (window에 저장하여 HMR 시에도 추적 가능) ──
 interface AlarmState {
-  ctx: AudioContext | null;
-  intervalId: ReturnType<typeof setInterval> | null;
+  generation: number;       // 매 stop마다 증가 → 좀비 루프 자동 중단
   playing: boolean;
   dismissedIds: Set<string>;
   lastPlayedId: string | null;
@@ -23,8 +22,7 @@ function getAlarmState(): AlarmState {
   const w = window as unknown as { __meercop_alarm?: AlarmState };
   if (!w.__meercop_alarm) {
     w.__meercop_alarm = {
-      ctx: null,
-      intervalId: null,
+      generation: 0,
       playing: false,
       dismissedIds: new Set(),
       lastPlayedId: null,
@@ -34,35 +32,44 @@ function getAlarmState(): AlarmState {
   return w.__meercop_alarm;
 }
 
+// 모든 AudioContext & interval을 전역 배열로 추적
+function getAllContexts(): AudioContext[] {
+  const w = window as any;
+  if (!w.__meercop_ctxs) w.__meercop_ctxs = [];
+  return w.__meercop_ctxs;
+}
+function getAllIntervals(): ReturnType<typeof setInterval>[] {
+  const w = window as any;
+  if (!w.__meercop_ivals) w.__meercop_ivals = [];
+  return w.__meercop_ivals;
+}
+
 /** 모든 경보음을 즉시 중지 */
 function stopAlertSound() {
   const s = getAlarmState();
-  if (s.intervalId !== null) {
-    clearInterval(s.intervalId);
-    s.intervalId = null;
-  }
-  // 모든 전역 인터벌도 정리 (좀비 방지)
-  if ((window as any).__meercop_intervals) {
-    for (const id of (window as any).__meercop_intervals) {
-      clearInterval(id);
-    }
-    (window as any).__meercop_intervals = [];
-  }
-  if (s.ctx) {
-    try { s.ctx.close().catch(() => {}); } catch { /* already closed */ }
-    s.ctx = null;
-  }
-  if (s.playing) {
-    console.log("[useAlerts] 🔇 Alarm stopped");
-  }
+  s.generation++;  // 진행 중인 모든 playOnce 루프 무효화
   s.playing = false;
+
+  // 모든 인터벌 정리
+  for (const id of getAllIntervals()) {
+    clearInterval(id);
+  }
+  (window as any).__meercop_ivals = [];
+
+  // 모든 AudioContext 정리
+  for (const ctx of getAllContexts()) {
+    try { ctx.close().catch(() => {}); } catch { /* already closed */ }
+  }
+  (window as any).__meercop_ctxs = [];
+
+  console.log("[useAlerts] 🔇 Alarm stopped (gen:", s.generation, ")");
 }
 
 function playAlertSoundLoop() {
   const s = getAlarmState();
   if (s.muted) {
     console.log("[useAlerts] ⏭️ Alarm muted, skipping");
-    stopAlertSound(); // muted면 혹시 남아있는 것도 정리
+    stopAlertSound();
     return;
   }
   if (s.playing) {
@@ -72,18 +79,21 @@ function playAlertSoundLoop() {
   stopAlertSound();
 
   s.playing = true;
-  console.log("[useAlerts] 🔊 Starting alarm");
+  const myGen = s.generation; // 이 루프의 세대 번호
+  console.log("[useAlerts] 🔊 Starting alarm (gen:", myGen, ")");
 
   try {
     const ctx = new AudioContext();
-    s.ctx = ctx;
+    getAllContexts().push(ctx);
 
     const playOnce = () => {
       const cur = getAlarmState();
-      if (!cur.playing || cur.muted || !cur.ctx || cur.ctx.state === 'closed') {
-        stopAlertSound();
+      // 세대가 바뀌었으면 이 루프는 좀비 → 즉시 중단
+      if (cur.generation !== myGen || cur.muted || !cur.playing) {
         return;
       }
+      if (ctx.state === 'closed') return;
+      
       const beep = (time: number, freq: number) => {
         try {
           const osc = ctx.createOscillator();
@@ -107,10 +117,7 @@ function playAlertSoundLoop() {
 
     playOnce();
     const intervalId = setInterval(playOnce, 2500);
-    s.intervalId = intervalId;
-    // 좀비 방지용 전역 추적
-    if (!(window as any).__meercop_intervals) (window as any).__meercop_intervals = [];
-    (window as any).__meercop_intervals.push(intervalId);
+    getAllIntervals().push(intervalId);
   } catch {
     stopAlertSound();
   }
@@ -287,10 +294,10 @@ export const useAlerts = (deviceId?: string | null) => {
 
   const dismissActiveAlert = useCallback(async () => {
     stopAlertSound();
+    const s = getAlarmState();
     if (activeAlertRef.current) {
-      const s = getAlarmState();
       s.dismissedIds.add(activeAlertRef.current.id);
-      s.lastPlayedId = null;
+      // lastPlayedId를 유지하여 presence re-sync 시 같은 경보를 새 경보로 인식하지 않도록 함
     }
     if (mountedRef.current) setActiveAlert(null);
     activeAlertRef.current = null;
@@ -298,7 +305,6 @@ export const useAlerts = (deviceId?: string | null) => {
     const did = deviceIdRef.current;
     if (!did) return;
     
-    // 기존 채널로 dismiss 동기화
     try {
       const ch = channelRef.current;
       if (ch) {
