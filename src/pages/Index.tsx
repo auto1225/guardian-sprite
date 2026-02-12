@@ -190,14 +190,13 @@ const Index = () => {
             }
           }}
           disabled={!selectedDevice}
-          className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full font-bold text-sm transition-all shadow-lg ${
+          className={`flex items-center justify-center w-11 h-11 rounded-full font-bold transition-all shadow-lg ${
             (selectedDevice?.metadata as Record<string, unknown>)?.camouflage_mode
               ? 'bg-gray-900 text-white border-2 border-white/30'
               : 'bg-muted text-muted-foreground'
           }`}
         >
-          <span className="text-base">🖥️</span>
-          <span>{(selectedDevice?.metadata as Record<string, unknown>)?.camouflage_mode ? '위장 ON' : '위장'}</span>
+          <span className="text-lg">🖥️</span>
         </button>
       </div>
 
