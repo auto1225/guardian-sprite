@@ -25,7 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const { devices, selectedDevice, selectedDeviceId, setSelectedDeviceId, isLoading, refreshDeviceStatus } = useDevices();
-  const { alerts, activeAlert, unreadCount, dismissActiveAlert } = useAlerts(selectedDeviceId);
+  const { alerts, activeAlert, unreadCount, dismissActiveAlert, sendRemoteAlarmOff } = useAlerts(selectedDeviceId);
   const isMonitoring = selectedDevice?.is_monitoring ?? false;
   const { toggleMonitoring } = useCommands();
   const { toast } = useToast();
@@ -188,13 +188,7 @@ const Index = () => {
               <button
                 onClick={async () => {
                   try {
-                    const channel = supabase.channel(`device-alerts-${selectedDevice.id}`);
-                    await channel.send({
-                      type: 'broadcast',
-                      event: 'remote_alarm_off',
-                      payload: { dismissed_at: new Date().toISOString(), remote_alarm_off: true },
-                    });
-                    console.log("[Index] remote_alarm_off broadcast sent");
+                    await sendRemoteAlarmOff();
                     setRemoteAlarmDismissed(true);
                     toast({ title: "컴퓨터 경보 해제", description: "컴퓨터의 경보음이 해제되었습니다." });
                     if (phoneAlarmDismissed) setShowFallbackAlarmButtons(false);
@@ -328,13 +322,7 @@ const Index = () => {
           }}
           onDismissRemoteAlarm={selectedDevice ? async () => {
             try {
-              const channel = supabase.channel(`device-alerts-${selectedDevice.id}`);
-              await channel.send({
-                type: 'broadcast',
-                event: 'remote_alarm_off',
-                payload: { dismissed_at: new Date().toISOString(), remote_alarm_off: true },
-              });
-              console.log("[Index] remote_alarm_off broadcast sent");
+              await sendRemoteAlarmOff();
               setRemoteAlarmDismissed(true);
               toast({ title: "컴퓨터 경보 해제", description: "컴퓨터의 경보음이 해제되었습니다." });
             } catch (err) {
