@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -482,9 +483,9 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
         <DialogContent style={{ background: "hsl(224, 36%, 28%)", borderColor: "hsl(224, 30%, 35%)" }}>
           <DialogHeader>
             <DialogTitle className="text-white">닉네임 변경</DialogTitle>
+            <DialogDescription className="text-white/50">변경할 닉네임을 입력해 주세요.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-white/60 text-sm">변경할 닉네임을 입력해 주세요.</p>
             <Input
               value={tempNickname}
               onChange={(e) => setTempNickname(e.target.value)}
@@ -503,6 +504,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
         <DialogContent style={{ background: "hsl(224, 36%, 28%)", borderColor: "hsl(224, 30%, 35%)" }}>
           <DialogHeader>
             <DialogTitle className="text-white">경보해제 비밀번호 변경</DialogTitle>
+            <DialogDescription className="text-white/50">4자리 숫자를 입력해 주세요.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex justify-center gap-3">
@@ -550,6 +552,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
         <DialogContent style={{ background: "hsl(224, 36%, 28%)", borderColor: "hsl(224, 30%, 35%)" }} className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-white">경보음 선택</DialogTitle>
+            <DialogDescription className="text-white/50">사용할 경보음을 선택하세요.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             {ALARM_SOUNDS.map((sound) => (
