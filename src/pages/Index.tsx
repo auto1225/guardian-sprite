@@ -74,13 +74,12 @@ const Index = () => {
     }
   };
 
-  const handleStatusIconClick = async (type: "laptop" | "meercop" | "network" | "camera") => {
+  const handleStatusIconClick = async (type: "laptop" | "meercop" | "network" | "camera" | "settings") => {
     switch (type) {
       case "laptop":
         setIsLocationMapOpen(true);
         break;
       case "camera":
-        // 카메라 페이지 열기 전 최신 상태 새로고침
         if (selectedDeviceId) {
           await refreshDeviceStatus(selectedDeviceId);
         }
@@ -93,6 +92,11 @@ const Index = () => {
         break;
       case "network":
         setIsNetworkInfoOpen(true);
+        break;
+      case "settings":
+        if (selectedDevice) {
+          setIsSettingsOpen(true);
+        }
         break;
     }
   };
