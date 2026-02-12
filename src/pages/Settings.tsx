@@ -2,7 +2,7 @@ import { ArrowLeft, ChevronRight, Play, Square, Upload, VolumeX, Volume2 } from 
 import { useState, useEffect, useRef } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
-import { stopAlertSound, getAlarmState } from "@/hooks/useAlerts";
+import { stopAlertSound, getAlarmState, setAlarmMuted } from "@/hooks/useAlerts";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -348,11 +348,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
               <Switch
                 checked={!getAlarmState().muted}
                 onCheckedChange={(v) => {
-                  const s = getAlarmState();
-                  s.muted = !v;
-                  if (!v) {
-                    stopAlertSound();
-                  }
+                  setAlarmMuted(!v);
                   toast({ title: v ? "경보음 활성화" : "경보음 비활성화", description: v ? "경보 시 경보음이 울립니다." : "경보음이 꺼졌습니다. 알림은 계속 수신됩니다." });
                 }}
               />

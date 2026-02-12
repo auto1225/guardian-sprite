@@ -21,15 +21,26 @@ interface AlarmState {
 function getAlarmState(): AlarmState {
   const w = window as unknown as { __meercop_alarm?: AlarmState };
   if (!w.__meercop_alarm) {
+    // localStorage에서 muted 상태 복원
+    let savedMuted = false;
+    try { savedMuted = localStorage.getItem('meercop_alarm_muted') === 'true'; } catch {}
     w.__meercop_alarm = {
       generation: 0,
       playing: false,
       dismissedIds: new Set(),
       lastPlayedId: null,
-      muted: false,
+      muted: savedMuted,
     };
   }
   return w.__meercop_alarm;
+}
+
+/** muted 상태를 설정하고 localStorage에 영구 저장 */
+function setAlarmMuted(muted: boolean) {
+  const s = getAlarmState();
+  s.muted = muted;
+  try { localStorage.setItem('meercop_alarm_muted', String(muted)); } catch {}
+  if (muted) stopAlertSound();
 }
 
 // 모든 AudioContext & interval을 전역 배열로 추적
@@ -126,7 +137,7 @@ function playAlertSoundLoop() {
 // 모듈 로드 시 좀비 정리
 stopAlertSound();
 
-export { stopAlertSound, getAlarmState };
+export { stopAlertSound, getAlarmState, setAlarmMuted };
 
 export interface ActiveAlert {
   id: string;
