@@ -86,18 +86,13 @@ const LocationMapModal = ({ isOpen, onClose, deviceId, deviceName }: LocationMap
         }
       }
 
-      // 노트북에 locate 명령 전송 (최신 위치 요청)
-      const { error: cmdError } = await supabase
-        .from("commands")
-        .insert({
-          device_id: deviceId,
-          command_type: "locate" as const,
-          status: "pending" as const,
-        });
+      // 노트북에 locate 명령 전송 (metadata.locate_requested 방식)
+      await supabase
+        .from("devices")
+        .update({ metadata: { locate_requested: new Date().toISOString() } })
+        .eq("id", deviceId);
 
-      if (!cmdError) {
-        setCommandSent(true);
-      }
+      setCommandSent(true);
 
       // 기존 위치가 없으면 "요청 중" 표시
       if (!deviceData?.latitude) {
