@@ -41,6 +41,13 @@ function stopAlertSound() {
     clearInterval(s.intervalId);
     s.intervalId = null;
   }
+  // 모든 전역 인터벌도 정리 (좀비 방지)
+  if ((window as any).__meercop_intervals) {
+    for (const id of (window as any).__meercop_intervals) {
+      clearInterval(id);
+    }
+    (window as any).__meercop_intervals = [];
+  }
   if (s.ctx) {
     try { s.ctx.close().catch(() => {}); } catch { /* already closed */ }
     s.ctx = null;
@@ -55,14 +62,13 @@ function playAlertSoundLoop() {
   const s = getAlarmState();
   if (s.muted) {
     console.log("[useAlerts] ⏭️ Alarm muted, skipping");
+    stopAlertSound(); // muted면 혹시 남아있는 것도 정리
     return;
   }
-  // 이미 재생 중이면 중복 재생 방지
   if (s.playing) {
     console.log("[useAlerts] ⏭️ Already playing, skipping");
     return;
   }
-  // 혹시 남아있는 이전 리소스 정리
   stopAlertSound();
 
   s.playing = true;
@@ -74,7 +80,7 @@ function playAlertSoundLoop() {
 
     const playOnce = () => {
       const cur = getAlarmState();
-      if (!cur.playing || !cur.ctx || cur.ctx.state === 'closed') {
+      if (!cur.playing || cur.muted || !cur.ctx || cur.ctx.state === 'closed') {
         stopAlertSound();
         return;
       }
@@ -100,7 +106,11 @@ function playAlertSoundLoop() {
     };
 
     playOnce();
-    s.intervalId = setInterval(playOnce, 2500);
+    const intervalId = setInterval(playOnce, 2500);
+    s.intervalId = intervalId;
+    // 좀비 방지용 전역 추적
+    if (!(window as any).__meercop_intervals) (window as any).__meercop_intervals = [];
+    (window as any).__meercop_intervals.push(intervalId);
   } catch {
     stopAlertSound();
   }
