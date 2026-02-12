@@ -9,69 +9,76 @@ import {
   LocalAlertType 
 } from "@/lib/localActivityLogs";
 
-// window 전역에 경보음 상태를 저장 — HMR/핫 리로드 후에도 이전 경보음 추적 가능
+// ── 전역 경보음 상태 (window에 저장하여 HMR 시에도 추적 가능) ──
 interface AlarmState {
-  contexts: AudioContext[];
-  intervals: ReturnType<typeof setInterval>[];
+  ctx: AudioContext | null;
+  intervalId: ReturnType<typeof setInterval> | null;
   playing: boolean;
   dismissedIds: Set<string>;
   lastPlayedId: string | null;
-  muted: boolean; // 경보음 비활성화 설정
+  muted: boolean;
 }
 
 function getAlarmState(): AlarmState {
   const w = window as unknown as { __meercop_alarm?: AlarmState };
   if (!w.__meercop_alarm) {
     w.__meercop_alarm = {
-      contexts: [],
-      intervals: [],
+      ctx: null,
+      intervalId: null,
       playing: false,
       dismissedIds: new Set(),
       lastPlayedId: null,
-      muted: w.__meercop_alarm?.muted ?? false,
+      muted: false,
     };
   }
   return w.__meercop_alarm;
 }
 
+/** 모든 경보음을 즉시 중지 */
 function stopAlertSound() {
-  const state = getAlarmState();
-  if (state.playing || state.contexts.length > 0 || state.intervals.length > 0) {
-    console.log("[useAlerts] 🔇 Stopping ALL alarm sounds", {
-      contexts: state.contexts.length,
-      intervals: state.intervals.length,
-    });
+  const s = getAlarmState();
+  if (s.intervalId !== null) {
+    clearInterval(s.intervalId);
+    s.intervalId = null;
   }
-  state.playing = false;
-  for (const id of state.intervals) {
-    clearInterval(id);
+  if (s.ctx) {
+    try { s.ctx.close().catch(() => {}); } catch { /* already closed */ }
+    s.ctx = null;
   }
-  state.intervals.length = 0;
-  for (const ctx of state.contexts) {
-    try { ctx.close().catch(() => {}); } catch { /* already closed */ }
+  if (s.playing) {
+    console.log("[useAlerts] 🔇 Alarm stopped");
   }
-  state.contexts.length = 0;
+  s.playing = false;
 }
 
 function playAlertSoundLoop() {
-  const state = getAlarmState();
-  if (state.playing || state.muted) {
-    console.log("[useAlerts] ⏭️ Alarm skipped", { playing: state.playing, muted: state.muted });
+  const s = getAlarmState();
+  if (s.muted) {
+    console.log("[useAlerts] ⏭️ Alarm muted, skipping");
     return;
   }
-  stopAlertSound(); // 이전 핫 리로드의 좀비 경보음도 정리
-  state.playing = true;
-  console.log("[useAlerts] 🔊 Starting alarm sound loop");
+  // 이미 재생 중이면 중복 재생 방지
+  if (s.playing) {
+    console.log("[useAlerts] ⏭️ Already playing, skipping");
+    return;
+  }
+  // 혹시 남아있는 이전 리소스 정리
+  stopAlertSound();
+
+  s.playing = true;
+  console.log("[useAlerts] 🔊 Starting alarm");
+
   try {
     const ctx = new AudioContext();
-    state.contexts.push(ctx);
+    s.ctx = ctx;
+
     const playOnce = () => {
-      const s = getAlarmState();
-      if (ctx.state === 'closed' || !s.playing) {
+      const cur = getAlarmState();
+      if (!cur.playing || !cur.ctx || cur.ctx.state === 'closed') {
         stopAlertSound();
         return;
       }
-      const playBeep = (time: number, freq: number) => {
+      const beep = (time: number, freq: number) => {
         try {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
@@ -82,24 +89,24 @@ function playAlertSoundLoop() {
           gain.gain.value = 0.4;
           osc.start(ctx.currentTime + time);
           osc.stop(ctx.currentTime + time + 0.2);
-        } catch { /* context closed */ }
+        } catch { /* closed */ }
       };
-      playBeep(0, 880);
-      playBeep(0.3, 1100);
-      playBeep(0.6, 880);
-      playBeep(0.9, 1100);
-      playBeep(1.2, 880);
-      playBeep(1.5, 1100);
+      beep(0, 880);
+      beep(0.3, 1100);
+      beep(0.6, 880);
+      beep(0.9, 1100);
+      beep(1.2, 880);
+      beep(1.5, 1100);
     };
+
     playOnce();
-    const intervalId = setInterval(playOnce, 2500);
-    state.intervals.push(intervalId);
+    s.intervalId = setInterval(playOnce, 2500);
   } catch {
-    getAlarmState().playing = false;
+    stopAlertSound();
   }
 }
 
-// 모듈 로드 시 이전 핫 리로드에서 남은 좀비 경보음 즉시 정리
+// 모듈 로드 시 좀비 정리
 stopAlertSound();
 
 export { stopAlertSound, getAlarmState };
@@ -117,43 +124,51 @@ export const useAlerts = (deviceId?: string | null) => {
   const [activeAlert, setActiveAlert] = useState<ActiveAlert | null>(null);
   const activeAlertRef = useRef<ActiveAlert | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const deviceIdRef = useRef(deviceId);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 로컬 저장소에서 알림 로그 로드
+  // deviceId를 ref로 추적 (effect 의존성에서 제거하기 위함)
+  deviceIdRef.current = deviceId;
+
   const loadAlerts = useCallback(() => {
-    if (!deviceId) {
+    const did = deviceIdRef.current;
+    if (!did) {
       setAlerts([]);
       setIsLoading(false);
       return;
     }
-    
-    const logs = getAlertLogs(deviceId, 50);
+    const logs = getAlertLogs(did, 50);
     setAlerts(logs);
     setIsLoading(false);
-  }, [deviceId]);
+  }, []); // 의존성 없음 — deviceIdRef 사용
 
-  // 읽지 않은 알림 개수
   const unreadCount = alerts.filter(a => !a.is_read).length;
 
   // 초기 로드
   useEffect(() => {
     loadAlerts();
-  }, [loadAlerts]);
+  }, [deviceId]); // deviceId 변경 시 다시 로드
 
-  // Presence + Broadcast 채널 구독
+  // ── 채널 구독 (deviceId가 변경될 때만 재생성) ──
   useEffect(() => {
     if (!deviceId) return;
 
+    // 이전 채널이 남아있으면 제거
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
     const channel = supabase.channel(`device-alerts-${deviceId}`);
     channelRef.current = channel;
+
     channel
       .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState();
-        console.log("[useAlerts] Presence sync:", state);
+        const presState = channel.presenceState();
         
         let foundAlert: ActiveAlert | null = null;
-        for (const key of Object.keys(state)) {
-          const entries = state[key] as Array<{ active_alert?: ActiveAlert }>;
+        for (const key of Object.keys(presState)) {
+          const entries = presState[key] as Array<{ active_alert?: ActiveAlert }>;
           for (const entry of entries) {
             if (entry.active_alert) {
               foundAlert = entry.active_alert;
@@ -165,26 +180,27 @@ export const useAlerts = (deviceId?: string | null) => {
         
         if (foundAlert) {
           const s = getAlarmState();
-          if (s.dismissedIds.has(foundAlert.id)) {
-            return;
-          }
+          if (s.dismissedIds.has(foundAlert.id)) return;
           if (s.lastPlayedId === foundAlert.id) {
+            // 같은 경보 — UI만 동기화
             if (!activeAlertRef.current || activeAlertRef.current.id !== foundAlert.id) {
               setActiveAlert(foundAlert);
               activeAlertRef.current = foundAlert;
             }
             return;
           }
-          console.log("[useAlerts] Active alert from Presence:", foundAlert);
+          console.log("[useAlerts] New alert from Presence:", foundAlert.id);
           setActiveAlert(foundAlert);
           activeAlertRef.current = foundAlert;
           s.lastPlayedId = foundAlert.id;
           playAlertSoundLoop();
-          addActivityLog(deviceId, foundAlert.type, {
-            title: foundAlert.title,
-            message: foundAlert.message,
-            alertType: foundAlert.type,
-          });
+          try {
+            addActivityLog(deviceId, foundAlert.type, {
+              title: foundAlert.title,
+              message: foundAlert.message,
+              alertType: foundAlert.type,
+            });
+          } catch { /* storage quota */ }
           loadAlerts();
         } else {
           const s = getAlarmState();
@@ -195,15 +211,11 @@ export const useAlerts = (deviceId?: string | null) => {
           activeAlertRef.current = null;
         }
       })
-      // Broadcast로 전달되는 active_alert도 수신
       .on('broadcast', { event: 'active_alert' }, (payload) => {
-        console.log("[useAlerts] Broadcast active_alert:", payload);
         const alert = payload?.payload?.active_alert as ActiveAlert | undefined;
         if (alert) {
           const s = getAlarmState();
-          if (s.dismissedIds.has(alert.id)) {
-            return;
-          }
+          if (s.dismissedIds.has(alert.id)) return;
           if (s.lastPlayedId === alert.id) {
             if (!activeAlertRef.current || activeAlertRef.current.id !== alert.id) {
               setActiveAlert(alert);
@@ -215,24 +227,23 @@ export const useAlerts = (deviceId?: string | null) => {
           activeAlertRef.current = alert;
           s.lastPlayedId = alert.id;
           playAlertSoundLoop();
-          addActivityLog(deviceId, alert.type, {
-            title: alert.title,
-            message: alert.message,
-            alertType: alert.type,
-          });
+          try {
+            addActivityLog(deviceId, alert.type, {
+              title: alert.title,
+              message: alert.message,
+              alertType: alert.type,
+            });
+          } catch { /* storage quota */ }
           loadAlerts();
         }
       })
-      // remote_alarm_off 수신 시 알림 해제하지 않음 (컴퓨터 경보음만 해제)
       .on('broadcast', { event: 'remote_alarm_off' }, () => {
         console.log("[useAlerts] remote_alarm_off received (no-op on phone)");
       })
       .subscribe(async (status) => {
         console.log("[useAlerts] Channel status:", status);
         if (status === 'SUBSCRIBED') {
-          // Presence에 참여하여 채널 연결 유지
           await channel.track({ role: 'phone', joined_at: new Date().toISOString() });
-          console.log("[useAlerts] Tracked presence as phone");
         }
       });
 
@@ -240,9 +251,8 @@ export const useAlerts = (deviceId?: string | null) => {
       channelRef.current = null;
       supabase.removeChannel(channel);
     };
-  }, [deviceId, loadAlerts]);
+  }, [deviceId]); // loadAlerts를 의존성에서 제거!
 
-  // 알림 읽음 처리
   const markAsRead = {
     mutate: (alertId: string) => {
       markLogAsRead(alertId);
@@ -252,14 +262,14 @@ export const useAlerts = (deviceId?: string | null) => {
 
   const markAllAsRead = {
     mutate: () => {
-      if (deviceId) {
-        markAllLogsAsRead(deviceId);
+      const did = deviceIdRef.current;
+      if (did) {
+        markAllLogsAsRead(did);
         loadAlerts();
       }
     },
   };
 
-  // 활성 알림 해제 + 기존 채널의 Presence로 랩탑에 동기화
   const dismissActiveAlert = useCallback(async () => {
     stopAlertSound();
     if (activeAlertRef.current) {
@@ -270,9 +280,10 @@ export const useAlerts = (deviceId?: string | null) => {
     setActiveAlert(null);
     activeAlertRef.current = null;
     
-    if (!deviceId) return;
+    const did = deviceIdRef.current;
+    if (!did) return;
     
-    // 기존 채널을 재사용하여 dismiss 동기화 (새 채널 생성 금지 — 좀비 경보 원인)
+    // 기존 채널로 dismiss 동기화
     try {
       const ch = channelRef.current;
       if (ch) {
@@ -281,14 +292,12 @@ export const useAlerts = (deviceId?: string | null) => {
           active_alert: null,
           dismissed_at: new Date().toISOString(),
         });
-        console.log("[useAlerts] Dismiss synced via existing channel");
-      } else {
-        console.warn("[useAlerts] No channel ref for dismiss sync");
+        console.log("[useAlerts] Dismiss synced");
       }
     } catch (err) {
-      console.error("[useAlerts] Failed to sync dismiss:", err);
+      console.error("[useAlerts] Dismiss sync failed:", err);
     }
-  }, [deviceId]);
+  }, []);
 
   return {
     alerts,
