@@ -2,17 +2,17 @@ import { useEffect, useState } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { useCommands } from "@/hooks/useCommands";
 import { useToast } from "@/hooks/use-toast";
-import { LocalActivityLog } from "@/lib/localActivityLogs";
+import { ActiveAlert } from "@/hooks/useAlerts";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 
 interface AlertModeProps {
   device: Device;
-  latestAlert: LocalActivityLog | null;
+  activeAlert: ActiveAlert;
   onDismiss: () => void;
 }
 
-const AlertMode = ({ device, latestAlert, onDismiss }: AlertModeProps) => {
+const AlertMode = ({ device, activeAlert, onDismiss }: AlertModeProps) => {
   const { sendCommand } = useCommands();
   const { toast } = useToast();
   const [capturedImages, setCapturedImages] = useState<string[]>([]);
@@ -70,8 +70,13 @@ const AlertMode = ({ device, latestAlert, onDismiss }: AlertModeProps) => {
       <div className="flex-1 flex flex-col items-center justify-center px-4">
         <div className="bg-destructive-foreground/20 rounded-2xl p-6 text-center max-w-sm">
           <p className="text-destructive-foreground font-bold text-lg">
-            노트북에 충격이 감지 되었습니다. 확인해주세요.
+            {activeAlert.title}
           </p>
+          {activeAlert.message && (
+            <p className="text-destructive-foreground/80 text-sm mt-2">
+              {activeAlert.message}
+            </p>
+          )}
         </div>
 
         {/* Character or alert animation could go here */}

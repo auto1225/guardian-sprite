@@ -25,7 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const { devices, selectedDevice, selectedDeviceId, setSelectedDeviceId, isLoading, refreshDeviceStatus } = useDevices();
-  const { alerts, unreadCount } = useAlerts(selectedDeviceId);
+  const { alerts, activeAlert, unreadCount, dismissActiveAlert } = useAlerts(selectedDeviceId);
   const { toggleMonitoring } = useCommands();
   const { toast } = useToast();
   const {
@@ -53,14 +53,12 @@ const Index = () => {
 
   const isMonitoring = selectedDevice?.is_monitoring ?? false;
 
-  // Check for active alerts (로컬 저장소 기반)
-  const latestAlert = alerts.find((a) => !a.is_read && a.alert_type === "intrusion");
-  
+  // Check for active alerts (Presence 기반)
   useEffect(() => {
-    if (latestAlert && selectedDevice?.status === "alert") {
+    if (activeAlert) {
       setIsAlertMode(true);
     }
-  }, [latestAlert, selectedDevice?.status]);
+  }, [activeAlert]);
 
   const handleToggleMonitoring = async () => {
     if (!selectedDevice) return;
@@ -108,13 +106,16 @@ const Index = () => {
     );
   }
 
-  // Alert mode overlay
-  if (isAlertMode && selectedDevice && latestAlert) {
+  // Alert mode overlay (Presence 기반 activeAlert)
+  if (isAlertMode && selectedDevice && activeAlert) {
     return (
       <AlertMode
         device={selectedDevice}
-        latestAlert={latestAlert}
-        onDismiss={() => setIsAlertMode(false)}
+        activeAlert={activeAlert}
+        onDismiss={() => {
+          setIsAlertMode(false);
+          dismissActiveAlert();
+        }}
       />
     );
   }
