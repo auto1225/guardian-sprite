@@ -71,56 +71,46 @@ triggerAlert("intrusion", "덮개 열림!", "노트북 덮개가 열렸습니다
 
 ## 1. Presence 채널 구독 (노트북 앱 시작 시)
 
-노트북 앱은 시작 시 자신의 `device_id` 기반 Presence 채널을 구독하고, 원격 해제 신호를 감지해야 합니다.
+노트북 앱은 시작 시 자신의 `device_id` 기반 채널을 구독하고, **Broadcast** 이벤트로 원격 해제 신호를 감지해야 합니다.
+
+> ⚠️ **Presence가 아닌 Broadcast를 사용합니다.** Presence는 상태 동기화에 적합하지만, 일회성 명령(경보 해제)에는 Broadcast가 더 안정적입니다.
 
 ```javascript
 const DEVICE_ID = "your-device-id-here";
 const channel = supabase.channel(`device-alerts-${DEVICE_ID}`);
 
 channel
-  .on('presence', { event: 'sync' }, () => {
-    const state = channel.presenceState();
-    
-    for (const key of Object.keys(state)) {
-      const entries = state[key];
-      for (const entry of entries) {
-        
-        // ✅ 원격 경보음 해제 신호 감지
-        if (entry.remote_alarm_off === true) {
-          console.log("[Laptop] 원격 경보 해제 신호 수신:", entry.dismissed_at);
-          stopAlarmSound();  // 경보음 즉시 중단 (PIN 불필요)
-        }
-        
-        // ✅ 전체 경보 해제 신호 감지 (스마트폰의 "경보 해제" 버튼)
-        if (entry.active_alert === null && entry.dismissed_at) {
-          console.log("[Laptop] 전체 경보 해제 신호 수신");
-          stopAlarmSound();
-          clearAlertState();
-        }
-      }
-    }
+  .on('broadcast', { event: 'remote_alarm_off' }, (payload) => {
+    // ✅ 스마트폰에서 원격 경보 해제 신호 수신
+    console.log("[Laptop] 원격 경보 해제 신호 수신:", payload);
+    stopAlarmSound();   // 경보음 즉시 중단 (PIN 불필요)
+    clearAlertState();  // 경보 UI 해제
   })
   .subscribe();
 ```
 
 ---
 
-## 2. 원격 해제 시 스마트폰이 전송하는 데이터
+## 2. 스마트폰이 전송하는 Broadcast 데이터
 
-스마트폰에서 "🔇 컴퓨터 경보음 해제" 버튼을 누르면:
+스마트폰에서 "🔇 컴퓨터 경보음 해제" 버튼을 누르면 **Broadcast** 이벤트가 전송됩니다:
 
-```json
-{
-  "active_alert": null,
-  "dismissed_at": "2026-02-12T19:27:58.512Z",
-  "remote_alarm_off": true
-}
+```javascript
+// 스마트폰 → 노트북 (Broadcast)
+channel.send({
+  type: 'broadcast',
+  event: 'remote_alarm_off',
+  payload: {
+    dismissed_at: "2026-02-12T19:27:58.512Z",
+    remote_alarm_off: true,
+  },
+});
 ```
 
 | 필드 | 타입 | 설명 |
 |------|------|------|
-| `remote_alarm_off` | `boolean` | `true`이면 컴퓨터의 경보음만 즉시 해제 |
-| `active_alert` | `null` | 경보 상태 해제됨을 의미 |
+| `event` | `string` | `"remote_alarm_off"` — 이벤트 이름 |
+| `remote_alarm_off` | `boolean` | `true`이면 경보음 즉시 해제 |
 | `dismissed_at` | `string (ISO 8601)` | 해제 시각 |
 
 ---
