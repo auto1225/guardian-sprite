@@ -55,15 +55,15 @@ const ALARM_SOUNDS: { id: string; label: string; freq: number[]; pattern: number
 
 const DEFAULT_SENSOR_SETTINGS: SensorSettings = {
   deviceType: "laptop",
-  lidClosed: true,
-  camera: true,
+  lidClosed: false,
+  camera: false,
   microphone: false,
-  keyboard: true,
+  keyboard: false,
   keyboardType: "wired",
-  mouse: true,
+  mouse: false,
   mouseType: "wired",
-  usb: true,
-  power: true,
+  usb: false,
+  power: false,
 };
 
 async function playBuiltinSound(sound: typeof ALARM_SOUNDS[number], duration = 2): Promise<{ stop: () => void }> {
@@ -125,7 +125,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
       : { ...DEFAULT_SENSOR_SETTINGS, deviceType: device.device_type as "laptop" | "desktop" };
   });
   const [motionSensitivity, setMotionSensitivity] = useState<MotionSensitivity>(
-    (meta.motionSensitivity as MotionSensitivity) || "normal"
+    (meta.motionSensitivity as MotionSensitivity) || "insensitive"
   );
 
   const [showNicknameDialog, setShowNicknameDialog] = useState(false);
@@ -142,7 +142,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
     setCustomSoundName((m.custom_sound_name as string) || "");
     const saved = m.sensorSettings as SensorSettings | undefined;
     if (saved) setSensorSettings({ ...DEFAULT_SENSOR_SETTINGS, ...saved });
-    setMotionSensitivity((m.motionSensitivity as MotionSensitivity) || "normal");
+    setMotionSensitivity((m.motionSensitivity as MotionSensitivity) || "insensitive");
   }, [device]);
 
   // Stop any playing sounds on unmount / close
@@ -325,27 +325,29 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
               <span className="text-white/50 font-bold text-xs uppercase tracking-wider">감지 센서 설정</span>
             </div>
 
-            {/* Motion Sensitivity */}
-            <div className="px-4 py-4">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-white font-medium text-sm">카메라 모션 민감도</span>
+            {/* Motion Sensitivity - only when camera is enabled */}
+            {sensorSettings.camera && (
+              <div className="px-4 py-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-white font-medium text-sm">카메라 모션 민감도</span>
+                </div>
+                <div className="flex gap-2">
+                  {(Object.keys(SENSITIVITY_MAP) as MotionSensitivity[]).map((key) => (
+                    <button
+                      key={key}
+                      onClick={() => handleSensitivityChange(key)}
+                      className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                        motionSensitivity === key
+                          ? "bg-accent text-accent-foreground shadow-md"
+                          : "bg-white/8 text-white/60 hover:bg-white/12"
+                      }`}
+                    >
+                      {SENSITIVITY_MAP[key].label}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="flex gap-2">
-                {(Object.keys(SENSITIVITY_MAP) as MotionSensitivity[]).map((key) => (
-                  <button
-                    key={key}
-                    onClick={() => handleSensitivityChange(key)}
-                    className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                      motionSensitivity === key
-                        ? "bg-accent text-accent-foreground shadow-md"
-                        : "bg-white/8 text-white/60 hover:bg-white/12"
-                    }`}
-                  >
-                    {SENSITIVITY_MAP[key].label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            )}
 
             {/* Sensor toggles */}
             <SensorSection>
