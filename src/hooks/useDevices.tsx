@@ -330,19 +330,27 @@ export const useDevices = () => {
         })
         .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
           console.log("[Presence] 👋 Device left:", key, leftPresences);
-          // 노트북이 떠나면 오프라인으로 표시
+          // 노트북이 떠나면 오프라인으로 표시 (카메라 상태는 DB에서 가져옴)
           if (key === device.id) {
-            queryClient.setQueryData(
-              ["devices", user.id],
-              (oldDevices: Device[] | undefined) => {
-                if (!oldDevices) return oldDevices;
-                return oldDevices.map((d) =>
-                  d.id === device.id
-                    ? { ...d, status: 'offline' as const, is_camera_connected: false }
-                    : d
+            // DB에서 최신 카메라 상태를 가져온 후 오프라인 처리
+            supabase
+              .from("devices")
+              .select("is_camera_connected")
+              .eq("id", device.id)
+              .maybeSingle()
+              .then(({ data }) => {
+                queryClient.setQueryData(
+                  ["devices", user.id],
+                  (oldDevices: Device[] | undefined) => {
+                    if (!oldDevices) return oldDevices;
+                    return oldDevices.map((d) =>
+                      d.id === device.id
+                        ? { ...d, status: 'offline' as const, is_camera_connected: data?.is_camera_connected ?? d.is_camera_connected }
+                        : d
+                    );
+                  }
                 );
-              }
-            );
+              });
           }
         })
         .subscribe((status) => {
