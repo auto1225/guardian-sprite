@@ -159,6 +159,20 @@ export const useAlerts = (deviceId?: string | null) => {
 
   deviceIdRef.current = deviceId;
 
+  // 안전한 setState 래퍼 — HMR 중 fiber 손상 방지
+  const safeSetAlerts = useCallback((v: LocalActivityLog[]) => {
+    if (!mountedRef.current) return;
+    try { setAlerts(v); } catch (e) { console.warn("[useAlerts] setState blocked:", e); }
+  }, []);
+  const safeSetActiveAlert = useCallback((v: ActiveAlert | null) => {
+    if (!mountedRef.current) return;
+    try { setActiveAlert(v); } catch (e) { console.warn("[useAlerts] setState blocked:", e); }
+  }, []);
+  const safeSetIsLoading = useCallback((v: boolean) => {
+    if (!mountedRef.current) return;
+    try { setIsLoading(v); } catch (e) { console.warn("[useAlerts] setState blocked:", e); }
+  }, []);
+
   // unmount 시 flag 설정
   useEffect(() => {
     mountedRef.current = true;
@@ -168,12 +182,12 @@ export const useAlerts = (deviceId?: string | null) => {
   const loadAlerts = useCallback(() => {
     const did = deviceIdRef.current;
     if (!did) {
-      if (mountedRef.current) { setAlerts([]); setIsLoading(false); }
+      safeSetAlerts([]); safeSetIsLoading(false);
       return;
     }
     const logs = getAlertLogs(did, 50);
-    if (mountedRef.current) { setAlerts(logs); setIsLoading(false); }
-  }, []);
+    safeSetAlerts(logs); safeSetIsLoading(false);
+  }, [safeSetAlerts, safeSetIsLoading]);
 
   const unreadCount = alerts.filter(a => !a.is_read).length;
 
@@ -217,13 +231,13 @@ export const useAlerts = (deviceId?: string | null) => {
           if (s.dismissedIds.has(foundAlert.id)) return;
           if (s.lastPlayedId === foundAlert.id) {
             if (!activeAlertRef.current || activeAlertRef.current.id !== foundAlert.id) {
-              if (mountedRef.current) setActiveAlert(foundAlert);
+              safeSetActiveAlert(foundAlert);
               activeAlertRef.current = foundAlert;
             }
             return;
           }
           console.log("[useAlerts] New alert from Presence:", foundAlert.id, "muted:", s.muted);
-          if (mountedRef.current) setActiveAlert(foundAlert);
+          safeSetActiveAlert(foundAlert);
           activeAlertRef.current = foundAlert;
           s.lastPlayedId = foundAlert.id;
           if (!s.muted) {
@@ -240,10 +254,8 @@ export const useAlerts = (deviceId?: string | null) => {
           } catch { /* storage quota */ }
           loadAlerts();
         } else {
-          // 경보가 없는 상태 — 소리만 중지, dismissedIds/lastPlayedId는 유지
-          // (채널 재연결 시 빈 presence sync로 인해 클리어되면 같은 경보가 반복됨)
           stopAlertSound();
-          if (mountedRef.current) setActiveAlert(null);
+          safeSetActiveAlert(null);
           activeAlertRef.current = null;
         }
       })
@@ -255,12 +267,12 @@ export const useAlerts = (deviceId?: string | null) => {
           if (s.dismissedIds.has(alert.id)) return;
           if (s.lastPlayedId === alert.id) {
             if (!activeAlertRef.current || activeAlertRef.current.id !== alert.id) {
-              if (mountedRef.current) setActiveAlert(alert);
+              safeSetActiveAlert(alert);
               activeAlertRef.current = alert;
             }
             return;
           }
-          if (mountedRef.current) setActiveAlert(alert);
+          safeSetActiveAlert(alert);
           activeAlertRef.current = alert;
           s.lastPlayedId = alert.id;
           if (!s.muted) {
@@ -316,7 +328,7 @@ export const useAlerts = (deviceId?: string | null) => {
       s.dismissedIds.add(activeAlertRef.current.id);
       // lastPlayedId를 유지하여 presence re-sync 시 같은 경보를 새 경보로 인식하지 않도록 함
     }
-    if (mountedRef.current) setActiveAlert(null);
+    safeSetActiveAlert(null);
     activeAlertRef.current = null;
     
     const did = deviceIdRef.current;
