@@ -127,7 +127,8 @@ const LocationMapModal = ({ isOpen, onClose, deviceId, deviceName }: LocationMap
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60" onClick={onClose}>
       <div
-        className="w-[90%] max-w-[400px] rounded-2xl overflow-hidden shadow-2xl bg-card"
+        className="w-[90%] max-w-[400px] rounded-2xl overflow-hidden shadow-2xl"
+        style={{ backgroundColor: "#ffffff" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -157,14 +158,14 @@ const LocationMapModal = ({ isOpen, onClose, deviceId, deviceName }: LocationMap
         {/* Map area */}
         <div className="h-64 relative">
           {loading ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-muted">
-              <span className="text-muted-foreground text-sm">위치 불러오는 중...</span>
+            <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: "#e5e7eb" }}>
+              <span className="text-sm" style={{ color: "#6b7280" }}>위치 불러오는 중...</span>
             </div>
           ) : error ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-muted">
+            <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: "#e5e7eb" }}>
               <div className="text-center px-4">
-                <MapPin className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-                <p className="text-muted-foreground text-sm">{error}</p>
+                <MapPin className="w-10 h-10 mx-auto mb-2" style={{ color: "#9ca3af" }} />
+                <p className="text-sm" style={{ color: "#6b7280" }}>{error}</p>
               </div>
             </div>
           ) : hasLocation ? (
@@ -185,25 +186,25 @@ const LocationMapModal = ({ isOpen, onClose, deviceId, deviceName }: LocationMap
           ) : null}
         </div>
 
-        {/* Info area */}
-        <div className="p-4 space-y-2">
+        {/* Info area - fixed light background with dark text */}
+        <div className="p-4 space-y-2" style={{ backgroundColor: "#ffffff" }}>
           {hasLocation && (
             <>
-              <div className="flex items-center gap-2 text-sm text-card-foreground">
+              <div className="flex items-center gap-2 text-sm font-medium" style={{ color: "#1f2937" }}>
                 <span>위도: {location.latitude!.toFixed(6)}</span>
-                <span className="text-muted-foreground">|</span>
+                <span style={{ color: "#9ca3af" }}>|</span>
                 <span>경도: {location.longitude!.toFixed(6)}</span>
               </div>
 
               {location.location_updated_at && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs" style={{ color: "#6b7280" }}>
                   마지막 업데이트: {formatTimeAgo(location.location_updated_at)}
                 </p>
               )}
             </>
           )}
 
-          <p className="text-[10px] text-muted-foreground/70">
+          <p className="text-[10px]" style={{ color: "rgba(107, 114, 128, 0.7)" }}>
             📡 Wi-Fi/IP 기반 위치로, 실제 위치와 20m~수 km 오차가 있을 수 있습니다.
           </p>
         </div>
