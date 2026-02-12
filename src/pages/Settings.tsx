@@ -145,6 +145,23 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
     setMotionSensitivity((m.motionSensitivity as MotionSensitivity) || "insensitive");
   }, [device]);
 
+  // 설정 페이지를 처음 열 때 DB에 기본 설정값이 없으면 자동 저장
+  useEffect(() => {
+    if (!isOpen) return;
+    const m = (device.metadata as Record<string, unknown>) || {};
+    if (!m.sensorSettings) {
+      const defaults = {
+        sensorSettings: { ...DEFAULT_SENSOR_SETTINGS, deviceType: device.device_type as "laptop" | "desktop" },
+        alarm_pin: (m.alarm_pin as string) || "1234",
+        alarm_sound_id: (m.alarm_sound_id as string) || "whistle",
+        require_pc_pin: m.require_pc_pin ?? true,
+        motionSensitivity: (m.motionSensitivity as string) || "insensitive",
+      };
+      console.log("[Settings] Saving initial defaults to DB:", defaults);
+      saveMetadata(defaults);
+    }
+  }, [isOpen, device.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Stop any playing sounds on unmount / close
   useEffect(() => {
     if (!isOpen) stopAllSounds();
