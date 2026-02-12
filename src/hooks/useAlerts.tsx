@@ -135,10 +135,30 @@ export const useAlerts = (deviceId?: string | null) => {
     },
   };
 
-  // 활성 알림 해제
-  const dismissActiveAlert = useCallback(() => {
+  // 활성 알림 해제 + Presence로 랩탑에 동기화
+  const dismissActiveAlert = useCallback(async () => {
     setActiveAlert(null);
-  }, []);
+    activeAlertRef.current = null;
+    
+    if (!deviceId) return;
+    
+    // Presence 채널에 해제 상태 전송 → 랩탑이 이를 감지하여 경보 해제
+    try {
+      const channel = supabase.channel(`device-alerts-${deviceId}`);
+      await channel.subscribe();
+      await channel.track({
+        active_alert: null,
+        dismissed_at: new Date().toISOString(),
+      });
+      console.log("[useAlerts] Dismiss synced via Presence");
+      // 잠시 후 채널 정리
+      setTimeout(() => {
+        supabase.removeChannel(channel);
+      }, 2000);
+    } catch (err) {
+      console.error("[useAlerts] Failed to sync dismiss:", err);
+    }
+  }, [deviceId]);
 
   return {
     alerts,

@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Database } from "@/integrations/supabase/types";
-import { useCommands } from "@/hooks/useCommands";
 import { useToast } from "@/hooks/use-toast";
 import { ActiveAlert } from "@/hooks/useAlerts";
 
@@ -13,28 +12,60 @@ interface AlertModeProps {
 }
 
 const AlertMode = ({ device, activeAlert, onDismiss }: AlertModeProps) => {
-  const { sendCommand } = useCommands();
   const { toast } = useToast();
-  const [capturedImages, setCapturedImages] = useState<string[]>([]);
+  const [capturedImages] = useState<string[]>([]);
+  const [showPinPad, setShowPinPad] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  const [pinError, setPinError] = useState(false);
 
-  const handleStopAlert = async () => {
-    try {
-      await sendCommand.mutateAsync({
-        deviceId: device.id,
-        commandType: "alarm",
-        payload: { action: "stop" },
-      });
-      toast({
-        title: "경보 해제",
-        description: "노트북의 경보가 해제되었습니다.",
-      });
+  const getStoredPin = (): string => {
+    const meta = device.metadata as Record<string, unknown> | null;
+    return (meta?.alarm_pin as string) || "1234";
+  };
+
+  const handleDismissRequest = () => {
+    const storedPin = getStoredPin();
+    if (storedPin) {
+      setShowPinPad(true);
+      setPinInput("");
+      setPinError(false);
+    } else {
       onDismiss();
-    } catch (error) {
-      toast({
-        title: "오류",
-        description: "경보 해제에 실패했습니다.",
-        variant: "destructive",
-      });
+    }
+  };
+
+  const handlePinSubmit = () => {
+    const storedPin = getStoredPin();
+    if (pinInput === storedPin) {
+      toast({ title: "경보 해제", description: "경보가 해제되었습니다." });
+      onDismiss();
+    } else {
+      setPinError(true);
+      setPinInput("");
+      setTimeout(() => setPinError(false), 1500);
+    }
+  };
+
+  const handlePinKey = (key: string | number) => {
+    if (key === "del") {
+      setPinInput(prev => prev.slice(0, -1));
+    } else if (pinInput.length < 4) {
+      const next = pinInput + key;
+      setPinInput(next);
+      // 4자리 입력 완료 시 자동 확인
+      if (next.length === 4) {
+        setTimeout(() => {
+          const storedPin = getStoredPin();
+          if (next === storedPin) {
+            toast({ title: "경보 해제", description: "경보가 해제되었습니다." });
+            onDismiss();
+          } else {
+            setPinError(true);
+            setPinInput("");
+            setTimeout(() => setPinError(false), 1500);
+          }
+        }, 100);
+      }
     }
   };
 
@@ -66,34 +97,89 @@ const AlertMode = ({ device, activeAlert, onDismiss }: AlertModeProps) => {
         </div>
       )}
 
-      {/* Alert message */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4">
-        <div className="bg-destructive-foreground/20 rounded-2xl p-6 text-center max-w-sm">
-          <p className="text-destructive-foreground font-bold text-lg">
-            {activeAlert.title}
-          </p>
-          {activeAlert.message && (
-            <p className="text-destructive-foreground/80 text-sm mt-2">
-              {activeAlert.message}
-            </p>
+      {showPinPad ? (
+        /* PIN Pad */
+        <div className="flex-1 flex flex-col items-center justify-center px-4">
+          <p className="text-destructive-foreground font-bold text-lg mb-6">비밀번호를 입력하세요</p>
+          
+          {/* PIN dots */}
+          <div className="flex gap-3 mb-8">
+            {[0, 1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className={`w-14 h-14 rounded-xl border-2 flex items-center justify-center text-2xl font-bold transition-all ${
+                  pinError
+                    ? "border-destructive-foreground bg-destructive-foreground/30 animate-pulse"
+                    : pinInput[i]
+                    ? "border-destructive-foreground bg-destructive-foreground/20"
+                    : "border-destructive-foreground/40"
+                } text-destructive-foreground`}
+              >
+                {pinInput[i] ? "•" : ""}
+              </div>
+            ))}
+          </div>
+
+          {pinError && (
+            <p className="text-destructive-foreground/80 text-sm mb-4">비밀번호가 틀렸습니다</p>
           )}
-        </div>
 
-        {/* Character or alert animation could go here */}
-        <div className="mt-8 w-48 h-48 bg-destructive-foreground/10 rounded-full flex items-center justify-center">
-          <span className="text-6xl">🚨</span>
-        </div>
-      </div>
+          {/* Keypad */}
+          <div className="grid grid-cols-3 gap-3 w-64">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, null, 0, "del"].map((num, i) => (
+              <button
+                key={i}
+                onClick={() => num !== null && handlePinKey(num)}
+                disabled={num === null}
+                className={`h-14 rounded-xl text-xl font-bold transition-all ${
+                  num === null
+                    ? "invisible"
+                    : "bg-destructive-foreground/15 text-destructive-foreground active:bg-destructive-foreground/30 active:scale-95"
+                }`}
+              >
+                {num === "del" ? "⌫" : num}
+              </button>
+            ))}
+          </div>
 
-      {/* Stop button */}
-      <div className="p-6">
-        <button
-          onClick={handleStopAlert}
-          className="w-full py-4 bg-destructive-foreground text-destructive rounded-full font-bold text-lg shadow-lg active:scale-95 transition-transform"
-        >
-          경보 해제
-        </button>
-      </div>
+          <button
+            onClick={() => setShowPinPad(false)}
+            className="mt-6 text-destructive-foreground/60 text-sm underline"
+          >
+            뒤로
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Alert message */}
+          <div className="flex-1 flex flex-col items-center justify-center px-4">
+            <div className="bg-destructive-foreground/20 rounded-2xl p-6 text-center max-w-sm">
+              <p className="text-destructive-foreground font-bold text-lg">
+                {activeAlert.title}
+              </p>
+              {activeAlert.message && (
+                <p className="text-destructive-foreground/80 text-sm mt-2">
+                  {activeAlert.message}
+                </p>
+              )}
+            </div>
+
+            <div className="mt-8 w-48 h-48 bg-destructive-foreground/10 rounded-full flex items-center justify-center">
+              <span className="text-6xl">🚨</span>
+            </div>
+          </div>
+
+          {/* Stop button */}
+          <div className="p-6">
+            <button
+              onClick={handleDismissRequest}
+              className="w-full py-4 bg-destructive-foreground text-destructive rounded-full font-bold text-lg shadow-lg active:scale-95 transition-transform"
+            >
+              경보 해제
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 };
