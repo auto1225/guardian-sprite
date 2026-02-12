@@ -1,5 +1,5 @@
 import { ArrowLeft, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -23,13 +23,26 @@ interface SettingsPageProps {
   onClose: () => void;
 }
 
-const SENSITIVITY_LEVELS = [
-  { value: 1, label: "매우 둔감" },
-  { value: 2, label: "둔감" },
-  { value: 3, label: "보통" },
-  { value: 4, label: "민감" },
-  { value: 5, label: "매우 민감" },
-];
+interface SensorSettings {
+  deviceType: "laptop" | "desktop";
+  lidClosed: boolean;
+  camera: boolean;
+  microphone: boolean;
+  keyboard: boolean;
+  keyboardType: "wired" | "wireless";
+  mouse: boolean;
+  mouseType: "wired" | "wireless";
+  usb: boolean;
+  power: boolean;
+}
+
+type MotionSensitivity = "sensitive" | "normal" | "insensitive";
+
+const SENSITIVITY_MAP: Record<MotionSensitivity, { label: string; value: number }> = {
+  sensitive: { label: "민감 (10%)", value: 1 },
+  normal: { label: "보통 (50%)", value: 2 },
+  insensitive: { label: "둔감 (80%)", value: 3 },
+};
 
 const ALARM_SOUNDS = [
   "호루라기",
@@ -40,24 +53,35 @@ const ALARM_SOUNDS = [
   "조용한 사이렌",
 ];
 
+const DEFAULT_SENSOR_SETTINGS: SensorSettings = {
+  deviceType: "laptop",
+  lidClosed: true,
+  camera: true,
+  microphone: false,
+  keyboard: true,
+  keyboardType: "wired",
+  mouse: true,
+  mouseType: "wired",
+  usb: true,
+  power: true,
+};
+
 const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  
+
+  const meta = (device.metadata as Record<string, unknown>) || {};
+
   const [nickname, setNickname] = useState(device.name);
-  const [sensitivity, setSensitivity] = useState(3);
-  const [showStatusMessage, setShowStatusMessage] = useState(true);
-  const [alarmDuration, setAlarmDuration] = useState(60);
-  const [alarmPin, setAlarmPin] = useState("0000");
+  const [alarmPin, setAlarmPin] = useState((meta.alarm_pin as string) || "1234");
   const [selectedSound, setSelectedSound] = useState("호루라기");
-  const [alerts, setAlerts] = useState({
-    motion: true,
-    lidOpen: true,
-    powerDisconnect: true,
-    usbConnect: false,
-    keyboard: false,
-    mouse: false,
+  const [sensorSettings, setSensorSettings] = useState<SensorSettings>(() => {
+    const saved = meta.sensorSettings as SensorSettings | undefined;
+    return saved ? { ...DEFAULT_SENSOR_SETTINGS, ...saved } : { ...DEFAULT_SENSOR_SETTINGS, deviceType: device.device_type as "laptop" | "desktop" };
   });
+  const [motionSensitivity, setMotionSensitivity] = useState<MotionSensitivity>(
+    (meta.motionSensitivity as MotionSensitivity) || "normal"
+  );
 
   const [showNicknameDialog, setShowNicknameDialog] = useState(false);
   const [showPinDialog, setShowPinDialog] = useState(false);
@@ -65,31 +89,78 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
   const [tempNickname, setTempNickname] = useState(nickname);
   const [tempPin, setTempPin] = useState(alarmPin);
 
+  // Sync from device prop changes
+  useEffect(() => {
+    setNickname(device.name);
+    const m = (device.metadata as Record<string, unknown>) || {};
+    setAlarmPin((m.alarm_pin as string) || "1234");
+    const saved = m.sensorSettings as SensorSettings | undefined;
+    if (saved) setSensorSettings({ ...DEFAULT_SENSOR_SETTINGS, ...saved });
+    setMotionSensitivity((m.motionSensitivity as MotionSensitivity) || "normal");
+  }, [device]);
+
+  const saveMetadata = async (updates: Record<string, unknown>) => {
+    const currentMeta = (device.metadata as Record<string, unknown>) || {};
+    const newMeta = { ...currentMeta, ...updates };
+    const { error } = await supabase
+      .from("devices")
+      .update({ metadata: newMeta as unknown as Database["public"]["Tables"]["devices"]["Update"]["metadata"] })
+      .eq("id", device.id);
+    if (error) throw error;
+    queryClient.invalidateQueries({ queryKey: ["devices"] });
+  };
+
   const handleSaveNickname = async () => {
     try {
       const { error } = await supabase
         .from("devices")
         .update({ name: tempNickname })
         .eq("id", device.id);
-      
       if (error) throw error;
-      
       setNickname(tempNickname);
       setShowNicknameDialog(false);
       queryClient.invalidateQueries({ queryKey: ["devices"] });
       toast({ title: "저장됨", description: "닉네임이 변경되었습니다." });
-    } catch (error) {
+    } catch {
       toast({ title: "오류", description: "저장에 실패했습니다.", variant: "destructive" });
     }
   };
 
-  const handleSavePin = () => {
+  const handleSavePin = async () => {
     if (tempPin.length === 4 && /^\d+$/.test(tempPin)) {
-      setAlarmPin(tempPin);
-      setShowPinDialog(false);
-      toast({ title: "저장됨", description: "비밀번호가 변경되었습니다." });
+      try {
+        await saveMetadata({ alarm_pin: tempPin });
+        setAlarmPin(tempPin);
+        setShowPinDialog(false);
+        toast({ title: "저장됨", description: "비밀번호가 변경되었습니다." });
+      } catch {
+        toast({ title: "오류", description: "저장에 실패했습니다.", variant: "destructive" });
+      }
     }
   };
+
+  const handleSensorToggle = async (key: keyof SensorSettings, value: boolean) => {
+    const updated = { ...sensorSettings, [key]: value };
+    setSensorSettings(updated);
+    try {
+      await saveMetadata({ sensorSettings: updated });
+    } catch {
+      toast({ title: "오류", description: "설정 저장에 실패했습니다.", variant: "destructive" });
+      setSensorSettings(sensorSettings); // revert
+    }
+  };
+
+  const handleSensitivityChange = async (val: MotionSensitivity) => {
+    setMotionSensitivity(val);
+    try {
+      await saveMetadata({ motionSensitivity: val });
+    } catch {
+      toast({ title: "오류", description: "설정 저장에 실패했습니다.", variant: "destructive" });
+      setMotionSensitivity(motionSensitivity); // revert
+    }
+  };
+
+  const isLaptop = sensorSettings.deviceType === "laptop";
 
   return (
     <>
@@ -109,71 +180,14 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
             <SettingItem
               label="닉네임"
               value={nickname}
-              onClick={() => {
-                setTempNickname(nickname);
-                setShowNicknameDialog(true);
-              }}
+              onClick={() => { setTempNickname(nickname); setShowNicknameDialog(true); }}
             />
-
-            {/* Sensitivity */}
-            <div className="px-4 py-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-primary-foreground font-medium">민감도</span>
-                <span className="text-primary-foreground/70 text-sm">
-                  Lv.{sensitivity} - {SENSITIVITY_LEVELS.find(l => l.value === sensitivity)?.label}
-                </span>
-              </div>
-              <Slider
-                value={[sensitivity]}
-                onValueChange={([val]) => setSensitivity(val)}
-                min={1}
-                max={5}
-                step={1}
-                className="mt-2"
-              />
-            </div>
-
-            {/* Status message */}
-            <div className="flex items-center justify-between px-4 py-4">
-              <span className="text-primary-foreground font-medium">설명 문구</span>
-              <Switch
-                checked={showStatusMessage}
-                onCheckedChange={setShowStatusMessage}
-              />
-            </div>
-
-            {/* Alarm duration */}
-            <div className="px-4 py-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-primary-foreground font-medium">경보 지속시간</span>
-                <span className="text-primary-foreground/70 text-sm">{alarmDuration}초</span>
-              </div>
-              <Slider
-                value={[alarmDuration]}
-                onValueChange={([val]) => setAlarmDuration(val)}
-                min={10}
-                max={120}
-                step={10}
-              />
-            </div>
 
             {/* Alarm PIN */}
             <SettingItem
               label="경보해제 비밀번호"
               value={alarmPin.replace(/./g, "•")}
-              onClick={() => {
-                setTempPin(alarmPin);
-                setShowPinDialog(true);
-              }}
-            />
-
-            {/* Change PIN */}
-            <SettingItem
-              label="경보해제 비밀번호 변경"
-              onClick={() => {
-                setTempPin("");
-                setShowPinDialog(true);
-              }}
+              onClick={() => { setTempPin(""); setShowPinDialog(true); }}
             />
 
             {/* Alarm sound */}
@@ -183,27 +197,103 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
               onClick={() => setShowSoundDialog(true)}
             />
 
-            {/* Alert settings */}
+            {/* Section: Sensor Settings */}
+            <div className="px-4 pt-5 pb-2">
+              <span className="text-primary-foreground font-bold text-sm uppercase tracking-wider opacity-60">감지 센서 설정</span>
+            </div>
+
+            {/* Motion Sensitivity */}
             <div className="px-4 py-4">
-              <span className="text-primary-foreground font-medium block mb-3">경보 알림 설정</span>
-              <div className="space-y-3 pl-2">
-                <AlertToggle
-                  label="노트북 움직임 감지 알림"
-                  checked={alerts.motion}
-                  onChange={(checked) => setAlerts({ ...alerts, motion: checked })}
-                />
-                <AlertToggle
-                  label="노트북 커버 열림/닫힘 알림"
-                  checked={alerts.lidOpen}
-                  onChange={(checked) => setAlerts({ ...alerts, lidOpen: checked })}
-                />
-                <AlertToggle
-                  label="노트북 전원 연결 해제 알림"
-                  checked={alerts.powerDisconnect}
-                  onChange={(checked) => setAlerts({ ...alerts, powerDisconnect: checked })}
-                />
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-primary-foreground font-medium">카메라 모션 민감도</span>
+              </div>
+              <div className="flex gap-2">
+                {(Object.keys(SENSITIVITY_MAP) as MotionSensitivity[]).map((key) => (
+                  <button
+                    key={key}
+                    onClick={() => handleSensitivityChange(key)}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+                      motionSensitivity === key
+                        ? "bg-accent text-accent-foreground"
+                        : "bg-primary-foreground/10 text-primary-foreground/70"
+                    }`}
+                  >
+                    {SENSITIVITY_MAP[key].label}
+                  </button>
+                ))}
               </div>
             </div>
+
+            {/* Sensor toggles */}
+            <div className="px-4 py-3">
+              <SensorToggle
+                label="카메라 모션 감지"
+                description="카메라로 움직임을 감지합니다"
+                checked={sensorSettings.camera}
+                onChange={(v) => handleSensorToggle("camera", v)}
+              />
+            </div>
+
+            {isLaptop && (
+              <div className="px-4 py-3">
+                <SensorToggle
+                  label="덮개 (리드) 감지"
+                  description="노트북 덮개 열림/닫힘을 감지합니다"
+                  checked={sensorSettings.lidClosed}
+                  onChange={(v) => handleSensorToggle("lidClosed", v)}
+                />
+              </div>
+            )}
+
+            {!isLaptop && (
+              <div className="px-4 py-3">
+                <SensorToggle
+                  label="마이크 감지"
+                  description="주변 소리를 감지합니다"
+                  checked={sensorSettings.microphone}
+                  onChange={(v) => handleSensorToggle("microphone", v)}
+                />
+              </div>
+            )}
+
+            <div className="px-4 py-3">
+              <SensorToggle
+                label="키보드 감지"
+                description="키보드 입력을 감지합니다"
+                checked={sensorSettings.keyboard}
+                onChange={(v) => handleSensorToggle("keyboard", v)}
+              />
+            </div>
+
+            <div className="px-4 py-3">
+              <SensorToggle
+                label="마우스 감지"
+                description="마우스 움직임을 감지합니다"
+                checked={sensorSettings.mouse}
+                onChange={(v) => handleSensorToggle("mouse", v)}
+              />
+            </div>
+
+            <div className="px-4 py-3">
+              <SensorToggle
+                label="USB 연결 감지"
+                description="USB 장치 연결을 감지합니다"
+                checked={sensorSettings.usb}
+                onChange={(v) => handleSensorToggle("usb", v)}
+              />
+            </div>
+
+            <div className="px-4 py-3">
+              <SensorToggle
+                label="전원 케이블 감지"
+                description="전원 연결 해제를 감지합니다"
+                checked={sensorSettings.power}
+                onChange={(v) => handleSensorToggle("power", v)}
+              />
+            </div>
+
+            {/* Bottom spacing */}
+            <div className="h-8" />
           </div>
         </div>
       </div>
@@ -222,12 +312,8 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
               className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground"
             />
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowNicknameDialog(false)} className="flex-1">
-                취소
-              </Button>
-              <Button onClick={handleSaveNickname} className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90">
-                변경
-              </Button>
+              <Button variant="outline" onClick={() => setShowNicknameDialog(false)} className="flex-1">취소</Button>
+              <Button onClick={handleSaveNickname} className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90">변경</Button>
             </div>
           </div>
         </DialogContent>
@@ -255,17 +341,12 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
                 <button
                   key={i}
                   onClick={() => {
-                    if (num === "del") {
-                      setTempPin(tempPin.slice(0, -1));
-                    } else if (num !== null && tempPin.length < 4) {
-                      setTempPin(tempPin + num);
-                    }
+                    if (num === "del") setTempPin(tempPin.slice(0, -1));
+                    else if (num !== null && tempPin.length < 4) setTempPin(tempPin + num);
                   }}
                   disabled={num === null}
                   className={`h-12 rounded-lg font-bold text-lg ${
-                    num === null
-                      ? "invisible"
-                      : "bg-primary-foreground/10 text-primary-foreground active:bg-primary-foreground/20"
+                    num === null ? "invisible" : "bg-primary-foreground/10 text-primary-foreground active:bg-primary-foreground/20"
                   }`}
                 >
                   {num === "del" ? "⌫" : num}
@@ -293,10 +374,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
             {ALARM_SOUNDS.map((sound) => (
               <button
                 key={sound}
-                onClick={() => {
-                  setSelectedSound(sound);
-                  setShowSoundDialog(false);
-                }}
+                onClick={() => { setSelectedSound(sound); setShowSoundDialog(false); }}
                 className={`w-full text-left px-4 py-3 rounded-lg flex items-center justify-between ${
                   selectedSound === sound
                     ? "bg-accent text-accent-foreground"
@@ -314,6 +392,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
   );
 };
 
+// Sub-components
 interface SettingItemProps {
   label: string;
   value?: string;
@@ -321,10 +400,7 @@ interface SettingItemProps {
 }
 
 const SettingItem = ({ label, value, onClick }: SettingItemProps) => (
-  <button
-    onClick={onClick}
-    className="flex items-center justify-between w-full px-4 py-4 text-left"
-  >
+  <button onClick={onClick} className="flex items-center justify-between w-full px-4 py-4 text-left">
     <span className="text-primary-foreground font-medium">{label}</span>
     <div className="flex items-center gap-2">
       {value && <span className="text-primary-foreground/70">{value}</span>}
@@ -333,15 +409,19 @@ const SettingItem = ({ label, value, onClick }: SettingItemProps) => (
   </button>
 );
 
-interface AlertToggleProps {
+interface SensorToggleProps {
   label: string;
+  description: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
 }
 
-const AlertToggle = ({ label, checked, onChange }: AlertToggleProps) => (
+const SensorToggle = ({ label, description, checked, onChange }: SensorToggleProps) => (
   <div className="flex items-center justify-between">
-    <span className="text-primary-foreground/80 text-sm">{label}</span>
+    <div>
+      <span className="text-primary-foreground font-medium text-sm block">{label}</span>
+      <span className="text-primary-foreground/50 text-xs">{description}</span>
+    </div>
     <Switch checked={checked} onCheckedChange={onChange} />
   </div>
 );
