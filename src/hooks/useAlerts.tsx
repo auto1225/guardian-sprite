@@ -21,17 +21,18 @@ interface AlarmState {
 function getAlarmState(): AlarmState {
   const w = window as unknown as { __meercop_alarm?: AlarmState };
   if (!w.__meercop_alarm) {
-    // localStorage에서 muted 상태 복원
-    let savedMuted = false;
-    try { savedMuted = localStorage.getItem('meercop_alarm_muted') === 'true'; } catch {}
     w.__meercop_alarm = {
       generation: 0,
       playing: false,
       dismissedIds: new Set(),
       lastPlayedId: null,
-      muted: savedMuted,
+      muted: false,
     };
   }
+  // 항상 localStorage에서 muted 상태를 동기화
+  try {
+    w.__meercop_alarm.muted = localStorage.getItem('meercop_alarm_muted') === 'true';
+  } catch {}
   return w.__meercop_alarm;
 }
 
