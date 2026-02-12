@@ -16,6 +16,7 @@ interface AlarmState {
   playing: boolean;
   dismissedIds: Set<string>;
   lastPlayedId: string | null;
+  muted: boolean; // 경보음 비활성화 설정
 }
 
 function getAlarmState(): AlarmState {
@@ -27,6 +28,7 @@ function getAlarmState(): AlarmState {
       playing: false,
       dismissedIds: new Set(),
       lastPlayedId: null,
+      muted: w.__meercop_alarm?.muted ?? false,
     };
   }
   return w.__meercop_alarm;
@@ -53,8 +55,8 @@ function stopAlertSound() {
 
 function playAlertSoundLoop() {
   const state = getAlarmState();
-  if (state.playing) {
-    console.log("[useAlerts] ⏭️ Alarm already playing, skipping");
+  if (state.playing || state.muted) {
+    console.log("[useAlerts] ⏭️ Alarm skipped", { playing: state.playing, muted: state.muted });
     return;
   }
   stopAlertSound(); // 이전 핫 리로드의 좀비 경보음도 정리
@@ -100,6 +102,8 @@ function playAlertSoundLoop() {
 // 모듈 로드 시 이전 핫 리로드에서 남은 좀비 경보음 즉시 정리
 stopAlertSound();
 
+export { stopAlertSound, getAlarmState };
+
 export interface ActiveAlert {
   id: string;
   type: LocalAlertType;
@@ -112,6 +116,7 @@ export const useAlerts = (deviceId?: string | null) => {
   const [alerts, setAlerts] = useState<LocalActivityLog[]>([]);
   const [activeAlert, setActiveAlert] = useState<ActiveAlert | null>(null);
   const activeAlertRef = useRef<ActiveAlert | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // 로컬 저장소에서 알림 로그 로드
@@ -140,7 +145,7 @@ export const useAlerts = (deviceId?: string | null) => {
     if (!deviceId) return;
 
     const channel = supabase.channel(`device-alerts-${deviceId}`);
-    
+    channelRef.current = channel;
     channel
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
@@ -232,7 +237,7 @@ export const useAlerts = (deviceId?: string | null) => {
       });
 
     return () => {
-      // 채널 재연결 시 경보음을 끊지 않음 — 명시적 해제만 stopAlertSound 호출
+      channelRef.current = null;
       supabase.removeChannel(channel);
     };
   }, [deviceId, loadAlerts]);
@@ -254,7 +259,7 @@ export const useAlerts = (deviceId?: string | null) => {
     },
   };
 
-  // 활성 알림 해제 + Presence로 랩탑에 동기화
+  // 활성 알림 해제 + 기존 채널의 Presence로 랩탑에 동기화
   const dismissActiveAlert = useCallback(async () => {
     stopAlertSound();
     if (activeAlertRef.current) {
@@ -267,19 +272,19 @@ export const useAlerts = (deviceId?: string | null) => {
     
     if (!deviceId) return;
     
-    // Presence 채널에 해제 상태 전송 → 랩탑이 이를 감지하여 경보 해제
+    // 기존 채널을 재사용하여 dismiss 동기화 (새 채널 생성 금지 — 좀비 경보 원인)
     try {
-      const channel = supabase.channel(`device-alerts-${deviceId}`);
-      await channel.subscribe();
-      await channel.track({
-        active_alert: null,
-        dismissed_at: new Date().toISOString(),
-      });
-      console.log("[useAlerts] Dismiss synced via Presence");
-      // 잠시 후 채널 정리
-      setTimeout(() => {
-        supabase.removeChannel(channel);
-      }, 2000);
+      const ch = channelRef.current;
+      if (ch) {
+        await ch.track({
+          role: 'phone',
+          active_alert: null,
+          dismissed_at: new Date().toISOString(),
+        });
+        console.log("[useAlerts] Dismiss synced via existing channel");
+      } else {
+        console.warn("[useAlerts] No channel ref for dismiss sync");
+      }
     } catch (err) {
       console.error("[useAlerts] Failed to sync dismiss:", err);
     }
