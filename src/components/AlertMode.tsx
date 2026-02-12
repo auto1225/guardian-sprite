@@ -20,16 +20,24 @@ const AlertMode = ({ device, activeAlert, onDismiss }: AlertModeProps) => {
   const handleDismissRemoteAlarm = async () => {
     try {
       const channel = supabase.channel(`device-alerts-${device.id}`);
-      await channel.subscribe();
-      await channel.track({
-        active_alert: null,
-        dismissed_at: new Date().toISOString(),
-        remote_alarm_off: true,
-      });
-      toast({ title: "컴퓨터 경보 해제", description: "컴퓨터의 경보음이 해제되었습니다." });
-      setTimeout(() => {
-        supabase.removeChannel(channel);
-      }, 2000);
+      channel
+        .on('broadcast', { event: 'remote_alarm_off' }, () => {})
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            channel.send({
+              type: 'broadcast',
+              event: 'remote_alarm_off',
+              payload: {
+                dismissed_at: new Date().toISOString(),
+                remote_alarm_off: true,
+              },
+            });
+            toast({ title: "컴퓨터 경보 해제", description: "컴퓨터의 경보음이 해제되었습니다." });
+            setTimeout(() => {
+              supabase.removeChannel(channel);
+            }, 2000);
+          }
+        });
     } catch {
       toast({ title: "오류", description: "컴퓨터 경보 해제에 실패했습니다.", variant: "destructive" });
     }
