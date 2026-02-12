@@ -228,6 +228,9 @@ export type Database = {
           is_network_connected: boolean
           is_streaming_requested: boolean | null
           last_seen_at: string | null
+          latitude: number | null
+          location_updated_at: string | null
+          longitude: number | null
           name: string
           status: Database["public"]["Enums"]["device_status"]
           updated_at: string
@@ -243,6 +246,9 @@ export type Database = {
           is_network_connected?: boolean
           is_streaming_requested?: boolean | null
           last_seen_at?: string | null
+          latitude?: number | null
+          location_updated_at?: string | null
+          longitude?: number | null
           name: string
           status?: Database["public"]["Enums"]["device_status"]
           updated_at?: string
@@ -258,6 +264,9 @@ export type Database = {
           is_network_connected?: boolean
           is_streaming_requested?: boolean | null
           last_seen_at?: string | null
+          latitude?: number | null
+          location_updated_at?: string | null
+          longitude?: number | null
           name?: string
           status?: Database["public"]["Enums"]["device_status"]
           updated_at?: string
