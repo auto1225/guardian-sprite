@@ -14,10 +14,15 @@ let alarmAudioCtx: AudioContext | null = null;
 
 function playAlertSoundLoop() {
   stopAlertSound(); // 기존 경보 중복 방지
+  console.log("[useAlerts] 🔊 Starting alarm sound loop");
   try {
     alarmAudioCtx = new AudioContext();
     const playOnce = () => {
-      if (!alarmAudioCtx) return;
+      if (!alarmAudioCtx || alarmAudioCtx.state === 'closed') {
+        console.log("[useAlerts] AudioContext closed, stopping loop");
+        stopAlertSound();
+        return;
+      }
       const ctx = alarmAudioCtx;
       const playBeep = (time: number, freq: number) => {
         try {
@@ -49,6 +54,9 @@ function playAlertSoundLoop() {
 }
 
 function stopAlertSound() {
+  if (alarmIntervalId || alarmAudioCtx) {
+    console.log("[useAlerts] 🔇 Stopping alarm sound");
+  }
   if (alarmIntervalId) {
     clearInterval(alarmIntervalId);
     alarmIntervalId = null;
