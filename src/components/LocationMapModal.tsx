@@ -52,25 +52,39 @@ const LocationMapModal = ({ isOpen, onClose, deviceId, deviceName }: LocationMap
       setLoading(true);
       setError(null);
 
-      const { data, error: queryError } = await supabase
+      // 1차: devices 테이블에서 위치 조회
+      const { data: deviceData, error: deviceError } = await supabase
         .from("devices")
         .select("latitude, longitude, location_updated_at")
         .eq("id", deviceId)
         .maybeSingle();
 
-      if (queryError) {
-        setError("위치 정보를 불러오는데 실패했습니다.");
+      if (!deviceError && deviceData && deviceData.latitude !== null && deviceData.longitude !== null) {
+        setLocation(deviceData);
         setLoading(false);
         return;
       }
 
-      if (!data || data.latitude === null || data.longitude === null) {
-        setError("노트북 위치 정보가 없습니다.");
+      // 2차 fallback: device_locations 테이블에서 최신 위치 조회
+      const { data: locData, error: locError } = await supabase
+        .from("device_locations")
+        .select("latitude, longitude, recorded_at")
+        .eq("device_id", deviceId)
+        .order("recorded_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!locError && locData && locData.latitude !== null && locData.longitude !== null) {
+        setLocation({
+          latitude: locData.latitude,
+          longitude: locData.longitude,
+          location_updated_at: locData.recorded_at,
+        });
         setLoading(false);
         return;
       }
 
-      setLocation(data);
+      setError("노트북 위치 정보가 없습니다.");
       setLoading(false);
     };
 
