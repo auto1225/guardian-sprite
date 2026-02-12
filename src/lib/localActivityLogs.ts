@@ -1,5 +1,5 @@
 const STORAGE_KEY = "meercop_activity_logs";
-const MAX_LOGS = 200;
+const MAX_LOGS = 50; // localStorage 용량 초과 방지
 
 export type LocalAlertType = "intrusion" | "unauthorized_peripheral" | "location_change" | "offline" | "low_battery";
 
@@ -76,6 +76,17 @@ export function addActivityLog(
     localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
   } catch (error) {
     console.error("Error saving activity log:", error);
+    // QuotaExceededError 발생 시 오래된 로그 삭제 후 재시도
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      let logs: LocalActivityLog[] = stored ? JSON.parse(stored) : [];
+      logs = logs.slice(0, 10); // 최근 10개만 유지
+      logs.unshift(newLog);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+    } catch {
+      // 그래도 실패하면 전체 삭제
+      localStorage.removeItem(STORAGE_KEY);
+    }
   }
 
   return newLog;
