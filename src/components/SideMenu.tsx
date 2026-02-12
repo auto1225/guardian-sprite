@@ -1,4 +1,4 @@
-import { X, User, Laptop, Settings, LogOut, HelpCircle, Plus, Pencil } from "lucide-react";
+import { X, User, Laptop, Settings, LogOut, HelpCircle, Plus, Pencil, Camera } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -8,9 +8,10 @@ import logoImage from "@/assets/meercop-character.png";
 interface SideMenuProps {
   isOpen: boolean;
   onClose: () => void;
+  onPhotoHistoryClick?: () => void;
 }
 
-const SideMenu = ({ isOpen, onClose }: SideMenuProps) => {
+const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick }: SideMenuProps) => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -137,6 +138,7 @@ const SideMenu = ({ isOpen, onClose }: SideMenuProps) => {
 
         {/* Bottom Menu */}
         <div className="border-t border-white/20">
+          <MenuItem icon={Camera} label="사진 알림 기록" onClick={() => { onPhotoHistoryClick?.(); onClose(); }} />
           <MenuItem icon={HelpCircle} label="Q&A / 도움말" />
           <MenuItem icon={Settings} label="설정" onClick={() => handleNavigate("/settings")} />
           <MenuItem 
