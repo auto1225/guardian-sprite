@@ -1,5 +1,5 @@
-import { ArrowLeft, ChevronRight } from "lucide-react";
-import { useState, useEffect } from "react";
+import { ArrowLeft, ChevronRight, Play, Square, Upload } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -11,7 +11,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -38,19 +37,20 @@ interface SensorSettings {
 
 type MotionSensitivity = "sensitive" | "normal" | "insensitive";
 
-const SENSITIVITY_MAP: Record<MotionSensitivity, { label: string; value: number }> = {
-  sensitive: { label: "민감 (10%)", value: 1 },
-  normal: { label: "보통 (50%)", value: 2 },
-  insensitive: { label: "둔감 (80%)", value: 3 },
+const SENSITIVITY_MAP: Record<MotionSensitivity, { label: string }> = {
+  sensitive: { label: "민감" },
+  normal: { label: "보통" },
+  insensitive: { label: "둔감" },
 };
 
-const ALARM_SOUNDS = [
-  "호루라기",
-  "사이렌",
-  "새소리",
-  "경찰 사이렌",
-  "전파음",
-  "조용한 사이렌",
+// Built-in alarm sounds with AudioContext synthesis
+const ALARM_SOUNDS: { id: string; label: string; freq: number[]; pattern: number[] }[] = [
+  { id: "whistle", label: "호루라기", freq: [2200, 1800], pattern: [0.15, 0.1] },
+  { id: "siren", label: "사이렌", freq: [660, 880], pattern: [0.3, 0.3] },
+  { id: "bird", label: "새소리", freq: [1400, 1800, 2200], pattern: [0.1, 0.08, 0.12] },
+  { id: "police", label: "경찰 사이렌", freq: [600, 1200], pattern: [0.5, 0.5] },
+  { id: "radio", label: "전파음", freq: [440, 520, 600], pattern: [0.2, 0.15, 0.2] },
+  { id: "quiet", label: "조용한 사이렌", freq: [400, 500], pattern: [0.4, 0.4] },
 ];
 
 const DEFAULT_SENSOR_SETTINGS: SensorSettings = {
@@ -66,18 +66,60 @@ const DEFAULT_SENSOR_SETTINGS: SensorSettings = {
   power: true,
 };
 
+function playBuiltinSound(sound: typeof ALARM_SOUNDS[number], duration = 2): { stop: () => void } {
+  const ctx = new AudioContext();
+  let t = 0;
+  const nodes: OscillatorNode[] = [];
+  while (t < duration) {
+    for (let i = 0; i < sound.freq.length; i++) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = sound.freq[i];
+      osc.type = "square";
+      gain.gain.value = 0.25;
+      osc.start(ctx.currentTime + t);
+      osc.stop(ctx.currentTime + t + sound.pattern[i]);
+      nodes.push(osc);
+      t += sound.pattern[i] + 0.05;
+      if (t >= duration) break;
+    }
+  }
+  return {
+    stop: () => {
+      nodes.forEach((n) => { try { n.stop(); } catch {} });
+      ctx.close();
+    },
+  };
+}
+
 const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const synthRef = useRef<{ stop: () => void } | null>(null);
 
   const meta = (device.metadata as Record<string, unknown>) || {};
 
   const [nickname, setNickname] = useState(device.name);
   const [alarmPin, setAlarmPin] = useState((meta.alarm_pin as string) || "1234");
-  const [selectedSound, setSelectedSound] = useState("호루라기");
+  const [selectedSoundId, setSelectedSoundId] = useState(
+    (meta.alarm_sound_id as string) || "whistle"
+  );
+  const [customSoundName, setCustomSoundName] = useState(
+    (meta.custom_sound_name as string) || ""
+  );
+  const [customSoundDataUrl, setCustomSoundDataUrl] = useState(
+    localStorage.getItem(`meercop_custom_sound_${device.id}`) || ""
+  );
+  const [playingSoundId, setPlayingSoundId] = useState<string | null>(null);
   const [sensorSettings, setSensorSettings] = useState<SensorSettings>(() => {
     const saved = meta.sensorSettings as SensorSettings | undefined;
-    return saved ? { ...DEFAULT_SENSOR_SETTINGS, ...saved } : { ...DEFAULT_SENSOR_SETTINGS, deviceType: device.device_type as "laptop" | "desktop" };
+    return saved
+      ? { ...DEFAULT_SENSOR_SETTINGS, ...saved }
+      : { ...DEFAULT_SENSOR_SETTINGS, deviceType: device.device_type as "laptop" | "desktop" };
   });
   const [motionSensitivity, setMotionSensitivity] = useState<MotionSensitivity>(
     (meta.motionSensitivity as MotionSensitivity) || "normal"
@@ -89,15 +131,47 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
   const [tempNickname, setTempNickname] = useState(nickname);
   const [tempPin, setTempPin] = useState(alarmPin);
 
-  // Sync from device prop changes
   useEffect(() => {
     setNickname(device.name);
     const m = (device.metadata as Record<string, unknown>) || {};
     setAlarmPin((m.alarm_pin as string) || "1234");
+    setSelectedSoundId((m.alarm_sound_id as string) || "whistle");
+    setCustomSoundName((m.custom_sound_name as string) || "");
     const saved = m.sensorSettings as SensorSettings | undefined;
     if (saved) setSensorSettings({ ...DEFAULT_SENSOR_SETTINGS, ...saved });
     setMotionSensitivity((m.motionSensitivity as MotionSensitivity) || "normal");
   }, [device]);
+
+  // Stop any playing sounds on unmount / close
+  useEffect(() => {
+    if (!isOpen) stopAllSounds();
+  }, [isOpen]);
+
+  const stopAllSounds = () => {
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    if (synthRef.current) { synthRef.current.stop(); synthRef.current = null; }
+    setPlayingSoundId(null);
+  };
+
+  const previewSound = (soundId: string) => {
+    stopAllSounds();
+    if (playingSoundId === soundId) return; // was playing, just stop
+
+    setPlayingSoundId(soundId);
+
+    if (soundId === "custom" && customSoundDataUrl) {
+      const audio = new Audio(customSoundDataUrl);
+      audioRef.current = audio;
+      audio.play();
+      setTimeout(() => { audio.pause(); setPlayingSoundId(null); }, 2000);
+    } else {
+      const sound = ALARM_SOUNDS.find((s) => s.id === soundId);
+      if (sound) {
+        synthRef.current = playBuiltinSound(sound, 2);
+        setTimeout(() => { stopAllSounds(); }, 2000);
+      }
+    }
+  };
 
   const saveMetadata = async (updates: Record<string, unknown>) => {
     const currentMeta = (device.metadata as Record<string, unknown>) || {};
@@ -139,6 +213,41 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
     }
   };
 
+  const handleSelectSound = async (soundId: string) => {
+    setSelectedSoundId(soundId);
+    try {
+      await saveMetadata({ alarm_sound_id: soundId });
+    } catch {
+      toast({ title: "오류", description: "저장에 실패했습니다.", variant: "destructive" });
+    }
+    setShowSoundDialog(false);
+    stopAllSounds();
+  };
+
+  const handleCustomSoundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "오류", description: "파일 크기는 5MB 이하여야 합니다.", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      localStorage.setItem(`meercop_custom_sound_${device.id}`, dataUrl);
+      setCustomSoundDataUrl(dataUrl);
+      setCustomSoundName(file.name);
+      setSelectedSoundId("custom");
+      try {
+        await saveMetadata({ alarm_sound_id: "custom", custom_sound_name: file.name });
+        toast({ title: "저장됨", description: `"${file.name}" 경보음으로 설정되었습니다.` });
+      } catch {
+        toast({ title: "오류", description: "저장에 실패했습니다.", variant: "destructive" });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSensorToggle = async (key: keyof SensorSettings, value: boolean) => {
     const updated = { ...sensorSettings, [key]: value };
     setSensorSettings(updated);
@@ -146,7 +255,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
       await saveMetadata({ sensorSettings: updated });
     } catch {
       toast({ title: "오류", description: "설정 저장에 실패했습니다.", variant: "destructive" });
-      setSensorSettings(sensorSettings); // revert
+      setSensorSettings(sensorSettings);
     }
   };
 
@@ -156,26 +265,34 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
       await saveMetadata({ motionSensitivity: val });
     } catch {
       toast({ title: "오류", description: "설정 저장에 실패했습니다.", variant: "destructive" });
-      setMotionSensitivity(motionSensitivity); // revert
     }
   };
 
   const isLaptop = sensorSettings.deviceType === "laptop";
+  const selectedSoundLabel =
+    selectedSoundId === "custom"
+      ? customSoundName || "사용자 지정"
+      : ALARM_SOUNDS.find((s) => s.id === selectedSoundId)?.label || "호루라기";
 
   return (
     <>
-      <div className={`fixed inset-0 bg-primary z-50 flex flex-col transition-transform duration-300 ${isOpen ? "translate-x-0" : "translate-x-full"}`}>
+      <div
+        className={`fixed inset-0 z-50 flex flex-col transition-transform duration-300 ${
+          isOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+        style={{ background: "hsl(220, 40%, 13%)" }}
+      >
         {/* Header */}
-        <div className="flex items-center gap-3 p-4 border-b border-primary-foreground/20">
-          <button onClick={onClose} className="text-primary-foreground">
+        <div className="flex items-center gap-3 p-4 border-b border-white/10">
+          <button onClick={onClose} className="text-white">
             <ArrowLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-primary-foreground font-bold text-lg">설정</h1>
+          <h1 className="text-white font-bold text-lg">설정</h1>
         </div>
 
         {/* Settings list */}
         <div className="flex-1 overflow-y-auto">
-          <div className="divide-y divide-primary-foreground/10">
+          <div className="divide-y divide-white/8">
             {/* Nickname */}
             <SettingItem
               label="닉네임"
@@ -193,29 +310,29 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
             {/* Alarm sound */}
             <SettingItem
               label="경보음"
-              value={selectedSound}
+              value={selectedSoundLabel}
               onClick={() => setShowSoundDialog(true)}
             />
 
             {/* Section: Sensor Settings */}
             <div className="px-4 pt-5 pb-2">
-              <span className="text-primary-foreground font-bold text-sm uppercase tracking-wider opacity-60">감지 센서 설정</span>
+              <span className="text-white/50 font-bold text-xs uppercase tracking-wider">감지 센서 설정</span>
             </div>
 
             {/* Motion Sensitivity */}
             <div className="px-4 py-4">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-primary-foreground font-medium">카메라 모션 민감도</span>
+                <span className="text-white font-medium text-sm">카메라 모션 민감도</span>
               </div>
               <div className="flex gap-2">
                 {(Object.keys(SENSITIVITY_MAP) as MotionSensitivity[]).map((key) => (
                   <button
                     key={key}
                     onClick={() => handleSensitivityChange(key)}
-                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+                    className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
                       motionSensitivity === key
-                        ? "bg-accent text-accent-foreground"
-                        : "bg-primary-foreground/10 text-primary-foreground/70"
+                        ? "bg-accent text-accent-foreground shadow-md"
+                        : "bg-white/8 text-white/60 hover:bg-white/12"
                     }`}
                   >
                     {SENSITIVITY_MAP[key].label}
@@ -225,94 +342,93 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
             </div>
 
             {/* Sensor toggles */}
-            <div className="px-4 py-3">
+            <SensorSection>
               <SensorToggle
                 label="카메라 모션 감지"
                 description="카메라로 움직임을 감지합니다"
                 checked={sensorSettings.camera}
                 onChange={(v) => handleSensorToggle("camera", v)}
               />
-            </div>
+            </SensorSection>
 
             {isLaptop && (
-              <div className="px-4 py-3">
+              <SensorSection>
                 <SensorToggle
                   label="덮개 (리드) 감지"
                   description="노트북 덮개 열림/닫힘을 감지합니다"
                   checked={sensorSettings.lidClosed}
                   onChange={(v) => handleSensorToggle("lidClosed", v)}
                 />
-              </div>
+              </SensorSection>
             )}
 
             {!isLaptop && (
-              <div className="px-4 py-3">
+              <SensorSection>
                 <SensorToggle
                   label="마이크 감지"
                   description="주변 소리를 감지합니다"
                   checked={sensorSettings.microphone}
                   onChange={(v) => handleSensorToggle("microphone", v)}
                 />
-              </div>
+              </SensorSection>
             )}
 
-            <div className="px-4 py-3">
+            <SensorSection>
               <SensorToggle
                 label="키보드 감지"
                 description="키보드 입력을 감지합니다"
                 checked={sensorSettings.keyboard}
                 onChange={(v) => handleSensorToggle("keyboard", v)}
               />
-            </div>
+            </SensorSection>
 
-            <div className="px-4 py-3">
+            <SensorSection>
               <SensorToggle
                 label="마우스 감지"
                 description="마우스 움직임을 감지합니다"
                 checked={sensorSettings.mouse}
                 onChange={(v) => handleSensorToggle("mouse", v)}
               />
-            </div>
+            </SensorSection>
 
-            <div className="px-4 py-3">
+            <SensorSection>
               <SensorToggle
                 label="USB 연결 감지"
                 description="USB 장치 연결을 감지합니다"
                 checked={sensorSettings.usb}
                 onChange={(v) => handleSensorToggle("usb", v)}
               />
-            </div>
+            </SensorSection>
 
-            <div className="px-4 py-3">
+            <SensorSection>
               <SensorToggle
                 label="전원 케이블 감지"
                 description="전원 연결 해제를 감지합니다"
                 checked={sensorSettings.power}
                 onChange={(v) => handleSensorToggle("power", v)}
               />
-            </div>
+            </SensorSection>
 
-            {/* Bottom spacing */}
-            <div className="h-8" />
+            <div className="h-10" />
           </div>
         </div>
       </div>
 
       {/* Nickname Dialog */}
       <Dialog open={showNicknameDialog} onOpenChange={setShowNicknameDialog}>
-        <DialogContent className="bg-primary border-primary-foreground/20">
+        <DialogContent style={{ background: "hsl(220, 40%, 18%)", borderColor: "hsl(220, 30%, 28%)" }}>
           <DialogHeader>
-            <DialogTitle className="text-primary-foreground">닉네임 변경</DialogTitle>
+            <DialogTitle className="text-white">닉네임 변경</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-primary-foreground/70 text-sm">변경할 닉네임을 입력해 주세요.</p>
+            <p className="text-white/60 text-sm">변경할 닉네임을 입력해 주세요.</p>
             <Input
               value={tempNickname}
               onChange={(e) => setTempNickname(e.target.value)}
-              className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground"
+              className="bg-white/10 border-white/20 text-white placeholder:text-white/30"
             />
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowNicknameDialog(false)} className="flex-1">취소</Button>
+              <Button variant="outline" onClick={() => setShowNicknameDialog(false)} className="flex-1 border-white/20 text-white hover:bg-white/10">취소</Button>
               <Button onClick={handleSaveNickname} className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90">변경</Button>
             </div>
           </div>
@@ -321,16 +437,17 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
 
       {/* PIN Dialog */}
       <Dialog open={showPinDialog} onOpenChange={setShowPinDialog}>
-        <DialogContent className="bg-primary border-primary-foreground/20">
+        <DialogContent style={{ background: "hsl(220, 40%, 18%)", borderColor: "hsl(220, 30%, 28%)" }}>
           <DialogHeader>
-            <DialogTitle className="text-primary-foreground">경보해제 비밀번호 변경</DialogTitle>
+            <DialogTitle className="text-white">경보해제 비밀번호 변경</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="flex justify-center gap-2">
+            <div className="flex justify-center gap-3">
               {[0, 1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="w-12 h-12 border-2 border-primary-foreground/30 rounded-lg flex items-center justify-center text-primary-foreground text-xl"
+                  className="w-13 h-13 border-2 border-white/25 rounded-xl flex items-center justify-center text-white text-2xl font-bold"
+                  style={{ width: 52, height: 52 }}
                 >
                   {tempPin[i] ? "•" : ""}
                 </div>
@@ -345,9 +462,10 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
                     else if (num !== null && tempPin.length < 4) setTempPin(tempPin + num);
                   }}
                   disabled={num === null}
-                  className={`h-12 rounded-lg font-bold text-lg ${
-                    num === null ? "invisible" : "bg-primary-foreground/10 text-primary-foreground active:bg-primary-foreground/20"
+                  className={`h-13 rounded-xl font-bold text-lg transition-all ${
+                    num === null ? "invisible" : "bg-white/10 text-white active:bg-white/25 active:scale-95"
                   }`}
+                  style={{ height: 52 }}
                 >
                   {num === "del" ? "⌫" : num}
                 </button>
@@ -356,7 +474,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
             <Button
               onClick={handleSavePin}
               disabled={tempPin.length !== 4}
-              className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+              className="w-full bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-40"
             >
               저장
             </Button>
@@ -365,26 +483,89 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
       </Dialog>
 
       {/* Sound Dialog */}
-      <Dialog open={showSoundDialog} onOpenChange={setShowSoundDialog}>
-        <DialogContent className="bg-primary border-primary-foreground/20">
+      <Dialog open={showSoundDialog} onOpenChange={(open) => { setShowSoundDialog(open); if (!open) stopAllSounds(); }}>
+        <DialogContent style={{ background: "hsl(220, 40%, 18%)", borderColor: "hsl(220, 30%, 28%)" }} className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-primary-foreground">경보음</DialogTitle>
+            <DialogTitle className="text-white">경보음 선택</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
             {ALARM_SOUNDS.map((sound) => (
-              <button
-                key={sound}
-                onClick={() => { setSelectedSound(sound); setShowSoundDialog(false); }}
-                className={`w-full text-left px-4 py-3 rounded-lg flex items-center justify-between ${
-                  selectedSound === sound
-                    ? "bg-accent text-accent-foreground"
-                    : "bg-primary-foreground/10 text-primary-foreground"
+              <div
+                key={sound.id}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${
+                  selectedSoundId === sound.id
+                    ? "bg-accent/20 ring-1 ring-accent"
+                    : "bg-white/6 hover:bg-white/10"
                 }`}
+                onClick={() => handleSelectSound(sound.id)}
               >
-                <span>{sound}</span>
-                {selectedSound === sound && <span>✓</span>}
-              </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); previewSound(sound.id); }}
+                  className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 hover:bg-white/20 transition-colors"
+                >
+                  {playingSoundId === sound.id ? (
+                    <Square className="w-4 h-4 text-accent fill-accent" />
+                  ) : (
+                    <Play className="w-4 h-4 text-white/80 ml-0.5" />
+                  )}
+                </button>
+                <span className="text-white font-medium text-sm flex-1">{sound.label}</span>
+                {selectedSoundId === sound.id && (
+                  <span className="text-accent font-bold">✓</span>
+                )}
+              </div>
             ))}
+
+            {/* Custom sound */}
+            <div
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${
+                selectedSoundId === "custom"
+                  ? "bg-accent/20 ring-1 ring-accent"
+                  : "bg-white/6 hover:bg-white/10"
+              }`}
+              onClick={() => { if (customSoundDataUrl) handleSelectSound("custom"); else fileInputRef.current?.click(); }}
+            >
+              {customSoundDataUrl ? (
+                <button
+                  onClick={(e) => { e.stopPropagation(); previewSound("custom"); }}
+                  className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 hover:bg-white/20 transition-colors"
+                >
+                  {playingSoundId === "custom" ? (
+                    <Square className="w-4 h-4 text-accent fill-accent" />
+                  ) : (
+                    <Play className="w-4 h-4 text-white/80 ml-0.5" />
+                  )}
+                </button>
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                  <Upload className="w-4 h-4 text-white/60" />
+                </div>
+              )}
+              <div className="flex-1">
+                <span className="text-white font-medium text-sm block">
+                  {customSoundName || "내 기기에서 선택"}
+                </span>
+                {customSoundDataUrl && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                    className="text-white/40 text-xs underline mt-0.5"
+                  >
+                    다른 파일 선택
+                  </button>
+                )}
+              </div>
+              {selectedSoundId === "custom" && (
+                <span className="text-accent font-bold">✓</span>
+              )}
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="audio/*"
+              className="hidden"
+              onChange={handleCustomSoundUpload}
+            />
           </div>
         </DialogContent>
       </Dialog>
@@ -400,13 +581,17 @@ interface SettingItemProps {
 }
 
 const SettingItem = ({ label, value, onClick }: SettingItemProps) => (
-  <button onClick={onClick} className="flex items-center justify-between w-full px-4 py-4 text-left">
-    <span className="text-primary-foreground font-medium">{label}</span>
+  <button onClick={onClick} className="flex items-center justify-between w-full px-4 py-4 text-left active:bg-white/5 transition-colors">
+    <span className="text-white font-medium text-sm">{label}</span>
     <div className="flex items-center gap-2">
-      {value && <span className="text-primary-foreground/70">{value}</span>}
-      <ChevronRight className="w-5 h-5 text-primary-foreground/50" />
+      {value && <span className="text-white/50 text-sm">{value}</span>}
+      <ChevronRight className="w-5 h-5 text-white/30" />
     </div>
   </button>
+);
+
+const SensorSection = ({ children }: { children: React.ReactNode }) => (
+  <div className="px-4 py-3.5">{children}</div>
 );
 
 interface SensorToggleProps {
@@ -419,8 +604,8 @@ interface SensorToggleProps {
 const SensorToggle = ({ label, description, checked, onChange }: SensorToggleProps) => (
   <div className="flex items-center justify-between">
     <div>
-      <span className="text-primary-foreground font-medium text-sm block">{label}</span>
-      <span className="text-primary-foreground/50 text-xs">{description}</span>
+      <span className="text-white font-medium text-sm block">{label}</span>
+      <span className="text-white/40 text-xs">{description}</span>
     </div>
     <Switch checked={checked} onCheckedChange={onChange} />
   </div>
