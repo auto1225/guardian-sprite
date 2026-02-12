@@ -43,6 +43,13 @@ export function savePhotoAlert(alert: PhotoAlert): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(alerts));
   } catch (e) {
     console.error("[PhotoAlertStorage] Save error:", e);
+    // QuotaExceededError → 오래된 데이터 삭제 후 재시도
+    try {
+      let alerts: PhotoAlert[] = [alert];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(alerts));
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+    }
   }
 }
 
