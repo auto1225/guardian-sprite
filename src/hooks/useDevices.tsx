@@ -244,6 +244,8 @@ export const useDevices = () => {
 
     // 이미 설정된 디바이스 ID 추적
     const setupDeviceIds = new Set<string>();
+    // leave 이벤트 디바운스 타이머
+    const leaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
     // Presence 채널 설정 (각 디바이스별 상태 수신)
     const setupPresenceChannel = (device: Device) => {
@@ -327,30 +329,48 @@ export const useDevices = () => {
         })
         .on('presence', { event: 'join' }, ({ key, newPresences }) => {
           console.log("[Presence] 👋 Device joined:", key, newPresences);
+          // join 시 기존 leave 타이머 취소 (재연결된 것이므로)
+          if (key === device.id) {
+            const existingTimer = leaveTimers.get(device.id);
+            if (existingTimer) {
+              clearTimeout(existingTimer);
+              leaveTimers.delete(device.id);
+              console.log("[Presence] ⏱️ Leave timer cancelled (device rejoined):", device.id.slice(0, 8));
+            }
+          }
         })
         .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
           console.log("[Presence] 👋 Device left:", key, leftPresences);
-          // 노트북이 떠나면 오프라인으로 표시 (카메라 상태는 DB에서 가져옴)
+          // 디바운스: 3초 후에도 재접속하지 않으면 오프라인 처리
           if (key === device.id) {
-            // DB에서 최신 카메라 상태를 가져온 후 오프라인 처리
-            supabase
-              .from("devices")
-              .select("is_camera_connected")
-              .eq("id", device.id)
-              .maybeSingle()
-              .then(({ data }) => {
-                queryClient.setQueryData(
-                  ["devices", user.id],
-                  (oldDevices: Device[] | undefined) => {
-                    if (!oldDevices) return oldDevices;
-                    return oldDevices.map((d) =>
-                      d.id === device.id
-                        ? { ...d, status: 'offline' as const, is_camera_connected: data?.is_camera_connected ?? d.is_camera_connected }
-                        : d
-                    );
-                  }
-                );
-              });
+            // 기존 타이머 취소
+            const existingTimer = leaveTimers.get(device.id);
+            if (existingTimer) clearTimeout(existingTimer);
+
+            const timer = setTimeout(() => {
+              leaveTimers.delete(device.id);
+              console.log("[Presence] ⏱️ Leave confirmed (no rejoin):", device.id.slice(0, 8));
+              // DB에서 최신 카메라 상태를 가져온 후 오프라인 처리
+              supabase
+                .from("devices")
+                .select("is_camera_connected")
+                .eq("id", device.id)
+                .maybeSingle()
+                .then(({ data }) => {
+                  queryClient.setQueryData(
+                    ["devices", user.id],
+                    (oldDevices: Device[] | undefined) => {
+                      if (!oldDevices) return oldDevices;
+                      return oldDevices.map((d) =>
+                        d.id === device.id
+                          ? { ...d, status: 'offline' as const, is_camera_connected: data?.is_camera_connected ?? d.is_camera_connected }
+                          : d
+                      );
+                    }
+                  );
+                });
+            }, 3000);
+            leaveTimers.set(device.id, timer);
           }
         })
         .subscribe((status) => {
@@ -396,6 +416,9 @@ export const useDevices = () => {
     return () => {
       isChannelActive = false;
       unsubscribe();
+      // leave 디바운스 타이머 정리
+      leaveTimers.forEach((timer) => clearTimeout(timer));
+      leaveTimers.clear();
       if (dbChannel) {
         supabase.removeChannel(dbChannel);
       }
