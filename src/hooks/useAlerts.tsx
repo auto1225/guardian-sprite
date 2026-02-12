@@ -9,47 +9,63 @@ import {
   LocalAlertType 
 } from "@/lib/localActivityLogs";
 
-// 모든 생성된 AudioContext와 Interval을 추적하여 확실하게 중단
-const allAudioContexts: AudioContext[] = [];
-const allIntervalIds: ReturnType<typeof setInterval>[] = [];
-let alarmPlaying = false;
-// 모듈 레벨 — 채널 재연결/컴포넌트 리마운트에도 유지
-const dismissedAlertIds = new Set<string>();
-let lastPlayedAlertId: string | null = null;
+// window 전역에 경보음 상태를 저장 — HMR/핫 리로드 후에도 이전 경보음 추적 가능
+interface AlarmState {
+  contexts: AudioContext[];
+  intervals: ReturnType<typeof setInterval>[];
+  playing: boolean;
+  dismissedIds: Set<string>;
+  lastPlayedId: string | null;
+}
+
+function getAlarmState(): AlarmState {
+  const w = window as unknown as { __meercop_alarm?: AlarmState };
+  if (!w.__meercop_alarm) {
+    w.__meercop_alarm = {
+      contexts: [],
+      intervals: [],
+      playing: false,
+      dismissedIds: new Set(),
+      lastPlayedId: null,
+    };
+  }
+  return w.__meercop_alarm;
+}
 
 function stopAlertSound() {
-  if (alarmPlaying || allAudioContexts.length > 0 || allIntervalIds.length > 0) {
-    console.log("[useAlerts] 🔇 Stopping all alarm sounds", {
-      contexts: allAudioContexts.length,
-      intervals: allIntervalIds.length,
+  const state = getAlarmState();
+  if (state.playing || state.contexts.length > 0 || state.intervals.length > 0) {
+    console.log("[useAlerts] 🔇 Stopping ALL alarm sounds", {
+      contexts: state.contexts.length,
+      intervals: state.intervals.length,
     });
   }
-  alarmPlaying = false;
-  // 모든 interval 정리
-  for (const id of allIntervalIds) {
+  state.playing = false;
+  for (const id of state.intervals) {
     clearInterval(id);
   }
-  allIntervalIds.length = 0;
-  // 모든 AudioContext 닫기
-  for (const ctx of allAudioContexts) {
+  state.intervals.length = 0;
+  for (const ctx of state.contexts) {
     try { ctx.close().catch(() => {}); } catch { /* already closed */ }
   }
-  allAudioContexts.length = 0;
+  state.contexts.length = 0;
 }
 
 function playAlertSoundLoop() {
-  if (alarmPlaying) {
+  const state = getAlarmState();
+  if (state.playing) {
     console.log("[useAlerts] ⏭️ Alarm already playing, skipping");
     return;
   }
-  stopAlertSound(); // 혹시 남아있는 것들 정리
-  alarmPlaying = true;
+  stopAlertSound(); // 이전 핫 리로드의 좀비 경보음도 정리
+  state.playing = true;
   console.log("[useAlerts] 🔊 Starting alarm sound loop");
   try {
     const ctx = new AudioContext();
-    allAudioContexts.push(ctx);
+    state.contexts.push(ctx);
     const playOnce = () => {
-      if (ctx.state === 'closed' || !alarmPlaying) {
+      const s = getAlarmState();
+      if (ctx.state === 'closed' || !s.playing) {
         stopAlertSound();
         return;
       }
@@ -75,11 +91,14 @@ function playAlertSoundLoop() {
     };
     playOnce();
     const intervalId = setInterval(playOnce, 2500);
-    allIntervalIds.push(intervalId);
+    state.intervals.push(intervalId);
   } catch {
-    alarmPlaying = false;
+    getAlarmState().playing = false;
   }
 }
+
+// 모듈 로드 시 이전 핫 리로드에서 남은 좀비 경보음 즉시 정리
+stopAlertSound();
 
 export interface ActiveAlert {
   id: string;
@@ -140,13 +159,11 @@ export const useAlerts = (deviceId?: string | null) => {
         }
         
         if (foundAlert) {
-          // 이미 해제한 경보는 무시
-          if (dismissedAlertIds.has(foundAlert.id)) {
+          const s = getAlarmState();
+          if (s.dismissedIds.has(foundAlert.id)) {
             return;
           }
-          // 이미 같은 경보를 재생 중이면 무시
-          if (lastPlayedAlertId === foundAlert.id) {
-            // 상태만 동기화 (UI 표시용)
+          if (s.lastPlayedId === foundAlert.id) {
             if (!activeAlertRef.current || activeAlertRef.current.id !== foundAlert.id) {
               setActiveAlert(foundAlert);
               activeAlertRef.current = foundAlert;
@@ -156,7 +173,7 @@ export const useAlerts = (deviceId?: string | null) => {
           console.log("[useAlerts] Active alert from Presence:", foundAlert);
           setActiveAlert(foundAlert);
           activeAlertRef.current = foundAlert;
-          lastPlayedAlertId = foundAlert.id;
+          s.lastPlayedId = foundAlert.id;
           playAlertSoundLoop();
           addActivityLog(deviceId, foundAlert.type, {
             title: foundAlert.title,
@@ -165,9 +182,9 @@ export const useAlerts = (deviceId?: string | null) => {
           });
           loadAlerts();
         } else {
-          // 노트북이 경보를 해제했으므로 dismissed 목록도 클리어
-          dismissedAlertIds.clear();
-          lastPlayedAlertId = null;
+          const s = getAlarmState();
+          s.dismissedIds.clear();
+          s.lastPlayedId = null;
           stopAlertSound();
           setActiveAlert(null);
           activeAlertRef.current = null;
@@ -178,10 +195,11 @@ export const useAlerts = (deviceId?: string | null) => {
         console.log("[useAlerts] Broadcast active_alert:", payload);
         const alert = payload?.payload?.active_alert as ActiveAlert | undefined;
         if (alert) {
-          if (dismissedAlertIds.has(alert.id)) {
+          const s = getAlarmState();
+          if (s.dismissedIds.has(alert.id)) {
             return;
           }
-          if (lastPlayedAlertId === alert.id) {
+          if (s.lastPlayedId === alert.id) {
             if (!activeAlertRef.current || activeAlertRef.current.id !== alert.id) {
               setActiveAlert(alert);
               activeAlertRef.current = alert;
@@ -190,7 +208,7 @@ export const useAlerts = (deviceId?: string | null) => {
           }
           setActiveAlert(alert);
           activeAlertRef.current = alert;
-          lastPlayedAlertId = alert.id;
+          s.lastPlayedId = alert.id;
           playAlertSoundLoop();
           addActivityLog(deviceId, alert.type, {
             title: alert.title,
@@ -239,10 +257,10 @@ export const useAlerts = (deviceId?: string | null) => {
   // 활성 알림 해제 + Presence로 랩탑에 동기화
   const dismissActiveAlert = useCallback(async () => {
     stopAlertSound();
-    // 해제한 경보 ID 기록 → Presence 재sync 시 무시
     if (activeAlertRef.current) {
-      dismissedAlertIds.add(activeAlertRef.current.id);
-      lastPlayedAlertId = null;
+      const s = getAlarmState();
+      s.dismissedIds.add(activeAlertRef.current.id);
+      s.lastPlayedId = null;
     }
     setActiveAlert(null);
     activeAlertRef.current = null;
