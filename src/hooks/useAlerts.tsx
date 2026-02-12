@@ -81,24 +81,35 @@ export const useAlerts = (deviceId?: string | null) => {
         const state = channel.presenceState();
         console.log("[useAlerts] Presence sync:", state);
         
-        // 노트북에서 보낸 알림 상태 확인
-        const laptopState = state[deviceId]?.[0] as { active_alert?: ActiveAlert } | undefined;
-        if (laptopState?.active_alert) {
-          console.log("[useAlerts] Active alert received:", laptopState.active_alert);
+        // 모든 Presence 항목을 순회하며 active_alert 찾기
+        let foundAlert: ActiveAlert | null = null;
+        for (const key of Object.keys(state)) {
+          const entries = state[key] as Array<{ active_alert?: ActiveAlert; remote_alarm_off?: boolean }>;
+          for (const entry of entries) {
+            if (entry.active_alert) {
+              foundAlert = entry.active_alert;
+              break;
+            }
+          }
+          if (foundAlert) break;
+        }
+        
+        if (foundAlert) {
+          console.log("[useAlerts] Active alert received:", foundAlert);
           const prevAlert = activeAlertRef.current;
-          setActiveAlert(laptopState.active_alert);
-          activeAlertRef.current = laptopState.active_alert;
+          setActiveAlert(foundAlert);
+          activeAlertRef.current = foundAlert;
           
           // 새 알림일 때만 경보음 재생
-          if (!prevAlert || prevAlert.id !== laptopState.active_alert.id) {
+          if (!prevAlert || prevAlert.id !== foundAlert.id) {
             playAlertSound();
           }
           
           // 로컬 로그에 저장
-          addActivityLog(deviceId, laptopState.active_alert.type, {
-            title: laptopState.active_alert.title,
-            message: laptopState.active_alert.message,
-            alertType: laptopState.active_alert.type,
+          addActivityLog(deviceId, foundAlert.type, {
+            title: foundAlert.title,
+            message: foundAlert.message,
+            alertType: foundAlert.type,
           });
           
           // 알림 목록 갱신
