@@ -148,16 +148,18 @@ export interface ActiveAlert {
   created_at: string;
 }
 
-export const useAlerts = (deviceId?: string | null) => {
+export const useAlerts = (deviceId?: string | null, isMonitoring?: boolean) => {
   const [alerts, setAlerts] = useState<LocalActivityLog[]>([]);
   const [activeAlert, setActiveAlert] = useState<ActiveAlert | null>(null);
   const activeAlertRef = useRef<ActiveAlert | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const deviceIdRef = useRef(deviceId);
+  const isMonitoringRef = useRef(isMonitoring ?? false);
   const mountedRef = useRef(true);
   const [isLoading, setIsLoading] = useState(true);
 
   deviceIdRef.current = deviceId;
+  isMonitoringRef.current = isMonitoring ?? false;
 
   // unmount 시 flag 설정
   useEffect(() => {
@@ -222,14 +224,15 @@ export const useAlerts = (deviceId?: string | null) => {
             }
             return;
           }
-          console.log("[useAlerts] New alert from Presence:", foundAlert.id, "muted:", s.muted);
+          const monitoring = isMonitoringRef.current;
+          console.log("[useAlerts] New alert from Presence:", foundAlert.id, "muted:", s.muted, "monitoring:", monitoring);
           if (mountedRef.current) setActiveAlert(foundAlert);
           activeAlertRef.current = foundAlert;
           s.lastPlayedId = foundAlert.id;
-          if (!s.muted) {
+          if (!s.muted && monitoring) {
             playAlertSoundLoop();
           } else {
-            console.log("[useAlerts] ⏭️ Skipping sound (muted)");
+            console.log("[useAlerts] ⏭️ Skipping sound (muted:", s.muted, "monitoring:", monitoring, ")");
           }
           try {
             addActivityLog(deviceId, foundAlert.type, {
@@ -263,7 +266,7 @@ export const useAlerts = (deviceId?: string | null) => {
           if (mountedRef.current) setActiveAlert(alert);
           activeAlertRef.current = alert;
           s.lastPlayedId = alert.id;
-          if (!s.muted) {
+          if (!s.muted && isMonitoringRef.current) {
             playAlertSoundLoop();
           }
           try {
