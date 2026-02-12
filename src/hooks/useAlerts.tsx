@@ -19,22 +19,49 @@ interface AlarmState {
   suppressUntil: number;    // dismiss 후 일시적으로 새 알람 차단 (timestamp)
 }
 
+/** localStorage에서 dismissedIds 복원 */
+function loadDismissedIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem('meercop_dismissed_ids');
+    if (raw) {
+      const arr = JSON.parse(raw) as string[];
+      return new Set(arr);
+    }
+  } catch {}
+  return new Set();
+}
+
+/** dismissedIds를 localStorage에 저장 (최대 50개) */
+function saveDismissedIds(ids: Set<string>) {
+  try {
+    const arr = Array.from(ids).slice(-50); // 최근 50개만 유지
+    localStorage.setItem('meercop_dismissed_ids', JSON.stringify(arr));
+  } catch {}
+}
+
+/** muted 상태를 localStorage에서 읽기 */
+function readMuted(): boolean {
+  try {
+    return localStorage.getItem('meercop_alarm_muted') === 'true';
+  } catch {
+    return false;
+  }
+}
+
 function getAlarmState(): AlarmState {
   const w = window as unknown as { __meercop_alarm?: AlarmState };
   if (!w.__meercop_alarm) {
     w.__meercop_alarm = {
       generation: 0,
       playing: false,
-      dismissedIds: new Set(),
+      dismissedIds: loadDismissedIds(),
       lastPlayedId: null,
-      muted: false,
+      muted: readMuted(),
       suppressUntil: 0,
     };
   }
   // 항상 localStorage에서 muted 상태를 동기화
-  try {
-    w.__meercop_alarm.muted = localStorage.getItem('meercop_alarm_muted') === 'true';
-  } catch {}
+  w.__meercop_alarm.muted = readMuted();
   return w.__meercop_alarm;
 }
 
@@ -252,8 +279,28 @@ export const useAlerts = (deviceId?: string | null) => {
         
         if (foundAlert) {
           const s = getAlarmState();
-          if (s.dismissedIds.has(foundAlert.id)) return;
-          if (s.suppressUntil > Date.now()) return;
+          if (s.dismissedIds.has(foundAlert.id)) {
+            console.log("[useAlerts] ⏭️ Already dismissed:", foundAlert.id);
+            return;
+          }
+          if (s.suppressUntil > Date.now()) {
+            console.log("[useAlerts] ⏭️ Suppressed, skipping");
+            return;
+          }
+          // 5분 이상 지난 경보는 stale로 간주 — 소리 안 울림
+          const alertAge = Date.now() - new Date(foundAlert.created_at).getTime();
+          const isStale = alertAge > 5 * 60 * 1000;
+          if (isStale) {
+            console.log("[useAlerts] ⏭️ Stale alert (age:", Math.round(alertAge / 1000), "s), skipping sound");
+            s.dismissedIds.add(foundAlert.id);
+            saveDismissedIds(s.dismissedIds);
+            // 상태만 표시, 소리 없음
+            if (!activeAlertRef.current || activeAlertRef.current.id !== foundAlert.id) {
+              safeSetActiveAlert(foundAlert);
+              activeAlertRef.current = foundAlert;
+            }
+            return;
+          }
           if (s.lastPlayedId === foundAlert.id) {
             if (!activeAlertRef.current || activeAlertRef.current.id !== foundAlert.id) {
               safeSetActiveAlert(foundAlert);
@@ -262,7 +309,7 @@ export const useAlerts = (deviceId?: string | null) => {
             return;
           }
           // localStorage에서 직접 muted 재확인
-          const isMuted = localStorage.getItem('meercop_alarm_muted') === 'true';
+          const isMuted = readMuted();
           console.log("[useAlerts] New alert from Presence:", foundAlert.id, "muted:", isMuted);
           safeSetActiveAlert(foundAlert);
           activeAlertRef.current = foundAlert;
@@ -293,6 +340,13 @@ export const useAlerts = (deviceId?: string | null) => {
           const s = getAlarmState();
           if (s.dismissedIds.has(alert.id)) return;
           if (s.suppressUntil > Date.now()) return;
+          // 5분 이상 지난 경보는 무시
+          const alertAge = Date.now() - new Date(alert.created_at).getTime();
+          if (alertAge > 5 * 60 * 1000) {
+            s.dismissedIds.add(alert.id);
+            saveDismissedIds(s.dismissedIds);
+            return;
+          }
           if (s.lastPlayedId === alert.id) {
             if (!activeAlertRef.current || activeAlertRef.current.id !== alert.id) {
               safeSetActiveAlert(alert);
@@ -300,7 +354,7 @@ export const useAlerts = (deviceId?: string | null) => {
             }
             return;
           }
-          const isMuted = localStorage.getItem('meercop_alarm_muted') === 'true';
+          const isMuted = readMuted();
           safeSetActiveAlert(alert);
           activeAlertRef.current = alert;
           s.lastPlayedId = alert.id;
@@ -358,6 +412,7 @@ export const useAlerts = (deviceId?: string | null) => {
     s.suppressUntil = Date.now() + 30000;
     if (activeAlertRef.current) {
       s.dismissedIds.add(activeAlertRef.current.id);
+      saveDismissedIds(s.dismissedIds);
     }
     s.playing = false;
     safeSetActiveAlert(null);
