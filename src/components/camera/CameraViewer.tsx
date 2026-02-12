@@ -1,4 +1,4 @@
-import { Camera, RefreshCw, Download, Video, Play } from "lucide-react";
+import { Camera, RefreshCw, Download, Video, Play, Volume2, VolumeX } from "lucide-react";
 import { useState } from "react";
 import { useRef, useEffect } from "react";
 
@@ -23,6 +23,7 @@ const CameraViewer = ({
 }: CameraViewerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
 
   useEffect(() => {
     if (videoRef.current && remoteStream) {
@@ -201,6 +202,13 @@ const CameraViewer = ({
       }
     };
 
+    const handleToggleMute = () => {
+      if (videoRef.current) {
+        videoRef.current.muted = !videoRef.current.muted;
+        setIsMuted(videoRef.current.muted);
+      }
+    };
+
     return (
       <div className="flex-1 bg-black rounded-xl mx-4 flex items-center justify-center relative overflow-hidden aspect-video">
         <video
@@ -235,6 +243,15 @@ const CameraViewer = ({
         </div>
         {/* Action buttons */}
         <div className="absolute bottom-3 right-3 flex gap-2">
+          <button
+            onClick={handleToggleMute}
+            className={`w-10 h-10 rounded-full flex items-center justify-center text-white transition-colors ${
+              isMuted ? "bg-white/20 hover:bg-white/30" : "bg-accent/80 hover:bg-accent"
+            }`}
+            title={isMuted ? "소리 켜기" : "소리 끄기"}
+          >
+            {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+          </button>
           <button
             onClick={onCapture}
             className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
