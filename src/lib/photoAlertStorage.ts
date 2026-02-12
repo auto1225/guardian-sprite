@@ -1,5 +1,5 @@
 const STORAGE_KEY = "meercop_photo_alerts";
-const MAX_ALERTS = 20;
+const MAX_ALERTS = 10; // localStorage 용량 초과 방지 (base64 이미지 포함)
 
 export type PhotoEventType = "camera_motion" | "keyboard" | "mouse" | "lid" | "power";
 
