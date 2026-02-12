@@ -166,38 +166,65 @@ const Index = () => {
       </div>
       
       {/* Toggle Buttons - highest z-index */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3">
-        <ToggleButton 
-          isOn={isMonitoring}
-          onToggle={handleToggleMonitoring}
-        />
-        <button
-          onClick={async () => {
-            if (!selectedDevice) return;
-            const currentMeta = (selectedDevice.metadata as Record<string, unknown>) || {};
-            const newVal = !currentMeta.camouflage_mode;
-            try {
-              await supabase
-                .from("devices")
-                .update({ metadata: { ...currentMeta, camouflage_mode: newVal } })
-                .eq("id", selectedDevice.id);
-              toast({
-                title: newVal ? "위장 모드 ON" : "위장 모드 OFF",
-                description: newVal ? "노트북 화면이 꺼진 것처럼 보입니다." : "노트북 화면이 정상으로 복원됩니다.",
-              });
-            } catch {
-              toast({ title: "오류", description: "위장 모드 변경 실패", variant: "destructive" });
-            }
-          }}
-          disabled={!selectedDevice}
-          className={`flex items-center justify-center w-11 h-11 rounded-full font-bold transition-all shadow-lg ${
-            (selectedDevice?.metadata as Record<string, unknown>)?.camouflage_mode
-              ? 'bg-gray-900 text-white border-2 border-white/30'
-              : 'bg-muted text-muted-foreground'
-          }`}
-        >
-          <span className="text-lg">🖥️</span>
-        </button>
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-3">
+        {/* 컴퓨터 경보음 원격 해제 버튼 - 감시 중일 때만 표시 */}
+        {isMonitoring && selectedDevice && (
+          <button
+            onClick={async () => {
+              try {
+                const channel = supabase.channel(`device-alerts-${selectedDevice.id}`);
+                await channel.subscribe();
+                await channel.track({
+                  active_alert: null,
+                  dismissed_at: new Date().toISOString(),
+                  remote_alarm_off: true,
+                });
+                toast({ title: "컴퓨터 경보 해제", description: "컴퓨터의 경보음이 해제되었습니다." });
+                setTimeout(() => {
+                  supabase.removeChannel(channel);
+                }, 2000);
+              } catch {
+                toast({ title: "오류", description: "컴퓨터 경보 해제에 실패했습니다.", variant: "destructive" });
+              }
+            }}
+            className="px-5 py-2.5 bg-destructive text-destructive-foreground rounded-full font-bold text-sm shadow-lg active:scale-95 transition-transform flex items-center gap-2"
+          >
+            🔇 컴퓨터 경보음 해제
+          </button>
+        )}
+        <div className="flex items-center gap-3">
+          <ToggleButton 
+            isOn={isMonitoring}
+            onToggle={handleToggleMonitoring}
+          />
+          <button
+            onClick={async () => {
+              if (!selectedDevice) return;
+              const currentMeta = (selectedDevice.metadata as Record<string, unknown>) || {};
+              const newVal = !currentMeta.camouflage_mode;
+              try {
+                await supabase
+                  .from("devices")
+                  .update({ metadata: { ...currentMeta, camouflage_mode: newVal } })
+                  .eq("id", selectedDevice.id);
+                toast({
+                  title: newVal ? "위장 모드 ON" : "위장 모드 OFF",
+                  description: newVal ? "노트북 화면이 꺼진 것처럼 보입니다." : "노트북 화면이 정상으로 복원됩니다.",
+                });
+              } catch {
+                toast({ title: "오류", description: "위장 모드 변경 실패", variant: "destructive" });
+              }
+            }}
+            disabled={!selectedDevice}
+            className={`flex items-center justify-center w-11 h-11 rounded-full font-bold transition-all shadow-lg ${
+              (selectedDevice?.metadata as Record<string, unknown>)?.camouflage_mode
+                ? 'bg-gray-900 text-white border-2 border-white/30'
+                : 'bg-muted text-muted-foreground'
+            }`}
+          >
+            <span className="text-lg">🖥️</span>
+          </button>
+        </div>
       </div>
 
       {/* Side Menu */}
