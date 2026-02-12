@@ -325,7 +325,17 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
               <span className="text-white/50 font-bold text-xs uppercase tracking-wider">감지 센서 설정</span>
             </div>
 
-            {/* Motion Sensitivity - only when camera is enabled */}
+            {/* Sensor toggles */}
+            <SensorSection>
+              <SensorToggle
+                label="카메라 모션 감지"
+                description="카메라로 움직임을 감지합니다"
+                checked={sensorSettings.camera}
+                onChange={(v) => handleSensorToggle("camera", v)}
+              />
+            </SensorSection>
+
+            {/* Motion Sensitivity - only when camera is enabled, below the toggle */}
             {sensorSettings.camera && (
               <div className="px-4 py-4">
                 <div className="flex items-center justify-between mb-3">
@@ -348,16 +358,6 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
                 </div>
               </div>
             )}
-
-            {/* Sensor toggles */}
-            <SensorSection>
-              <SensorToggle
-                label="카메라 모션 감지"
-                description="카메라로 움직임을 감지합니다"
-                checked={sensorSettings.camera}
-                onChange={(v) => handleSensorToggle("camera", v)}
-              />
-            </SensorSection>
 
             {isLaptop && (
               <SensorSection>
