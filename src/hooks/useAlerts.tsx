@@ -148,18 +148,16 @@ export interface ActiveAlert {
   created_at: string;
 }
 
-export const useAlerts = (deviceId?: string | null, isMonitoring?: boolean) => {
+export const useAlerts = (deviceId?: string | null) => {
   const [alerts, setAlerts] = useState<LocalActivityLog[]>([]);
   const [activeAlert, setActiveAlert] = useState<ActiveAlert | null>(null);
   const activeAlertRef = useRef<ActiveAlert | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const deviceIdRef = useRef(deviceId);
-  const isMonitoringRef = useRef(isMonitoring ?? false);
   const mountedRef = useRef(true);
   const [isLoading, setIsLoading] = useState(true);
 
   deviceIdRef.current = deviceId;
-  isMonitoringRef.current = isMonitoring ?? false;
 
   // unmount 시 flag 설정
   useEffect(() => {
@@ -224,15 +222,14 @@ export const useAlerts = (deviceId?: string | null, isMonitoring?: boolean) => {
             }
             return;
           }
-          const monitoring = isMonitoringRef.current;
-          console.log("[useAlerts] New alert from Presence:", foundAlert.id, "muted:", s.muted, "monitoring:", monitoring);
+          console.log("[useAlerts] New alert from Presence:", foundAlert.id, "muted:", s.muted);
           if (mountedRef.current) setActiveAlert(foundAlert);
           activeAlertRef.current = foundAlert;
           s.lastPlayedId = foundAlert.id;
-          if (!s.muted && monitoring) {
+          if (!s.muted) {
             playAlertSoundLoop();
           } else {
-            console.log("[useAlerts] ⏭️ Skipping sound (muted:", s.muted, "monitoring:", monitoring, ")");
+            console.log("[useAlerts] ⏭️ Skipping sound (muted)");
           }
           try {
             addActivityLog(deviceId, foundAlert.type, {
@@ -266,7 +263,7 @@ export const useAlerts = (deviceId?: string | null, isMonitoring?: boolean) => {
           if (mountedRef.current) setActiveAlert(alert);
           activeAlertRef.current = alert;
           s.lastPlayedId = alert.id;
-          if (!s.muted && isMonitoringRef.current) {
+          if (!s.muted) {
             playAlertSoundLoop();
           }
           try {

@@ -25,8 +25,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const { devices, selectedDevice, selectedDeviceId, setSelectedDeviceId, isLoading, refreshDeviceStatus } = useDevices();
+  const { alerts, activeAlert, unreadCount, dismissActiveAlert } = useAlerts(selectedDeviceId);
   const isMonitoring = selectedDevice?.is_monitoring ?? false;
-  const { alerts, activeAlert, unreadCount, dismissActiveAlert } = useAlerts(selectedDeviceId, isMonitoring);
   const { toggleMonitoring } = useCommands();
   const { toast } = useToast();
   const {
