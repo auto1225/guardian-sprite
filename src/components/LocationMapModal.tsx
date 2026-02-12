@@ -44,53 +44,71 @@ const LocationMapModal = ({ isOpen, onClose, deviceId, deviceName }: LocationMap
   const [location, setLocation] = useState<LocationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [commandSent, setCommandSent] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !deviceId) return;
 
-    const fetchLocation = async () => {
+    const fetchAndRequest = async () => {
       setLoading(true);
       setError(null);
+      setCommandSent(false);
 
       // 1차: devices 테이블에서 위치 조회
-      const { data: deviceData, error: deviceError } = await supabase
+      const { data: deviceData } = await supabase
         .from("devices")
         .select("latitude, longitude, location_updated_at")
         .eq("id", deviceId)
         .maybeSingle();
 
-      if (!deviceError && deviceData && deviceData.latitude !== null && deviceData.longitude !== null) {
+      if (deviceData && deviceData.latitude !== null && deviceData.longitude !== null) {
         setLocation(deviceData);
         setLoading(false);
-        return;
       }
 
-      // 2차 fallback: device_locations 테이블에서 최신 위치 조회
-      const { data: locData, error: locError } = await supabase
-        .from("device_locations")
-        .select("latitude, longitude, recorded_at")
-        .eq("device_id", deviceId)
-        .order("recorded_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // 2차 fallback: device_locations 테이블
+      if (!deviceData?.latitude) {
+        const { data: locData } = await supabase
+          .from("device_locations")
+          .select("latitude, longitude, recorded_at")
+          .eq("device_id", deviceId)
+          .order("recorded_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-      if (!locError && locData && locData.latitude !== null && locData.longitude !== null) {
-        setLocation({
-          latitude: locData.latitude,
-          longitude: locData.longitude,
-          location_updated_at: locData.recorded_at,
+        if (locData && locData.latitude !== null && locData.longitude !== null) {
+          setLocation({
+            latitude: locData.latitude,
+            longitude: locData.longitude,
+            location_updated_at: locData.recorded_at,
+          });
+          setLoading(false);
+        }
+      }
+
+      // 노트북에 locate 명령 전송 (최신 위치 요청)
+      const { error: cmdError } = await supabase
+        .from("commands")
+        .insert({
+          device_id: deviceId,
+          command_type: "locate" as const,
+          status: "pending" as const,
         });
-        setLoading(false);
-        return;
+
+      if (!cmdError) {
+        setCommandSent(true);
       }
 
-      setError("노트북 위치 정보가 없습니다.");
-      setLoading(false);
+      // 기존 위치가 없으면 "요청 중" 표시
+      if (!deviceData?.latitude) {
+        setError("노트북에 위치 요청을 보냈습니다. 잠시 기다려주세요...");
+        setLoading(false);
+      }
     };
 
-    fetchLocation();
+    fetchAndRequest();
 
-    // Realtime subscription for location updates
+    // Realtime: 노트북이 위치를 저장하면 즉시 반영
     const channel = supabase
       .channel(`device-location-${deviceId}`)
       .on(
@@ -110,6 +128,7 @@ const LocationMapModal = ({ isOpen, onClose, deviceId, deviceName }: LocationMap
               location_updated_at: newData.location_updated_at,
             });
             setError(null);
+            setLoading(false);
           }
         }
       )
