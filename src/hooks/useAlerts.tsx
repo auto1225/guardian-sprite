@@ -70,7 +70,7 @@ export const useAlerts = (deviceId?: string | null) => {
     loadAlerts();
   }, [loadAlerts]);
 
-  // Presence 채널 구독 (노트북에서 보내는 실시간 알림 수신)
+  // Presence + Broadcast 채널 구독
   useEffect(() => {
     if (!deviceId) return;
 
@@ -81,10 +81,9 @@ export const useAlerts = (deviceId?: string | null) => {
         const state = channel.presenceState();
         console.log("[useAlerts] Presence sync:", state);
         
-        // 모든 Presence 항목을 순회하며 active_alert 찾기
         let foundAlert: ActiveAlert | null = null;
         for (const key of Object.keys(state)) {
-          const entries = state[key] as Array<{ active_alert?: ActiveAlert; remote_alarm_off?: boolean }>;
+          const entries = state[key] as Array<{ active_alert?: ActiveAlert }>;
           for (const entry of entries) {
             if (entry.active_alert) {
               foundAlert = entry.active_alert;
@@ -95,33 +94,56 @@ export const useAlerts = (deviceId?: string | null) => {
         }
         
         if (foundAlert) {
-          console.log("[useAlerts] Active alert received:", foundAlert);
+          console.log("[useAlerts] Active alert from Presence:", foundAlert);
           const prevAlert = activeAlertRef.current;
           setActiveAlert(foundAlert);
           activeAlertRef.current = foundAlert;
           
-          // 새 알림일 때만 경보음 재생
           if (!prevAlert || prevAlert.id !== foundAlert.id) {
             playAlertSound();
+            addActivityLog(deviceId, foundAlert.type, {
+              title: foundAlert.title,
+              message: foundAlert.message,
+              alertType: foundAlert.type,
+            });
+            loadAlerts();
           }
-          
-          // 로컬 로그에 저장
-          addActivityLog(deviceId, foundAlert.type, {
-            title: foundAlert.title,
-            message: foundAlert.message,
-            alertType: foundAlert.type,
-          });
-          
-          // 알림 목록 갱신
-          loadAlerts();
         } else {
-          // 알림이 해제됨
           setActiveAlert(null);
           activeAlertRef.current = null;
         }
       })
-      .subscribe((status) => {
+      // Broadcast로 전달되는 active_alert도 수신
+      .on('broadcast', { event: 'active_alert' }, (payload) => {
+        console.log("[useAlerts] Broadcast active_alert:", payload);
+        const alert = payload?.payload?.active_alert as ActiveAlert | undefined;
+        if (alert) {
+          const prevAlert = activeAlertRef.current;
+          setActiveAlert(alert);
+          activeAlertRef.current = alert;
+          
+          if (!prevAlert || prevAlert.id !== alert.id) {
+            playAlertSound();
+            addActivityLog(deviceId, alert.type, {
+              title: alert.title,
+              message: alert.message,
+              alertType: alert.type,
+            });
+            loadAlerts();
+          }
+        }
+      })
+      // remote_alarm_off 수신 시 알림 해제하지 않음 (컴퓨터 경보음만 해제)
+      .on('broadcast', { event: 'remote_alarm_off' }, () => {
+        console.log("[useAlerts] remote_alarm_off received (no-op on phone)");
+      })
+      .subscribe(async (status) => {
         console.log("[useAlerts] Channel status:", status);
+        if (status === 'SUBSCRIBED') {
+          // Presence에 참여하여 채널 연결 유지
+          await channel.track({ role: 'phone', joined_at: new Date().toISOString() });
+          console.log("[useAlerts] Tracked presence as phone");
+        }
       });
 
     return () => {
