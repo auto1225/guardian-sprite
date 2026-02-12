@@ -167,8 +167,8 @@ const Index = () => {
       
       {/* Toggle Buttons - highest z-index */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-3">
-        {/* 컴퓨터 경보음 원격 해제 버튼 - 감시 중일 때만 표시 */}
-        {isMonitoring && selectedDevice && (
+        {/* 컴퓨터 경보음 원격 해제 버튼 - 경보 활성화 시에만 표시 */}
+        {activeAlert && selectedDevice && (
           <button
             onClick={async () => {
               try {
