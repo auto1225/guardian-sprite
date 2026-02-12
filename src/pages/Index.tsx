@@ -49,6 +49,7 @@ const Index = () => {
   const [isNetworkInfoOpen, setIsNetworkInfoOpen] = useState(false);
   const [isDeviceManageOpen, setIsDeviceManageOpen] = useState(false);
   const [isAlertMode, setIsAlertMode] = useState(false);
+  const [showRemoteAlarmOff, setShowRemoteAlarmOff] = useState(false);
   const [isPhotoHistoryOpen, setIsPhotoHistoryOpen] = useState(false);
 
   const isMonitoring = selectedDevice?.is_monitoring ?? false;
@@ -57,6 +58,9 @@ const Index = () => {
   useEffect(() => {
     if (activeAlert) {
       setIsAlertMode(true);
+      setShowRemoteAlarmOff(true);
+    } else {
+      setShowRemoteAlarmOff(false);
     }
   }, [activeAlert]);
 
@@ -118,7 +122,7 @@ const Index = () => {
         activeAlert={activeAlert}
         onDismiss={() => {
           setIsAlertMode(false);
-          dismissActiveAlert();
+          // activeAlert는 유지 → 메인화면에 "컴퓨터 경보음 해제" 버튼 표시
         }}
       />
     );
@@ -168,7 +172,7 @@ const Index = () => {
       {/* Toggle Buttons - highest z-index */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-3">
         {/* 컴퓨터 경보음 원격 해제 버튼 - 경보 활성화 시에만 표시 */}
-        {activeAlert && selectedDevice && (
+        {showRemoteAlarmOff && selectedDevice && (
           <button
             onClick={async () => {
               try {
