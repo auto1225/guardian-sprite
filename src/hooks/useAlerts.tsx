@@ -9,26 +9,50 @@ import {
   LocalAlertType 
 } from "@/lib/localActivityLogs";
 
-let alarmIntervalId: ReturnType<typeof setInterval> | null = null;
-let alarmAudioCtx: AudioContext | null = null;
-let alarmPlaying = false; // 중복 재생 방지 플래그
+// 모든 생성된 AudioContext와 Interval을 추적하여 확실하게 중단
+const allAudioContexts: AudioContext[] = [];
+const allIntervalIds: ReturnType<typeof setInterval>[] = [];
+let alarmPlaying = false;
 // 모듈 레벨 — 채널 재연결/컴포넌트 리마운트에도 유지
 const dismissedAlertIds = new Set<string>();
 let lastPlayedAlertId: string | null = null;
 
+function stopAlertSound() {
+  if (alarmPlaying || allAudioContexts.length > 0 || allIntervalIds.length > 0) {
+    console.log("[useAlerts] 🔇 Stopping all alarm sounds", {
+      contexts: allAudioContexts.length,
+      intervals: allIntervalIds.length,
+    });
+  }
+  alarmPlaying = false;
+  // 모든 interval 정리
+  for (const id of allIntervalIds) {
+    clearInterval(id);
+  }
+  allIntervalIds.length = 0;
+  // 모든 AudioContext 닫기
+  for (const ctx of allAudioContexts) {
+    try { ctx.close().catch(() => {}); } catch { /* already closed */ }
+  }
+  allAudioContexts.length = 0;
+}
+
 function playAlertSoundLoop() {
-  if (alarmPlaying) return; // 이미 재생 중이면 무시
-  stopAlertSound();
+  if (alarmPlaying) {
+    console.log("[useAlerts] ⏭️ Alarm already playing, skipping");
+    return;
+  }
+  stopAlertSound(); // 혹시 남아있는 것들 정리
   alarmPlaying = true;
   console.log("[useAlerts] 🔊 Starting alarm sound loop");
   try {
-    alarmAudioCtx = new AudioContext();
+    const ctx = new AudioContext();
+    allAudioContexts.push(ctx);
     const playOnce = () => {
-      if (!alarmAudioCtx || alarmAudioCtx.state === 'closed') {
+      if (ctx.state === 'closed' || !alarmPlaying) {
         stopAlertSound();
         return;
       }
-      const ctx = alarmAudioCtx;
       const playBeep = (time: number, freq: number) => {
         try {
           const osc = ctx.createOscillator();
@@ -50,24 +74,10 @@ function playAlertSoundLoop() {
       playBeep(1.5, 1100);
     };
     playOnce();
-    alarmIntervalId = setInterval(playOnce, 2500);
+    const intervalId = setInterval(playOnce, 2500);
+    allIntervalIds.push(intervalId);
   } catch {
     alarmPlaying = false;
-  }
-}
-
-function stopAlertSound() {
-  if (alarmIntervalId || alarmAudioCtx) {
-    console.log("[useAlerts] 🔇 Stopping alarm sound");
-  }
-  alarmPlaying = false;
-  if (alarmIntervalId) {
-    clearInterval(alarmIntervalId);
-    alarmIntervalId = null;
-  }
-  if (alarmAudioCtx) {
-    alarmAudioCtx.close().catch(() => {});
-    alarmAudioCtx = null;
   }
 }
 
