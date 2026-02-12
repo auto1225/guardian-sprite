@@ -10,6 +10,7 @@ import DeviceList from "@/components/DeviceList";
 import AlertMode from "@/components/AlertMode";
 import SettingsPage from "@/pages/Settings";
 import LocationPage from "@/pages/Location";
+import LocationMapModal from "@/components/LocationMapModal";
 import CameraPage from "@/pages/Camera";
 import DeviceManagePage from "@/pages/DeviceManage";
 import { useDevices } from "@/hooks/useDevices";
@@ -28,6 +29,7 @@ const Index = () => {
   const [isDeviceListExpanded, setIsDeviceListExpanded] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLocationOpen, setIsLocationOpen] = useState(false);
+  const [isLocationMapOpen, setIsLocationMapOpen] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isDeviceManageOpen, setIsDeviceManageOpen] = useState(false);
   const [isAlertMode, setIsAlertMode] = useState(false);
@@ -60,7 +62,7 @@ const Index = () => {
   const handleStatusIconClick = async (type: "laptop" | "meercop" | "network" | "camera") => {
     switch (type) {
       case "laptop":
-        setIsLocationOpen(true);
+        setIsLocationMapOpen(true);
         break;
       case "camera":
         // 카메라 페이지 열기 전 최신 상태 새로고침
@@ -178,6 +180,14 @@ const Index = () => {
           onClose={() => setIsCameraOpen(false)}
         />
       )}
+
+      {/* Location Map Modal */}
+      <LocationMapModal
+        isOpen={isLocationMapOpen}
+        onClose={() => setIsLocationMapOpen(false)}
+        deviceId={selectedDeviceId}
+        deviceName={selectedDevice?.name ?? ""}
+      />
 
       {/* Device Management Page */}
       <DeviceManagePage
