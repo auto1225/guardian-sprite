@@ -223,6 +223,7 @@ export type Database = {
           created_at: string
           device_type: Database["public"]["Enums"]["device_type"]
           id: string
+          ip_address: string | null
           is_camera_connected: boolean
           is_monitoring: boolean
           is_network_connected: boolean
@@ -242,6 +243,7 @@ export type Database = {
           created_at?: string
           device_type: Database["public"]["Enums"]["device_type"]
           id?: string
+          ip_address?: string | null
           is_camera_connected?: boolean
           is_monitoring?: boolean
           is_network_connected?: boolean
@@ -261,6 +263,7 @@ export type Database = {
           created_at?: string
           device_type?: Database["public"]["Enums"]["device_type"]
           id?: string
+          ip_address?: string | null
           is_camera_connected?: boolean
           is_monitoring?: boolean
           is_network_connected?: boolean

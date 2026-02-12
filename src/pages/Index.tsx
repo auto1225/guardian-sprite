@@ -11,6 +11,7 @@ import AlertMode from "@/components/AlertMode";
 import SettingsPage from "@/pages/Settings";
 import LocationPage from "@/pages/Location";
 import LocationMapModal from "@/components/LocationMapModal";
+import NetworkInfoModal from "@/components/NetworkInfoModal";
 import CameraPage from "@/pages/Camera";
 import DeviceManagePage from "@/pages/DeviceManage";
 import { useDevices } from "@/hooks/useDevices";
@@ -31,6 +32,7 @@ const Index = () => {
   const [isLocationOpen, setIsLocationOpen] = useState(false);
   const [isLocationMapOpen, setIsLocationMapOpen] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isNetworkInfoOpen, setIsNetworkInfoOpen] = useState(false);
   const [isDeviceManageOpen, setIsDeviceManageOpen] = useState(false);
   const [isAlertMode, setIsAlertMode] = useState(false);
 
@@ -75,6 +77,9 @@ const Index = () => {
         if (selectedDevice) {
           setIsSettingsOpen(true);
         }
+        break;
+      case "network":
+        setIsNetworkInfoOpen(true);
         break;
     }
   };
@@ -185,6 +190,14 @@ const Index = () => {
       <LocationMapModal
         isOpen={isLocationMapOpen}
         onClose={() => setIsLocationMapOpen(false)}
+        deviceId={selectedDeviceId}
+        deviceName={selectedDevice?.name ?? ""}
+      />
+
+      {/* Network Info Modal */}
+      <NetworkInfoModal
+        isOpen={isNetworkInfoOpen}
+        onClose={() => setIsNetworkInfoOpen(false)}
         deviceId={selectedDeviceId}
         deviceName={selectedDevice?.name ?? ""}
       />
