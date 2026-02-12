@@ -1,7 +1,8 @@
-import { ArrowLeft, ChevronRight, Play, Square, Upload } from "lucide-react";
+import { ArrowLeft, ChevronRight, Play, Square, Upload, VolumeX, Volume2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
+import { stopAlertSound, getAlarmState } from "@/hooks/useAlerts";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -337,7 +338,25 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
               onClick={() => setShowSoundDialog(true)}
             />
 
-            {/* Remote alarm PIN requirement */}
+            {/* 스마트폰 경보음 사용 여부 */}
+            <div className="px-4 py-4 flex items-center justify-between">
+              <div>
+                <span className="text-white font-medium text-sm block">스마트폰 경보음</span>
+                <span className="text-white/40 text-xs">경보 발생 시 스마트폰에서 경보음 재생</span>
+              </div>
+              <Switch
+                checked={!getAlarmState().muted}
+                onCheckedChange={(v) => {
+                  const s = getAlarmState();
+                  s.muted = !v;
+                  if (!v) {
+                    stopAlertSound();
+                  }
+                  toast({ title: v ? "경보음 활성화" : "경보음 비활성화", description: v ? "경보 시 경보음이 울립니다." : "경보음이 꺼졌습니다. 알림은 계속 수신됩니다." });
+                }}
+              />
+            </div>
+
             <div className="px-4 py-4 flex items-center justify-between">
               <div>
                 <span className="text-white font-medium text-sm block">컴퓨터 경보 해제 시 비밀번호</span>
