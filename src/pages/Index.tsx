@@ -49,16 +49,21 @@ const Index = () => {
   const [isNetworkInfoOpen, setIsNetworkInfoOpen] = useState(false);
   const [isDeviceManageOpen, setIsDeviceManageOpen] = useState(false);
   
-  const [showRemoteAlarmOff, setShowRemoteAlarmOff] = useState(false);
+  const [phoneAlarmDismissed, setPhoneAlarmDismissed] = useState(false);
+  const [remoteAlarmDismissed, setRemoteAlarmDismissed] = useState(false);
+  const [showFallbackAlarmButtons, setShowFallbackAlarmButtons] = useState(false);
   const [isPhotoHistoryOpen, setIsPhotoHistoryOpen] = useState(false);
 
   const isMonitoring = selectedDevice?.is_monitoring ?? false;
 
+  // 경보 해제 상태 리셋
   useEffect(() => {
     if (activeAlert) {
-      setShowRemoteAlarmOff(true);
+      setPhoneAlarmDismissed(false);
+      setRemoteAlarmDismissed(false);
+      setShowFallbackAlarmButtons(false);
     } else {
-      setShowRemoteAlarmOff(false);
+      setShowFallbackAlarmButtons(false);
     }
   }, [activeAlert]);
 
@@ -155,31 +160,47 @@ const Index = () => {
       
       {/* Toggle Buttons - highest z-index */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-3">
-        {/* 컴퓨터 경보음 원격 해제 버튼 - 경보 활성화 시에만 표시 */}
-        {showRemoteAlarmOff && selectedDevice && (
-          <button
-            onClick={async () => {
-              try {
-                const channel = supabase.channel(`device-alerts-${selectedDevice.id}`);
-                await channel.send({
-                  type: 'broadcast',
-                  event: 'remote_alarm_off',
-                  payload: {
-                    dismissed_at: new Date().toISOString(),
-                    remote_alarm_off: true,
-                  },
-                });
-                console.log("[Index] remote_alarm_off broadcast sent");
-                toast({ title: "컴퓨터 경보 해제", description: "컴퓨터의 경보음이 해제되었습니다." });
-              } catch (err) {
-                console.error("[Index] remote_alarm_off failed:", err);
-                toast({ title: "오류", description: "컴퓨터 경보 해제에 실패했습니다.", variant: "destructive" });
-              }
-            }}
-            className="px-5 py-2.5 bg-destructive text-destructive-foreground rounded-full font-bold text-sm shadow-lg active:scale-95 transition-transform flex items-center gap-2"
-          >
-            🔇 컴퓨터 경보음 해제
-          </button>
+        {/* 경보 오버레이 닫은 후 해제하지 않은 버튼들 표시 */}
+        {showFallbackAlarmButtons && selectedDevice && (
+          <>
+            {!phoneAlarmDismissed && (
+              <button
+                onClick={() => {
+                  dismissActiveAlert();
+                  setPhoneAlarmDismissed(true);
+                  toast({ title: "경보 해제", description: "스마트폰 경보음이 해제되었습니다." });
+                  if (remoteAlarmDismissed) setShowFallbackAlarmButtons(false);
+                }}
+                className="px-5 py-2.5 bg-destructive text-destructive-foreground rounded-full font-bold text-sm shadow-lg active:scale-95 transition-transform flex items-center gap-2"
+              >
+                🔕 스마트폰 경보음 해제
+              </button>
+            )}
+            {!remoteAlarmDismissed && (
+              <button
+                onClick={async () => {
+                  try {
+                    const channel = supabase.channel(`device-alerts-${selectedDevice.id}`);
+                    await channel.send({
+                      type: 'broadcast',
+                      event: 'remote_alarm_off',
+                      payload: { dismissed_at: new Date().toISOString(), remote_alarm_off: true },
+                    });
+                    console.log("[Index] remote_alarm_off broadcast sent");
+                    setRemoteAlarmDismissed(true);
+                    toast({ title: "컴퓨터 경보 해제", description: "컴퓨터의 경보음이 해제되었습니다." });
+                    if (phoneAlarmDismissed) setShowFallbackAlarmButtons(false);
+                  } catch (err) {
+                    console.error("[Index] remote_alarm_off failed:", err);
+                    toast({ title: "오류", description: "컴퓨터 경보 해제에 실패했습니다.", variant: "destructive" });
+                  }
+                }}
+                className="px-5 py-2.5 bg-destructive text-destructive-foreground rounded-full font-bold text-sm shadow-lg active:scale-95 transition-transform flex items-center gap-2"
+              >
+                🔇 컴퓨터 경보음 해제
+              </button>
+            )}
+          </>
         )}
         <div className="flex items-center gap-3">
           <ToggleButton 
@@ -278,6 +299,10 @@ const Index = () => {
         <PhotoAlertOverlay
           alert={(viewingPhotoAlert || latestPhotoAlert)!}
           onDismiss={() => {
+            // 해제하지 않은 버튼이 있으면 메인 화면에 표시
+            if (!phoneAlarmDismissed || !remoteAlarmDismissed) {
+              setShowFallbackAlarmButtons(true);
+            }
             if (viewingPhotoAlert) {
               dismissViewingPhoto();
             } else {
@@ -286,6 +311,29 @@ const Index = () => {
           }}
           receiving={photoReceiving}
           progress={photoProgress}
+          phoneAlarmDismissed={phoneAlarmDismissed}
+          remoteAlarmDismissed={remoteAlarmDismissed}
+          onDismissPhoneAlarm={() => {
+            dismissActiveAlert();
+            setPhoneAlarmDismissed(true);
+            toast({ title: "경보 해제", description: "스마트폰 경보음이 해제되었습니다." });
+          }}
+          onDismissRemoteAlarm={selectedDevice ? async () => {
+            try {
+              const channel = supabase.channel(`device-alerts-${selectedDevice.id}`);
+              await channel.send({
+                type: 'broadcast',
+                event: 'remote_alarm_off',
+                payload: { dismissed_at: new Date().toISOString(), remote_alarm_off: true },
+              });
+              console.log("[Index] remote_alarm_off broadcast sent");
+              setRemoteAlarmDismissed(true);
+              toast({ title: "컴퓨터 경보 해제", description: "컴퓨터의 경보음이 해제되었습니다." });
+            } catch (err) {
+              console.error("[Index] remote_alarm_off failed:", err);
+              toast({ title: "오류", description: "컴퓨터 경보 해제에 실패했습니다.", variant: "destructive" });
+            }
+          } : undefined}
         />
       )}
 
