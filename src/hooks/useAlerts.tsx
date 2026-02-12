@@ -125,22 +125,26 @@ export const useAlerts = (deviceId?: string | null) => {
   const activeAlertRef = useRef<ActiveAlert | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const deviceIdRef = useRef(deviceId);
+  const mountedRef = useRef(true);
   const [isLoading, setIsLoading] = useState(true);
 
-  // deviceId를 ref로 추적 (effect 의존성에서 제거하기 위함)
   deviceIdRef.current = deviceId;
+
+  // unmount 시 flag 설정
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const loadAlerts = useCallback(() => {
     const did = deviceIdRef.current;
     if (!did) {
-      setAlerts([]);
-      setIsLoading(false);
+      if (mountedRef.current) { setAlerts([]); setIsLoading(false); }
       return;
     }
     const logs = getAlertLogs(did, 50);
-    setAlerts(logs);
-    setIsLoading(false);
-  }, []); // 의존성 없음 — deviceIdRef 사용
+    if (mountedRef.current) { setAlerts(logs); setIsLoading(false); }
+  }, []);
 
   const unreadCount = alerts.filter(a => !a.is_read).length;
 
@@ -164,6 +168,7 @@ export const useAlerts = (deviceId?: string | null) => {
 
     channel
       .on('presence', { event: 'sync' }, () => {
+        if (!mountedRef.current) return;
         const presState = channel.presenceState();
         
         let foundAlert: ActiveAlert | null = null;
@@ -182,15 +187,14 @@ export const useAlerts = (deviceId?: string | null) => {
           const s = getAlarmState();
           if (s.dismissedIds.has(foundAlert.id)) return;
           if (s.lastPlayedId === foundAlert.id) {
-            // 같은 경보 — UI만 동기화
             if (!activeAlertRef.current || activeAlertRef.current.id !== foundAlert.id) {
-              setActiveAlert(foundAlert);
+              if (mountedRef.current) setActiveAlert(foundAlert);
               activeAlertRef.current = foundAlert;
             }
             return;
           }
           console.log("[useAlerts] New alert from Presence:", foundAlert.id);
-          setActiveAlert(foundAlert);
+          if (mountedRef.current) setActiveAlert(foundAlert);
           activeAlertRef.current = foundAlert;
           s.lastPlayedId = foundAlert.id;
           playAlertSoundLoop();
@@ -207,23 +211,24 @@ export const useAlerts = (deviceId?: string | null) => {
           s.dismissedIds.clear();
           s.lastPlayedId = null;
           stopAlertSound();
-          setActiveAlert(null);
+          if (mountedRef.current) setActiveAlert(null);
           activeAlertRef.current = null;
         }
       })
       .on('broadcast', { event: 'active_alert' }, (payload) => {
+        if (!mountedRef.current) return;
         const alert = payload?.payload?.active_alert as ActiveAlert | undefined;
         if (alert) {
           const s = getAlarmState();
           if (s.dismissedIds.has(alert.id)) return;
           if (s.lastPlayedId === alert.id) {
             if (!activeAlertRef.current || activeAlertRef.current.id !== alert.id) {
-              setActiveAlert(alert);
+              if (mountedRef.current) setActiveAlert(alert);
               activeAlertRef.current = alert;
             }
             return;
           }
-          setActiveAlert(alert);
+          if (mountedRef.current) setActiveAlert(alert);
           activeAlertRef.current = alert;
           s.lastPlayedId = alert.id;
           playAlertSoundLoop();
@@ -242,7 +247,7 @@ export const useAlerts = (deviceId?: string | null) => {
       })
       .subscribe(async (status) => {
         console.log("[useAlerts] Channel status:", status);
-        if (status === 'SUBSCRIBED') {
+        if (status === 'SUBSCRIBED' && mountedRef.current) {
           await channel.track({ role: 'phone', joined_at: new Date().toISOString() });
         }
       });
@@ -277,7 +282,7 @@ export const useAlerts = (deviceId?: string | null) => {
       s.dismissedIds.add(activeAlertRef.current.id);
       s.lastPlayedId = null;
     }
-    setActiveAlert(null);
+    if (mountedRef.current) setActiveAlert(null);
     activeAlertRef.current = null;
     
     const did = deviceIdRef.current;
