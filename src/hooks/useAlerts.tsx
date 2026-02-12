@@ -240,9 +240,8 @@ export const useAlerts = (deviceId?: string | null) => {
           } catch { /* storage quota */ }
           loadAlerts();
         } else {
-          const s = getAlarmState();
-          s.dismissedIds.clear();
-          s.lastPlayedId = null;
+          // 경보가 없는 상태 — 소리만 중지, dismissedIds/lastPlayedId는 유지
+          // (채널 재연결 시 빈 presence sync로 인해 클리어되면 같은 경보가 반복됨)
           stopAlertSound();
           if (mountedRef.current) setActiveAlert(null);
           activeAlertRef.current = null;
