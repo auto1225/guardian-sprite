@@ -165,12 +165,40 @@ const Index = () => {
         </div>
       </div>
       
-      {/* Toggle Button - highest z-index */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20">
+      {/* Toggle Buttons - highest z-index */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3">
         <ToggleButton 
           isOn={isMonitoring}
           onToggle={handleToggleMonitoring}
         />
+        <button
+          onClick={async () => {
+            if (!selectedDevice) return;
+            const currentMeta = (selectedDevice.metadata as Record<string, unknown>) || {};
+            const newVal = !currentMeta.camouflage_mode;
+            try {
+              await supabase
+                .from("devices")
+                .update({ metadata: { ...currentMeta, camouflage_mode: newVal } })
+                .eq("id", selectedDevice.id);
+              toast({
+                title: newVal ? "위장 모드 ON" : "위장 모드 OFF",
+                description: newVal ? "노트북 화면이 꺼진 것처럼 보입니다." : "노트북 화면이 정상으로 복원됩니다.",
+              });
+            } catch {
+              toast({ title: "오류", description: "위장 모드 변경 실패", variant: "destructive" });
+            }
+          }}
+          disabled={!selectedDevice}
+          className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full font-bold text-sm transition-all shadow-lg ${
+            (selectedDevice?.metadata as Record<string, unknown>)?.camouflage_mode
+              ? 'bg-gray-900 text-white border-2 border-white/30'
+              : 'bg-muted text-muted-foreground'
+          }`}
+        >
+          <span className="text-base">🖥️</span>
+          <span>{(selectedDevice?.metadata as Record<string, unknown>)?.camouflage_mode ? '위장 ON' : '위장'}</span>
+        </button>
       </div>
 
       {/* Side Menu */}
