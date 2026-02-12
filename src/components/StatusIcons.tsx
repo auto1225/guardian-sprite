@@ -1,3 +1,4 @@
+import { Settings } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import laptopOn from "@/assets/laptop-on.png";
 import laptopOff from "@/assets/laptop-off.png";
@@ -10,7 +11,7 @@ type Device = Database["public"]["Tables"]["devices"]["Row"];
 
 interface StatusIconsProps {
   device?: Device | null;
-  onIconClick?: (type: "laptop" | "meercop" | "network" | "camera") => void;
+  onIconClick?: (type: "laptop" | "meercop" | "network" | "camera" | "settings") => void;
 }
 
 interface StatusItemProps {
@@ -48,7 +49,6 @@ const StatusIcons = ({ device, onIconClick }: StatusIconsProps) => {
   const isNetworkConnected = device?.is_network_connected ?? false;
   const isCameraConnected = device?.is_camera_connected ?? false;
 
-  // 디버깅: 카메라 상태 변경 추적
   console.log("[StatusIcons] Device state:", {
     id: device?.id?.slice(0, 8),
     camera: isCameraConnected,
@@ -57,7 +57,7 @@ const StatusIcons = ({ device, onIconClick }: StatusIconsProps) => {
   });
 
   return (
-    <div className="flex justify-center gap-10 py-3 px-4">
+    <div className="flex justify-center gap-8 py-3 px-4">
       <StatusItem 
         iconOn={laptopOn}
         iconOff={laptopOff}
@@ -80,6 +80,15 @@ const StatusIcons = ({ device, onIconClick }: StatusIconsProps) => {
         isActive={isOnline && isCameraConnected}
         onClick={() => onIconClick?.("camera")}
       />
+      <button
+        onClick={() => onIconClick?.("settings")}
+        className="flex flex-col items-center gap-1"
+      >
+        <div className="w-12 h-12 flex items-center justify-center rounded-full bg-primary-foreground/10">
+          <Settings className="w-7 h-7 text-primary-foreground/80" />
+        </div>
+        <span className="text-primary-foreground text-xs font-medium">Settings</span>
+      </button>
     </div>
   );
 };
