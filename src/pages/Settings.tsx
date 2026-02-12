@@ -320,6 +320,25 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
               onClick={() => setShowSoundDialog(true)}
             />
 
+            {/* Remote alarm PIN requirement */}
+            <div className="px-4 py-4 flex items-center justify-between">
+              <div>
+                <span className="text-white font-medium text-sm block">컴퓨터 경보 해제 시 비밀번호</span>
+                <span className="text-white/40 text-xs">컴퓨터에서 경보 해제 시 비밀번호 입력 필요</span>
+              </div>
+              <Switch
+                checked={!!(meta.require_pc_pin as boolean)}
+                onCheckedChange={async (v) => {
+                  try {
+                    await saveMetadata({ require_pc_pin: v });
+                    toast({ title: v ? "활성화" : "비활성화", description: v ? "컴퓨터에서 비밀번호 입력이 필요합니다." : "컴퓨터에서 비밀번호 없이 해제할 수 있습니다." });
+                  } catch {
+                    toast({ title: "오류", description: "설정 저장에 실패했습니다.", variant: "destructive" });
+                  }
+                }}
+              />
+            </div>
+
             {/* Section: Sensor Settings */}
             <div className="px-4 pt-5 pb-2">
               <span className="text-white/50 font-bold text-xs uppercase tracking-wider">감지 센서 설정</span>

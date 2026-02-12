@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
 import { ActiveAlert } from "@/hooks/useAlerts";
+import { supabase } from "@/integrations/supabase/client";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 
@@ -18,11 +19,13 @@ const AlertMode = ({ device, activeAlert, onDismiss }: AlertModeProps) => {
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
 
+  const meta = (device.metadata as Record<string, unknown>) || {};
+
   const getStoredPin = (): string => {
-    const meta = device.metadata as Record<string, unknown> | null;
     return (meta?.alarm_pin as string) || "1234";
   };
 
+  // 스마트폰 경보 해제 (PIN 필요)
   const handleDismissRequest = () => {
     const storedPin = getStoredPin();
     if (storedPin) {
@@ -31,6 +34,25 @@ const AlertMode = ({ device, activeAlert, onDismiss }: AlertModeProps) => {
       setPinError(false);
     } else {
       onDismiss();
+    }
+  };
+
+  // 컴퓨터 경보음만 원격 해제 (PIN 불필요)
+  const handleDismissRemoteAlarm = async () => {
+    try {
+      const channel = supabase.channel(`device-alerts-${device.id}`);
+      await channel.subscribe();
+      await channel.track({
+        active_alert: null,
+        dismissed_at: new Date().toISOString(),
+        remote_alarm_off: true,
+      });
+      toast({ title: "컴퓨터 경보 해제", description: "컴퓨터의 경보음이 해제되었습니다." });
+      setTimeout(() => {
+        supabase.removeChannel(channel);
+      }, 2000);
+    } catch {
+      toast({ title: "오류", description: "컴퓨터 경보 해제에 실패했습니다.", variant: "destructive" });
     }
   };
 
@@ -52,7 +74,6 @@ const AlertMode = ({ device, activeAlert, onDismiss }: AlertModeProps) => {
     } else if (pinInput.length < 4) {
       const next = pinInput + key;
       setPinInput(next);
-      // 4자리 입력 완료 시 자동 확인
       if (next.length === 4) {
         setTimeout(() => {
           const storedPin = getStoredPin();
@@ -169,8 +190,14 @@ const AlertMode = ({ device, activeAlert, onDismiss }: AlertModeProps) => {
             </div>
           </div>
 
-          {/* Stop button */}
-          <div className="p-6">
+          {/* Buttons */}
+          <div className="p-6 space-y-3">
+            <button
+              onClick={handleDismissRemoteAlarm}
+              className="w-full py-3 bg-destructive-foreground/20 text-destructive-foreground border-2 border-destructive-foreground/40 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
+            >
+              🔇 컴퓨터 경보음 해제
+            </button>
             <button
               onClick={handleDismissRequest}
               className="w-full py-4 bg-destructive-foreground text-destructive rounded-full font-bold text-lg shadow-lg active:scale-95 transition-transform"
