@@ -16,6 +16,7 @@ interface AlarmState {
   dismissedIds: Set<string>;
   lastPlayedId: string | null;
   muted: boolean;
+  suppressUntil: number;    // dismiss 후 일시적으로 새 알람 차단 (timestamp)
 }
 
 function getAlarmState(): AlarmState {
@@ -27,6 +28,7 @@ function getAlarmState(): AlarmState {
       dismissedIds: new Set(),
       lastPlayedId: null,
       muted: false,
+      suppressUntil: 0,
     };
   }
   // 항상 localStorage에서 muted 상태를 동기화
@@ -79,9 +81,16 @@ function stopAlertSound() {
 
 function playAlertSoundLoop() {
   const s = getAlarmState();
-  if (s.muted) {
+  // 재확인: localStorage에서 직접 읽기
+  const isMuted = localStorage.getItem('meercop_alarm_muted') === 'true';
+  if (isMuted || s.muted) {
     console.log("[useAlerts] ⏭️ Alarm muted, skipping");
+    s.muted = true;
     stopAlertSound();
+    return;
+  }
+  if (s.suppressUntil > Date.now()) {
+    console.log("[useAlerts] ⏭️ Suppressed after dismiss, skipping");
     return;
   }
   if (s.playing) {
@@ -229,6 +238,7 @@ export const useAlerts = (deviceId?: string | null) => {
         if (foundAlert) {
           const s = getAlarmState();
           if (s.dismissedIds.has(foundAlert.id)) return;
+          if (s.suppressUntil > Date.now()) return;
           if (s.lastPlayedId === foundAlert.id) {
             if (!activeAlertRef.current || activeAlertRef.current.id !== foundAlert.id) {
               safeSetActiveAlert(foundAlert);
@@ -236,11 +246,13 @@ export const useAlerts = (deviceId?: string | null) => {
             }
             return;
           }
-          console.log("[useAlerts] New alert from Presence:", foundAlert.id, "muted:", s.muted);
+          // localStorage에서 직접 muted 재확인
+          const isMuted = localStorage.getItem('meercop_alarm_muted') === 'true';
+          console.log("[useAlerts] New alert from Presence:", foundAlert.id, "muted:", isMuted);
           safeSetActiveAlert(foundAlert);
           activeAlertRef.current = foundAlert;
           s.lastPlayedId = foundAlert.id;
-          if (!s.muted) {
+          if (!isMuted && !s.muted) {
             playAlertSoundLoop();
           } else {
             console.log("[useAlerts] ⏭️ Skipping sound (muted)");
@@ -265,6 +277,7 @@ export const useAlerts = (deviceId?: string | null) => {
         if (alert) {
           const s = getAlarmState();
           if (s.dismissedIds.has(alert.id)) return;
+          if (s.suppressUntil > Date.now()) return;
           if (s.lastPlayedId === alert.id) {
             if (!activeAlertRef.current || activeAlertRef.current.id !== alert.id) {
               safeSetActiveAlert(alert);
@@ -272,10 +285,11 @@ export const useAlerts = (deviceId?: string | null) => {
             }
             return;
           }
+          const isMuted = localStorage.getItem('meercop_alarm_muted') === 'true';
           safeSetActiveAlert(alert);
           activeAlertRef.current = alert;
           s.lastPlayedId = alert.id;
-          if (!s.muted) {
+          if (!isMuted && !s.muted) {
             playAlertSoundLoop();
           }
           try {
@@ -324,9 +338,10 @@ export const useAlerts = (deviceId?: string | null) => {
   const dismissActiveAlert = useCallback(async () => {
     stopAlertSound();
     const s = getAlarmState();
+    // dismiss 후 5초간 새 알람 차단 (presence 재동기화로 인한 재트리거 방지)
+    s.suppressUntil = Date.now() + 5000;
     if (activeAlertRef.current) {
       s.dismissedIds.add(activeAlertRef.current.id);
-      // lastPlayedId를 유지하여 presence re-sync 시 같은 경보를 새 경보로 인식하지 않도록 함
     }
     safeSetActiveAlert(null);
     activeAlertRef.current = null;
