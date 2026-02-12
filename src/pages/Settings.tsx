@@ -280,7 +280,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
         className={`fixed inset-0 z-50 flex flex-col transition-transform duration-300 ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
-        style={{ background: "hsl(220, 40%, 13%)" }}
+        style={{ background: "hsl(224, 36%, 22%)" }}
       >
         {/* Header */}
         <div className="flex items-center gap-3 p-4 border-b border-white/10">
@@ -416,7 +416,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
 
       {/* Nickname Dialog */}
       <Dialog open={showNicknameDialog} onOpenChange={setShowNicknameDialog}>
-        <DialogContent style={{ background: "hsl(220, 40%, 18%)", borderColor: "hsl(220, 30%, 28%)" }}>
+        <DialogContent style={{ background: "hsl(224, 36%, 28%)", borderColor: "hsl(224, 30%, 35%)" }}>
           <DialogHeader>
             <DialogTitle className="text-white">닉네임 변경</DialogTitle>
           </DialogHeader>
@@ -437,7 +437,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
 
       {/* PIN Dialog */}
       <Dialog open={showPinDialog} onOpenChange={setShowPinDialog}>
-        <DialogContent style={{ background: "hsl(220, 40%, 18%)", borderColor: "hsl(220, 30%, 28%)" }}>
+        <DialogContent style={{ background: "hsl(224, 36%, 28%)", borderColor: "hsl(224, 30%, 35%)" }}>
           <DialogHeader>
             <DialogTitle className="text-white">경보해제 비밀번호 변경</DialogTitle>
           </DialogHeader>
@@ -484,7 +484,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
 
       {/* Sound Dialog */}
       <Dialog open={showSoundDialog} onOpenChange={(open) => { setShowSoundDialog(open); if (!open) stopAllSounds(); }}>
-        <DialogContent style={{ background: "hsl(220, 40%, 18%)", borderColor: "hsl(220, 30%, 28%)" }} className="max-h-[80vh] overflow-y-auto">
+        <DialogContent style={{ background: "hsl(224, 36%, 28%)", borderColor: "hsl(224, 30%, 35%)" }} className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-white">경보음 선택</DialogTitle>
           </DialogHeader>
