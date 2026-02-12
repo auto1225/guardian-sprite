@@ -16,6 +16,10 @@ interface PhotoAlertOverlayProps {
   onDismiss: () => void;
   receiving?: boolean;
   progress?: number;
+  onDismissPhoneAlarm?: () => void;
+  onDismissRemoteAlarm?: () => void;
+  phoneAlarmDismissed?: boolean;
+  remoteAlarmDismissed?: boolean;
 }
 
 export default function PhotoAlertOverlay({
@@ -23,6 +27,10 @@ export default function PhotoAlertOverlay({
   onDismiss,
   receiving,
   progress = 0,
+  onDismissPhoneAlarm,
+  onDismissRemoteAlarm,
+  phoneAlarmDismissed,
+  remoteAlarmDismissed,
 }: PhotoAlertOverlayProps) {
   const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "slide">("grid");
@@ -225,8 +233,24 @@ export default function PhotoAlertOverlay({
         )}
       </div>
 
-      {/* Dismiss button */}
-      <div className="p-4 shrink-0">
+      {/* Alarm dismiss buttons + confirm */}
+      <div className="p-4 shrink-0 space-y-3">
+        {onDismissPhoneAlarm && !phoneAlarmDismissed && (
+          <button
+            onClick={onDismissPhoneAlarm}
+            className="w-full py-3 bg-destructive-foreground/20 text-destructive-foreground border-2 border-destructive-foreground/40 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
+          >
+            🔕 스마트폰 경보음 해제
+          </button>
+        )}
+        {onDismissRemoteAlarm && !remoteAlarmDismissed && (
+          <button
+            onClick={onDismissRemoteAlarm}
+            className="w-full py-3 bg-destructive-foreground/20 text-destructive-foreground border-2 border-destructive-foreground/40 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
+          >
+            🔇 컴퓨터 경보음 해제
+          </button>
+        )}
         <button
           onClick={onDismiss}
           className="w-full py-4 bg-destructive-foreground text-destructive rounded-full font-bold text-lg shadow-lg active:scale-95 transition-transform"
