@@ -7,7 +7,7 @@ import MeercopCharacter from "@/components/MeercopCharacter";
 import ToggleButton from "@/components/ToggleButton";
 import SideMenu from "@/components/SideMenu";
 import DeviceList from "@/components/DeviceList";
-import AlertMode from "@/components/AlertMode";
+
 import SettingsPage from "@/pages/Settings";
 import LocationPage from "@/pages/Location";
 import LocationMapModal from "@/components/LocationMapModal";
@@ -48,16 +48,14 @@ const Index = () => {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isNetworkInfoOpen, setIsNetworkInfoOpen] = useState(false);
   const [isDeviceManageOpen, setIsDeviceManageOpen] = useState(false);
-  const [isAlertMode, setIsAlertMode] = useState(false);
+  
   const [showRemoteAlarmOff, setShowRemoteAlarmOff] = useState(false);
   const [isPhotoHistoryOpen, setIsPhotoHistoryOpen] = useState(false);
 
   const isMonitoring = selectedDevice?.is_monitoring ?? false;
 
-  // Check for active alerts (Presence 기반)
   useEffect(() => {
     if (activeAlert) {
-      setIsAlertMode(true);
       setShowRemoteAlarmOff(true);
     } else {
       setShowRemoteAlarmOff(false);
@@ -111,20 +109,6 @@ const Index = () => {
       <div className="h-screen bg-gradient-to-b from-sky-light to-primary flex items-center justify-center">
         <div className="text-primary-foreground">로딩 중...</div>
       </div>
-    );
-  }
-
-  // Alert mode overlay (Presence 기반 activeAlert)
-  if (isAlertMode && selectedDevice && activeAlert) {
-    return (
-      <AlertMode
-        device={selectedDevice}
-        activeAlert={activeAlert}
-        onDismiss={() => {
-          setIsAlertMode(false);
-          // activeAlert는 유지 → 메인화면에 "컴퓨터 경보음 해제" 버튼 표시
-        }}
-      />
     );
   }
 
