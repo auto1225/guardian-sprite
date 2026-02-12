@@ -25,7 +25,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const { devices, selectedDevice, selectedDeviceId, setSelectedDeviceId, isLoading, refreshDeviceStatus } = useDevices();
-  const { alerts, activeAlert, unreadCount, dismissActiveAlert } = useAlerts(selectedDeviceId);
+  const isMonitoring = selectedDevice?.is_monitoring ?? false;
+  const { alerts, activeAlert, unreadCount, dismissActiveAlert } = useAlerts(selectedDeviceId, isMonitoring);
   const { toggleMonitoring } = useCommands();
   const { toast } = useToast();
   const {
@@ -54,7 +55,6 @@ const Index = () => {
   const [showFallbackAlarmButtons, setShowFallbackAlarmButtons] = useState(false);
   const [isPhotoHistoryOpen, setIsPhotoHistoryOpen] = useState(false);
 
-  const isMonitoring = selectedDevice?.is_monitoring ?? false;
 
   // 경보 해제 상태 리셋 - activeAlert 또는 새 사진 경보 시
   useEffect(() => {
