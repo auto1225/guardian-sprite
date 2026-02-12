@@ -221,11 +221,15 @@ export const useAlerts = (deviceId?: string | null) => {
             }
             return;
           }
-          console.log("[useAlerts] New alert from Presence:", foundAlert.id);
+          console.log("[useAlerts] New alert from Presence:", foundAlert.id, "muted:", s.muted);
           if (mountedRef.current) setActiveAlert(foundAlert);
           activeAlertRef.current = foundAlert;
           s.lastPlayedId = foundAlert.id;
-          playAlertSoundLoop();
+          if (!s.muted) {
+            playAlertSoundLoop();
+          } else {
+            console.log("[useAlerts] ⏭️ Skipping sound (muted)");
+          }
           try {
             addActivityLog(deviceId, foundAlert.type, {
               title: foundAlert.title,
@@ -259,7 +263,9 @@ export const useAlerts = (deviceId?: string | null) => {
           if (mountedRef.current) setActiveAlert(alert);
           activeAlertRef.current = alert;
           s.lastPlayedId = alert.id;
-          playAlertSoundLoop();
+          if (!s.muted) {
+            playAlertSoundLoop();
+          }
           try {
             addActivityLog(deviceId, alert.type, {
               title: alert.title,
