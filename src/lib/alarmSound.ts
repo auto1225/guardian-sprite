@@ -18,21 +18,28 @@ interface AlarmGlobal {
 function getG(): AlarmGlobal {
   const w = window as any;
   if (!w.__meercop_alarm) {
-    // dismissed를 localStorage에서 복원
-    let dismissed = new Set<string>();
-    try {
-      const raw = localStorage.getItem('meercop_dismissed_ids');
-      if (raw) dismissed = new Set(JSON.parse(raw) as string[]);
-    } catch {}
-
     w.__meercop_alarm = {
       ctx: null,
       iid: null,
       playing: false,
       gen: 0,
-      dismissed,
+      dismissed: new Set<string>(),
       suppressUntil: 0,
     };
+    // dismissed를 localStorage에서 복원
+    try {
+      const raw = localStorage.getItem('meercop_dismissed_ids');
+      if (raw) w.__meercop_alarm.dismissed = new Set(JSON.parse(raw) as string[]);
+    } catch {}
+  }
+  // 기존 전역 객체에 dismissed가 누락된 경우 복구
+  if (!w.__meercop_alarm.dismissed || !(w.__meercop_alarm.dismissed instanceof Set)) {
+    let dismissed = new Set<string>();
+    try {
+      const raw = localStorage.getItem('meercop_dismissed_ids');
+      if (raw) dismissed = new Set(JSON.parse(raw) as string[]);
+    } catch {}
+    w.__meercop_alarm.dismissed = dismissed;
   }
   return w.__meercop_alarm;
 }
