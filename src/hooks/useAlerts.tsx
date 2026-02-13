@@ -88,9 +88,7 @@ export const useAlerts = (deviceId?: string | null) => {
     safeSetActiveAlert(alert);
     activeAlertRef.current = alert;
 
-    if (!Alarm.isMuted() && !Alarm.isSuppressed() && !Alarm.isPlaying()) {
-      Alarm.play();
-    }
+    // 경보음은 usePhotoReceiver에서만 담당 — 여기서는 소리를 내지 않음
 
     // 로컬 로그에 기록
     const did = deviceIdRef.current;
