@@ -72,6 +72,7 @@ export const useAlerts = (deviceId?: string | null) => {
   // ── 경보 수신 처리 ──
   const handleAlert = useCallback((alert: ActiveAlert) => {
     if (Alarm.isDismissed(alert.id)) return;
+    if (Alarm.isSuppressed()) return;
 
     // 60초 이상 된 stale alert 무시
     if (Date.now() - new Date(alert.created_at).getTime() > 60_000) {
