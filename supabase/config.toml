@@ -2,3 +2,6 @@ project_id = "sltxwkdvaapyeosikegj"
 
 [functions.push-notifications]
 verify_jwt = false
+
+[functions.validate-serial]
+verify_jwt = false

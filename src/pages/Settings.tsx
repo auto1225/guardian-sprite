@@ -106,6 +106,22 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const synthRef = useRef<{ stop: () => void } | null>(null);
+  const [serialKey, setSerialKey] = useState<string | null>(null);
+
+  // 시리얼 넘버 조회
+  useEffect(() => {
+    if (!isOpen) return;
+    const fetchSerial = async () => {
+      const { data } = await supabase
+        .from("licenses")
+        .select("serial_key")
+        .eq("user_id", device.user_id)
+        .limit(1)
+        .single();
+      if (data) setSerialKey(data.serial_key);
+    };
+    fetchSerial();
+  }, [isOpen, device.user_id]);
 
   const meta = (device.metadata as Record<string, unknown>) || {};
 
@@ -320,6 +336,30 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
         {/* Settings list */}
         <div className="flex-1 overflow-y-auto">
           <div className="divide-y divide-white/8">
+            {/* Serial Number */}
+            <div className="px-4 py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-white font-medium text-sm block">시리얼 넘버</span>
+                  <span className="text-white/40 text-xs">노트북 앱에 이 번호를 입력하세요</span>
+                </div>
+                <button
+                  onClick={() => {
+                    if (serialKey) {
+                      navigator.clipboard.writeText(serialKey);
+                      toast({ title: "복사됨", description: "시리얼 넘버가 클립보드에 복사되었습니다." });
+                    }
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <span className="text-accent font-mono font-bold text-sm tracking-wider">
+                    {serialKey || "로딩 중..."}
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-white/30" />
+                </button>
+              </div>
+            </div>
+
             {/* Nickname */}
             <SettingItem
               label="닉네임"
