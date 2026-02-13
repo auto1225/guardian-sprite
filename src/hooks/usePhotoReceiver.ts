@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import * as Alarm from "@/lib/alarmSound";
 import {
   PhotoAlert,
   PhotoEventType,
@@ -112,11 +111,7 @@ export function usePhotoReceiver(deviceId: string | null | undefined): UsePhotoR
         setProgress(100);
         setLatestAlert(completed);
         loadAlerts();
-
-        // 경보음: 안 울리고 있으면 재생, 이미 울리면 그대로 유지
-        if (!Alarm.isPlaying() && !Alarm.isMuted()) {
-          Alarm.play();
-        }
+        // 스마트폰 경보음 없음 — 사진 오버레이만 표시
       })
       .subscribe((status) => {
         console.log("[PhotoReceiver] Channel status:", status);
@@ -128,7 +123,6 @@ export function usePhotoReceiver(deviceId: string | null | undefined): UsePhotoR
   }, [deviceId, loadAlerts]);
 
   const dismissLatest = useCallback(() => {
-    Alarm.stop();
     if (latestAlert) {
       markPhotoAlertRead(latestAlert.id);
       loadAlerts();

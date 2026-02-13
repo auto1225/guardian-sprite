@@ -184,17 +184,6 @@ export const useAlerts = (deviceId?: string | null) => {
     };
   }, [deviceId]); // handleAlert 제거 — ref로 대체
 
-  // ── 스마트폰 경보음 해제 (로컬만) ──
-  const dismissPhoneAlarm = useCallback(() => {
-    Alarm.stop();
-    Alarm.suppressFor(30_000);
-    const id = activeAlertRef.current?.id;
-    if (id) {
-      Alarm.addDismissed(id);
-      console.log("[useAlerts] ✅ Phone alarm dismissed:", id);
-    }
-    // UI(오버레이)는 유지 — 사용자가 확인 버튼으로 닫음
-  }, []);
 
   // ── 컴퓨터 경보음 원격 해제 ──
   const dismissRemoteAlarm = useCallback(async () => {
@@ -269,7 +258,6 @@ export const useAlerts = (deviceId?: string | null) => {
     error: null,
     markAsRead: { mutate: (id: string) => { markLogAsRead(id); loadAlerts(); } },
     markAllAsRead: { mutate: () => { const d = deviceIdRef.current; if (d) { markAllLogsAsRead(d); loadAlerts(); } } },
-    dismissPhoneAlarm,
     dismissRemoteAlarm,
     dismissAll,
     refreshAlerts: loadAlerts,
