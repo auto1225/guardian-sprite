@@ -58,13 +58,20 @@ Deno.serve(async (req) => {
 
     // 이미 기기가 연결된 시리얼인지 확인
     if (license.device_id) {
-      // 기존 기기 상태 업데이트 (재연결)
+      // 기존 기기 상태 업데이트 (재연결) - 이름도 함께 갱신
+      const updatePayload: Record<string, unknown> = {
+        status: "online",
+        last_seen_at: new Date().toISOString(),
+      };
+      if (device_name) {
+        updatePayload.name = device_name;
+      }
+      if (device_type) {
+        updatePayload.device_type = device_type;
+      }
       await supabaseAdmin
         .from("devices")
-        .update({
-          status: "online",
-          last_seen_at: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .eq("id", license.device_id);
 
       return new Response(
