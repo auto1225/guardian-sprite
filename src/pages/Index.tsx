@@ -21,15 +21,24 @@ import { useDevices } from "@/hooks/useDevices";
 import { useAlerts } from "@/hooks/useAlerts";
 import { useCommands } from "@/hooks/useCommands";
 import { usePhotoReceiver } from "@/hooks/usePhotoReceiver";
+import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const { devices, selectedDevice, selectedDeviceId, setSelectedDeviceId, isLoading, refreshDeviceStatus } = useDevices();
   const { alerts, activeAlert, unreadCount, dismissRemoteAlarm, dismissAll } = useAlerts(selectedDeviceId);
+  const { isSupported: pushSupported, isSubscribed: pushSubscribed, subscribe: subscribePush } = usePushSubscription(selectedDeviceId);
   const isMonitoring = selectedDevice?.is_monitoring ?? false;
   const { toggleMonitoring } = useCommands();
   const { toast } = useToast();
+
+  // 자동 푸시 구독: 디바이스 선택 + 푸시 미구독 시 자동 시도
+  useEffect(() => {
+    if (selectedDeviceId && pushSupported && !pushSubscribed) {
+      subscribePush();
+    }
+  }, [selectedDeviceId, pushSupported, pushSubscribed]);
   const {
     receiving: photoReceiving,
     progress: photoProgress,
