@@ -113,8 +113,9 @@ export function usePhotoReceiver(deviceId: string | null | undefined): UsePhotoR
         setLatestAlert(completed);
         loadAlerts();
 
-        // 경보음 재생 (해제된 ID 차단 + 억제 기간 중에는 새 경보도 무음)
-        if (!Alarm.isPlaying() && !Alarm.isDismissed(completed.id) && !Alarm.isSuppressed() && !Alarm.isMuted()) {
+        // 새 경보 → 기존 알람 정리 후 재생 (단순 로직)
+        if (!Alarm.isMuted()) {
+          Alarm.stop();
           Alarm.play();
         }
       })
