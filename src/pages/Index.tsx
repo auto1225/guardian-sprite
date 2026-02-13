@@ -25,7 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const { devices, selectedDevice, selectedDeviceId, setSelectedDeviceId, isLoading, refreshDeviceStatus } = useDevices();
-  const { alerts, activeAlert, unreadCount, dismissPhoneAlarm, dismissActiveAlert, sendRemoteAlarmOff } = useAlerts(selectedDeviceId);
+  const { alerts, activeAlert, unreadCount, dismissPhoneAlarm, dismissRemoteAlarm, dismissAll } = useAlerts(selectedDeviceId);
   const isMonitoring = selectedDevice?.is_monitoring ?? false;
   const { toggleMonitoring } = useCommands();
   const { toast } = useToast();
@@ -188,12 +188,11 @@ const Index = () => {
               <button
                 onClick={async () => {
                   try {
-                    await sendRemoteAlarmOff();
+                    await dismissRemoteAlarm();
                     setRemoteAlarmDismissed(true);
                     toast({ title: "컴퓨터 경보 해제", description: "컴퓨터의 경보음이 해제되었습니다." });
                     if (phoneAlarmDismissed) setShowFallbackAlarmButtons(false);
                   } catch (err) {
-                    console.error("[Index] remote_alarm_off failed:", err);
                     toast({ title: "오류", description: "컴퓨터 경보 해제에 실패했습니다.", variant: "destructive" });
                   }
                 }}
@@ -322,11 +321,10 @@ const Index = () => {
           }}
           onDismissRemoteAlarm={selectedDevice ? async () => {
             try {
-              await sendRemoteAlarmOff();
+              await dismissRemoteAlarm();
               setRemoteAlarmDismissed(true);
               toast({ title: "컴퓨터 경보 해제", description: "컴퓨터의 경보음이 해제되었습니다." });
-            } catch (err) {
-              console.error("[Index] remote_alarm_off failed:", err);
+            } catch {
               toast({ title: "오류", description: "컴퓨터 경보 해제에 실패했습니다.", variant: "destructive" });
             }
           } : undefined}

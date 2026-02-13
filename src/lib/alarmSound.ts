@@ -1,25 +1,38 @@
 /**
- * 경보음 모듈 — window 전역 싱글톤
+ * 경보음 모듈 — 모든 상태를 window 전역에 저장
  *
- * 문제: Vite HMR이나 PWA 캐시로 인해 여러 JS 번들이 동시에 로드되면
- *       각 번들이 독립된 AudioContext/interval을 가져 한쪽만 stop해도
- *       다른쪽이 계속 울림.
- *
- * 해결: 모든 오디오 상태를 window.__meercop_alarm에 저장하여
- *       어떤 번들에서 stop()을 호출해도 동일한 리소스를 정리함.
+ * PWA 캐시나 HMR로 인한 다중 번들 문제를 방지하기 위해
+ * AudioContext, interval, dismissed IDs, suppress 타임스탬프 모두
+ * window 전역 객체에 저장하여 어느 번들에서든 동일한 상태에 접근합니다.
  */
 
 interface AlarmGlobal {
   ctx: AudioContext | null;
   iid: ReturnType<typeof setInterval> | null;
   playing: boolean;
-  gen: number; // generation — stop 시 증가하여 진행중 beep 루프 중단
+  gen: number;
+  dismissed: Set<string>;
+  suppressUntil: number;
 }
 
 function getG(): AlarmGlobal {
   const w = window as any;
   if (!w.__meercop_alarm) {
-    w.__meercop_alarm = { ctx: null, iid: null, playing: false, gen: 0 };
+    // dismissed를 localStorage에서 복원
+    let dismissed = new Set<string>();
+    try {
+      const raw = localStorage.getItem('meercop_dismissed_ids');
+      if (raw) dismissed = new Set(JSON.parse(raw) as string[]);
+    } catch {}
+
+    w.__meercop_alarm = {
+      ctx: null,
+      iid: null,
+      playing: false,
+      gen: 0,
+      dismissed,
+      suppressUntil: 0,
+    };
   }
   return w.__meercop_alarm;
 }
@@ -34,43 +47,30 @@ export function setMuted(muted: boolean) {
   if (muted) stop();
 }
 
-// ── Dismissed IDs (window 전역 공유) ──
-function getDismissedIds(): Set<string> {
-  const w = window as any;
-  if (!w.__meercop_dismissed) {
-    try {
-      const raw = localStorage.getItem('meercop_dismissed_ids');
-      w.__meercop_dismissed = raw ? new Set(JSON.parse(raw) as string[]) : new Set();
-    } catch {
-      w.__meercop_dismissed = new Set();
-    }
-  }
-  return w.__meercop_dismissed;
+// ── Dismissed ──
+export function isDismissed(alertId: string): boolean {
+  return getG().dismissed.has(alertId);
 }
 
-function saveDismissedIds(ids: Set<string>) {
+export function addDismissed(alertId: string) {
+  const g = getG();
+  g.dismissed.add(alertId);
   try {
-    localStorage.setItem('meercop_dismissed_ids', JSON.stringify(Array.from(ids).slice(-50)));
+    localStorage.setItem('meercop_dismissed_ids',
+      JSON.stringify(Array.from(g.dismissed).slice(-50)));
   } catch {}
 }
 
-export function isDismissed(alertId: string): boolean { return getDismissedIds().has(alertId); }
-
-export function addDismissed(alertId: string) {
-  const ids = getDismissedIds();
-  ids.add(alertId);
-  saveDismissedIds(ids);
-}
-
-// ── Suppress (window 전역 공유) ──
+// ── Suppress ──
 export function isSuppressed(): boolean {
-  return Date.now() < ((window as any).__meercop_suppress_until || 0);
-}
-export function suppressFor(ms: number) {
-  (window as any).__meercop_suppress_until = Date.now() + ms;
+  return Date.now() < getG().suppressUntil;
 }
 
-// ── 볼륨 ──
+export function suppressFor(ms: number) {
+  getG().suppressUntil = Date.now() + ms;
+}
+
+// ── Volume ──
 export function getVolume(): number {
   try {
     const v = localStorage.getItem('meercop_alarm_volume');
@@ -82,36 +82,33 @@ export function setVolume(vol: number) {
   try { localStorage.setItem('meercop_alarm_volume', String(Math.max(0, Math.min(1, vol)))); } catch {}
 }
 
-// ── 재생/정지 ──
+// ── Play / Stop ──
 export function isPlaying(): boolean { return getG().playing; }
 
 export function play() {
   const g = getG();
-  if (g.playing) return;
-  if (isMuted()) return;
+  if (g.playing || isMuted()) return;
 
   // 기존 리소스 완전 정리 후 시작
-  stop();
+  forceCleanup();
 
   const gen = g.gen;
   g.playing = true;
-  console.log("[AlarmSound] ▶ Start (gen:", gen, ")");
+  console.log("[AlarmSound] ▶ play (gen:", gen, ")");
 
   try {
     const ctx = new AudioContext();
     g.ctx = ctx;
 
     const beepCycle = () => {
-      const current = getG();
-      if (!current.playing || current.gen !== gen || !current.ctx || current.ctx.state === 'closed') {
-        return;
-      }
+      const cur = getG();
+      if (!cur.playing || cur.gen !== gen || !cur.ctx || cur.ctx.state === 'closed') return;
       if (isMuted()) { stop(); return; }
 
       const vol = getVolume();
       const beep = (time: number, freq: number) => {
         try {
-          const c = current.ctx;
+          const c = cur.ctx;
           if (!c || c.state === 'closed') return;
           const osc = c.createOscillator();
           const gain = c.createGain();
@@ -138,19 +135,20 @@ export function play() {
 export function stop() {
   const g = getG();
   g.playing = false;
-  g.gen += 1; // 진행중 beep 루프 강제 중단
+  g.gen += 1;
 
-  if (g.iid !== null) {
-    clearInterval(g.iid);
-    g.iid = null;
-  }
-
+  if (g.iid !== null) { clearInterval(g.iid); g.iid = null; }
   if (g.ctx) {
-    try { g.ctx.suspend().catch(() => {}); g.ctx.close().catch(() => {}); } catch {}
+    try { g.ctx.close().catch(() => {}); } catch {}
     g.ctx = null;
   }
 
-  // 구 코드가 남긴 레거시 전역 리소스도 정리
+  console.log("[AlarmSound] ■ stop (gen:", g.gen, ")");
+}
+
+/** 레거시 리소스까지 포함한 완전 정리 */
+function forceCleanup() {
+  stop();
   try {
     const w = window as any;
     if (w.__meercop_ivals) {
@@ -159,11 +157,9 @@ export function stop() {
     }
     if (w.__meercop_ctxs) {
       for (const ctx of w.__meercop_ctxs) {
-        try { ctx.suspend?.(); ctx.close?.(); } catch {}
+        try { ctx.close?.(); } catch {}
       }
       w.__meercop_ctxs = [];
     }
   } catch {}
-
-  console.log("[AlarmSound] ■ Stop (gen:", g.gen, ")");
 }
