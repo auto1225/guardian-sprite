@@ -198,44 +198,56 @@ export const useAlerts = (deviceId?: string | null) => {
 
   // ── 컴퓨터 경보음 원격 해제 ──
   const dismissRemoteAlarm = useCallback(async () => {
-    const ch = channelRef.current;
-    if (!ch) {
-      console.warn("[useAlerts] No channel ref");
-      throw new Error("채널 미연결");
+    const did = deviceIdRef.current;
+    if (!did) throw new Error("디바이스 미선택");
+
+    const channelName = `device-alerts-${did}`;
+
+    // 메인 채널이 살아있으면 바로 전송
+    if (channelRef.current && isSubscribedRef.current) {
+      const dismissedAt = new Date().toISOString();
+      await channelRef.current.send({
+        type: 'broadcast',
+        event: 'remote_alarm_off',
+        payload: { dismissed_at: dismissedAt, dismissed_by: 'smartphone', remote_alarm_off: true },
+      });
+      console.log("[useAlerts] ✅ Remote alarm off sent (main channel):", dismissedAt);
+      return;
     }
 
-    // 채널이 아직 SUBSCRIBED가 아니면 최대 3초 대기
-    if (!isSubscribedRef.current) {
-      console.log("[useAlerts] Channel not subscribed yet, waiting...");
-      let waited = 0;
-      while (!isSubscribedRef.current && waited < 3000) {
-        await new Promise(r => setTimeout(r, 300));
-        waited += 300;
-      }
-      if (!isSubscribedRef.current) {
-        console.warn("[useAlerts] Channel still not ready after 3s");
-        throw new Error("채널 미연결");
-      }
+    // 메인 채널이 죽었으면 → 기존 제거 후 새 채널 생성
+    console.log("[useAlerts] Main channel dead, creating fresh channel");
+    const existing = supabase.getChannels().find(
+      ch => ch.topic === `realtime:${channelName}`
+    );
+    if (existing) supabase.removeChannel(existing);
+
+    const freshChannel = supabase.channel(channelName);
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("채널 연결 시간 초과")), 5000);
+        freshChannel.subscribe((status) => {
+          if (status === 'SUBSCRIBED') { clearTimeout(timeout); resolve(); }
+          if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') { clearTimeout(timeout); reject(new Error(status)); }
+        });
+      });
+
+      const dismissedAt = new Date().toISOString();
+      await freshChannel.send({
+        type: 'broadcast',
+        event: 'remote_alarm_off',
+        payload: { dismissed_at: dismissedAt, dismissed_by: 'smartphone', remote_alarm_off: true },
+      });
+
+      // 새 채널을 메인으로 승격
+      channelRef.current = freshChannel;
+      isSubscribedRef.current = true;
+      console.log("[useAlerts] ✅ Remote alarm off sent (fresh channel):", dismissedAt);
+    } catch (err) {
+      supabase.removeChannel(freshChannel);
+      throw err;
     }
-
-    const dismissedAt = new Date().toISOString();
-
-    // Broadcast (즉시 전달)
-    await ch.send({
-      type: 'broadcast',
-      event: 'remote_alarm_off',
-      payload: { dismissed_at: dismissedAt, dismissed_by: 'smartphone', remote_alarm_off: true },
-    });
-
-    // Presence (하위 호환 — 랩탑이 두 방식 모두 수신)
-    await ch.track({
-      role: 'phone',
-      remote_alarm_off: true,
-      active_alert: null,
-      dismissed_at: dismissedAt,
-    });
-
-    console.log("[useAlerts] ✅ Remote alarm off sent:", dismissedAt);
   }, []);
 
   // ── 전체 해제 (스마트폰 UI 닫기) ──
