@@ -195,10 +195,21 @@ export const useAlerts = (deviceId?: string | null) => {
     },
   };
 
-  const dismissActiveAlert = useCallback(async () => {
-    stopAlertSound(); // 새 + 구 코드 모두 정리
+  /** 스마트폰 경보음만 해제 (로컬 알람 정지, presence/broadcast 건드리지 않음) */
+  const dismissPhoneAlarm = useCallback(() => {
+    stopAlertSound();
     AlarmSound.suppressFor(30000);
-    // activeAlertRef 또는 lastPlayedIdRef에서 ID를 확보하여 반드시 dismissed에 저장
+    const alertId = activeAlertRef.current?.id || lastPlayedIdRef.current;
+    if (alertId) {
+      AlarmSound.addDismissed(alertId);
+      console.log("[useAlerts] Phone alarm dismissed:", alertId);
+    }
+  }, []);
+
+  /** 전체 경보 해제 (스마트폰 알람 정지 + UI 정리 + presence 동기화) */
+  const dismissActiveAlert = useCallback(async () => {
+    stopAlertSound();
+    AlarmSound.suppressFor(30000);
     const alertId = activeAlertRef.current?.id || lastPlayedIdRef.current;
     if (alertId) {
       AlarmSound.addDismissed(alertId);
@@ -251,6 +262,7 @@ export const useAlerts = (deviceId?: string | null) => {
     error: null,
     markAsRead,
     markAllAsRead,
+    dismissPhoneAlarm,
     dismissActiveAlert,
     sendRemoteAlarmOff,
     refreshAlerts: loadAlerts,

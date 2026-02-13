@@ -63,6 +63,18 @@ let suppressUntil = 0;
 export function isSuppressed(): boolean { return Date.now() < suppressUntil; }
 export function suppressFor(ms: number) { suppressUntil = Date.now() + ms; }
 
+// ── 볼륨 ──
+export function getVolume(): number {
+  try {
+    const v = localStorage.getItem('meercop_alarm_volume');
+    return v ? Math.max(0, Math.min(1, parseFloat(v))) : 0.4;
+  } catch { return 0.4; }
+}
+
+export function setVolume(vol: number) {
+  try { localStorage.setItem('meercop_alarm_volume', String(Math.max(0, Math.min(1, vol)))); } catch {}
+}
+
 // ── 재생/정지 ──
 export function isPlaying(): boolean { return getG().playing; }
 
@@ -84,12 +96,12 @@ export function play() {
 
     const beepCycle = () => {
       const current = getG();
-      // generation이 변경되었거나 playing이 false면 즉시 중단
       if (!current.playing || current.gen !== gen || !current.ctx || current.ctx.state === 'closed') {
         return;
       }
       if (isMuted()) { stop(); return; }
 
+      const vol = getVolume();
       const beep = (time: number, freq: number) => {
         try {
           const c = current.ctx;
@@ -100,7 +112,7 @@ export function play() {
           gain.connect(c.destination);
           osc.frequency.value = freq;
           osc.type = "square";
-          gain.gain.value = 0.4;
+          gain.gain.value = vol;
           osc.start(c.currentTime + time);
           osc.stop(c.currentTime + time + 0.2);
         } catch {}

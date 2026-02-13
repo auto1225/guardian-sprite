@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
 import { ActiveAlert } from "@/hooks/useAlerts";
-import { supabase } from "@/integrations/supabase/client";
+import * as AlarmSound from "@/lib/alarmSound";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 
@@ -10,26 +10,27 @@ interface AlertModeProps {
   device: Device;
   activeAlert: ActiveAlert;
   onDismiss: () => void;
+  onSendRemoteAlarmOff?: () => Promise<void>;
 }
 
-const AlertMode = ({ device, activeAlert, onDismiss }: AlertModeProps) => {
+const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: AlertModeProps) => {
   const { toast } = useToast();
   const [capturedImages] = useState<string[]>([]);
 
-  // 컴퓨터 경보음만 원격 해제 (PIN 불필요)
+  // 스마트폰 경보음만 해제 (로컬만)
+  const handleDismissPhoneAlarm = () => {
+    AlarmSound.stop();
+    AlarmSound.suppressFor(30000);
+    AlarmSound.addDismissed(activeAlert.id);
+    toast({ title: "경보 해제", description: "스마트폰 경보음이 해제되었습니다." });
+  };
+
+  // 컴퓨터 경보음 원격 해제
   const handleDismissRemoteAlarm = async () => {
     try {
-      const channel = supabase.channel(`device-alerts-${device.id}`);
-      // useAlerts에서 이미 구독 중인 채널 — 바로 send
-      await channel.send({
-        type: 'broadcast',
-        event: 'remote_alarm_off',
-        payload: {
-          dismissed_at: new Date().toISOString(),
-          remote_alarm_off: true,
-        },
-      });
-      console.log("[AlertMode] remote_alarm_off broadcast sent");
+      if (onSendRemoteAlarmOff) {
+        await onSendRemoteAlarmOff();
+      }
       toast({ title: "컴퓨터 경보 해제", description: "컴퓨터의 경보음이 해제되었습니다." });
     } catch (err) {
       console.error("[AlertMode] remote_alarm_off failed:", err);
@@ -37,8 +38,11 @@ const AlertMode = ({ device, activeAlert, onDismiss }: AlertModeProps) => {
     }
   };
 
-  // 스마트폰 경보 해제 (비밀번호 불필요 — 바로 해제)
+  // 전체 경보 해제
   const handleDismiss = () => {
+    AlarmSound.stop();
+    AlarmSound.suppressFor(30000);
+    AlarmSound.addDismissed(activeAlert.id);
     toast({ title: "경보 해제", description: "경보가 해제되었습니다." });
     onDismiss();
   };
@@ -92,6 +96,12 @@ const AlertMode = ({ device, activeAlert, onDismiss }: AlertModeProps) => {
 
           {/* Buttons */}
           <div className="p-6 space-y-3">
+            <button
+              onClick={handleDismissPhoneAlarm}
+              className="w-full py-3 bg-destructive-foreground/20 text-destructive-foreground border-2 border-destructive-foreground/40 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
+            >
+              🔕 스마트폰 경보음 해제
+            </button>
             <button
               onClick={handleDismissRemoteAlarm}
               className="w-full py-3 bg-destructive-foreground/20 text-destructive-foreground border-2 border-destructive-foreground/40 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
