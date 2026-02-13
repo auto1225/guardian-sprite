@@ -215,30 +215,33 @@ function PhotoAlertItem({ alert, onView, onDelete }: { alert: UnifiedAlert; onVi
       {/* Content */}
       <button onClick={onView} className="flex-1 min-w-0 text-left">
         <div className="flex items-center justify-between gap-2">
-          <h4 className={`font-bold text-sm ${alert.is_read ? "text-slate-500" : "text-slate-900"}`}>
+          <h4 className={`font-bold text-sm truncate ${alert.is_read ? "text-slate-500" : "text-slate-900"}`}>
             {alert.title}
           </h4>
-          {!alert.is_read && (
-            <span className="w-2.5 h-2.5 bg-sky-500 rounded-full flex-shrink-0" />
+          <span className="flex items-center gap-1.5 flex-shrink-0">
+            <span className="text-[11px] text-slate-400 whitespace-nowrap">
+              {new Date(alert.created_at).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+            </span>
+            {!alert.is_read && <span className="w-2 h-2 bg-sky-500 rounded-full" />}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 mt-0.5">
+          {alert.device_name && (
+            <span className="text-xs text-slate-500 font-medium">{alert.device_name}</span>
+          )}
+          {alert.device_name && alert.message && <span className="text-xs text-slate-300">·</span>}
+          {alert.message && (
+            <span className="text-xs text-slate-500 truncate">{alert.message}</span>
           )}
         </div>
-        {alert.device_name && (
-          <p className="text-xs text-slate-500 font-medium">{alert.device_name}</p>
-        )}
-        {alert.message && (
-          <p className="text-xs text-slate-600 mt-0.5">{alert.message}</p>
-        )}
-        <p className="text-xs text-slate-400 mt-1">
-          {new Date(alert.created_at).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-        </p>
       </button>
 
       {/* Delete */}
       <button
         onClick={(e) => { e.stopPropagation(); onDelete(); }}
-        className="p-1.5 text-slate-300 hover:text-red-500 transition-colors flex-shrink-0 mt-1"
+        className="p-1 text-slate-300 hover:text-red-500 transition-colors flex-shrink-0"
       >
-        <Trash2 className="w-4 h-4" />
+        <Trash2 className="w-3.5 h-3.5" />
       </button>
     </div>
   );
