@@ -33,6 +33,7 @@ export default function PhotoAlertOverlay({
   const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "slide">("grid");
   const [slideIndex, setSlideIndex] = useState(0);
+  const [phoneDismissed, setPhoneDismissed] = useState(false);
 
   const eventLabel = EVENT_LABELS[alert.event_type] || alert.event_type;
   const createdDate = new Date(alert.created_at);
@@ -233,16 +234,19 @@ export default function PhotoAlertOverlay({
 
       {/* Alarm dismiss buttons + confirm */}
       <div className="p-4 shrink-0 space-y-3">
-        <button
-          onClick={() => {
-            stopAlertSound();
-            Alarm.addDismissed(alert.id);
-            Alarm.suppressFor(30_000);
-          }}
-          className="w-full py-3 bg-destructive-foreground/20 text-destructive-foreground border-2 border-destructive-foreground/40 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
-        >
-          🔕 스마트폰 경보음 해제
-        </button>
+        {!phoneDismissed && (
+          <button
+            onClick={() => {
+              stopAlertSound();
+              Alarm.addDismissed(alert.id);
+              Alarm.suppressFor(30_000);
+              setPhoneDismissed(true);
+            }}
+            className="w-full py-3 bg-destructive-foreground/20 text-destructive-foreground border-2 border-destructive-foreground/40 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
+          >
+            🔕 스마트폰 경보음 해제
+          </button>
+        )}
         {onDismissRemoteAlarm && !remoteAlarmDismissed && (
           <button
             onClick={onDismissRemoteAlarm}
