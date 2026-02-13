@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import * as Alarm from "@/lib/alarmSound";
 import Header from "@/components/Header";
 import DeviceSelector from "@/components/DeviceSelector";
 import StatusIcons from "@/components/StatusIcons";
@@ -315,6 +316,7 @@ const Index = () => {
           phoneAlarmDismissed={phoneAlarmDismissed}
           remoteAlarmDismissed={remoteAlarmDismissed}
           onDismissPhoneAlarm={() => {
+            Alarm.stop();
             dismissPhoneAlarm();
             setPhoneAlarmDismissed(true);
             toast({ title: "경보 해제", description: "스마트폰 경보음이 해제되었습니다." });
