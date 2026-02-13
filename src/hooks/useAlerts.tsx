@@ -137,13 +137,6 @@ export const useAlerts = (deviceId?: string | null) => {
       .on('presence', { event: 'sync' }, () => {
         if (!mountedRef.current) return;
 
-        // 첫 sync는 stale alert일 수 있으므로 무시
-        if (!firstSyncDoneRef.current) {
-          firstSyncDoneRef.current = true;
-          console.log("[useAlerts] First sync — skipping stale alerts");
-          return;
-        }
-
         const state = channel.presenceState();
 
         let foundAlert: ActiveAlert | null = null;
