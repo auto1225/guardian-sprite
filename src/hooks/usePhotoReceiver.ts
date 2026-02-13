@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import * as Alarm from "@/lib/alarmSound";
 import {
   PhotoAlert,
   PhotoEventType,
@@ -112,31 +113,9 @@ export function usePhotoReceiver(deviceId: string | null | undefined): UsePhotoR
         setLatestAlert(completed);
         loadAlerts();
 
-        // Play alert sound
-        try {
-          const ctx = new AudioContext();
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.frequency.value = 880;
-          osc.type = "square";
-          gain.gain.value = 0.3;
-          osc.start();
-          osc.stop(ctx.currentTime + 0.3);
-          setTimeout(() => {
-            const osc2 = ctx.createOscillator();
-            const gain2 = ctx.createGain();
-            osc2.connect(gain2);
-            gain2.connect(ctx.destination);
-            osc2.frequency.value = 1100;
-            osc2.type = "square";
-            gain2.gain.value = 0.3;
-            osc2.start();
-            osc2.stop(ctx.currentTime + 0.3);
-          }, 350);
-        } catch {
-          // Audio not available
+        // 경보음이 이미 울리고 있으면 별도 소리를 내지 않음 (AudioContext 충돌 방지)
+        if (!Alarm.isPlaying()) {
+          Alarm.play();
         }
       })
       .subscribe((status) => {

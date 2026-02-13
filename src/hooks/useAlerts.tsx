@@ -19,8 +19,8 @@ import {
 } from "@/lib/localActivityLogs";
 import * as Alarm from "@/lib/alarmSound";
 
-// 모듈 로드 시 잔여 알람 정리
-Alarm.stop();
+// 모듈 로드 시 잔여 알람 정리 (지연 실행으로 race 방지)
+setTimeout(() => { if (!Alarm.isPlaying()) Alarm.stop(); }, 500);
 
 export interface ActiveAlert {
   id: string;
