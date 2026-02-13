@@ -28,37 +28,17 @@ const StatusItem = ({ iconOn, iconOff, label, isActive, batteryLevel, onClick }:
     <button onClick={onClick} className="flex flex-col items-center gap-1">
       <div className="relative">
         {batteryLevel !== undefined && (
-          <div
-            className="absolute -top-3 left-0 text-[10px] font-bold"
-            style={{ color: 'white', textShadow: '0 1px 3px hsla(0,0%,0%,0.3)' }}
-          >
+          <div className="absolute -top-3 left-0 text-primary-foreground text-[10px] font-medium">
             {batteryLevel}%
           </div>
         )}
-        <div
-          className="w-12 h-12 rounded-full flex items-center justify-center"
-          style={{
-            background: isActive ? 'hsla(52, 100%, 60%, 0.2)' : 'hsla(0, 0%, 100%, 0.1)',
-            border: isActive ? '1px solid hsla(52, 100%, 60%, 0.3)' : '1px solid hsla(0, 0%, 100%, 0.15)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            boxShadow: isActive ? '0 0 16px hsla(52, 100%, 60%, 0.15)' : 'none',
-          }}
-        >
-          <img 
-            src={isActive ? iconOn : iconOff} 
-            alt={label} 
-            className="w-7 h-7 object-contain"
-            style={!isActive ? { opacity: 0.5 } : undefined}
-          />
-        </div>
+        <img 
+          src={isActive ? iconOn : iconOff} 
+          alt={label} 
+          className="w-12 h-12 object-contain"
+        />
       </div>
-      <span
-        className="text-xs font-semibold"
-        style={{ color: 'white', textShadow: '0 1px 2px hsla(0,0%,0%,0.25)' }}
-      >
-        {label}
-      </span>
+      <span className="text-primary-foreground text-xs font-medium">{label}</span>
     </button>
   );
 };
@@ -104,23 +84,10 @@ const StatusIcons = ({ device, onIconClick }: StatusIconsProps) => {
         onClick={() => onIconClick?.("settings")}
         className="flex flex-col items-center gap-1"
       >
-        <div
-          className="w-12 h-12 flex items-center justify-center rounded-full"
-          style={{
-            background: 'hsla(0, 0%, 100%, 0.1)',
-            border: '1px solid hsla(0, 0%, 100%, 0.15)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-          }}
-        >
-          <Settings className="w-7 h-7" style={{ color: 'hsla(0, 0%, 100%, 0.8)' }} />
+        <div className="w-12 h-12 flex items-center justify-center rounded-full bg-primary-foreground/10">
+          <Settings className="w-7 h-7 text-primary-foreground/80" />
         </div>
-        <span
-          className="text-xs font-semibold"
-          style={{ color: 'white', textShadow: '0 1px 2px hsla(0,0%,0%,0.25)' }}
-        >
-          Settings
-        </span>
+        <span className="text-primary-foreground text-xs font-medium">Settings</span>
       </button>
     </div>
   );

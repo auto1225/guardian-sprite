@@ -20,25 +20,16 @@ const DeviceList = ({ isExpanded, onToggle }: DeviceListProps) => {
         onClick={onToggle}
         className="flex items-center justify-center gap-2 cursor-pointer"
       >
-        <div
-          className="rounded-full px-4 py-1.5 flex items-center gap-2"
-          style={{
-            background: 'hsla(52, 100%, 60%, 0.2)',
-            border: '1px solid hsla(52, 100%, 60%, 0.4)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            boxShadow: '0 0 16px hsla(52, 100%, 60%, 0.15)',
-          }}
-        >
-          <span className="font-extrabold text-sm" style={{ color: 'hsl(52, 100%, 60%)', textShadow: '0 1px 3px hsla(0,0%,0%,0.25)' }}>
+        <div className="bg-secondary/90 rounded-full px-4 py-1.5 flex items-center gap-2">
+          <span className="text-secondary-foreground font-bold text-sm">
             {selectedDevice.name}
           </span>
-          <Settings className="w-4 h-4" style={{ color: 'hsl(52, 100%, 60%)' }} />
+          <Settings className="w-4 h-4 text-secondary-foreground" />
           {devices.length > 1 && (
             isExpanded ? (
-              <ChevronUp className="w-4 h-4" style={{ color: 'hsl(52, 100%, 60%)' }} />
+              <ChevronUp className="w-4 h-4 text-secondary-foreground" />
             ) : (
-              <ChevronDown className="w-4 h-4" style={{ color: 'hsl(52, 100%, 60%)' }} />
+              <ChevronDown className="w-4 h-4 text-secondary-foreground" />
             )
           )}
         </div>
