@@ -1,4 +1,4 @@
-import { Camera, RefreshCw, Download, Video, Play, Volume2, VolumeX, Circle, Square } from "lucide-react";
+import { Camera, RefreshCw, Download, Video, Play, Volume2, VolumeX, Circle, Square, Mic, MicOff } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 
 interface CameraViewerProps {
@@ -32,6 +32,61 @@ const CameraViewer = ({
 
   // 사용자가 명시적으로 설정한 음소거 상태 추적
   const userMutePreferenceRef = useRef(true);
+  
+  // 오디오 레벨 시각화
+  const [audioLevel, setAudioLevel] = useState(0);
+  const [hasAudioTrack, setHasAudioTrack] = useState(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioAnimFrameRef = useRef<number | null>(null);
+
+  // 오디오 레벨 모니터링
+  useEffect(() => {
+    if (!remoteStream) {
+      setAudioLevel(0);
+      setHasAudioTrack(false);
+      return;
+    }
+
+    const audioTracks = remoteStream.getAudioTracks();
+    setHasAudioTrack(audioTracks.length > 0);
+    if (audioTracks.length === 0) return;
+
+    try {
+      const ctx = new AudioContext();
+      const source = ctx.createMediaStreamSource(remoteStream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.5;
+      source.connect(analyser);
+
+      audioContextRef.current = ctx;
+      analyserRef.current = analyser;
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        analyser.getByteFrequencyData(dataArray);
+        // 평균 레벨 계산 (0~1)
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+        const avg = sum / dataArray.length / 255;
+        setAudioLevel(avg);
+        audioAnimFrameRef.current = requestAnimationFrame(tick);
+      };
+      tick();
+    } catch (e) {
+      console.warn("[CameraViewer] AudioContext error:", e);
+    }
+
+    return () => {
+      if (audioAnimFrameRef.current) cancelAnimationFrame(audioAnimFrameRef.current);
+      if (audioContextRef.current) {
+        audioContextRef.current.close().catch(() => {});
+        audioContextRef.current = null;
+      }
+      analyserRef.current = null;
+    };
+  }, [remoteStream]);
 
   // 안전한 재생 시도 - 여러 번 반복 시도
   const attemptPlay = useCallback(async (retryCount = 0) => {
@@ -331,6 +386,33 @@ const CameraViewer = ({
             <>
               <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
               <span className="text-white text-xs font-bold">LIVE</span>
+            </>
+          )}
+        </div>
+        {/* 오디오 레벨 인디케이터 */}
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 px-2 py-1.5 rounded">
+          {hasAudioTrack ? (
+            <>
+              <Mic className="w-3 h-3 text-green-400" />
+              <div className="flex items-end gap-[2px] h-3">
+                {[0.15, 0.3, 0.45, 0.6, 0.75].map((threshold, i) => (
+                  <div
+                    key={i}
+                    className="w-[3px] rounded-sm transition-all duration-100"
+                    style={{
+                      height: `${4 + i * 2}px`,
+                      backgroundColor: audioLevel >= threshold 
+                        ? audioLevel > 0.5 ? '#f59e0b' : '#4ade80' 
+                        : 'rgba(255,255,255,0.2)',
+                    }}
+                  />
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <MicOff className="w-3 h-3 text-white/40" />
+              <span className="text-white/40 text-[10px]">No Audio</span>
             </>
           )}
         </div>
