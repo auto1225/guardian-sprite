@@ -2,7 +2,7 @@ import { ArrowLeft, ChevronRight, Play, Square, Upload, VolumeX, Volume2 } from 
 import { useState, useEffect, useRef } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
-import { stopAlertSound, getAlarmState, setAlarmMuted } from "@/hooks/useAlerts";
+import { isMuted as isAlarmMuted, setMuted as setAlarmMuted } from "@/lib/alarmSound";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -346,7 +346,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
                 <span className="text-white/40 text-xs">경보 발생 시 스마트폰에서 경보음 재생</span>
               </div>
               <Switch
-                checked={!getAlarmState().muted}
+                checked={!isAlarmMuted()}
                 onCheckedChange={(v) => {
                   setAlarmMuted(!v);
                   toast({ title: v ? "경보음 활성화" : "경보음 비활성화", description: v ? "경보 시 경보음이 울립니다." : "경보음이 꺼졌습니다. 알림은 계속 수신됩니다." });
