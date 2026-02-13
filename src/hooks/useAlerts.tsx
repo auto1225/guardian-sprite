@@ -44,6 +44,7 @@ export const useAlerts = (deviceId?: string | null) => {
   const deviceIdRef = useRef(deviceId);
   const activeAlertRef = useRef<ActiveAlert | null>(null);
   const firstSyncDoneRef = useRef(false);
+  const handleAlertRef = useRef<(alert: ActiveAlert) => void>(() => {});
 
   deviceIdRef.current = deviceId;
 
@@ -102,6 +103,9 @@ export const useAlerts = (deviceId?: string | null) => {
     }
   }, [safeSetActiveAlert, loadAlerts]);
 
+  // ref로 최신 handleAlert를 유지 — 채널 의존성에서 제거
+  handleAlertRef.current = handleAlert;
+
   // ── 채널 구독 ──
   useEffect(() => {
     if (!deviceId) return;
@@ -150,14 +154,14 @@ export const useAlerts = (deviceId?: string | null) => {
         }
 
         if (foundAlert) {
-          handleAlert(foundAlert);
+          handleAlertRef.current(foundAlert);
         }
       })
       // 2. Broadcast — 랩탑이 별도 전송하는 경보
       .on('broadcast', { event: 'active_alert' }, (payload) => {
         if (!mountedRef.current) return;
         const alert = payload?.payload?.active_alert as ActiveAlert | undefined;
-        if (alert) handleAlert(alert);
+        if (alert) handleAlertRef.current(alert);
       })
       // 3. remote_alarm_off — 이 이벤트는 스마트폰→랩탑 방향이므로 phone에서는 무시
       .on('broadcast', { event: 'remote_alarm_off' }, () => {
@@ -178,7 +182,7 @@ export const useAlerts = (deviceId?: string | null) => {
       channelRef.current = null;
       supabase.removeChannel(channel);
     };
-  }, [deviceId, handleAlert]);
+  }, [deviceId]); // handleAlert 제거 — ref로 대체
 
   // ── 스마트폰 경보음 해제 (로컬만) ──
   const dismissPhoneAlarm = useCallback(() => {
