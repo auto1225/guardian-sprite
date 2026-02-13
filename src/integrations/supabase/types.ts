@@ -357,7 +357,7 @@ export type Database = {
       command_status: "pending" | "sent" | "executed" | "failed"
       command_type: "alarm" | "camera_capture" | "lock" | "locate" | "message"
       device_status: "online" | "offline" | "monitoring" | "alert"
-      device_type: "laptop" | "desktop" | "smartphone"
+      device_type: "laptop" | "desktop" | "smartphone" | "tablet"
       peripheral_status: "connected" | "disconnected" | "unauthorized"
       peripheral_type:
         | "usb"
@@ -505,7 +505,7 @@ export const Constants = {
       command_status: ["pending", "sent", "executed", "failed"],
       command_type: ["alarm", "camera_capture", "lock", "locate", "message"],
       device_status: ["online", "offline", "monitoring", "alert"],
-      device_type: ["laptop", "desktop", "smartphone"],
+      device_type: ["laptop", "desktop", "smartphone", "tablet"],
       peripheral_status: ["connected", "disconnected", "unauthorized"],
       peripheral_type: [
         "usb",
