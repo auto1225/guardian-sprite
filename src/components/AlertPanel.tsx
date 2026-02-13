@@ -116,15 +116,16 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
           )}
         </button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col border-none bg-gradient-to-b from-sky-100/80 to-white/60 backdrop-blur-2xl">
+      <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col border-none" style={{ background: 'linear-gradient(180deg, hsla(200, 70%, 55%, 0.85) 0%, hsla(200, 60%, 45%, 0.9) 100%)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
         {/* Header */}
-        <SheetHeader className="p-4 pb-3 border-b border-white/40">
+        <SheetHeader className="p-4 pb-3 border-b border-white/20">
           <div className="flex items-center justify-between">
-            <SheetTitle className="text-lg font-bold text-slate-800">경보 이력</SheetTitle>
+            <SheetTitle className="text-lg font-bold text-white">경보 이력</SheetTitle>
             {totalUnread > 0 && (
               <button
                 onClick={handleMarkAllRead}
-                className="flex items-center gap-1 text-sm text-sky-600 hover:text-sky-700 font-medium"
+                className="flex items-center gap-1 text-sm font-medium"
+                style={{ color: 'hsla(52, 100%, 60%, 1)' }}
               >
                 <CheckCheck className="w-4 h-4" />
                 모두 읽음
@@ -134,16 +135,17 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
         </SheetHeader>
 
         {/* Filter tabs */}
-        <div className="flex gap-2 px-4 py-3 border-b border-white/30">
+        <div className="flex gap-2 px-4 py-3 border-b border-white/15">
           {filterButtons.map(fb => (
             <button
               key={fb.key}
               onClick={() => setFilter(fb.key)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all backdrop-blur-sm ${
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
                 filter === fb.key
-                  ? "bg-white/70 text-sky-700 shadow-sm ring-1 ring-sky-200/50"
-                  : "bg-white/30 text-slate-500 hover:bg-white/50"
+                  ? "text-slate-800 shadow-sm"
+                  : "text-white/80 hover:bg-white/15"
               }`}
+              style={filter === fb.key ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0, 0%, 100%, 0.1)' }}
             >
               {fb.label}
             </button>
@@ -153,7 +155,7 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
         {/* Scrollable list */}
         <div className="flex-1 overflow-y-auto p-4 space-y-2 alert-history-scroll">
           {unifiedAlerts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+            <div className="flex flex-col items-center justify-center py-16 text-white/50">
               <Bell className="w-12 h-12 mb-3 opacity-30" />
               <p className="text-sm font-medium">경보 이력이 없습니다</p>
             </div>
@@ -196,44 +198,46 @@ function PhotoAlertItem({ alert, onView, onDelete }: { alert: UnifiedAlert; onVi
 
   return (
     <div
-      className={`flex items-center gap-3 p-3 rounded-2xl transition-all backdrop-blur-md border ${
+      className={`flex items-center gap-3 p-3 rounded-2xl transition-all border ${
         alert.is_read
-          ? "bg-white/20 border-white/20"
-          : "bg-white/50 border-white/40 shadow-lg shadow-sky-100/30"
+          ? "bg-white/10 border-white/10"
+          : "bg-white/20 border-white/25 shadow-lg shadow-black/5"
       }`}
+      style={{ backdropFilter: 'blur(12px)' }}
     >
       {/* Thumbnail */}
       <button
         onClick={onView}
-        className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-white/30 flex items-center justify-center border border-white/40 backdrop-blur-sm"
+        className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center border border-white/25"
+        style={{ background: 'hsla(0,0%,100%,0.15)' }}
       >
         {thumbnail ? (
           <img src={thumbnail} alt="캡처" className="w-full h-full object-cover" />
         ) : (
-          <Image className="w-5 h-5 text-slate-400" />
+          <Image className="w-5 h-5 text-white/50" />
         )}
       </button>
 
       {/* Content */}
       <button onClick={onView} className="flex-1 min-w-0 text-left">
         <div className="flex items-center justify-between gap-2">
-          <h4 className={`font-bold text-sm truncate ${alert.is_read ? "text-slate-400" : "text-slate-800"}`}>
+          <h4 className={`font-bold text-sm truncate ${alert.is_read ? "text-white/50" : "text-white"}`}>
             {alert.title}
           </h4>
           <span className="flex items-center gap-1.5 flex-shrink-0">
-            <span className="text-[11px] text-slate-400 whitespace-nowrap">
+            <span className="text-[11px] text-white/50 whitespace-nowrap">
               {new Date(alert.created_at).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
             </span>
-            {!alert.is_read && <span className="w-2 h-2 bg-sky-400 rounded-full shadow-sm shadow-sky-300" />}
+            {!alert.is_read && <span className="w-2 h-2 rounded-full" style={{ background: 'hsla(52, 100%, 60%, 1)', boxShadow: '0 0 6px hsla(52, 100%, 60%, 0.5)' }} />}
           </span>
         </div>
         <div className="flex items-center gap-1 mt-0.5">
           {alert.device_name && (
-            <span className="text-xs text-slate-500 font-medium">{alert.device_name}</span>
+            <span className="text-xs text-white/60 font-medium">{alert.device_name}</span>
           )}
-          {alert.device_name && alert.message && <span className="text-xs text-slate-300">·</span>}
+          {alert.device_name && alert.message && <span className="text-xs text-white/30">·</span>}
           {alert.message && (
-            <span className="text-xs text-slate-500 truncate">{alert.message}</span>
+            <span className="text-xs text-white/60 truncate">{alert.message}</span>
           )}
         </div>
       </button>
@@ -241,7 +245,7 @@ function PhotoAlertItem({ alert, onView, onDelete }: { alert: UnifiedAlert; onVi
       {/* Delete */}
       <button
         onClick={(e) => { e.stopPropagation(); onDelete(); }}
-        className="p-1 text-slate-300 hover:text-red-400 transition-colors flex-shrink-0"
+        className="p-1 text-white/30 hover:text-red-300 transition-colors flex-shrink-0"
       >
         <Trash2 className="w-3.5 h-3.5" />
       </button>
