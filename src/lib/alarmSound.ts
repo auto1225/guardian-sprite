@@ -109,15 +109,24 @@ export async function play() {
     await ctx.resume();
     g.ctx = ctx;
 
-    const beepCycle = () => {
+    // 모바일에서 AudioContext가 자동 suspend 되지 않도록 무음 유지 노드 생성
+    const keepAlive = ctx.createGain();
+    keepAlive.gain.value = 0.001; // 거의 무음
+    const silentOsc = ctx.createOscillator();
+    silentOsc.frequency.value = 1; // 극저주파
+    silentOsc.connect(keepAlive);
+    keepAlive.connect(ctx.destination);
+    silentOsc.start();
+
+    const beepCycle = async () => {
       const cur = getG();
       if (!cur.playing || cur.gen !== gen) return;
       if (!cur.ctx || cur.ctx.state === 'closed') return;
       if (isMuted()) { stop(); return; }
 
-      // suspended 상태면 resume 시도
+      // suspended 상태면 resume 후 대기
       if (cur.ctx.state === 'suspended') {
-        cur.ctx.resume().catch(() => {});
+        try { await cur.ctx.resume(); } catch { return; }
       }
 
       const vol = getVolume();

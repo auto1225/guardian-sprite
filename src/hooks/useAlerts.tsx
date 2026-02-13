@@ -200,9 +200,23 @@ export const useAlerts = (deviceId?: string | null) => {
   // ── 컴퓨터 경보음 원격 해제 ──
   const dismissRemoteAlarm = useCallback(async () => {
     const ch = channelRef.current;
-    if (!ch || !isSubscribedRef.current) {
-      console.warn("[useAlerts] Channel not ready");
+    if (!ch) {
+      console.warn("[useAlerts] No channel ref");
       throw new Error("채널 미연결");
+    }
+
+    // 채널이 아직 SUBSCRIBED가 아니면 최대 3초 대기
+    if (!isSubscribedRef.current) {
+      console.log("[useAlerts] Channel not subscribed yet, waiting...");
+      let waited = 0;
+      while (!isSubscribedRef.current && waited < 3000) {
+        await new Promise(r => setTimeout(r, 300));
+        waited += 300;
+      }
+      if (!isSubscribedRef.current) {
+        console.warn("[useAlerts] Channel still not ready after 3s");
+        throw new Error("채널 미연결");
+      }
     }
 
     const dismissedAt = new Date().toISOString();
