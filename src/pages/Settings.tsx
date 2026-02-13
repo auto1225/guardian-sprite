@@ -318,77 +318,70 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
       ? customSoundName || "사용자 지정"
       : ALARM_SOUNDS.find((s) => s.id === selectedSoundId)?.label || "호루라기";
 
-  return (
+    return (
     <>
       <div
         className={`fixed inset-0 z-50 flex flex-col transition-transform duration-300 ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
-        style={{ background: "hsl(224, 36%, 22%)" }}
+        style={{
+          background: 'linear-gradient(180deg, hsla(200, 70%, 55%, 0.92) 0%, hsla(200, 60%, 42%, 0.96) 100%)',
+          backdropFilter: 'blur(30px)',
+          WebkitBackdropFilter: 'blur(30px)',
+        }}
       >
         {/* Header */}
-        <div className="flex items-center gap-3 p-4 border-b border-white/10">
-          <button onClick={onClose} className="text-white">
+        <div className="flex items-center gap-3 p-4 border-b border-white/20">
+          <button onClick={onClose} className="text-white hover:text-white/80 transition-colors">
             <ArrowLeft className="w-6 h-6" />
           </button>
           <h1 className="text-white font-bold text-lg">설정</h1>
         </div>
 
         {/* Settings list */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="divide-y divide-white/8">
-            {/* Serial Number */}
-            <div className="px-4 py-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-white font-medium text-sm block">시리얼 넘버</span>
-                  <span className="text-white/40 text-xs">이 기기에 연결된 시리얼</span>
-                </div>
-                {serialKey ? (
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(serialKey);
-                      toast({ title: "복사됨", description: "시리얼 넘버가 클립보드에 복사되었습니다." });
-                    }}
-                    className="flex items-center gap-2"
-                  >
-                    <span className="text-accent font-mono font-bold text-sm tracking-wider">
-                      {serialKey}
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-white/30" />
-                  </button>
-                ) : (
-                  <span className="text-white/30 text-sm">미연결</span>
-                )}
+        <div className="flex-1 overflow-y-auto p-4 space-y-3 alert-history-scroll">
+
+          {/* Serial Number */}
+          <div className="rounded-2xl p-4 border border-white/20" style={{ background: 'hsla(0,0%,100%,0.12)', backdropFilter: 'blur(12px)' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-white font-semibold text-sm block">시리얼 넘버</span>
+                <span className="text-white/60 text-xs">이 기기에 연결된 시리얼</span>
               </div>
+              {serialKey ? (
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(serialKey);
+                    toast({ title: "복사됨", description: "시리얼 넘버가 클립보드에 복사되었습니다." });
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <span className="font-mono font-bold text-sm tracking-wider" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>
+                    {serialKey}
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-white/50" />
+                </button>
+              ) : (
+                <span className="text-white/50 text-sm">미연결</span>
+              )}
             </div>
+          </div>
 
-            {/* Nickname */}
-            <SettingItem
-              label="닉네임"
-              value={nickname}
-              onClick={() => { setTempNickname(nickname); setShowNicknameDialog(true); }}
-            />
+          {/* General Settings Group */}
+          <div className="rounded-2xl border border-white/20 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.12)', backdropFilter: 'blur(12px)' }}>
+            <SettingItem label="닉네임" value={nickname} onClick={() => { setTempNickname(nickname); setShowNicknameDialog(true); }} />
+            <div className="border-t border-white/10" />
+            <SettingItem label="경보해제 비밀번호" value={alarmPin} onClick={() => { setTempPin(""); setShowPinDialog(true); }} />
+            <div className="border-t border-white/10" />
+            <SettingItem label="경보음" value={selectedSoundLabel} onClick={() => setShowSoundDialog(true)} />
+          </div>
 
-            {/* Alarm PIN */}
-            <SettingItem
-              label="경보해제 비밀번호"
-              value={alarmPin}
-              onClick={() => { setTempPin(""); setShowPinDialog(true); }}
-            />
-
-            {/* Alarm sound - 경보음 설정 (종류 + 크기 통합) */}
-            <SettingItem
-              label="경보음"
-              value={selectedSoundLabel}
-              onClick={() => setShowSoundDialog(true)}
-            />
-
-            {/* 스마트폰 경보음 사용 여부 */}
+          {/* Toggle Settings Group */}
+          <div className="rounded-2xl border border-white/20 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.12)', backdropFilter: 'blur(12px)' }}>
             <div className="px-4 py-4 flex items-center justify-between">
               <div>
-                <span className="text-white font-medium text-sm block">스마트폰 경보음</span>
-                <span className="text-white/40 text-xs">경보 발생 시 스마트폰에서 경보음 재생</span>
+                <span className="text-white font-semibold text-sm block">스마트폰 경보음</span>
+                <span className="text-white/60 text-xs">경보 발생 시 스마트폰에서 경보음 재생</span>
               </div>
               <Switch
                 checked={!isAlarmMuted()}
@@ -398,11 +391,11 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
                 }}
               />
             </div>
-
+            <div className="border-t border-white/10" />
             <div className="px-4 py-4 flex items-center justify-between">
               <div>
-                <span className="text-white font-medium text-sm block">컴퓨터 경보 해제 시 비밀번호</span>
-                <span className="text-white/40 text-xs">컴퓨터에서 경보 해제 시 비밀번호 입력 필요</span>
+                <span className="text-white font-semibold text-sm block">컴퓨터 경보 해제 시 비밀번호</span>
+                <span className="text-white/60 text-xs">컴퓨터에서 경보 해제 시 비밀번호 입력 필요</span>
               </div>
               <Switch
                 checked={!!(meta.require_pc_pin as boolean)}
@@ -416,167 +409,141 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
                 }}
               />
             </div>
+          </div>
 
-            {/* Section: Sensor Settings */}
-            <div className="px-4 pt-5 pb-2">
-              <span className="text-white/50 font-bold text-xs uppercase tracking-wider">감지 센서 설정</span>
+          {/* Section: Sensor Settings */}
+          <div className="pt-2 pb-1">
+            <span className="text-white/80 font-bold text-xs uppercase tracking-wider">감지 센서 설정</span>
+          </div>
+
+          {/* Device Type */}
+          <div className="rounded-2xl p-4 border border-white/20" style={{ background: 'hsla(0,0%,100%,0.12)', backdropFilter: 'blur(12px)' }}>
+            <div className="mb-3">
+              <span className="text-white font-semibold text-sm block">기기 타입</span>
+              <span className="text-white/60 text-xs">기기 타입에 따라 사용 가능한 센서가 달라집니다</span>
             </div>
-
-            {/* Device Type Selector */}
-            <div className="px-4 py-4">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <span className="text-white font-medium text-sm block">기기 타입</span>
-                  <span className="text-white/40 text-xs">기기 타입에 따라 사용 가능한 센서가 달라집니다</span>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                {(["laptop", "desktop", "tablet"] as const).map((type) => (
-                  <button
-                    key={type}
-                    onClick={async () => {
-                      const updated = { ...sensorSettings, deviceType: type };
-                      setSensorSettings(updated);
-                      try {
-                        await saveMetadata({ sensorSettings: updated });
-                        await supabase.from("devices").update({ device_type: type }).eq("id", device.id);
-                        queryClient.invalidateQueries({ queryKey: ["devices"] });
-                      } catch {
-                        toast({ title: "오류", description: "설정 저장에 실패했습니다.", variant: "destructive" });
-                      }
-                    }}
-                    className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                      sensorSettings.deviceType === type
-                        ? "bg-accent text-accent-foreground shadow-md"
-                        : "bg-white/8 text-white/60 hover:bg-white/12"
-                    }`}
-                  >
-                    {type === "laptop" ? "노트북" : type === "desktop" ? "데스크탑" : "태블릿"}
-                  </button>
-                ))}
-              </div>
+            <div className="flex gap-2">
+              {(["laptop", "desktop", "tablet"] as const).map((type) => (
+                <button
+                  key={type}
+                  onClick={async () => {
+                    const updated = { ...sensorSettings, deviceType: type };
+                    setSensorSettings(updated);
+                    try {
+                      await saveMetadata({ sensorSettings: updated });
+                      await supabase.from("devices").update({ device_type: type }).eq("id", device.id);
+                      queryClient.invalidateQueries({ queryKey: ["devices"] });
+                    } catch {
+                      toast({ title: "오류", description: "설정 저장에 실패했습니다.", variant: "destructive" });
+                    }
+                  }}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                    sensorSettings.deviceType === type
+                      ? "text-slate-800 shadow-md"
+                      : "text-white/80 hover:bg-white/15"
+                  }`}
+                  style={sensorSettings.deviceType === type
+                    ? { background: 'hsla(52, 100%, 60%, 0.9)' }
+                    : { background: 'hsla(0,0%,100%,0.1)' }
+                  }
+                >
+                  {type === "laptop" ? "노트북" : type === "desktop" ? "데스크탑" : "태블릿"}
+                </button>
+              ))}
             </div>
+          </div>
 
-            {/* Sensor toggles */}
+          {/* Sensor toggles */}
+          <div className="rounded-2xl border border-white/20 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.12)', backdropFilter: 'blur(12px)' }}>
             <SensorSection>
-              <SensorToggle
-                label="카메라 모션 감지"
-                description="카메라로 움직임을 감지합니다"
-                checked={sensorSettings.camera}
-                onChange={(v) => handleSensorToggle("camera", v)}
-              />
+              <SensorToggle label="카메라 모션 감지" description="카메라로 움직임을 감지합니다" checked={sensorSettings.camera} onChange={(v) => handleSensorToggle("camera", v)} />
             </SensorSection>
 
-            {/* Motion Sensitivity - only when camera is enabled */}
             {sensorSettings.camera && (
-              <div className="px-4 py-4">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-white font-medium text-sm">카메라 모션 민감도</span>
+              <>
+                <div className="border-t border-white/10" />
+                <div className="px-4 py-4">
+                  <span className="text-white font-semibold text-sm block mb-3">카메라 모션 민감도</span>
+                  <div className="flex gap-2">
+                    {(Object.keys(SENSITIVITY_MAP) as MotionSensitivity[]).map((key) => (
+                      <button
+                        key={key}
+                        onClick={() => handleSensitivityChange(key)}
+                        className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                          motionSensitivity === key
+                            ? "text-slate-800 shadow-md"
+                            : "text-white/80 hover:bg-white/15"
+                        }`}
+                        style={motionSensitivity === key
+                          ? { background: 'hsla(52, 100%, 60%, 0.9)' }
+                          : { background: 'hsla(0,0%,100%,0.1)' }
+                        }
+                      >
+                        {SENSITIVITY_MAP[key].label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  {(Object.keys(SENSITIVITY_MAP) as MotionSensitivity[]).map((key) => (
-                    <button
-                      key={key}
-                      onClick={() => handleSensitivityChange(key)}
-                      className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                        motionSensitivity === key
-                          ? "bg-accent text-accent-foreground shadow-md"
-                          : "bg-white/8 text-white/60 hover:bg-white/12"
-                      }`}
-                    >
-                      {SENSITIVITY_MAP[key].label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              </>
             )}
 
-            {/* 덮개 감지 - 항상 표시, 노트북만 활성 */}
+            <div className="border-t border-white/10" />
             <SensorSection>
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-white font-medium text-sm block">덮개 (리드) 감지</span>
-                  {isLaptop ? (
-                    <span className="text-white/40 text-xs">노트북 덮개 열림/닫힘을 감지합니다</span>
-                  ) : (
-                    <span className="text-white/40 text-xs">노트북 기기에서만 사용할 수 있습니다</span>
-                  )}
+                  <span className="text-white font-semibold text-sm block">덮개 (리드) 감지</span>
+                  <span className="text-white/60 text-xs">{isLaptop ? "노트북 덮개 열림/닫힘을 감지합니다" : "노트북 기기에서만 사용할 수 있습니다"}</span>
                 </div>
-                <Switch
-                  checked={sensorSettings.lidClosed}
-                  onCheckedChange={(v) => handleSensorToggle("lidClosed", v)}
-                  disabled={!isLaptop}
-                />
+                <Switch checked={sensorSettings.lidClosed} onCheckedChange={(v) => handleSensorToggle("lidClosed", v)} disabled={!isLaptop} />
               </div>
             </SensorSection>
 
-            {/* 마이크 감지 - 모든 기기 */}
+            <div className="border-t border-white/10" />
             <SensorSection>
-              <SensorToggle
-                label="마이크 감지"
-                description="주변 소리를 감지합니다"
-                checked={sensorSettings.microphone}
-                onChange={(v) => handleSensorToggle("microphone", v)}
-              />
+              <SensorToggle label="마이크 감지" description="주변 소리를 감지합니다" checked={sensorSettings.microphone} onChange={(v) => handleSensorToggle("microphone", v)} />
             </SensorSection>
 
+            <div className="border-t border-white/10" />
             <SensorSection>
-              <SensorToggle
-                label="키보드 감지"
-                description="키보드 입력을 감지합니다"
-                checked={sensorSettings.keyboard}
-                onChange={(v) => handleSensorToggle("keyboard", v)}
-              />
+              <SensorToggle label="키보드 감지" description="키보드 입력을 감지합니다" checked={sensorSettings.keyboard} onChange={(v) => handleSensorToggle("keyboard", v)} />
             </SensorSection>
 
+            <div className="border-t border-white/10" />
             <SensorSection>
-              <SensorToggle
-                label="마우스 감지"
-                description="마우스 움직임을 감지합니다"
-                checked={sensorSettings.mouse}
-                onChange={(v) => handleSensorToggle("mouse", v)}
-              />
+              <SensorToggle label="마우스 감지" description="마우스 움직임을 감지합니다" checked={sensorSettings.mouse} onChange={(v) => handleSensorToggle("mouse", v)} />
             </SensorSection>
 
+            <div className="border-t border-white/10" />
             <SensorSection>
-              <SensorToggle
-                label="USB 연결 감지"
-                description="USB 장치 연결을 감지합니다"
-                checked={sensorSettings.usb}
-                onChange={(v) => handleSensorToggle("usb", v)}
-              />
+              <SensorToggle label="USB 연결 감지" description="USB 장치 연결을 감지합니다" checked={sensorSettings.usb} onChange={(v) => handleSensorToggle("usb", v)} />
             </SensorSection>
 
+            <div className="border-t border-white/10" />
             <SensorSection>
-              <SensorToggle
-                label="전원 케이블 감지"
-                description="전원 연결 해제를 감지합니다"
-                checked={sensorSettings.power}
-                onChange={(v) => handleSensorToggle("power", v)}
-              />
+              <SensorToggle label="전원 케이블 감지" description="전원 연결 해제를 감지합니다" checked={sensorSettings.power} onChange={(v) => handleSensorToggle("power", v)} />
             </SensorSection>
-
-            <div className="h-10" />
           </div>
+
+          <div className="h-10" />
         </div>
       </div>
 
       {/* Nickname Dialog */}
       <Dialog open={showNicknameDialog} onOpenChange={setShowNicknameDialog}>
-        <DialogContent style={{ background: "hsl(224, 36%, 28%)", borderColor: "hsl(224, 30%, 35%)" }}>
+        <DialogContent className="border border-white/25" style={{ background: 'hsla(200, 60%, 45%, 0.92)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
           <DialogHeader>
             <DialogTitle className="text-white">닉네임 변경</DialogTitle>
-            <DialogDescription className="text-white/50">변경할 닉네임을 입력해 주세요.</DialogDescription>
+            <DialogDescription className="text-white/70">변경할 닉네임을 입력해 주세요.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <Input
               value={tempNickname}
               onChange={(e) => setTempNickname(e.target.value)}
-              className="bg-white/10 border-white/20 text-white placeholder:text-white/30"
+              className="bg-white/15 border-white/25 text-white placeholder:text-white/40 focus:border-white/50"
             />
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowNicknameDialog(false)} className="flex-1 border-white/20 text-white hover:bg-white/10">취소</Button>
-              <Button onClick={handleSaveNickname} className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90">변경</Button>
+              <Button variant="outline" onClick={() => setShowNicknameDialog(false)} className="flex-1 border-white/25 text-white hover:bg-white/15 bg-transparent">취소</Button>
+              <Button onClick={handleSaveNickname} className="flex-1 text-slate-800 font-semibold hover:opacity-90" style={{ background: 'hsla(52, 100%, 60%, 0.9)' }}>변경</Button>
             </div>
           </div>
         </DialogContent>
@@ -584,18 +551,18 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
 
       {/* PIN Dialog */}
       <Dialog open={showPinDialog} onOpenChange={setShowPinDialog}>
-        <DialogContent style={{ background: "hsl(224, 36%, 28%)", borderColor: "hsl(224, 30%, 35%)" }}>
+        <DialogContent className="border border-white/25" style={{ background: 'hsla(200, 60%, 45%, 0.92)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
           <DialogHeader>
             <DialogTitle className="text-white">경보해제 비밀번호 변경</DialogTitle>
-            <DialogDescription className="text-white/50">4자리 숫자를 입력해 주세요.</DialogDescription>
+            <DialogDescription className="text-white/70">4자리 숫자를 입력해 주세요.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex justify-center gap-3">
               {[0, 1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="w-13 h-13 border-2 border-white/25 rounded-xl flex items-center justify-center text-white text-2xl font-bold"
-                  style={{ width: 52, height: 52 }}
+                  className="border-2 border-white/30 rounded-xl flex items-center justify-center text-white text-2xl font-bold"
+                  style={{ width: 52, height: 52, background: 'hsla(0,0%,100%,0.1)' }}
                 >
                   {tempPin[i] ? "•" : ""}
                 </div>
@@ -610,10 +577,10 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
                     else if (num !== null && tempPin.length < 4) setTempPin(tempPin + num);
                   }}
                   disabled={num === null}
-                  className={`h-13 rounded-xl font-bold text-lg transition-all ${
-                    num === null ? "invisible" : "bg-white/10 text-white active:bg-white/25 active:scale-95"
+                  className={`rounded-xl font-bold text-lg transition-all ${
+                    num === null ? "invisible" : "text-white active:scale-95"
                   }`}
-                  style={{ height: 52 }}
+                  style={{ height: 52, background: num !== null ? 'hsla(0,0%,100%,0.12)' : undefined }}
                 >
                   {num === "del" ? "⌫" : num}
                 </button>
@@ -622,7 +589,8 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
             <Button
               onClick={handleSavePin}
               disabled={tempPin.length !== 4}
-              className="w-full bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-40"
+              className="w-full text-slate-800 font-semibold hover:opacity-90 disabled:opacity-40"
+              style={{ background: 'hsla(52, 100%, 60%, 0.9)' }}
             >
               저장
             </Button>
@@ -630,22 +598,22 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
         </DialogContent>
       </Dialog>
 
-      {/* Sound Dialog — 경보음 종류 + 크기 통합 */}
+      {/* Sound Dialog */}
       <Dialog open={showSoundDialog} onOpenChange={(open) => { setShowSoundDialog(open); if (!open) stopAllSounds(); }}>
-        <DialogContent style={{ background: "hsl(224, 36%, 28%)", borderColor: "hsl(224, 30%, 35%)" }} className="max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-h-[80vh] overflow-y-auto border border-white/25 alert-history-scroll" style={{ background: 'hsla(200, 60%, 45%, 0.92)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
           <DialogHeader>
             <DialogTitle className="text-white">경보음 설정</DialogTitle>
-            <DialogDescription className="text-white/50">경보음 종류와 크기를 설정하세요.</DialogDescription>
+            <DialogDescription className="text-white/70">경보음 종류와 크기를 설정하세요.</DialogDescription>
           </DialogHeader>
 
           {/* Volume slider */}
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-white font-medium text-sm">경보음 크기</span>
-              <span className="text-white/50 text-sm">{volumePercent}%</span>
+              <span className="text-white font-semibold text-sm">경보음 크기</span>
+              <span className="text-white/70 text-sm font-medium">{volumePercent}%</span>
             </div>
             <div className="flex items-center gap-3">
-              <VolumeX className="w-4 h-4 text-white/40 flex-shrink-0" />
+              <VolumeX className="w-4 h-4 text-white/60 flex-shrink-0" />
               <Slider
                 value={[volumePercent]}
                 min={0}
@@ -657,65 +625,73 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
                 }}
                 className="flex-1"
               />
-              <Volume2 className="w-4 h-4 text-white/40 flex-shrink-0" />
+              <Volume2 className="w-4 h-4 text-white/60 flex-shrink-0" />
             </div>
           </div>
 
           <div className="mb-2">
-            <span className="text-white font-medium text-sm">경보음 종류</span>
+            <span className="text-white font-semibold text-sm">경보음 종류</span>
           </div>
 
           <div className="space-y-2">
             {ALARM_SOUNDS.map((sound) => (
               <div
                 key={sound.id}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer border ${
                   selectedSoundId === sound.id
-                    ? "bg-accent/20 ring-1 ring-accent"
-                    : "bg-white/6 hover:bg-white/10"
+                    ? "border-white/30 shadow-md"
+                    : "border-transparent hover:bg-white/10"
                 }`}
+                style={{
+                  background: selectedSoundId === sound.id ? 'hsla(52, 100%, 60%, 0.15)' : 'hsla(0,0%,100%,0.08)',
+                }}
                 onClick={() => handleSelectSound(sound.id)}
               >
                 <button
                   onClick={(e) => { e.stopPropagation(); previewSound(sound.id); }}
-                  className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 hover:bg-white/20 transition-colors"
+                  className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 hover:bg-white/20 transition-colors"
+                  style={{ background: 'hsla(0,0%,100%,0.15)' }}
                 >
                   {playingSoundId === sound.id ? (
-                    <Square className="w-4 h-4 text-accent fill-accent" />
+                    <Square className="w-4 h-4 fill-current" style={{ color: 'hsla(52, 100%, 60%, 1)' }} />
                   ) : (
-                    <Play className="w-4 h-4 text-white/80 ml-0.5" />
+                    <Play className="w-4 h-4 text-white/90 ml-0.5" />
                   )}
                 </button>
                 <span className="text-white font-medium text-sm flex-1">{sound.label}</span>
                 {selectedSoundId === sound.id && (
-                  <span className="text-accent font-bold">✓</span>
+                  <span className="font-bold" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>✓</span>
                 )}
               </div>
             ))}
 
             {/* Custom sound */}
             <div
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer border ${
                 selectedSoundId === "custom"
-                  ? "bg-accent/20 ring-1 ring-accent"
-                  : "bg-white/6 hover:bg-white/10"
+                  ? "border-white/30 shadow-md"
+                  : "border-transparent hover:bg-white/10"
               }`}
+              style={{
+                background: selectedSoundId === "custom" ? 'hsla(52, 100%, 60%, 0.15)' : 'hsla(0,0%,100%,0.08)',
+              }}
               onClick={() => { if (customSoundDataUrl) handleSelectSound("custom"); else fileInputRef.current?.click(); }}
             >
               {customSoundDataUrl ? (
                 <button
                   onClick={(e) => { e.stopPropagation(); previewSound("custom"); }}
-                  className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 hover:bg-white/20 transition-colors"
+                  className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 hover:bg-white/20 transition-colors"
+                  style={{ background: 'hsla(0,0%,100%,0.15)' }}
                 >
                   {playingSoundId === "custom" ? (
-                    <Square className="w-4 h-4 text-accent fill-accent" />
+                    <Square className="w-4 h-4 fill-current" style={{ color: 'hsla(52, 100%, 60%, 1)' }} />
                   ) : (
-                    <Play className="w-4 h-4 text-white/80 ml-0.5" />
+                    <Play className="w-4 h-4 text-white/90 ml-0.5" />
                   )}
                 </button>
               ) : (
-                <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                  <Upload className="w-4 h-4 text-white/60" />
+                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'hsla(0,0%,100%,0.15)' }}>
+                  <Upload className="w-4 h-4 text-white/70" />
                 </div>
               )}
               <div className="flex-1">
@@ -725,14 +701,14 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
                 {customSoundDataUrl && (
                   <button
                     onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                    className="text-white/40 text-xs underline mt-0.5"
+                    className="text-white/60 text-xs underline mt-0.5"
                   >
                     다른 파일 선택
                   </button>
                 )}
               </div>
               {selectedSoundId === "custom" && (
-                <span className="text-accent font-bold">✓</span>
+                <span className="font-bold" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>✓</span>
               )}
             </div>
 
@@ -758,11 +734,11 @@ interface SettingItemProps {
 }
 
 const SettingItem = ({ label, value, onClick }: SettingItemProps) => (
-  <button onClick={onClick} className="flex items-center justify-between w-full px-4 py-4 text-left active:bg-white/5 transition-colors">
-    <span className="text-white font-medium text-sm">{label}</span>
+  <button onClick={onClick} className="flex items-center justify-between w-full px-4 py-4 text-left hover:bg-white/8 active:bg-white/12 transition-colors">
+    <span className="text-white font-semibold text-sm">{label}</span>
     <div className="flex items-center gap-2">
-      {value && <span className="text-white/50 text-sm">{value}</span>}
-      <ChevronRight className="w-5 h-5 text-white/30" />
+      {value && <span className="text-white/70 text-sm font-medium">{value}</span>}
+      <ChevronRight className="w-5 h-5 text-white/50" />
     </div>
   </button>
 );
@@ -781,8 +757,8 @@ interface SensorToggleProps {
 const SensorToggle = ({ label, description, checked, onChange }: SensorToggleProps) => (
   <div className="flex items-center justify-between">
     <div>
-      <span className="text-white font-medium text-sm block">{label}</span>
-      <span className="text-white/40 text-xs">{description}</span>
+      <span className="text-white font-semibold text-sm block">{label}</span>
+      <span className="text-white/60 text-xs">{description}</span>
     </div>
     <Switch checked={checked} onCheckedChange={onChange} />
   </div>
