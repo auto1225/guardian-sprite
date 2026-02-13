@@ -280,6 +280,36 @@ export type Database = {
         }
         Relationships: []
       }
+      licenses: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          serial_key: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          serial_key: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          serial_key?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -402,6 +432,7 @@ export type Database = {
     }
     Functions: {
       cleanup_expired_signaling: { Args: never; Returns: undefined }
+      generate_serial_key: { Args: never; Returns: string }
     }
     Enums: {
       alert_type:
