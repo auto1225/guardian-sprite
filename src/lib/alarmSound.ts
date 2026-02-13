@@ -1,27 +1,21 @@
 /**
- * 경보음 모듈 v3 — 랩탑 useAlarmSystem.ts 패턴 기반 재작성
+ * 경보음 모듈 v3 — 랩탑 useAlarmSystem.ts 패턴 기반
  *
- * 핵심 원칙 (랩탑 검증 패턴):
- *   1. stopSound()를 항상 play 전에 호출 — 고아 리소스 원천 차단
- *   2. isAlarming 플래그로 중복 오실레이터 생성 방지
- *   3. stop 시 오실레이터/인터벌 모두 배열로 추적하여 완전 정리
+ * 핵심 원칙:
+ *   1. AudioContext를 사용자 제스처 시 미리 unlock (모바일 필수)
+ *   2. stopSound()를 항상 play 전에 호출 — 고아 리소스 차단
+ *   3. isAlarming 플래그로 중복 오실레이터 방지
  *   4. 모든 상태를 window 전역에 저장 — 다중 번들 안전
  */
 
-// ── 전역 상태 타입 ──
 interface AlarmState {
-  /** 현재 경보 중 여부 */
   isAlarming: boolean;
-  /** 활성 오실레이터 목록 */
   oscillators: OscillatorNode[];
-  /** 활성 인터벌 목록 */
   intervals: ReturnType<typeof setInterval>[];
-  /** AudioContext (하나만 유지) */
   audioCtx: AudioContext | null;
-  /** 해제된 경보 ID */
   dismissed: Set<string>;
-  /** 일시 억제 타임스탬프 */
   suppressUntil: number;
+  unlocked: boolean;
 }
 
 const GLOBAL_KEY = '__meercop_alarm_v3';
@@ -36,15 +30,14 @@ function getState(): AlarmState {
       audioCtx: null,
       dismissed: new Set<string>(),
       suppressUntil: 0,
+      unlocked: false,
     };
-    // dismissed를 localStorage에서 복원
     try {
       const raw = localStorage.getItem('meercop_dismissed_ids');
       if (raw) w[GLOBAL_KEY].dismissed = new Set(JSON.parse(raw) as string[]);
     } catch {}
   }
   const s = w[GLOBAL_KEY] as AlarmState;
-  // dismissed가 누락된 경우 복구
   if (!s.dismissed || !(s.dismissed instanceof Set)) {
     try {
       const raw = localStorage.getItem('meercop_dismissed_ids');
@@ -56,28 +49,77 @@ function getState(): AlarmState {
   return s;
 }
 
-// ── 모듈 로드 시 레거시 전역 정리 ──
+// ── 레거시 전역 정리 ──
 (function cleanupLegacy() {
   try {
     const w = window as any;
-    // v1
-    if (w.__meercop_alarm) {
-      if (w.__meercop_alarm.iid) clearInterval(w.__meercop_alarm.iid);
-      if (w.__meercop_alarm.ctx) try { w.__meercop_alarm.ctx.close(); } catch {}
-      delete w.__meercop_alarm;
+    for (const key of ['__meercop_alarm', '__meercop_alarm2']) {
+      const old = w[key];
+      if (!old) continue;
+      if (old.iid) try { clearInterval(old.iid); } catch {}
+      if (old.ctx) try { old.ctx.close(); } catch {}
+      if (Array.isArray(old.iids)) old.iids.forEach((id: any) => { try { clearInterval(id); } catch {} });
+      if (Array.isArray(old.ctxs)) old.ctxs.forEach((c: any) => { try { c.close(); } catch {} });
+      delete w[key];
     }
-    // v2
-    if (w.__meercop_alarm2) {
-      const v2 = w.__meercop_alarm2;
-      if (Array.isArray(v2.iids)) v2.iids.forEach((id: any) => { try { clearInterval(id); } catch {} });
-      if (Array.isArray(v2.ctxs)) v2.ctxs.forEach((c: any) => { try { c.close(); } catch {} });
-      delete w.__meercop_alarm2;
-    }
-    // 기타 레거시
     if (w.__meercop_ivals) { w.__meercop_ivals.forEach((id: any) => clearInterval(id)); delete w.__meercop_ivals; }
     if (w.__meercop_ctxs) { w.__meercop_ctxs.forEach((c: any) => { try { c.close(); } catch {} }); delete w.__meercop_ctxs; }
   } catch {}
 })();
+
+// ══════════════════════════════════════
+// AudioContext 사전 Unlock — 모바일 핵심
+// 사용자의 첫 터치/클릭 시 AudioContext를 생성하고
+// 무음 버퍼를 재생하여 브라우저의 오디오 정책을 unlock합니다.
+// 이후 경보 시 이 AudioContext를 재사용합니다.
+// ══════════════════════════════════════
+
+function ensureAudioContext(): AudioContext {
+  const s = getState();
+  if (s.audioCtx && s.audioCtx.state !== 'closed') {
+    return s.audioCtx;
+  }
+  const ctx = new AudioContext();
+  s.audioCtx = ctx;
+  return ctx;
+}
+
+/** 사용자 제스처 컨텍스트에서 호출 — AudioContext unlock */
+export function unlockAudio() {
+  const s = getState();
+  if (s.unlocked && s.audioCtx && s.audioCtx.state === 'running') return;
+
+  try {
+    const ctx = ensureAudioContext();
+    // 무음 버퍼 재생으로 unlock
+    const buffer = ctx.createBuffer(1, 1, 22050);
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(ctx.destination);
+    source.start(0);
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
+    s.unlocked = true;
+    console.log("[AlarmSound] 🔓 AudioContext unlocked (state:", ctx.state, ")");
+  } catch (e) {
+    console.warn("[AlarmSound] unlock failed:", e);
+  }
+}
+
+// 페이지 로드 시 첫 사용자 상호작용에서 자동 unlock
+function setupAutoUnlock() {
+  const events = ['touchstart', 'touchend', 'click', 'keydown'];
+  const handler = () => {
+    unlockAudio();
+    // 한 번만 실행
+    events.forEach(e => document.removeEventListener(e, handler, true));
+  };
+  events.forEach(e => document.addEventListener(e, handler, { capture: true, passive: true }));
+}
+setupAutoUnlock();
 
 // ══════════════════════════════════════
 // Mute
@@ -133,41 +175,34 @@ export function setVolume(vol: number) {
 }
 
 // ══════════════════════════════════════
-// Core: stopSound — 랩탑 패턴 그대로
-// 모든 오실레이터, 인터벌, AudioContext 완전 정리
+// Core: stopSound
 // ══════════════════════════════════════
 function stopSound() {
   const s = getState();
 
-  // 1. 모든 인터벌 정리
   for (const iid of s.intervals) {
     try { clearInterval(iid); } catch {}
   }
   s.intervals = [];
 
-  // 2. 모든 오실레이터 정리
   for (const osc of s.oscillators) {
     try { osc.stop(); } catch {}
     try { osc.disconnect(); } catch {}
   }
   s.oscillators = [];
 
-  // 3. AudioContext 정리
-  if (s.audioCtx) {
-    try { s.audioCtx.close().catch(() => {}); } catch {}
-    s.audioCtx = null;
-  }
+  // AudioContext는 닫지 않고 유지 (재사용을 위해)
+  // unlock된 AudioContext를 닫으면 다시 사용자 제스처가 필요함
 }
 
 // ══════════════════════════════════════
-// Core: playAlarmSound — 랩탑 패턴 기반
-// 항상 stopSound() 호출 후 새 사운드 생성
+// Core: playBeepCycle
 // ══════════════════════════════════════
-function playAlarmSound(audioCtx: AudioContext, volume: number): OscillatorNode[] {
-  const createdOscillators: OscillatorNode[] = [];
-
+function playBeepCycle(audioCtx: AudioContext, volume: number): OscillatorNode[] {
+  const oscs: OscillatorNode[] = [];
   const beep = (time: number, freq: number) => {
     try {
+      if (audioCtx.state === 'closed') return;
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.connect(gain);
@@ -177,19 +212,12 @@ function playAlarmSound(audioCtx: AudioContext, volume: number): OscillatorNode[
       gain.gain.value = volume;
       osc.start(audioCtx.currentTime + time);
       osc.stop(audioCtx.currentTime + time + 0.2);
-      createdOscillators.push(osc);
+      oscs.push(osc);
     } catch {}
   };
-
-  // 경보 패턴: 6비프 (880Hz/1100Hz 교대, 1.8초)
-  beep(0, 880);
-  beep(0.3, 1100);
-  beep(0.6, 880);
-  beep(0.9, 1100);
-  beep(1.2, 880);
-  beep(1.5, 1100);
-
-  return createdOscillators;
+  beep(0, 880); beep(0.3, 1100); beep(0.6, 880);
+  beep(0.9, 1100); beep(1.2, 880); beep(1.5, 1100);
+  return oscs;
 }
 
 // ══════════════════════════════════════
@@ -199,117 +227,95 @@ export function isPlaying(): boolean {
   return getState().isAlarming;
 }
 
-/**
- * 경보음 시작 — 랩탑의 startAlarm() 패턴
- * 이미 alarming이면 중복 생성 방지
- */
 export async function play() {
   const s = getState();
 
-  // 핵심 가드: 이미 경보 중이면 무시 (중복 오실레이터 방지)
   if (s.isAlarming) {
     console.log("[AlarmSound] play() skipped — already alarming");
     return;
   }
-
   if (isMuted()) return;
 
-  // 1. 항상 기존 사운드 완전 정리 (랩탑 패턴)
+  // 항상 기존 사운드 정리
   stopSound();
 
-  // 2. isAlarming 설정 (이후 중복 호출 차단)
   s.isAlarming = true;
   console.log("[AlarmSound] ▶ play");
 
   try {
-    // 3. 새 AudioContext 생성
-    const audioCtx = new AudioContext();
-    
-    // 모바일: suspended 상태면 resume
+    // unlock된 AudioContext 재사용 (새로 생성하지 않음!)
+    const audioCtx = ensureAudioContext();
+
+    // suspended면 resume 시도
     if (audioCtx.state === 'suspended') {
-      await audioCtx.resume();
+      try {
+        await audioCtx.resume();
+      } catch {
+        console.warn("[AlarmSound] AudioContext resume failed — needs user gesture");
+        s.isAlarming = false;
+        return;
+      }
     }
 
-    // await 중 stop()이 호출되었는지 확인
     if (!s.isAlarming) {
-      try { audioCtx.close(); } catch {}
       console.log("[AlarmSound] play aborted (stopped during resume)");
       return;
     }
 
-    s.audioCtx = audioCtx;
-
-    // 4. 모바일 AudioContext suspend 방지용 무음 유지
-    try {
-      const keepAlive = audioCtx.createGain();
-      keepAlive.gain.value = 0;
-      const silentOsc = audioCtx.createOscillator();
-      silentOsc.frequency.value = 0;
-      silentOsc.connect(keepAlive);
-      keepAlive.connect(audioCtx.destination);
-      silentOsc.start();
-      s.oscillators.push(silentOsc);
-    } catch {}
-
-    // 5. 첫 비프 사이클 즉시 실행
+    // 첫 비프 사이클
     const vol = getVolume();
-    const newOscs = playAlarmSound(audioCtx, vol);
+    const newOscs = playBeepCycle(audioCtx, vol);
     s.oscillators.push(...newOscs);
 
-    // 6. 2.5초 간격 반복
+    // 2.5초 간격 반복
     const intervalId = setInterval(() => {
       const cur = getState();
-      if (!cur.isAlarming || !cur.audioCtx || cur.audioCtx.state === 'closed') {
+      if (!cur.isAlarming) {
         clearInterval(intervalId);
         return;
       }
+
+      const ctx = cur.audioCtx;
+      if (!ctx || ctx.state === 'closed') {
+        clearInterval(intervalId);
+        cur.isAlarming = false;
+        return;
+      }
+
       if (isMuted()) {
         stop();
         return;
       }
 
       // suspended면 resume 시도
-      if (cur.audioCtx.state === 'suspended') {
-        cur.audioCtx.resume().catch(() => {});
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
       }
 
       const v = getVolume();
-      const oscs = playAlarmSound(cur.audioCtx, v);
+      const oscs = playBeepCycle(ctx, v);
       cur.oscillators.push(...oscs);
 
-      // 오래된 오실레이터 정리 (ended 상태인 것들)
-      cur.oscillators = cur.oscillators.filter(o => {
-        try {
-          // ended 상태의 OscillatorNode는 context에서 분리
-          if ((o as any).playbackState === 3 || (o as any).context?.state === 'closed') {
-            try { o.disconnect(); } catch {}
-            return false;
-          }
-        } catch {}
-        return true;
-      });
+      // 완료된 오실레이터 정리 (메모리 누수 방지)
+      if (cur.oscillators.length > 30) {
+        cur.oscillators = cur.oscillators.slice(-12);
+      }
     }, 2500);
 
     s.intervals.push(intervalId);
 
   } catch (err) {
     console.error("[AlarmSound] play error:", err);
-    stop();
+    s.isAlarming = false;
+    stopSound();
   }
 }
 
-/**
- * 경보음 중지 — 랩탑의 stopAlarm() 패턴
- * stopSound() + 상태 초기화
- */
 export function stop() {
   const s = getState();
   const wasAlarming = s.isAlarming;
 
-  // 1. 상태 먼저 해제 (다른 호출이 중복 진입하지 않도록)
   s.isAlarming = false;
-
-  // 2. 모든 리소스 정리
   stopSound();
 
   if (wasAlarming) {
