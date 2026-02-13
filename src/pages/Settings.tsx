@@ -325,9 +325,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
         style={{
-          background: 'linear-gradient(180deg, hsla(200, 70%, 55%, 0.92) 0%, hsla(200, 60%, 42%, 0.96) 100%)',
-          backdropFilter: 'blur(30px)',
-          WebkitBackdropFilter: 'blur(30px)',
+          background: 'linear-gradient(180deg, hsla(200, 70%, 50%, 1) 0%, hsla(200, 65%, 38%, 1) 100%)',
         }}
       >
         {/* Header */}
@@ -342,11 +340,11 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
         <div className="flex-1 overflow-y-auto p-4 space-y-3 alert-history-scroll">
 
           {/* Serial Number */}
-          <div className="rounded-2xl p-4 border border-white/20" style={{ background: 'hsla(0,0%,100%,0.12)', backdropFilter: 'blur(12px)' }}>
+          <div className="rounded-2xl p-4 border border-white/25" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-white font-semibold text-sm block">시리얼 넘버</span>
-                <span className="text-white/60 text-xs">이 기기에 연결된 시리얼</span>
+                <span className="text-white/80 text-xs">이 기기에 연결된 시리얼</span>
               </div>
               {serialKey ? (
                 <button
@@ -359,16 +357,16 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
                   <span className="font-mono font-bold text-sm tracking-wider" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>
                     {serialKey}
                   </span>
-                  <ChevronRight className="w-4 h-4 text-white/50" />
+                  <ChevronRight className="w-4 h-4 text-white/60" />
                 </button>
               ) : (
-                <span className="text-white/50 text-sm">미연결</span>
+                <span className="text-white/60 text-sm">미연결</span>
               )}
             </div>
           </div>
 
           {/* General Settings Group */}
-          <div className="rounded-2xl border border-white/20 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.12)', backdropFilter: 'blur(12px)' }}>
+          <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
             <SettingItem label="닉네임" value={nickname} onClick={() => { setTempNickname(nickname); setShowNicknameDialog(true); }} />
             <div className="border-t border-white/10" />
             <SettingItem label="경보해제 비밀번호" value={alarmPin} onClick={() => { setTempPin(""); setShowPinDialog(true); }} />
@@ -377,11 +375,11 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
           </div>
 
           {/* Toggle Settings Group */}
-          <div className="rounded-2xl border border-white/20 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.12)', backdropFilter: 'blur(12px)' }}>
+          <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
             <div className="px-4 py-4 flex items-center justify-between">
               <div>
                 <span className="text-white font-semibold text-sm block">스마트폰 경보음</span>
-                <span className="text-white/60 text-xs">경보 발생 시 스마트폰에서 경보음 재생</span>
+                <span className="text-white/80 text-xs">경보 발생 시 스마트폰에서 경보음 재생</span>
               </div>
               <Switch
                 checked={!isAlarmMuted()}
@@ -395,7 +393,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
             <div className="px-4 py-4 flex items-center justify-between">
               <div>
                 <span className="text-white font-semibold text-sm block">컴퓨터 경보 해제 시 비밀번호</span>
-                <span className="text-white/60 text-xs">컴퓨터에서 경보 해제 시 비밀번호 입력 필요</span>
+                <span className="text-white/80 text-xs">컴퓨터에서 경보 해제 시 비밀번호 입력 필요</span>
               </div>
               <Switch
                 checked={!!(meta.require_pc_pin as boolean)}
@@ -413,14 +411,14 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
 
           {/* Section: Sensor Settings */}
           <div className="pt-2 pb-1">
-            <span className="text-white/80 font-bold text-xs uppercase tracking-wider">감지 센서 설정</span>
+            <span className="text-white font-bold text-xs uppercase tracking-wider">감지 센서 설정</span>
           </div>
 
           {/* Device Type */}
-          <div className="rounded-2xl p-4 border border-white/20" style={{ background: 'hsla(0,0%,100%,0.12)', backdropFilter: 'blur(12px)' }}>
+          <div className="rounded-2xl p-4 border border-white/25" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
             <div className="mb-3">
               <span className="text-white font-semibold text-sm block">기기 타입</span>
-              <span className="text-white/60 text-xs">기기 타입에 따라 사용 가능한 센서가 달라집니다</span>
+              <span className="text-white/80 text-xs">기기 타입에 따라 사용 가능한 센서가 달라집니다</span>
             </div>
             <div className="flex gap-2">
               {(["laptop", "desktop", "tablet"] as const).map((type) => (
@@ -440,7 +438,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
                   className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                     sensorSettings.deviceType === type
                       ? "text-slate-800 shadow-md"
-                      : "text-white/80 hover:bg-white/15"
+                      : "text-white hover:bg-white/15"
                   }`}
                   style={sensorSettings.deviceType === type
                     ? { background: 'hsla(52, 100%, 60%, 0.9)' }
@@ -454,7 +452,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
           </div>
 
           {/* Sensor toggles */}
-          <div className="rounded-2xl border border-white/20 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.12)', backdropFilter: 'blur(12px)' }}>
+          <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
             <SensorSection>
               <SensorToggle label="카메라 모션 감지" description="카메라로 움직임을 감지합니다" checked={sensorSettings.camera} onChange={(v) => handleSensorToggle("camera", v)} />
             </SensorSection>
@@ -472,7 +470,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
                         className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                           motionSensitivity === key
                             ? "text-slate-800 shadow-md"
-                            : "text-white/80 hover:bg-white/15"
+                            : "text-white hover:bg-white/15"
                         }`}
                         style={motionSensitivity === key
                           ? { background: 'hsla(52, 100%, 60%, 0.9)' }
@@ -492,7 +490,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-white font-semibold text-sm block">덮개 (리드) 감지</span>
-                  <span className="text-white/60 text-xs">{isLaptop ? "노트북 덮개 열림/닫힘을 감지합니다" : "노트북 기기에서만 사용할 수 있습니다"}</span>
+                  <span className="text-white/80 text-xs">{isLaptop ? "노트북 덮개 열림/닫힘을 감지합니다" : "노트북 기기에서만 사용할 수 있습니다"}</span>
                 </div>
                 <Switch checked={sensorSettings.lidClosed} onCheckedChange={(v) => handleSensorToggle("lidClosed", v)} disabled={!isLaptop} />
               </div>
@@ -737,8 +735,8 @@ const SettingItem = ({ label, value, onClick }: SettingItemProps) => (
   <button onClick={onClick} className="flex items-center justify-between w-full px-4 py-4 text-left hover:bg-white/8 active:bg-white/12 transition-colors">
     <span className="text-white font-semibold text-sm">{label}</span>
     <div className="flex items-center gap-2">
-      {value && <span className="text-white/70 text-sm font-medium">{value}</span>}
-      <ChevronRight className="w-5 h-5 text-white/50" />
+      {value && <span className="text-white/80 text-sm font-medium">{value}</span>}
+      <ChevronRight className="w-5 h-5 text-white/60" />
     </div>
   </button>
 );
@@ -758,7 +756,7 @@ const SensorToggle = ({ label, description, checked, onChange }: SensorTogglePro
   <div className="flex items-center justify-between">
     <div>
       <span className="text-white font-semibold text-sm block">{label}</span>
-      <span className="text-white/60 text-xs">{description}</span>
+      <span className="text-white/80 text-xs">{description}</span>
     </div>
     <Switch checked={checked} onCheckedChange={onChange} />
   </div>
