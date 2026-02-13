@@ -37,30 +37,28 @@ const AlertItem = ({ alert, onMarkRead }: AlertItemProps) => {
   return (
     <div
       onClick={() => !alert.is_read && onMarkRead(alert.id)}
-      className={`flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all ${
+      className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${
         alert.is_read ? "bg-slate-50" : "bg-white shadow-sm border border-slate-200"
       }`}
     >
-      <div className={`w-10 h-10 ${bgColor} rounded-full flex items-center justify-center flex-shrink-0`}>
-        <Icon className="w-5 h-5 text-white" />
+      <div className={`w-9 h-9 ${bgColor} rounded-full flex items-center justify-center flex-shrink-0`}>
+        <Icon className="w-4 h-4 text-white" />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <h4 className={`font-bold text-sm ${alert.is_read ? "text-slate-500" : "text-slate-900"}`}>
+          <h4 className={`font-bold text-sm truncate ${alert.is_read ? "text-slate-500" : "text-slate-900"}`}>
             {alert.title}
           </h4>
-          {!alert.is_read && (
-            <span className="w-2.5 h-2.5 bg-sky-500 rounded-full flex-shrink-0" />
-          )}
+          <span className="flex items-center gap-1.5 flex-shrink-0">
+            <span className="text-[11px] text-slate-400 whitespace-nowrap">
+              {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true, locale: ko })}
+            </span>
+            {!alert.is_read && <span className="w-2 h-2 bg-sky-500 rounded-full" />}
+          </span>
         </div>
         {alert.message && (
-          <p className="text-xs text-slate-600 mt-1 line-clamp-2">
-            {alert.message}
-          </p>
+          <p className="text-xs text-slate-500 mt-0.5 truncate">{alert.message}</p>
         )}
-        <p className="text-xs text-slate-400 mt-1">
-          {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true, locale: ko })}
-        </p>
       </div>
     </div>
   );
