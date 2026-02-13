@@ -91,16 +91,27 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
           >
             {/* Speech Bubble - Glued to character hat */}
             {statusMessage && (
-              <div 
-                className="w-[85vw] max-w-sm"
-                style={{ marginBottom: '-50px' }}
-              >
-                <div className="bg-card/95 rounded-xl px-4 py-2 shadow-lg">
-                  <p className="text-center font-medium text-sm text-card-foreground">
-                    {statusMessage}
-                  </p>
+                <div
+                  className="w-[85vw] max-w-sm"
+                  style={{ marginBottom: '-50px' }}
+                >
+                  <div
+                    className="rounded-2xl px-4 py-2.5 shadow-lg"
+                    style={{
+                      background: 'hsla(0, 0%, 100%, 0.18)',
+                      border: '1px solid hsla(0, 0%, 100%, 0.25)',
+                      backdropFilter: 'blur(16px)',
+                      WebkitBackdropFilter: 'blur(16px)',
+                    }}
+                  >
+                    <p
+                      className="text-center font-bold text-sm"
+                      style={{ color: 'white', textShadow: '0 1px 3px hsla(0,0%,0%,0.3)' }}
+                    >
+                      {statusMessage}
+                    </p>
+                  </div>
                 </div>
-              </div>
             )}
             
             {/* Meerkat Character */}
