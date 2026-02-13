@@ -288,17 +288,11 @@ export const useAlerts = (deviceId?: string | null) => {
           if (isStale) {
             s.dismissedIds.add(foundAlert.id);
             saveDismissedIds(s.dismissedIds);
-            if (!activeAlertRef.current || activeAlertRef.current.id !== foundAlert.id) {
-              safeSetActiveAlert(foundAlert);
-              activeAlertRef.current = foundAlert;
-            }
+            // stale alert는 UI에 표시하지 않음
             return;
           }
           if (s.lastPlayedId === foundAlert.id) {
-            if (!activeAlertRef.current || activeAlertRef.current.id !== foundAlert.id) {
-              safeSetActiveAlert(foundAlert);
-              activeAlertRef.current = foundAlert;
-            }
+            // 이미 처리된 alert — UI를 다시 설정하지 않음 (dismiss 후 재표시 방지)
             return;
           }
           const isMuted = readMuted();
@@ -402,22 +396,17 @@ export const useAlerts = (deviceId?: string | null) => {
   };
 
   const dismissActiveAlert = useCallback(async () => {
-    // 1차 정지
     stopAlertSound();
     const s = getAlarmState();
-    // dismiss 후 30초간 새 알람 차단 (presence 재동기화로 인한 재트리거 방지)
     s.suppressUntil = Date.now() + 30000;
     if (activeAlertRef.current) {
       s.dismissedIds.add(activeAlertRef.current.id);
       saveDismissedIds(s.dismissedIds);
     }
     s.playing = false;
+    s.lastPlayedId = null; // dismiss 후 lastPlayedId 초기화하여 새 경보만 반응
     safeSetActiveAlert(null);
     activeAlertRef.current = null;
-
-    // 2차 정지 (비동기 오디오 잔여물 제거)
-    setTimeout(() => stopAlertSound(), 100);
-    setTimeout(() => stopAlertSound(), 500);
     
     const did = deviceIdRef.current;
     if (!did) return;
