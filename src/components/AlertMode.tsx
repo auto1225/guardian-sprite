@@ -15,6 +15,7 @@ interface AlertModeProps {
 
 const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: AlertModeProps) => {
   const { toast } = useToast();
+  const [phoneDismissed, setPhoneDismissed] = useState(false);
   const [capturedImages] = useState<string[]>([]);
 
   // 컴퓨터 경보음 원격 해제
@@ -85,17 +86,20 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
 
           {/* Buttons */}
           <div className="p-6 space-y-3">
-            <button
-              onClick={() => {
-                stopAlertSound();
-                Alarm.addDismissed(activeAlert.id);
-                Alarm.suppressFor(30_000);
-                toast({ title: "스마트폰 경보음 해제", description: "스마트폰의 경보음이 해제되었습니다." });
-              }}
-              className="w-full py-3 bg-destructive-foreground/20 text-destructive-foreground border-2 border-destructive-foreground/40 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
-            >
-              🔕 스마트폰 경보음 해제
-            </button>
+            {!phoneDismissed && (
+              <button
+                onClick={() => {
+                  stopAlertSound();
+                  Alarm.addDismissed(activeAlert.id);
+                  Alarm.suppressFor(30_000);
+                  setPhoneDismissed(true);
+                  toast({ title: "스마트폰 경보음 해제", description: "스마트폰의 경보음이 해제되었습니다." });
+                }}
+                className="w-full py-3 bg-destructive-foreground/20 text-destructive-foreground border-2 border-destructive-foreground/40 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
+              >
+                🔕 스마트폰 경보음 해제
+              </button>
+            )}
             <button
               onClick={handleDismissRemoteAlarm}
               className="w-full py-3 bg-destructive-foreground/20 text-destructive-foreground border-2 border-destructive-foreground/40 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"

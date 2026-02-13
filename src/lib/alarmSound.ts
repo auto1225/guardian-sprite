@@ -275,12 +275,21 @@ export async function play() {
         source.connect(audioCtx.destination);
         source.start(0);
         await audioCtx.resume();
+        
+        // resume()이 throw하지 않아도 여전히 suspended일 수 있음 (사용자 제스처 없이 호출된 경우)
+        if (audioCtx.state === 'suspended') {
+          console.warn("[AlarmSound] AudioContext still suspended after resume — queuing for next touch");
+          s.isAlarming = false;
+          s.pendingPlay = true;
+          return;
+        }
+        
         s.unlocked = true;
         console.log("[AlarmSound] 🔓 Force-unlocked in play() (state:", audioCtx.state, ")");
       } catch {
         console.warn("[AlarmSound] AudioContext resume failed — queuing for next touch");
         s.isAlarming = false;
-        s.pendingPlay = true;  // 다음 터치 시 자동 재시도
+        s.pendingPlay = true;
         return;
       }
     }
