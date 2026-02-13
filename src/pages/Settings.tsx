@@ -153,7 +153,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
     const m = (device.metadata as Record<string, unknown>) || {};
     if (!m.sensorSettings) {
       const defaults = {
-        sensorSettings: { ...DEFAULT_SENSOR_SETTINGS, deviceType: device.device_type as "laptop" | "desktop" },
+        sensorSettings: { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device.device_type as "laptop" | "desktop" | "tablet") || "laptop" },
         alarm_pin: (m.alarm_pin as string) || "1234",
         alarm_sound_id: (m.alarm_sound_id as string) || "whistle",
         require_pc_pin: m.require_pc_pin ?? true,
@@ -382,11 +382,11 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <span className="text-white font-medium text-sm block">기기 타입</span>
-                  <span className="text-white/40 text-xs">노트북은 덮개 감지, 데스크탑은 마이크 감지 제공</span>
+                  <span className="text-white/40 text-xs">기기 타입에 따라 사용 가능한 센서가 달라집니다</span>
                 </div>
               </div>
               <div className="flex gap-2">
-                {(["laptop", "desktop"] as const).map((type) => (
+                {(["laptop", "desktop", "tablet"] as const).map((type) => (
                   <button
                     key={type}
                     onClick={async () => {
@@ -406,7 +406,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
                         : "bg-white/8 text-white/60 hover:bg-white/12"
                     }`}
                   >
-                    {type === "laptop" ? "노트북" : "데스크탑"}
+                    {type === "laptop" ? "노트북" : type === "desktop" ? "데스크탑" : "태블릿"}
                   </button>
                 ))}
               </div>
@@ -422,7 +422,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
               />
             </SensorSection>
 
-            {/* Motion Sensitivity - only when camera is enabled, below the toggle */}
+            {/* Motion Sensitivity - only when camera is enabled */}
             {sensorSettings.camera && (
               <div className="px-4 py-4">
                 <div className="flex items-center justify-between mb-3">
@@ -446,27 +446,34 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
               </div>
             )}
 
-            {isLaptop && (
-              <SensorSection>
-                <SensorToggle
-                  label="덮개 (리드) 감지"
-                  description="노트북 덮개 열림/닫힘을 감지합니다"
+            {/* 덮개 감지 - 항상 표시, 노트북만 활성 */}
+            <SensorSection>
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-white font-medium text-sm block">덮개 (리드) 감지</span>
+                  {isLaptop ? (
+                    <span className="text-white/40 text-xs">노트북 덮개 열림/닫힘을 감지합니다</span>
+                  ) : (
+                    <span className="text-white/40 text-xs">노트북 기기에서만 사용할 수 있습니다</span>
+                  )}
+                </div>
+                <Switch
                   checked={sensorSettings.lidClosed}
-                  onChange={(v) => handleSensorToggle("lidClosed", v)}
+                  onCheckedChange={(v) => handleSensorToggle("lidClosed", v)}
+                  disabled={!isLaptop}
                 />
-              </SensorSection>
-            )}
+              </div>
+            </SensorSection>
 
-            {!isLaptop && (
-              <SensorSection>
-                <SensorToggle
-                  label="마이크 감지"
-                  description="주변 소리를 감지합니다"
-                  checked={sensorSettings.microphone}
-                  onChange={(v) => handleSensorToggle("microphone", v)}
-                />
-              </SensorSection>
-            )}
+            {/* 마이크 감지 - 모든 기기 */}
+            <SensorSection>
+              <SensorToggle
+                label="마이크 감지"
+                description="주변 소리를 감지합니다"
+                checked={sensorSettings.microphone}
+                onChange={(v) => handleSensorToggle("microphone", v)}
+              />
+            </SensorSection>
 
             <SensorSection>
               <SensorToggle
