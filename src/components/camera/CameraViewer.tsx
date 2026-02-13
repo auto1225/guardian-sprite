@@ -154,6 +154,20 @@ const CameraViewer = ({
   const startRecording = useCallback(() => {
     if (!remoteStream || isRecording) return;
 
+    // 오디오/비디오 트랙 확인 및 결합 스트림 생성
+    const videoTracks = remoteStream.getVideoTracks();
+    const audioTracks = remoteStream.getAudioTracks();
+    console.log("[CameraViewer] 🎬 Recording start - Video tracks:", videoTracks.length, "Audio tracks:", audioTracks.length);
+    
+    audioTracks.forEach((t, i) => {
+      console.log(`[CameraViewer] 🔊 Audio track ${i}:`, { enabled: t.enabled, muted: t.muted, readyState: t.readyState });
+    });
+
+    // 새 MediaStream을 만들어 모든 트랙을 명시적으로 추가
+    const recordingStream = new MediaStream();
+    videoTracks.forEach(t => recordingStream.addTrack(t));
+    audioTracks.forEach(t => recordingStream.addTrack(t));
+
     recordedChunksRef.current = [];
     const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
       ? "video/webm;codecs=vp9,opus"
@@ -161,8 +175,10 @@ const CameraViewer = ({
         ? "video/webm;codecs=vp8,opus"
         : "video/webm";
 
+    console.log("[CameraViewer] 🎬 Using mimeType:", mimeType, "Recording stream tracks:", recordingStream.getTracks().length);
+
     try {
-      const recorder = new MediaRecorder(remoteStream, { mimeType });
+      const recorder = new MediaRecorder(recordingStream, { mimeType });
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) recordedChunksRef.current.push(e.data);
       };
@@ -176,7 +192,7 @@ const CameraViewer = ({
         URL.revokeObjectURL(url);
         recordedChunksRef.current = [];
       };
-      recorder.start(1000); // 1초마다 chunk
+      recorder.start(1000);
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
       setRecordingDuration(0);
