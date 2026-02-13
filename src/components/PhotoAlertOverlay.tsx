@@ -251,7 +251,6 @@ export default function PhotoAlertOverlay({
               // 컴퓨터 경보음 해제 = 전체 경보해제 → 스마트폰 경보음도 해제 + 오버레이 닫기
               stopAlertSound();
               Alarm.addDismissed(alert.id);
-              Alarm.suppressFor(30_000);
               onDismissRemoteAlarm();
               onDismiss();
             }}
