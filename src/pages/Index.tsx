@@ -155,6 +155,9 @@ const Index = () => {
             onDeviceManageClick={() => setIsDeviceManageOpen(true)}
             unreadCount={unreadCount}
             deviceId={selectedDeviceId}
+            onViewPhoto={(alert) => {
+              viewPhotoAlert(alert);
+            }}
           />
         </div>
         
