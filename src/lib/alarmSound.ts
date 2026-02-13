@@ -136,14 +136,11 @@ export function unlockAudio() {
   }
 }
 
-// 페이지 로드 시 첫 사용자 상호작용에서 자동 unlock
+// 모든 사용자 상호작용에서 unlock 시도 — 리스너를 제거하지 않음
+// pendingPlay가 나중에 설정될 수 있으므로 항상 활성 상태 유지
 function setupAutoUnlock() {
   const events = ['touchstart', 'touchend', 'click', 'keydown'];
-  const handler = () => {
-    unlockAudio();
-    // 한 번만 실행
-    events.forEach(e => document.removeEventListener(e, handler, true));
-  };
+  const handler = () => { unlockAudio(); };
   events.forEach(e => document.addEventListener(e, handler, { capture: true, passive: true }));
 }
 setupAutoUnlock();
