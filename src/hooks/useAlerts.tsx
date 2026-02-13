@@ -235,13 +235,13 @@ export const useAlerts = (deviceId?: string | null) => {
 
   // ── 전체 해제 (스마트폰 UI 닫기) ──
   const dismissAll = useCallback(() => {
-    Alarm.stop();
+    Alarm.stop();           // isAlarming=false, pendingPlay=false, gen++
     Alarm.suppressFor(30_000);
     const id = activeAlertRef.current?.id;
     if (id) Alarm.addDismissed(id);
     safeSetActiveAlert(null);
     activeAlertRef.current = null;
-    console.log("[useAlerts] ✅ All dismissed");
+    console.log("[useAlerts] ✅ All dismissed (suppressed 30s)");
   }, [safeSetActiveAlert]);
 
   return {
