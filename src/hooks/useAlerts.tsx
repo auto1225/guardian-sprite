@@ -71,9 +71,7 @@ export const useAlerts = (deviceId?: string | null) => {
 
   // ── 경보 수신 처리 ──
   const handleAlert = useCallback((alert: ActiveAlert) => {
-    // 전역 상태 체크 (window 기반 — 다중 번들 안전)
     if (Alarm.isDismissed(alert.id)) return;
-    if (Alarm.isSuppressed()) return;
 
     // 60초 이상 된 stale alert 무시
     if (Date.now() - new Date(alert.created_at).getTime() > 60_000) {
@@ -84,10 +82,13 @@ export const useAlerts = (deviceId?: string | null) => {
     // 이미 같은 alert가 활성 상태면 무시
     if (activeAlertRef.current?.id === alert.id) return;
 
-    console.log("[useAlerts] 🚨 New alert (log only):", alert.id);
+    console.log("[useAlerts] 🚨 New alert:", alert.id);
+    activeAlertRef.current = alert;
 
-    // 경보 UI와 사운드는 usePhotoReceiver에서 전담
-    // 여기서는 로컬 로그 기록만 수행
+    // 경보음 재생
+    if (!Alarm.isPlaying() && !Alarm.isMuted()) {
+      Alarm.play();
+    }
 
     // 로컬 로그에 기록
     const did = deviceIdRef.current;
@@ -101,7 +102,7 @@ export const useAlerts = (deviceId?: string | null) => {
       } catch {}
       loadAlerts();
     }
-  }, [safeSetActiveAlert, loadAlerts]);
+  }, [loadAlerts]);
 
   // ref로 최신 handleAlert를 유지 — 채널 의존성에서 제거
   handleAlertRef.current = handleAlert;
