@@ -25,7 +25,7 @@ interface SettingsPageProps {
 }
 
 interface SensorSettings {
-  deviceType: "laptop" | "desktop";
+  deviceType: "laptop" | "desktop" | "tablet";
   lidClosed: boolean;
   camera: boolean;
   microphone: boolean;
@@ -124,7 +124,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
     const saved = meta.sensorSettings as SensorSettings | undefined;
     return saved
       ? { ...DEFAULT_SENSOR_SETTINGS, ...saved }
-      : { ...DEFAULT_SENSOR_SETTINGS, deviceType: device.device_type as "laptop" | "desktop" };
+      : { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device.device_type as "laptop" | "desktop" | "tablet") || "laptop" };
   });
   const [motionSensitivity, setMotionSensitivity] = useState<MotionSensitivity>(
     (meta.motionSensitivity as MotionSensitivity) || "insensitive"
