@@ -129,6 +129,7 @@ export function usePhotoReceiver(deviceId: string | null | undefined): UsePhotoR
   }, [deviceId, loadAlerts]);
 
   const dismissLatest = useCallback(() => {
+    Alarm.stop();
     if (latestAlert) {
       markPhotoAlertRead(latestAlert.id);
       loadAlerts();
