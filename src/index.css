@@ -104,3 +104,23 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Alert history scrollbar */
+.alert-history-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.alert-history-scroll::-webkit-scrollbar-track {
+  background: hsl(200 20% 95%);
+  border-radius: 3px;
+}
+.alert-history-scroll::-webkit-scrollbar-thumb {
+  background: hsl(200 40% 78%);
+  border-radius: 3px;
+}
+.alert-history-scroll::-webkit-scrollbar-thumb:hover {
+  background: hsl(200 50% 65%);
+}
+.alert-history-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(200 40% 78%) hsl(200 20% 95%);
+}
