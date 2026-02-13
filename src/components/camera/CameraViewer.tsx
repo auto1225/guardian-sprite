@@ -54,19 +54,35 @@ const CameraViewer = ({
 
     try {
       const ctx = new AudioContext();
+      // 모바일에서 suspended 상태일 수 있으므로 resume
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+      console.log("[CameraViewer] 🔊 AudioContext state:", ctx.state, "Audio tracks:", audioTracks.length);
+      
       const source = ctx.createMediaStreamSource(remoteStream);
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.5;
+      analyser.smoothingTimeConstant = 0.3;
       source.connect(analyser);
 
       audioContextRef.current = ctx;
       analyserRef.current = analyser;
 
+      // 화면 터치 시 AudioContext resume (모바일 정책 대응)
+      const resumeOnInteraction = () => {
+        if (audioContextRef.current?.state === 'suspended') {
+          audioContextRef.current.resume().then(() => {
+            console.log("[CameraViewer] 🔊 AudioContext resumed after interaction");
+          }).catch(() => {});
+        }
+      };
+      document.addEventListener('touchstart', resumeOnInteraction, { once: true });
+      document.addEventListener('click', resumeOnInteraction, { once: true });
+
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       const tick = () => {
         analyser.getByteFrequencyData(dataArray);
-        // 평균 레벨 계산 (0~1)
         let sum = 0;
         for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
         const avg = sum / dataArray.length / 255;
