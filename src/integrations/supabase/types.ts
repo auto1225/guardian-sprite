@@ -283,6 +283,7 @@ export type Database = {
       licenses: {
         Row: {
           created_at: string
+          device_id: string | null
           expires_at: string | null
           id: string
           is_active: boolean
@@ -292,6 +293,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          device_id?: string | null
           expires_at?: string | null
           id?: string
           is_active?: boolean
@@ -301,6 +303,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          device_id?: string | null
           expires_at?: string | null
           id?: string
           is_active?: boolean
@@ -308,7 +311,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "licenses_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
