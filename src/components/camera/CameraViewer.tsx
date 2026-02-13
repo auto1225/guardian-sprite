@@ -1,6 +1,5 @@
 import { Camera, RefreshCw, Download, Video, Play, Volume2, VolumeX } from "lucide-react";
-import { useState } from "react";
-import { useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 interface CameraViewerProps {
   isStreaming: boolean;
@@ -24,120 +23,111 @@ const CameraViewer = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
+  const playRetryTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    if (videoRef.current && remoteStream) {
-      console.log("[CameraViewer] 📹 Setting video srcObject:", {
-        streamId: remoteStream.id,
-        active: remoteStream.active,
-        trackCount: remoteStream.getTracks().length,
-      });
+  // 안전한 재생 시도 - 여러 번 반복 시도
+  const attemptPlay = useCallback(async (retryCount = 0) => {
+    const video = videoRef.current;
+    if (!video || !video.srcObject) return;
+
+    try {
+      video.muted = true; // 모바일에서 muted여야 autoplay 가능
+      await video.play();
+      console.log("[CameraViewer] ✅ Play succeeded (attempt:", retryCount + 1, ")");
+      setIsVideoPlaying(true);
+    } catch (err) {
+      console.warn("[CameraViewer] ⚠️ Play failed (attempt:", retryCount + 1, "):", err);
+      setIsVideoPlaying(false);
       
-      // Log all tracks
-      remoteStream.getTracks().forEach((track, i) => {
-        console.log(`[CameraViewer] 📹 Track ${i}:`, {
-          kind: track.kind,
-          enabled: track.enabled,
-          muted: track.muted,
-          readyState: track.readyState,
-        });
-      });
-      
-      const video = videoRef.current;
-      
-      // 모바일 브라우저 제한 우회를 위한 설정 - autoplay는 true 유지!
-      video.muted = true;
-      video.playsInline = true;
-      
-      video.srcObject = remoteStream;
-      
-      // Add event listeners for video playback debugging
-      video.onloadedmetadata = () => {
-        console.log("[CameraViewer] 📹 Video metadata loaded:", {
-          videoWidth: video.videoWidth,
-          videoHeight: video.videoHeight,
-        });
-        // 메타데이터 로드 후 재생 시도
-        video.play()
-          .then(() => {
-            console.log("[CameraViewer] ✅ Auto-play succeeded after metadata");
-            setIsVideoPlaying(true);
-          })
-          .catch(err => {
-            console.warn("[CameraViewer] ⚠️ Play after metadata failed:", err);
-            setIsVideoPlaying(false);
-          });
-      };
-      
-      video.onplay = () => {
-        console.log("[CameraViewer] ▶️ Video started playing");
-        setIsVideoPlaying(true);
-      };
-      
-      video.onplaying = () => {
-        console.log("[CameraViewer] ▶️ Video is now playing");
-        setIsVideoPlaying(true);
-      };
-      
-      video.onpause = () => {
-        console.log("[CameraViewer] ⏸️ Video paused");
-        setIsVideoPlaying(false);
-        // 스트림이 여전히 활성 상태면 재생 재시도
-        if (remoteStream.active && video.srcObject) {
-          setTimeout(() => {
-            video.play()
-              .then(() => setIsVideoPlaying(true))
-              .catch(err => console.warn("[CameraViewer] Resume failed:", err));
-          }, 100);
-        }
-      };
-      
-      video.onerror = (e) => {
-        console.error("[CameraViewer] ❌ Video error:", e);
-        setIsVideoPlaying(false);
-      };
-      
-      // 즉시 재생 시도
-      video.play()
-        .then(() => {
-          console.log("[CameraViewer] ✅ Immediate play() succeeded");
-          setIsVideoPlaying(true);
-        })
-        .catch(err => {
-          console.warn("[CameraViewer] ⚠️ Immediate play() failed, will retry:", err);
-          setIsVideoPlaying(false);
-        });
+      // 최대 5회까지 500ms 간격으로 재시도
+      if (retryCount < 5) {
+        playRetryTimerRef.current = setTimeout(() => {
+          attemptPlay(retryCount + 1);
+        }, 500);
+      }
     }
-  }, [remoteStream]);
+  }, []);
 
-  // Stream 상태 모니터링 - 비활성화되면 UI에 표시
+  // remoteStream이 변경되면 비디오에 연결
   useEffect(() => {
-    if (!remoteStream) return;
-    
-    const checkStreamHealth = () => {
-      const videoTracks = remoteStream.getVideoTracks();
-      if (videoTracks.length > 0) {
-        const track = videoTracks[0];
-        if (track.readyState === 'ended') {
-          console.log("[CameraViewer] ⚠️ Video track ended");
-        }
+    const video = videoRef.current;
+    if (!video || !remoteStream) return;
+
+    console.log("[CameraViewer] 📹 Setting video srcObject:", {
+      streamId: remoteStream.id,
+      active: remoteStream.active,
+      trackCount: remoteStream.getTracks().length,
+    });
+
+    // 이전 타이머 정리
+    if (playRetryTimerRef.current) {
+      clearTimeout(playRetryTimerRef.current);
+      playRetryTimerRef.current = null;
+    }
+
+    video.muted = true;
+    video.playsInline = true;
+    video.srcObject = remoteStream;
+
+    // 메타데이터 로드 후 재생
+    const onLoadedMetadata = () => {
+      console.log("[CameraViewer] 📹 Metadata loaded:", video.videoWidth, "x", video.videoHeight);
+      attemptPlay(0);
+    };
+
+    // 트랙 추가 이벤트 감지 - 늦게 도착하는 트랙 처리
+    const onAddTrack = () => {
+      console.log("[CameraViewer] 📹 Track added to stream, retrying play...");
+      attemptPlay(0);
+    };
+
+    video.addEventListener("loadedmetadata", onLoadedMetadata);
+    remoteStream.addEventListener("addtrack", onAddTrack);
+
+    // 즉시 재생 시도 (메타데이터가 이미 있을 수 있음)
+    attemptPlay(0);
+
+    return () => {
+      video.removeEventListener("loadedmetadata", onLoadedMetadata);
+      remoteStream.removeEventListener("addtrack", onAddTrack);
+      if (playRetryTimerRef.current) {
+        clearTimeout(playRetryTimerRef.current);
+        playRetryTimerRef.current = null;
       }
     };
-    
-    // 주기적으로 stream 상태 체크
+  }, [remoteStream, attemptPlay]);
+
+  // Stream 비활성화 감지
+  useEffect(() => {
+    if (!remoteStream) return;
+
+    const checkStreamHealth = () => {
+      const videoTracks = remoteStream.getVideoTracks();
+      if (videoTracks.length > 0 && videoTracks[0].readyState === "ended") {
+        console.log("[CameraViewer] ⚠️ Video track ended");
+        setIsVideoPlaying(false);
+      }
+    };
+
     const interval = setInterval(checkStreamHealth, 5000);
-    
     return () => clearInterval(interval);
   }, [remoteStream]);
 
+  // 컴포넌트 언마운트 시 정리
+  useEffect(() => {
+    return () => {
+      if (playRetryTimerRef.current) {
+        clearTimeout(playRetryTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleDownload = () => {
     if (!videoRef.current) return;
-
     const canvas = document.createElement("canvas");
     canvas.width = videoRef.current.videoWidth || 1280;
     canvas.height = videoRef.current.videoHeight || 720;
     const ctx = canvas.getContext("2d");
-
     if (ctx) {
       ctx.drawImage(videoRef.current, 0, 0);
       const link = document.createElement("a");
@@ -147,7 +137,7 @@ const CameraViewer = ({
     }
   };
 
-  // Not streaming yet - show placeholder
+  // Not streaming yet
   if (!isStreaming) {
     return (
       <div className="flex-1 bg-black/50 rounded-xl mx-4 flex items-center justify-center aspect-video">
@@ -195,11 +185,7 @@ const CameraViewer = ({
   // Connected with stream
   if (isConnected && remoteStream) {
     const handlePlayClick = () => {
-      if (videoRef.current) {
-        videoRef.current.play()
-          .then(() => setIsVideoPlaying(true))
-          .catch(console.error);
-      }
+      attemptPlay(0);
     };
 
     const handleToggleMute = () => {
@@ -218,14 +204,12 @@ const CameraViewer = ({
           muted
           preload="auto"
           className="w-full h-full object-contain"
-          onPlay={() => setIsVideoPlaying(true)}
-          onPause={() => setIsVideoPlaying(false)}
           onClick={handlePlayClick}
         />
-        
-        {/* 터치하여 재생 오버레이 - 비디오가 재생되지 않을 때만 표시 */}
+
+        {/* 터치하여 재생 오버레이 */}
         {!isVideoPlaying && (
-          <div 
+          <div
             className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 cursor-pointer"
             onClick={handlePlayClick}
           >
@@ -235,7 +219,7 @@ const CameraViewer = ({
             <p className="text-white text-sm">터치하여 재생</p>
           </div>
         )}
-        
+
         {/* LIVE indicator */}
         <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded">
           <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
