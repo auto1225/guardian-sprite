@@ -50,20 +50,20 @@ const AlertItem = ({ alert, onMarkRead }: AlertItemProps) => {
       >
         <Icon className="w-4 h-4 text-white" />
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2">
-          <h4 className={`font-bold text-sm truncate ${alert.is_read ? "text-white/50" : "text-white"}`}>
-            {alert.title}
-          </h4>
-          <span className="flex items-center gap-1.5 flex-shrink-0">
-            <span className="text-[11px] text-white/50 whitespace-nowrap">
-              {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true, locale: ko })}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className={`font-bold text-sm truncate ${alert.is_read ? "text-white/70" : "text-white"}`}>
+              {alert.title}
+            </h4>
+            <span className="flex items-center gap-1.5 flex-shrink-0">
+              <span className="text-[11px] text-white/70 whitespace-nowrap font-medium">
+                {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true, locale: ko })}
+              </span>
+              {!alert.is_read && <span className="w-2 h-2 rounded-full" style={{ background: 'hsla(52, 100%, 60%, 1)', boxShadow: '0 0 6px hsla(52, 100%, 60%, 0.5)' }} />}
             </span>
-            {!alert.is_read && <span className="w-2 h-2 rounded-full" style={{ background: 'hsla(52, 100%, 60%, 1)', boxShadow: '0 0 6px hsla(52, 100%, 60%, 0.5)' }} />}
-          </span>
-        </div>
-        {alert.message && (
-          <p className="text-xs text-white/60 mt-0.5 truncate">{alert.message}</p>
+          </div>
+          {alert.message && (
+            <p className="text-xs text-white/80 mt-0.5 truncate font-medium">{alert.message}</p>
         )}
       </div>
     </div>
