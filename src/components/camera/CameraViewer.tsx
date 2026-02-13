@@ -1,4 +1,4 @@
-import { Camera, RefreshCw, Download, Video, Play, Volume2, VolumeX } from "lucide-react";
+import { Camera, RefreshCw, Download, Video, Play, Volume2, VolumeX, Circle, Square } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 
 interface CameraViewerProps {
@@ -23,7 +23,12 @@ const CameraViewer = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
   const playRetryTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // 안전한 재생 시도 - 여러 번 반복 시도
   const attemptPlay = useCallback(async (retryCount = 0) => {
@@ -137,6 +142,75 @@ const CameraViewer = ({
     }
   };
 
+  // 녹화 시작
+  const startRecording = useCallback(() => {
+    if (!remoteStream || isRecording) return;
+
+    recordedChunksRef.current = [];
+    const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+      ? "video/webm;codecs=vp9,opus"
+      : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
+        ? "video/webm;codecs=vp8,opus"
+        : "video/webm";
+
+    try {
+      const recorder = new MediaRecorder(remoteStream, { mimeType });
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `meercop-recording-${Date.now()}.webm`;
+        link.click();
+        URL.revokeObjectURL(url);
+        recordedChunksRef.current = [];
+      };
+      recorder.start(1000); // 1초마다 chunk
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+      setRecordingDuration(0);
+
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration((d) => d + 1);
+      }, 1000);
+    } catch (err) {
+      console.error("[CameraViewer] Recording failed:", err);
+    }
+  }, [remoteStream, isRecording]);
+
+  // 녹화 중지
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    mediaRecorderRef.current = null;
+    setIsRecording(false);
+    setRecordingDuration(0);
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+  }, []);
+
+  // 컴포넌트 언마운트 시 녹화 정리
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    };
+  }, []);
+
+  const formatDuration = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+    const s = (seconds % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
+
   // Not streaming yet
   if (!isStreaming) {
     return (
@@ -220,10 +294,19 @@ const CameraViewer = ({
           </div>
         )}
 
-        {/* LIVE indicator */}
+        {/* LIVE / REC indicator */}
         <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded">
-          <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-          <span className="text-white text-xs font-bold">LIVE</span>
+          {isRecording ? (
+            <>
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-white text-xs font-bold">REC {formatDuration(recordingDuration)}</span>
+            </>
+          ) : (
+            <>
+              <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+              <span className="text-white text-xs font-bold">LIVE</span>
+            </>
+          )}
         </div>
         {/* Action buttons */}
         <div className="absolute bottom-3 right-3 flex gap-2">
@@ -235,6 +318,16 @@ const CameraViewer = ({
             title={isMuted ? "소리 켜기" : "소리 끄기"}
           >
             {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+          </button>
+          {/* 녹화 버튼 */}
+          <button
+            onClick={isRecording ? stopRecording : startRecording}
+            className={`w-10 h-10 rounded-full flex items-center justify-center text-white transition-colors ${
+              isRecording ? "bg-red-600 hover:bg-red-700" : "bg-white/20 hover:bg-white/30"
+            }`}
+            title={isRecording ? "녹화 중지" : "녹화 시작"}
+          >
+            {isRecording ? <Square className="w-4 h-4" fill="white" /> : <Circle className="w-5 h-5 text-red-400" />}
           </button>
           <button
             onClick={onCapture}

@@ -354,7 +354,7 @@ export const useWebRTCBroadcaster = ({
           height: { ideal: 720 },
           facingMode: "user",
         },
-        audio: false,
+        audio: true,
       });
 
       console.log("[WebRTC Broadcaster] ✅ Camera access granted, tracks:", stream.getTracks().length);
