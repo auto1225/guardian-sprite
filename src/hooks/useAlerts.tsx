@@ -75,10 +75,11 @@ export const useAlerts = (deviceId?: string | null) => {
 
   /** 공통 alert 처리 로직 */
   const handleIncomingAlert = useCallback((alert: ActiveAlert) => {
-    // 이미 처리한 동일 alert → 무시 (가장 먼저 체크 — 중복 호출 방지)
-    if (lastPlayedIdRef.current === alert.id) return;
+    // 전역 공유 상태 먼저 체크 (다중 번들 환경에서도 안전)
     if (AlarmSound.isDismissed(alert.id)) return;
     if (AlarmSound.isSuppressed()) return;
+    // 이미 처리한 동일 alert → 무시 (per-bundle ref)
+    if (lastPlayedIdRef.current === alert.id) return;
 
     const alertAge = Date.now() - new Date(alert.created_at).getTime();
     // 60초 이상 된 alert는 stale (페이지 새로고침 시 재트리거 방지)
