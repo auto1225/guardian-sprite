@@ -88,7 +88,7 @@ export const useAlerts = (deviceId?: string | null) => {
     safeSetActiveAlert(alert);
     activeAlertRef.current = alert;
 
-    if (!Alarm.isMuted()) {
+    if (!Alarm.isMuted() && !Alarm.isSuppressed() && !Alarm.isPlaying()) {
       Alarm.play();
     }
 
