@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Bell, Image, Trash2 } from "lucide-react";
+import { Bell, Image, Trash2, CheckCheck } from "lucide-react";
 import { useAlerts } from "@/hooks/useAlerts";
 import AlertItem from "./AlertItem";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -23,14 +23,16 @@ interface UnifiedAlert {
   activityLog?: ReturnType<typeof useAlerts>["alerts"][0];
 }
 
+type FilterType = "all" | "photo" | "activity";
+
 const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
   const { alerts: activityAlerts, unreadCount: activityUnread, markAsRead, markAllAsRead } = useAlerts(deviceId);
   const { devices } = useDevices();
   const [refreshKey, setRefreshKey] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
+  const [filter, setFilter] = useState<FilterType>("all");
 
   const photoAlerts = useMemo(() => {
-    // trigger re-read on refreshKey or open
     void refreshKey;
     return getPhotoAlerts(deviceId || undefined);
   }, [deviceId, refreshKey, isOpen]);
@@ -38,7 +40,6 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
   const photoUnread = photoAlerts.filter(a => !a.is_read).length;
   const totalUnread = activityUnread + photoUnread;
 
-  // Merge and sort by time
   const unifiedAlerts = useMemo<UnifiedAlert[]>(() => {
     const fromActivity: UnifiedAlert[] = activityAlerts.map(a => ({
       id: a.id,
@@ -75,10 +76,14 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
       photoAlert: a,
     }));
 
-    return [...fromActivity, ...fromPhoto].sort(
+    let merged = [...fromActivity, ...fromPhoto];
+    if (filter === "photo") merged = merged.filter(a => a.type === "photo");
+    if (filter === "activity") merged = merged.filter(a => a.type === "activity");
+
+    return merged.sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
-  }, [activityAlerts, photoAlerts, devices]);
+  }, [activityAlerts, photoAlerts, devices, filter]);
 
   const handleMarkAllRead = () => {
     markAllAsRead.mutate();
@@ -93,6 +98,12 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
     setRefreshKey(k => k + 1);
   };
 
+  const filterButtons: { key: FilterType; label: string }[] = [
+    { key: "all", label: "전체" },
+    { key: "photo", label: "📸 사진" },
+    { key: "activity", label: "🔔 경보" },
+  ];
+
   return (
     <Sheet open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (open) setRefreshKey(k => k + 1); }}>
       <SheetTrigger asChild>
@@ -105,30 +116,50 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
           )}
         </button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
-        <SheetHeader className="p-4 border-b">
+      <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-white">
+        {/* Header */}
+        <SheetHeader className="p-4 pb-3 border-b border-slate-200">
           <div className="flex items-center justify-between">
-            <SheetTitle className="text-lg font-bold">경보 이력</SheetTitle>
+            <SheetTitle className="text-lg font-bold text-slate-900">경보 이력</SheetTitle>
             {totalUnread > 0 && (
               <button
                 onClick={handleMarkAllRead}
-                className="text-sm text-primary hover:underline"
+                className="flex items-center gap-1 text-sm text-sky-600 hover:text-sky-700 font-medium"
               >
+                <CheckCheck className="w-4 h-4" />
                 모두 읽음
               </button>
             )}
           </div>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+        {/* Filter tabs */}
+        <div className="flex gap-2 px-4 py-3 border-b border-slate-100">
+          {filterButtons.map(fb => (
+            <button
+              key={fb.key}
+              onClick={() => setFilter(fb.key)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                filter === fb.key
+                  ? "bg-sky-500 text-white shadow-sm"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              {fb.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Scrollable list with styled scrollbar */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-2 alert-history-scroll">
           {unifiedAlerts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Bell className="w-12 h-12 mb-3 opacity-50" />
-              <p>경보 이력이 없습니다</p>
+            <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+              <Bell className="w-12 h-12 mb-3 opacity-40" />
+              <p className="text-sm font-medium">경보 이력이 없습니다</p>
             </div>
           ) : (
             unifiedAlerts.map((alert) => (
-              <div key={alert.id} className="relative">
+              <div key={alert.id}>
                 {alert.type === "photo" && alert.photoAlert ? (
                   <PhotoAlertItem
                     alert={alert}
@@ -159,46 +190,45 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
   );
 };
 
-// Photo alert list item with thumbnail
 function PhotoAlertItem({ alert, onView, onDelete }: { alert: UnifiedAlert; onView: () => void; onDelete: () => void }) {
   const photo = alert.photoAlert;
   const thumbnail = photo?.photos?.[0];
 
   return (
     <div
-      className={`flex items-start gap-3 p-3 rounded-lg transition-all ${
-        alert.is_read ? "opacity-60" : "bg-card"
+      className={`flex items-start gap-3 p-3 rounded-xl transition-all ${
+        alert.is_read ? "bg-slate-50" : "bg-white shadow-sm border border-slate-200"
       }`}
     >
-      {/* Thumbnail or icon */}
+      {/* Thumbnail */}
       <button
         onClick={onView}
-        className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-muted flex items-center justify-center border border-border"
+        className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-slate-100 flex items-center justify-center border border-slate-200"
       >
         {thumbnail ? (
           <img src={thumbnail} alt="캡처" className="w-full h-full object-cover" />
         ) : (
-          <Image className="w-5 h-5 text-muted-foreground" />
+          <Image className="w-6 h-6 text-slate-400" />
         )}
       </button>
 
       {/* Content */}
       <button onClick={onView} className="flex-1 min-w-0 text-left">
-        <div className="flex items-center justify-between">
-          <h4 className={`font-semibold text-sm ${alert.is_read ? "text-muted-foreground" : "text-card-foreground"}`}>
+        <div className="flex items-center justify-between gap-2">
+          <h4 className={`font-bold text-sm ${alert.is_read ? "text-slate-500" : "text-slate-900"}`}>
             {alert.title}
           </h4>
           {!alert.is_read && (
-            <span className="w-2 h-2 bg-destructive rounded-full flex-shrink-0" />
+            <span className="w-2.5 h-2.5 bg-sky-500 rounded-full flex-shrink-0" />
           )}
         </div>
         {alert.device_name && (
-          <p className="text-xs text-muted-foreground">{alert.device_name}</p>
+          <p className="text-xs text-slate-500 font-medium">{alert.device_name}</p>
         )}
         {alert.message && (
-          <p className="text-xs text-muted-foreground mt-0.5">{alert.message}</p>
+          <p className="text-xs text-slate-600 mt-0.5">{alert.message}</p>
         )}
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="text-xs text-slate-400 mt-1">
           {new Date(alert.created_at).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
         </p>
       </button>
@@ -206,7 +236,7 @@ function PhotoAlertItem({ alert, onView, onDelete }: { alert: UnifiedAlert; onVi
       {/* Delete */}
       <button
         onClick={(e) => { e.stopPropagation(); onDelete(); }}
-        className="p-1.5 text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
+        className="p-1.5 text-slate-300 hover:text-red-500 transition-colors flex-shrink-0 mt-1"
       >
         <Trash2 className="w-4 h-4" />
       </button>
