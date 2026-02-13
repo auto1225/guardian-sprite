@@ -232,14 +232,12 @@ export default function PhotoAlertOverlay({
         )}
       </div>
 
-      {/* Alarm dismiss buttons + confirm */}
+      {/* Alarm dismiss buttons */}
       <div className="p-4 shrink-0 space-y-3">
         {!phoneDismissed && (
           <button
             onClick={() => {
               stopAlertSound();
-              Alarm.addDismissed(alert.id);
-              Alarm.suppressFor(30_000);
               setPhoneDismissed(true);
             }}
             className="w-full py-3 bg-destructive-foreground/20 text-destructive-foreground border-2 border-destructive-foreground/40 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
@@ -247,20 +245,21 @@ export default function PhotoAlertOverlay({
             🔕 스마트폰 경보음 해제
           </button>
         )}
-        {onDismissRemoteAlarm && !remoteAlarmDismissed && (
+        {onDismissRemoteAlarm && (
           <button
-            onClick={onDismissRemoteAlarm}
-            className="w-full py-3 bg-destructive-foreground/20 text-destructive-foreground border-2 border-destructive-foreground/40 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
+            onClick={() => {
+              // 컴퓨터 경보음 해제 = 전체 경보해제 → 스마트폰 경보음도 해제 + 오버레이 닫기
+              stopAlertSound();
+              Alarm.addDismissed(alert.id);
+              Alarm.suppressFor(30_000);
+              onDismissRemoteAlarm();
+              onDismiss();
+            }}
+            className="w-full py-4 bg-destructive-foreground text-destructive rounded-full font-bold text-lg shadow-lg active:scale-95 transition-transform"
           >
-            🔇 컴퓨터 경보음 해제
+            🔇 컴퓨터 경보음 해제 (경보 해제)
           </button>
         )}
-        <button
-          onClick={onDismiss}
-          className="w-full py-4 bg-destructive-foreground text-destructive rounded-full font-bold text-lg shadow-lg active:scale-95 transition-transform"
-        >
-          확인
-        </button>
       </div>
     </div>
   );

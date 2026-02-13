@@ -18,23 +18,22 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
   const [phoneDismissed, setPhoneDismissed] = useState(false);
   const [capturedImages] = useState<string[]>([]);
 
-  // 컴퓨터 경보음 원격 해제
+  // 컴퓨터 경보음 원격 해제 = 전체 경보해제
   const handleDismissRemoteAlarm = async () => {
     try {
       if (onSendRemoteAlarmOff) {
         await onSendRemoteAlarmOff();
       }
-      toast({ title: "컴퓨터 경보 해제", description: "컴퓨터의 경보음이 해제되었습니다." });
+      // 컴퓨터 경보 해제 = 전체 경보해제 → 스마트폰 경보음도 해제 + 오버레이 닫기
+      stopAlertSound();
+      Alarm.addDismissed(activeAlert.id);
+      Alarm.suppressFor(30_000);
+      toast({ title: "경보 해제", description: "컴퓨터와 스마트폰의 경보가 모두 해제되었습니다." });
+      onDismiss();
     } catch (err) {
       console.error("[AlertMode] remote_alarm_off failed:", err);
       toast({ title: "오류", description: "컴퓨터 경보 해제에 실패했습니다.", variant: "destructive" });
     }
-  };
-
-  // 전체 경보 해제
-  const handleDismiss = () => {
-    toast({ title: "경보 해제", description: "경보가 해제되었습니다." });
-    onDismiss();
   };
 
   return (
@@ -90,8 +89,6 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
               <button
                 onClick={() => {
                   stopAlertSound();
-                  Alarm.addDismissed(activeAlert.id);
-                  Alarm.suppressFor(30_000);
                   setPhoneDismissed(true);
                   toast({ title: "스마트폰 경보음 해제", description: "스마트폰의 경보음이 해제되었습니다." });
                 }}
@@ -102,9 +99,9 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
             )}
             <button
               onClick={handleDismissRemoteAlarm}
-              className="w-full py-3 bg-destructive-foreground/20 text-destructive-foreground border-2 border-destructive-foreground/40 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
+              className="w-full py-3 bg-destructive-foreground text-destructive rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
             >
-              🔇 컴퓨터 경보음 해제
+              🔇 컴퓨터 경보음 해제 (경보 해제)
             </button>
           </div>
         </>
