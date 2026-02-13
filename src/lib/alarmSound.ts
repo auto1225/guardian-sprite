@@ -370,7 +370,9 @@ export function stop() {
   s.isAlarming = false;
   s.pendingPlayGen = 0;
   s.gen++;
-  s.lastStoppedAt = Date.now();
+  // 클럭 스큐(디바이스 간 시계 차이) 대응: 5초 버퍼 추가
+  // 이 시점 이전에 생성된 경보는 presence sync로 재수신되어도 무시
+  s.lastStoppedAt = Date.now() + 5000;
   try { localStorage.setItem('meercop_last_stopped_at', String(s.lastStoppedAt)); } catch {}
   stopSound();
 
