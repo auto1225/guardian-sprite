@@ -10,6 +10,7 @@
 
 interface AlarmState {
   isAlarming: boolean;
+  gen: number;
   oscillators: OscillatorNode[];
   intervals: ReturnType<typeof setInterval>[];
   audioCtx: AudioContext | null;
@@ -25,6 +26,7 @@ function getState(): AlarmState {
   if (!w[GLOBAL_KEY]) {
     w[GLOBAL_KEY] = {
       isAlarming: false,
+      gen: 0,
       oscillators: [],
       intervals: [],
       audioCtx: null,
@@ -240,45 +242,43 @@ export async function play() {
   stopSound();
 
   s.isAlarming = true;
-  console.log("[AlarmSound] ▶ play");
+  const myGen = ++s.gen;
+  console.log("[AlarmSound] ▶ play (gen:", myGen, ")");
 
   try {
-    // unlock된 AudioContext 재사용 (새로 생성하지 않음!)
     const audioCtx = ensureAudioContext();
 
-    // suspended면 resume 시도
     if (audioCtx.state === 'suspended') {
       try {
         await audioCtx.resume();
       } catch {
-        console.warn("[AlarmSound] AudioContext resume failed — needs user gesture");
+        console.warn("[AlarmSound] AudioContext resume failed");
         s.isAlarming = false;
         return;
       }
     }
 
-    if (!s.isAlarming) {
-      console.log("[AlarmSound] play aborted (stopped during resume)");
+    // gen이 바뀌었으면 stop()이 호출된 것 — 즉시 중단
+    if (s.gen !== myGen) {
+      console.log("[AlarmSound] play aborted (gen changed)");
       return;
     }
 
-    // 첫 비프 사이클
     const vol = getVolume();
     const newOscs = playBeepCycle(audioCtx, vol);
     s.oscillators.push(...newOscs);
 
-    // 2.5초 간격 반복
     const intervalId = setInterval(() => {
-      const cur = getState();
-      if (!cur.isAlarming) {
+      // gen 불일치 또는 isAlarming false → 즉시 중단
+      if (!s.isAlarming || s.gen !== myGen) {
         clearInterval(intervalId);
         return;
       }
 
-      const ctx = cur.audioCtx;
+      const ctx = s.audioCtx;
       if (!ctx || ctx.state === 'closed') {
         clearInterval(intervalId);
-        cur.isAlarming = false;
+        s.isAlarming = false;
         return;
       }
 
@@ -287,18 +287,16 @@ export async function play() {
         return;
       }
 
-      // suspended면 resume 시도
       if (ctx.state === 'suspended') {
         ctx.resume().catch(() => {});
       }
 
       const v = getVolume();
       const oscs = playBeepCycle(ctx, v);
-      cur.oscillators.push(...oscs);
+      s.oscillators.push(...oscs);
 
-      // 완료된 오실레이터 정리 (메모리 누수 방지)
-      if (cur.oscillators.length > 30) {
-        cur.oscillators = cur.oscillators.slice(-12);
+      if (s.oscillators.length > 30) {
+        s.oscillators = s.oscillators.slice(-12);
       }
     }, 2500);
 
@@ -316,9 +314,10 @@ export function stop() {
   const wasAlarming = s.isAlarming;
 
   s.isAlarming = false;
+  s.gen++;  // gen 증가 → 모든 진행 중인 play/interval 즉시 중단
   stopSound();
 
   if (wasAlarming) {
-    console.log("[AlarmSound] ■ stop");
+    console.log("[AlarmSound] ■ stop (gen:", s.gen, ")");
   }
 }
