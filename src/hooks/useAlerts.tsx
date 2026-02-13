@@ -95,17 +95,17 @@ export const useAlerts = (deviceId?: string | null) => {
 
   /** 공통 alert 처리 로직 */
   const handleIncomingAlert = useCallback((alert: ActiveAlert) => {
+    // 이미 처리한 동일 alert → 무시 (가장 먼저 체크 — 중복 호출 방지)
+    if (lastPlayedIdRef.current === alert.id) return;
     if (AlarmSound.isDismissed(alert.id)) return;
     if (AlarmSound.isSuppressed()) return;
 
     const alertAge = Date.now() - new Date(alert.created_at).getTime();
-    if (alertAge > 5 * 60 * 1000) {
+    // 60초 이상 된 alert는 stale (페이지 새로고침 시 재트리거 방지)
+    if (alertAge > 60 * 1000) {
       AlarmSound.addDismissed(alert.id);
       return;
     }
-
-    // 이미 처리한 동일 alert → 무시 (dismiss 후 presence에 잔류할 수 있음)
-    if (lastPlayedIdRef.current === alert.id) return;
 
     const muted = AlarmSound.isMuted();
     console.log("[useAlerts] New alert:", alert.id, "muted:", muted);
@@ -166,7 +166,8 @@ export const useAlerts = (deviceId?: string | null) => {
         if (foundAlert) {
           handleIncomingAlert(foundAlert);
         } else {
-          if (activeAlertRef.current) {
+          // alert가 presence에서 사라져도 알람 재생 중이면 activeAlertRef 유지
+          if (activeAlertRef.current && !AlarmSound.isPlaying()) {
             safeSetActiveAlert(null);
             activeAlertRef.current = null;
           }
@@ -217,8 +218,11 @@ export const useAlerts = (deviceId?: string | null) => {
   const dismissActiveAlert = useCallback(async () => {
     stopAlertSound(); // 새 + 구 코드 모두 정리
     AlarmSound.suppressFor(30000);
-    if (activeAlertRef.current) {
-      AlarmSound.addDismissed(activeAlertRef.current.id);
+    // activeAlertRef 또는 lastPlayedIdRef에서 ID를 확보하여 반드시 dismissed에 저장
+    const alertId = activeAlertRef.current?.id || lastPlayedIdRef.current;
+    if (alertId) {
+      AlarmSound.addDismissed(alertId);
+      console.log("[useAlerts] Dismissed alert:", alertId);
     }
     safeSetActiveAlert(null);
     activeAlertRef.current = null;
