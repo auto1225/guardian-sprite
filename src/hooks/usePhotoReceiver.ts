@@ -113,9 +113,8 @@ export function usePhotoReceiver(deviceId: string | null | undefined): UsePhotoR
         setLatestAlert(completed);
         loadAlerts();
 
-        // 새 경보 → 기존 알람 정리 후 재생 (단순 로직)
-        if (!Alarm.isMuted()) {
-          Alarm.stop();
+        // 경보음: 안 울리고 있으면 재생, 이미 울리면 그대로 유지
+        if (!Alarm.isPlaying() && !Alarm.isMuted()) {
           Alarm.play();
         }
       })
