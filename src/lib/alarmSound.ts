@@ -17,7 +17,8 @@ interface AlarmState {
   dismissed: Set<string>;
   suppressUntil: number;
   unlocked: boolean;
-  pendingPlay: boolean; // play() 실패 시 터치 후 재시도 대기
+  pendingPlayGen: number; // 0=없음, >0=play 실패 시 해당 gen에서 대기
+  lastStoppedAt: number; // stop() 호출 시각 — 이전 경보 재트리거 차단
 }
 
 const GLOBAL_KEY = '__meercop_alarm_v3';
@@ -34,8 +35,13 @@ function getState(): AlarmState {
       dismissed: new Set<string>(),
       suppressUntil: 0,
       unlocked: false,
-      pendingPlay: false,
+      pendingPlayGen: 0,
+      lastStoppedAt: 0,
     };
+    try {
+      const lst = localStorage.getItem('meercop_last_stopped_at');
+      if (lst) w[GLOBAL_KEY].lastStoppedAt = parseInt(lst, 10) || 0;
+    } catch {}
     try {
       const raw = localStorage.getItem('meercop_dismissed_ids');
       if (raw) w[GLOBAL_KEY].dismissed = new Set(JSON.parse(raw) as string[]);
@@ -93,13 +99,13 @@ export function unlockAudio() {
   const s = getState();
   if (s.unlocked && s.audioCtx && s.audioCtx.state === 'running') {
     // 이미 unlock 됐지만 대기 중인 play가 있으면 가드 체크 후 실행
-    if (s.pendingPlay) {
-      s.pendingPlay = false;
-      if (!isMuted() && !isSuppressed()) {
+    if (s.pendingPlayGen > 0 && s.pendingPlayGen === s.gen) {
+      s.pendingPlayGen = 0;
+      if (!isMuted()) {
         console.log("[AlarmSound] 🔄 Executing pending play (already unlocked)");
         play();
       } else {
-        console.log("[AlarmSound] ⏭ Pending play cancelled (muted or suppressed)");
+        console.log("[AlarmSound] ⏭ Pending play cancelled (muted)");
       }
     }
     return;
@@ -122,13 +128,13 @@ export function unlockAudio() {
     console.log("[AlarmSound] 🔓 AudioContext unlocked (state:", ctx.state, ")");
 
     // unlock 성공 후 대기 중인 play가 있으면 가드 체크 후 실행
-    if (s.pendingPlay) {
-      s.pendingPlay = false;
-      if (!isMuted() && !isSuppressed()) {
+    if (s.pendingPlayGen > 0 && s.pendingPlayGen === s.gen) {
+      s.pendingPlayGen = 0;
+      if (!isMuted()) {
         console.log("[AlarmSound] 🔄 Executing pending play after unlock");
         play();
       } else {
-        console.log("[AlarmSound] ⏭ Pending play cancelled (muted or suppressed)");
+        console.log("[AlarmSound] ⏭ Pending play cancelled (muted)");
       }
     }
   } catch (e) {
@@ -182,6 +188,13 @@ export function isSuppressed(): boolean {
 
 export function suppressFor(ms: number) {
   getState().suppressUntil = Date.now() + ms;
+}
+
+// ══════════════════════════════════════
+// Last Stopped At — 이전 경보 재트리거 차단
+// ══════════════════════════════════════
+export function getLastStoppedAt(): number {
+  return getState().lastStoppedAt || 0;
 }
 
 // ══════════════════════════════════════
@@ -285,7 +298,7 @@ export async function play() {
         if (audioCtx.state === 'suspended') {
           console.warn("[AlarmSound] AudioContext still suspended after resume — queuing for next touch");
           s.isAlarming = false;
-          s.pendingPlay = true;
+          s.pendingPlayGen = myGen;
           return;
         }
         
@@ -294,7 +307,7 @@ export async function play() {
       } catch {
         console.warn("[AlarmSound] AudioContext resume failed — queuing for next touch");
         s.isAlarming = false;
-        s.pendingPlay = true;
+        s.pendingPlayGen = myGen;
         return;
       }
     }
@@ -355,8 +368,10 @@ export function stop() {
   const wasAlarming = s.isAlarming;
 
   s.isAlarming = false;
-  s.pendingPlay = false;  // 대기 중인 재시도도 취소
-  s.gen++;  // gen 증가 → 모든 진행 중인 play/interval 즉시 중단
+  s.pendingPlayGen = 0;
+  s.gen++;
+  s.lastStoppedAt = Date.now();
+  try { localStorage.setItem('meercop_last_stopped_at', String(s.lastStoppedAt)); } catch {}
   stopSound();
 
   if (wasAlarming) {
