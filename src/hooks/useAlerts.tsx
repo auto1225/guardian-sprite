@@ -44,6 +44,7 @@ export const useAlerts = (deviceId?: string | null) => {
   const deviceIdRef = useRef(deviceId);
   const activeAlertRef = useRef<ActiveAlert | null>(null);
   const firstSyncDoneRef = useRef(false);
+  const subscribedAtRef = useRef<number>(0);
   const handleAlertRef = useRef<(alert: ActiveAlert) => void>(() => {});
 
   deviceIdRef.current = deviceId;
@@ -72,7 +73,13 @@ export const useAlerts = (deviceId?: string | null) => {
   // ── 경보 수신 처리 ──
   const handleAlert = useCallback((alert: ActiveAlert) => {
     if (Alarm.isDismissed(alert.id)) return;
-    if (Alarm.isSuppressed()) return;
+
+    // 구독 이전에 생성된 alert는 무시 (채널 재연결 시 stale alert 방지)
+    const alertTime = new Date(alert.created_at).getTime();
+    if (alertTime < subscribedAtRef.current) {
+      console.log("[useAlerts] Ignoring pre-subscription alert:", alert.id);
+      return;
+    }
 
     // 60초 이상 된 stale alert 무시
     if (Date.now() - new Date(alert.created_at).getTime() > 60_000) {
@@ -173,6 +180,7 @@ export const useAlerts = (deviceId?: string | null) => {
         console.log("[useAlerts] Channel:", status);
         if (status === 'SUBSCRIBED' && mountedRef.current) {
           isSubscribedRef.current = true;
+          subscribedAtRef.current = Date.now();
           await channel.track({ role: 'phone', joined_at: new Date().toISOString() });
         } else {
           isSubscribedRef.current = false;
