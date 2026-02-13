@@ -99,12 +99,6 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
             >
               🔇 컴퓨터 경보음 해제
             </button>
-            <button
-              onClick={handleDismiss}
-              className="w-full py-4 bg-destructive-foreground text-destructive rounded-full font-bold text-lg shadow-lg active:scale-95 transition-transform"
-            >
-              경보 해제
-            </button>
           </div>
         </>
     </div>
