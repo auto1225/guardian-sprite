@@ -377,6 +377,41 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
               <span className="text-white/50 font-bold text-xs uppercase tracking-wider">감지 센서 설정</span>
             </div>
 
+            {/* Device Type Selector */}
+            <div className="px-4 py-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <span className="text-white font-medium text-sm block">기기 타입</span>
+                  <span className="text-white/40 text-xs">노트북은 덮개 감지, 데스크탑은 마이크 감지 제공</span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                {(["laptop", "desktop"] as const).map((type) => (
+                  <button
+                    key={type}
+                    onClick={async () => {
+                      const updated = { ...sensorSettings, deviceType: type };
+                      setSensorSettings(updated);
+                      try {
+                        await saveMetadata({ sensorSettings: updated });
+                        await supabase.from("devices").update({ device_type: type }).eq("id", device.id);
+                        queryClient.invalidateQueries({ queryKey: ["devices"] });
+                      } catch {
+                        toast({ title: "오류", description: "설정 저장에 실패했습니다.", variant: "destructive" });
+                      }
+                    }}
+                    className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                      sensorSettings.deviceType === type
+                        ? "bg-accent text-accent-foreground shadow-md"
+                        : "bg-white/8 text-white/60 hover:bg-white/12"
+                    }`}
+                  >
+                    {type === "laptop" ? "노트북" : "데스크탑"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Sensor toggles */}
             <SensorSection>
               <SensorToggle
