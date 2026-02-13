@@ -404,7 +404,7 @@ export const useAlerts = (deviceId?: string | null) => {
       saveDismissedIds(s.dismissedIds);
     }
     s.playing = false;
-    s.lastPlayedId = null; // dismiss 후 lastPlayedId 초기화하여 새 경보만 반응
+    // lastPlayedId를 유지하여 동일 alert ID의 재트리거 방지 (dismiss 후에도 presence에 남아있을 수 있음)
     safeSetActiveAlert(null);
     activeAlertRef.current = null;
     
