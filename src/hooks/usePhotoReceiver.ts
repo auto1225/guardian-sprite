@@ -113,8 +113,8 @@ export function usePhotoReceiver(deviceId: string | null | undefined): UsePhotoR
         setLatestAlert(completed);
         loadAlerts();
 
-        // 경보음이 이미 울리고 있으면 별도 소리를 내지 않음 (AudioContext 충돌 방지)
-        if (!Alarm.isPlaying()) {
+        // 경보음이 이미 울리고 있거나, 억제/뮤트 상태면 소리를 내지 않음
+        if (!Alarm.isPlaying() && !Alarm.isSuppressed() && !Alarm.isMuted()) {
           Alarm.play();
         }
       })
