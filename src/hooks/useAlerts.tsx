@@ -146,11 +146,9 @@ export const useAlerts = (deviceId?: string | null) => {
 
         if (foundAlert) {
           handleAlert(foundAlert);
-        } else if (activeAlertRef.current && !Alarm.isPlaying()) {
-          // 랩탑에서 자체 해제됨
-          safeSetActiveAlert(null);
-          activeAlertRef.current = null;
         }
+        // 참고: 랩탑이 자체 해제한 경우는 명시적 dismiss 로만 처리.
+        // presence sync에서 자동 해제하면 경보음이 즉시 꺼지는 버그 발생.
       })
       // 2. Broadcast — 랩탑이 별도 전송하는 경보
       .on('broadcast', { event: 'active_alert' }, (payload) => {
