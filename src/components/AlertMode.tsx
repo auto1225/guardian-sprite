@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
-import { ActiveAlert } from "@/hooks/useAlerts";
+import { ActiveAlert, stopAlertSound } from "@/hooks/useAlerts";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 
@@ -84,6 +84,15 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
 
           {/* Buttons */}
           <div className="p-6 space-y-3">
+            <button
+              onClick={() => {
+                stopAlertSound();
+                toast({ title: "스마트폰 경보음 해제", description: "스마트폰의 경보음이 해제되었습니다." });
+              }}
+              className="w-full py-3 bg-destructive-foreground/20 text-destructive-foreground border-2 border-destructive-foreground/40 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
+            >
+              🔕 스마트폰 경보음 해제
+            </button>
             <button
               onClick={handleDismissRemoteAlarm}
               className="w-full py-3 bg-destructive-foreground/20 text-destructive-foreground border-2 border-destructive-foreground/40 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
