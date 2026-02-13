@@ -431,6 +431,7 @@ serve(async (req) => {
     }
 
     // ── 푸시 전송 (인증 필요) ──
+    // 서버 측에서 5초 간격 × 5회 반복 전송 (노트북 네트워크 끊김 대비)
     if (action === "send") {
       const authHeader = req.headers.get("Authorization");
       if (!authHeader?.startsWith("Bearer ")) {
@@ -448,7 +449,7 @@ serve(async (req) => {
         return jsonResponse({ error: "Unauthorized" }, 401);
       }
 
-      const { device_id, title, body: msgBody, tag } = body;
+      const { device_id, title, body: msgBody, tag, repeat = 5, interval = 5000 } = body;
       if (!device_id) return jsonResponse({ error: "device_id required" }, 400);
 
       // 디바이스 소유자 확인
@@ -473,38 +474,52 @@ serve(async (req) => {
       }
 
       const vapidKeys = await getOrCreateVapidKeysV2(supabaseAdmin);
-      const payload = JSON.stringify({
-        title: title || "🚨 경보 알림",
-        body: msgBody || "새로운 경보가 발생했습니다!",
-        tag: tag || "meercop-alert",
-        icon: "/pwa-192x192.png",
-      });
 
-      let sent = 0;
-      const errors: string[] = [];
+      const maxRepeat = Math.min(repeat, 5); // 최대 5회로 제한
+      const delayMs = Math.max(interval, 3000); // 최소 3초 간격
 
-      for (const sub of subs) {
-        try {
-          await sendPushNotification(
-            { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-            payload,
-            vapidKeys
-          );
-          sent++;
-        } catch (err: any) {
-          console.error("[push-notifications] Send error:", err);
-          if (err?.statusCode === 410 || err?.statusCode === 404) {
-            // 구독 만료 → 삭제
-            await supabaseAdmin
-              .from("push_subscriptions")
-              .delete()
-              .eq("endpoint", sub.endpoint);
-          }
-          errors.push(err?.message || String(err));
+      let totalSent = 0;
+      const allErrors: string[] = [];
+
+      for (let round = 0; round < maxRepeat; round++) {
+        if (round > 0) {
+          // 대기
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
         }
+
+        const payload = JSON.stringify({
+          title: title || "🚨 경보 알림",
+          body: msgBody || "새로운 경보가 발생했습니다!",
+          tag: tag || "meercop-alert",
+          icon: "/pwa-192x192.png",
+          round: round + 1,
+          maxRound: maxRepeat,
+        });
+
+        for (const sub of subs) {
+          try {
+            await sendPushNotification(
+              { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+              payload,
+              vapidKeys
+            );
+            totalSent++;
+          } catch (err: any) {
+            console.error(`[push-notifications] Send error (round ${round + 1}):`, err);
+            if (err?.statusCode === 410 || err?.statusCode === 404) {
+              await supabaseAdmin
+                .from("push_subscriptions")
+                .delete()
+                .eq("endpoint", sub.endpoint);
+            }
+            allErrors.push(`round${round + 1}: ${err?.message || String(err)}`);
+          }
+        }
+
+        console.log(`[push-notifications] Round ${round + 1}/${maxRepeat} done, sent to ${subs.length} subs`);
       }
 
-      return jsonResponse({ sent, total: subs.length, errors });
+      return jsonResponse({ sent: totalSent, rounds: maxRepeat, total_subs: subs.length, errors: allErrors });
     }
 
     return jsonResponse({ error: "Unknown action" }, 400);
