@@ -4,45 +4,80 @@
  * PWA 캐시나 HMR로 인한 다중 번들 문제를 방지하기 위해
  * AudioContext, interval, dismissed IDs, suppress 타임스탬프 모두
  * window 전역 객체에 저장하여 어느 번들에서든 동일한 상태에 접근합니다.
+ *
+ * 핵심: 모든 AudioContext와 interval을 배열로 관리하여
+ * 다중 번들에서 동시 play() 호출 시 고아(orphan) 리소스를 방지합니다.
  */
 
 interface AlarmGlobal {
-  ctx: AudioContext | null;
-  iid: ReturnType<typeof setInterval> | null;
+  ctxs: AudioContext[];        // 모든 생성된 AudioContext 추적
+  iids: ReturnType<typeof setInterval>[];  // 모든 interval 추적
   playing: boolean;
   gen: number;
   dismissed: Set<string>;
   suppressUntil: number;
+  playLock: boolean;           // 동시 play() 호출 방지 락
 }
 
 function getG(): AlarmGlobal {
   const w = window as any;
-  if (!w.__meercop_alarm) {
-    w.__meercop_alarm = {
-      ctx: null,
-      iid: null,
+  if (!w.__meercop_alarm2) {
+    w.__meercop_alarm2 = {
+      ctxs: [],
+      iids: [],
       playing: false,
       gen: 0,
       dismissed: new Set<string>(),
       suppressUntil: 0,
+      playLock: false,
     };
     // dismissed를 localStorage에서 복원
     try {
       const raw = localStorage.getItem('meercop_dismissed_ids');
-      if (raw) w.__meercop_alarm.dismissed = new Set(JSON.parse(raw) as string[]);
+      if (raw) w.__meercop_alarm2.dismissed = new Set(JSON.parse(raw) as string[]);
     } catch {}
   }
+  const g = w.__meercop_alarm2;
   // 기존 전역 객체에 dismissed가 누락된 경우 복구
-  if (!w.__meercop_alarm.dismissed || !(w.__meercop_alarm.dismissed instanceof Set)) {
+  if (!g.dismissed || !(g.dismissed instanceof Set)) {
     let dismissed = new Set<string>();
     try {
       const raw = localStorage.getItem('meercop_dismissed_ids');
       if (raw) dismissed = new Set(JSON.parse(raw) as string[]);
     } catch {}
-    w.__meercop_alarm.dismissed = dismissed;
+    g.dismissed = dismissed;
   }
-  return w.__meercop_alarm;
+  // 배열 필드가 누락된 경우 복구 (v1 → v2 마이그레이션)
+  if (!Array.isArray(g.ctxs)) g.ctxs = [];
+  if (!Array.isArray(g.iids)) g.iids = [];
+  return g;
 }
+
+// ── 레거시 v1 전역 상태 정리 ──
+function cleanupLegacyGlobal() {
+  try {
+    const w = window as any;
+    // v1 전역 상태 정리
+    if (w.__meercop_alarm) {
+      const old = w.__meercop_alarm;
+      if (old.iid) { try { clearInterval(old.iid); } catch {} }
+      if (old.ctx) { try { old.ctx.close(); } catch {} }
+      delete w.__meercop_alarm;
+    }
+    // 레거시 리소스 정리
+    if (w.__meercop_ivals) {
+      for (const id of w.__meercop_ivals) { try { clearInterval(id); } catch {} }
+      w.__meercop_ivals = [];
+    }
+    if (w.__meercop_ctxs) {
+      for (const ctx of w.__meercop_ctxs) { try { ctx.close?.(); } catch {} }
+      w.__meercop_ctxs = [];
+    }
+  } catch {}
+}
+
+// 모듈 로드 시 레거시 정리
+cleanupLegacyGlobal();
 
 // ── Mute ──
 export function isMuted(): boolean {
@@ -94,28 +129,37 @@ export function isPlaying(): boolean { return getG().playing; }
 
 export async function play() {
   const g = getG();
+
+  // 이미 재생 중이거나 뮤트 상태면 무시
   if (g.playing || isMuted()) return;
 
-  // 기존 리소스 완전 정리 후 시작
-  forceCleanup();
-
-  // playing을 먼저 설정하고 gen을 캡처 (원자적 순서 보장)
-  g.playing = true;
-  const gen = g.gen;
-  console.log("[AlarmSound] ▶ play (gen:", gen, ")");
+  // 동시 play() 호출 방지 (다중 번들 race condition)
+  if (g.playLock) {
+    console.log("[AlarmSound] play() skipped (lock active)");
+    return;
+  }
+  g.playLock = true;
 
   try {
+    // 모든 기존 리소스 완전 정리
+    stopAll();
+
+    g.playing = true;
+    const gen = g.gen;
+    console.log("[AlarmSound] ▶ play (gen:", gen, ")");
+
     const ctx = new AudioContext();
     await ctx.resume();
 
-    // await 중 stop()이 호출되었는지 확인 (race condition 방지)
+    // await 중 stop()이 호출되었는지 확인
     if (!g.playing || g.gen !== gen) {
       try { ctx.close(); } catch {}
       console.log("[AlarmSound] ▶ play aborted (state changed during resume)");
       return;
     }
 
-    g.ctx = ctx;
+    // AudioContext를 전역 배열에 등록 (어느 번들에서든 정리 가능)
+    g.ctxs.push(ctx);
 
     // 모바일에서 AudioContext 자동 suspend 방지용 무음 유지
     try {
@@ -131,30 +175,27 @@ export async function play() {
     const beepCycle = async () => {
       const cur = getG();
       if (!cur.playing || cur.gen !== gen) return;
-      if (!cur.ctx || cur.ctx.state === 'closed') return;
+      if (ctx.state === 'closed') return;
       if (isMuted()) { stop(); return; }
 
-      // suspended 상태면 resume 후 대기
-      if (cur.ctx.state === 'suspended') {
-        try { await cur.ctx.resume(); } catch { return; }
-        // resume 후 다시 상태 확인
+      if (ctx.state === 'suspended') {
+        try { await ctx.resume(); } catch { return; }
         if (!cur.playing || cur.gen !== gen) return;
       }
 
       const vol = getVolume();
       const beep = (time: number, freq: number) => {
         try {
-          const c = cur.ctx;
-          if (!c || c.state === 'closed') return;
-          const osc = c.createOscillator();
-          const gain = c.createGain();
+          if (ctx.state === 'closed') return;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
           osc.connect(gain);
-          gain.connect(c.destination);
+          gain.connect(ctx.destination);
           osc.frequency.value = freq;
           osc.type = "square";
           gain.gain.value = vol;
-          osc.start(c.currentTime + time);
-          osc.stop(c.currentTime + time + 0.2);
+          osc.start(ctx.currentTime + time);
+          osc.stop(ctx.currentTime + time + 0.2);
         } catch {}
       };
       beep(0, 880); beep(0.3, 1100); beep(0.6, 880);
@@ -162,10 +203,33 @@ export async function play() {
     };
 
     beepCycle();
-    g.iid = setInterval(beepCycle, 2500);
+    const iid = setInterval(beepCycle, 2500);
+    g.iids.push(iid);
   } catch {
     stop();
+  } finally {
+    g.playLock = false;
   }
+}
+
+/** 모든 AudioContext와 interval을 정리 */
+function stopAll() {
+  const g = getG();
+
+  // 모든 interval 정리
+  for (const iid of g.iids) {
+    try { clearInterval(iid); } catch {}
+  }
+  g.iids = [];
+
+  // 모든 AudioContext 정리
+  for (const ctx of g.ctxs) {
+    try { ctx.close().catch(() => {}); } catch {}
+  }
+  g.ctxs = [];
+
+  // 레거시 정리도 수행
+  cleanupLegacyGlobal();
 }
 
 export function stop() {
@@ -174,32 +238,9 @@ export function stop() {
   g.playing = false;
   g.gen += 1;
 
-  if (g.iid !== null) { clearInterval(g.iid); g.iid = null; }
-  if (g.ctx) {
-    try { g.ctx.close().catch(() => {}); } catch {}
-    g.ctx = null;
-  }
+  stopAll();
 
-  // 실제로 재생 중이었을 때만 로그 (불필요한 stop 로그 제거)
   if (wasPlaying) {
     console.log("[AlarmSound] ■ stop (gen:", g.gen, ")");
   }
-}
-
-/** 레거시 리소스까지 포함한 완전 정리 */
-function forceCleanup() {
-  stop();
-  try {
-    const w = window as any;
-    if (w.__meercop_ivals) {
-      for (const id of w.__meercop_ivals) clearInterval(id);
-      w.__meercop_ivals = [];
-    }
-    if (w.__meercop_ctxs) {
-      for (const ctx of w.__meercop_ctxs) {
-        try { ctx.close?.(); } catch {}
-      }
-      w.__meercop_ctxs = [];
-    }
-  } catch {}
 }
