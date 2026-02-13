@@ -27,7 +27,6 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
       // 컴퓨터 경보 해제 = 전체 경보해제 → 스마트폰 경보음도 해제 + 오버레이 닫기
       stopAlertSound();
       Alarm.addDismissed(activeAlert.id);
-      Alarm.suppressFor(30_000);
       toast({ title: "경보 해제", description: "컴퓨터와 스마트폰의 경보가 모두 해제되었습니다." });
       onDismiss();
     } catch (err) {
