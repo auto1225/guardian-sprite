@@ -69,10 +69,10 @@ const DEFAULT_SENSOR_SETTINGS: SensorSettings = {
   power: false,
 };
 
-async function playBuiltinSound(sound: typeof ALARM_SOUNDS[number], duration = 2): Promise<{ stop: () => void }> {
+async function playBuiltinSound(sound: typeof ALARM_SOUNDS[number], duration = 2, volume?: number): Promise<{ stop: () => void }> {
   const ctx = new AudioContext();
-  // Must await resume for mobile browsers
   await ctx.resume();
+  const vol = volume ?? getAlarmVolume();
   
   let t = 0;
   const nodes: OscillatorNode[] = [];
@@ -84,7 +84,7 @@ async function playBuiltinSound(sound: typeof ALARM_SOUNDS[number], duration = 2
       gain.connect(ctx.destination);
       osc.frequency.value = sound.freq[i];
       osc.type = "square";
-      gain.gain.value = 0.3;
+      gain.gain.value = vol;
       osc.start(ctx.currentTime + t);
       osc.stop(ctx.currentTime + t + sound.pattern[i]);
       nodes.push(osc);
@@ -184,7 +184,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
 
     if (soundId === "custom" && customSoundDataUrl) {
       const audio = new Audio();
-      // Unlock on iOS by calling play immediately in gesture context
+      audio.volume = getAlarmVolume();
       audio.play().catch(() => {});
       audio.src = customSoundDataUrl;
       audioRef.current = audio;
@@ -333,7 +333,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
               onClick={() => { setTempPin(""); setShowPinDialog(true); }}
             />
 
-            {/* Alarm sound */}
+            {/* Alarm sound - 경보음 설정 (종류 + 크기 통합) */}
             <SettingItem
               label="경보음"
               value={selectedSoundLabel}
@@ -354,30 +354,6 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
                 }}
               />
             </div>
-
-            {/* 경보음 크기 조절 */}
-            {!isAlarmMuted() && (
-              <div className="px-4 py-4">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-white font-medium text-sm">경보음 크기</span>
-                  <span className="text-white/50 text-sm">{Math.round(getAlarmVolume() * 100)}%</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <VolumeX className="w-4 h-4 text-white/40 flex-shrink-0" />
-                  <Slider
-                    defaultValue={[getAlarmVolume() * 100]}
-                    min={5}
-                    max={100}
-                    step={5}
-                    onValueChange={(vals) => {
-                      setAlarmVolume(vals[0] / 100);
-                    }}
-                    className="flex-1"
-                  />
-                  <Volume2 className="w-4 h-4 text-white/40 flex-shrink-0" />
-                </div>
-              </div>
-            )}
 
             <div className="px-4 py-4 flex items-center justify-between">
               <div>
@@ -610,13 +586,40 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
         </DialogContent>
       </Dialog>
 
-      {/* Sound Dialog */}
+      {/* Sound Dialog — 경보음 종류 + 크기 통합 */}
       <Dialog open={showSoundDialog} onOpenChange={(open) => { setShowSoundDialog(open); if (!open) stopAllSounds(); }}>
         <DialogContent style={{ background: "hsl(224, 36%, 28%)", borderColor: "hsl(224, 30%, 35%)" }} className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-white">경보음 선택</DialogTitle>
-            <DialogDescription className="text-white/50">사용할 경보음을 선택하세요.</DialogDescription>
+            <DialogTitle className="text-white">경보음 설정</DialogTitle>
+            <DialogDescription className="text-white/50">경보음 종류와 크기를 설정하세요.</DialogDescription>
           </DialogHeader>
+
+          {/* Volume slider */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-white font-medium text-sm">경보음 크기</span>
+              <span className="text-white/50 text-sm">{Math.round(getAlarmVolume() * 100)}%</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <VolumeX className="w-4 h-4 text-white/40 flex-shrink-0" />
+              <Slider
+                defaultValue={[getAlarmVolume() * 100]}
+                min={5}
+                max={100}
+                step={5}
+                onValueChange={(vals) => {
+                  setAlarmVolume(vals[0] / 100);
+                }}
+                className="flex-1"
+              />
+              <Volume2 className="w-4 h-4 text-white/40 flex-shrink-0" />
+            </div>
+          </div>
+
+          <div className="mb-2">
+            <span className="text-white font-medium text-sm">경보음 종류</span>
+          </div>
+
           <div className="space-y-2">
             {ALARM_SOUNDS.map((sound) => (
               <div
