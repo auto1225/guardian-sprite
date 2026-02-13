@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import AlertMode from "@/components/AlertMode";
 import Header from "@/components/Header";
 import DeviceSelector from "@/components/DeviceSelector";
 import StatusIcons from "@/components/StatusIcons";
@@ -274,6 +275,22 @@ const Index = () => {
         onClose={() => setIsDeviceManageOpen(false)}
         onSelectDevice={setSelectedDeviceId}
       />
+
+      {/* Alert Mode Overlay - 경보 발생 시 전체 화면 */}
+      {activeAlert && !latestPhotoAlert && !viewingPhotoAlert && (
+        <AlertMode
+          device={selectedDevice!}
+          activeAlert={activeAlert}
+          onDismiss={() => {
+            dismissAll();
+            setShowFallbackAlarmButtons(false);
+          }}
+          onSendRemoteAlarmOff={async () => {
+            await dismissRemoteAlarm();
+            setRemoteAlarmDismissed(true);
+          }}
+        />
+      )}
 
       {/* Photo Alert Overlay */}
       {(latestPhotoAlert || viewingPhotoAlert) && (
