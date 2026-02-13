@@ -83,12 +83,10 @@ export const useAlerts = (deviceId?: string | null) => {
     // 이미 같은 alert가 활성 상태면 무시
     if (activeAlertRef.current?.id === alert.id) return;
 
-    console.log("[useAlerts] 🚨 New alert:", alert.id, "muted:", Alarm.isMuted());
+    console.log("[useAlerts] 🚨 New alert (log only):", alert.id);
 
-    safeSetActiveAlert(alert);
-    activeAlertRef.current = alert;
-
-    // 경보음은 usePhotoReceiver에서만 담당 — 여기서는 소리를 내지 않음
+    // 경보 UI와 사운드는 usePhotoReceiver에서 전담
+    // 여기서는 로컬 로그 기록만 수행
 
     // 로컬 로그에 기록
     const did = deviceIdRef.current;
