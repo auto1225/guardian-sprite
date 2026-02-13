@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import * as Alarm from "@/lib/alarmSound";
 import Header from "@/components/Header";
 import DeviceSelector from "@/components/DeviceSelector";
 import StatusIcons from "@/components/StatusIcons";
@@ -26,7 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const { devices, selectedDevice, selectedDeviceId, setSelectedDeviceId, isLoading, refreshDeviceStatus } = useDevices();
-  const { alerts, activeAlert, unreadCount, dismissPhoneAlarm, dismissRemoteAlarm, dismissAll } = useAlerts(selectedDeviceId);
+  const { alerts, activeAlert, unreadCount, dismissRemoteAlarm, dismissAll } = useAlerts(selectedDeviceId);
   const isMonitoring = selectedDevice?.is_monitoring ?? false;
   const { toggleMonitoring } = useCommands();
   const { toast } = useToast();
@@ -51,16 +50,14 @@ const Index = () => {
   const [isNetworkInfoOpen, setIsNetworkInfoOpen] = useState(false);
   const [isDeviceManageOpen, setIsDeviceManageOpen] = useState(false);
   
-  const [phoneAlarmDismissed, setPhoneAlarmDismissed] = useState(false);
   const [remoteAlarmDismissed, setRemoteAlarmDismissed] = useState(false);
   const [showFallbackAlarmButtons, setShowFallbackAlarmButtons] = useState(false);
   const [isPhotoHistoryOpen, setIsPhotoHistoryOpen] = useState(false);
 
 
-  // 경보 해제 상태 리셋 - activeAlert 또는 새 사진 경보 시
+  // 경보 해제 상태 리셋
   useEffect(() => {
     if (activeAlert) {
-      setPhoneAlarmDismissed(false);
       setRemoteAlarmDismissed(false);
       setShowFallbackAlarmButtons(false);
     } else {
@@ -70,7 +67,6 @@ const Index = () => {
 
   useEffect(() => {
     if (latestPhotoAlert) {
-      setPhoneAlarmDismissed(false);
       setRemoteAlarmDismissed(false);
       setShowFallbackAlarmButtons(false);
     }
@@ -169,40 +165,23 @@ const Index = () => {
       
       {/* Toggle Buttons - highest z-index */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-3">
-        {/* 경보 오버레이 닫은 후 해제하지 않은 버튼들 표시 */}
-        {showFallbackAlarmButtons && selectedDevice && (
-          <>
-            {!phoneAlarmDismissed && (
-              <button
-                onClick={() => {
-                  dismissPhoneAlarm();
-                  setPhoneAlarmDismissed(true);
-                  toast({ title: "경보 해제", description: "스마트폰 경보음이 해제되었습니다." });
-                  if (remoteAlarmDismissed) setShowFallbackAlarmButtons(false);
-                }}
-                className="px-5 py-2.5 bg-destructive text-destructive-foreground rounded-full font-bold text-sm shadow-lg active:scale-95 transition-transform flex items-center gap-2"
-              >
-                🔕 스마트폰 경보음 해제
-              </button>
-            )}
-            {!remoteAlarmDismissed && (
-              <button
-                onClick={async () => {
-                  try {
-                    await dismissRemoteAlarm();
-                    setRemoteAlarmDismissed(true);
-                    toast({ title: "컴퓨터 경보 해제", description: "컴퓨터의 경보음이 해제되었습니다." });
-                    if (phoneAlarmDismissed) setShowFallbackAlarmButtons(false);
-                  } catch (err) {
-                    toast({ title: "오류", description: "컴퓨터 경보 해제에 실패했습니다.", variant: "destructive" });
-                  }
-                }}
-                className="px-5 py-2.5 bg-destructive text-destructive-foreground rounded-full font-bold text-sm shadow-lg active:scale-95 transition-transform flex items-center gap-2"
-              >
-                🔇 컴퓨터 경보음 해제
-              </button>
-            )}
-          </>
+        {/* 경보 오버레이 닫은 후 컴퓨터 해제 버튼 표시 */}
+        {showFallbackAlarmButtons && selectedDevice && !remoteAlarmDismissed && (
+          <button
+            onClick={async () => {
+              try {
+                await dismissRemoteAlarm();
+                setRemoteAlarmDismissed(true);
+                toast({ title: "컴퓨터 경보 해제", description: "컴퓨터의 경보음이 해제되었습니다." });
+                setShowFallbackAlarmButtons(false);
+              } catch (err) {
+                toast({ title: "오류", description: "컴퓨터 경보 해제에 실패했습니다.", variant: "destructive" });
+              }
+            }}
+            className="px-5 py-2.5 bg-destructive text-destructive-foreground rounded-full font-bold text-sm shadow-lg active:scale-95 transition-transform flex items-center gap-2"
+          >
+            🔇 컴퓨터 경보음 해제
+          </button>
         )}
         <div className="flex items-center gap-3">
           <ToggleButton 
@@ -301,8 +280,7 @@ const Index = () => {
         <PhotoAlertOverlay
           alert={(viewingPhotoAlert || latestPhotoAlert)!}
           onDismiss={() => {
-            // 해제하지 않은 버튼이 있으면 메인 화면에 표시
-            if (!phoneAlarmDismissed || !remoteAlarmDismissed) {
+            if (!remoteAlarmDismissed) {
               setShowFallbackAlarmButtons(true);
             }
             if (viewingPhotoAlert) {
@@ -313,14 +291,7 @@ const Index = () => {
           }}
           receiving={photoReceiving}
           progress={photoProgress}
-          phoneAlarmDismissed={phoneAlarmDismissed}
           remoteAlarmDismissed={remoteAlarmDismissed}
-          onDismissPhoneAlarm={() => {
-            Alarm.stop();
-            dismissPhoneAlarm();
-            setPhoneAlarmDismissed(true);
-            toast({ title: "경보 해제", description: "스마트폰 경보음이 해제되었습니다." });
-          }}
           onDismissRemoteAlarm={selectedDevice ? async () => {
             try {
               await dismissRemoteAlarm();

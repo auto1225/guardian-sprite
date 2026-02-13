@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
 import { ActiveAlert } from "@/hooks/useAlerts";
-import * as AlarmSound from "@/lib/alarmSound";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 
@@ -16,14 +15,6 @@ interface AlertModeProps {
 const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: AlertModeProps) => {
   const { toast } = useToast();
   const [capturedImages] = useState<string[]>([]);
-
-  // 스마트폰 경보음만 해제 (로컬만)
-  const handleDismissPhoneAlarm = () => {
-    AlarmSound.stop();
-    AlarmSound.suppressFor(30000);
-    AlarmSound.addDismissed(activeAlert.id);
-    toast({ title: "경보 해제", description: "스마트폰 경보음이 해제되었습니다." });
-  };
 
   // 컴퓨터 경보음 원격 해제
   const handleDismissRemoteAlarm = async () => {
@@ -40,9 +31,6 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
 
   // 전체 경보 해제
   const handleDismiss = () => {
-    AlarmSound.stop();
-    AlarmSound.suppressFor(30000);
-    AlarmSound.addDismissed(activeAlert.id);
     toast({ title: "경보 해제", description: "경보가 해제되었습니다." });
     onDismiss();
   };
@@ -96,12 +84,6 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
 
           {/* Buttons */}
           <div className="p-6 space-y-3">
-            <button
-              onClick={handleDismissPhoneAlarm}
-              className="w-full py-3 bg-destructive-foreground/20 text-destructive-foreground border-2 border-destructive-foreground/40 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
-            >
-              🔕 스마트폰 경보음 해제
-            </button>
             <button
               onClick={handleDismissRemoteAlarm}
               className="w-full py-3 bg-destructive-foreground/20 text-destructive-foreground border-2 border-destructive-foreground/40 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
