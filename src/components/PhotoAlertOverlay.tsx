@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PhotoAlert } from "@/lib/photoAlertStorage";
 import { stopAlertSound } from "@/hooks/useAlerts";
+import * as Alarm from "@/lib/alarmSound";
 import { X, Download, ChevronLeft, ChevronRight, Maximize2, ZoomIn } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
@@ -233,7 +234,11 @@ export default function PhotoAlertOverlay({
       {/* Alarm dismiss buttons + confirm */}
       <div className="p-4 shrink-0 space-y-3">
         <button
-          onClick={() => stopAlertSound()}
+          onClick={() => {
+            stopAlertSound();
+            Alarm.addDismissed(alert.id);
+            Alarm.suppressFor(30_000);
+          }}
           className="w-full py-3 bg-destructive-foreground/20 text-destructive-foreground border-2 border-destructive-foreground/40 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
         >
           🔕 스마트폰 경보음 해제
