@@ -34,13 +34,18 @@ export function setMuted(muted: boolean) {
   if (muted) stop();
 }
 
-// ── Dismissed IDs ──
-function loadDismissedIds(): Set<string> {
-  try {
-    const raw = localStorage.getItem('meercop_dismissed_ids');
-    if (raw) return new Set(JSON.parse(raw) as string[]);
-  } catch {}
-  return new Set();
+// ── Dismissed IDs (window 전역 공유) ──
+function getDismissedIds(): Set<string> {
+  const w = window as any;
+  if (!w.__meercop_dismissed) {
+    try {
+      const raw = localStorage.getItem('meercop_dismissed_ids');
+      w.__meercop_dismissed = raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+    } catch {
+      w.__meercop_dismissed = new Set();
+    }
+  }
+  return w.__meercop_dismissed;
 }
 
 function saveDismissedIds(ids: Set<string>) {
@@ -49,19 +54,21 @@ function saveDismissedIds(ids: Set<string>) {
   } catch {}
 }
 
-const dismissedIds = loadDismissedIds();
-
-export function isDismissed(alertId: string): boolean { return dismissedIds.has(alertId); }
+export function isDismissed(alertId: string): boolean { return getDismissedIds().has(alertId); }
 
 export function addDismissed(alertId: string) {
-  dismissedIds.add(alertId);
-  saveDismissedIds(dismissedIds);
+  const ids = getDismissedIds();
+  ids.add(alertId);
+  saveDismissedIds(ids);
 }
 
-// ── Suppress ──
-let suppressUntil = 0;
-export function isSuppressed(): boolean { return Date.now() < suppressUntil; }
-export function suppressFor(ms: number) { suppressUntil = Date.now() + ms; }
+// ── Suppress (window 전역 공유) ──
+export function isSuppressed(): boolean {
+  return Date.now() < ((window as any).__meercop_suppress_until || 0);
+}
+export function suppressFor(ms: number) {
+  (window as any).__meercop_suppress_until = Date.now() + ms;
+}
 
 // ── 볼륨 ──
 export function getVolume(): number {
