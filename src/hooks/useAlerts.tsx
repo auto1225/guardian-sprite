@@ -125,8 +125,7 @@ function playAlertSoundLoop() {
     return;
   }
   if (s.playing) {
-    console.log("[useAlerts] ⏭️ Already playing, skipping");
-    return;
+    return; // 이미 재생 중이면 조용히 무시
   }
   stopAlertSound();
 
@@ -321,9 +320,12 @@ export const useAlerts = (deviceId?: string | null) => {
           } catch { /* storage quota */ }
           loadAlerts();
         } else {
-          stopAlertSound();
-          safeSetActiveAlert(null);
-          activeAlertRef.current = null;
+          // alert가 presence에서 사라진 경우 UI만 정리 — 알람은 dismiss로만 정지
+          // (presence sync 시 일시적으로 alert가 안 보일 수 있으므로 알람을 여기서 끄지 않음)
+          if (activeAlertRef.current) {
+            safeSetActiveAlert(null);
+            activeAlertRef.current = null;
+          }
         }
       })
       .on('broadcast', { event: 'active_alert' }, (payload) => {
