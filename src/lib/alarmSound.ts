@@ -248,11 +248,20 @@ export async function play() {
   try {
     const audioCtx = ensureAudioContext();
 
-    if (audioCtx.state === 'suspended') {
+    // suspended 상태면 강제 unlock (무음 버퍼 재생 + resume)
+    if (audioCtx.state === 'suspended' || !s.unlocked) {
       try {
+        // 무음 버퍼로 브라우저 오디오 정책 우회
+        const buffer = audioCtx.createBuffer(1, 1, 22050);
+        const source = audioCtx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioCtx.destination);
+        source.start(0);
         await audioCtx.resume();
+        s.unlocked = true;
+        console.log("[AlarmSound] 🔓 Force-unlocked in play() (state:", audioCtx.state, ")");
       } catch {
-        console.warn("[AlarmSound] AudioContext resume failed");
+        console.warn("[AlarmSound] AudioContext resume failed in play()");
         s.isAlarming = false;
         return;
       }
