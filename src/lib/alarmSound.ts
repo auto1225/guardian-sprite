@@ -92,11 +92,15 @@ function ensureAudioContext(): AudioContext {
 export function unlockAudio() {
   const s = getState();
   if (s.unlocked && s.audioCtx && s.audioCtx.state === 'running') {
-    // 이미 unlock 됐지만 대기 중인 play가 있으면 실행
+    // 이미 unlock 됐지만 대기 중인 play가 있으면 가드 체크 후 실행
     if (s.pendingPlay) {
       s.pendingPlay = false;
-      console.log("[AlarmSound] 🔄 Executing pending play (already unlocked)");
-      play();
+      if (!isMuted() && !isSuppressed()) {
+        console.log("[AlarmSound] 🔄 Executing pending play (already unlocked)");
+        play();
+      } else {
+        console.log("[AlarmSound] ⏭ Pending play cancelled (muted or suppressed)");
+      }
     }
     return;
   }
@@ -117,11 +121,15 @@ export function unlockAudio() {
     s.unlocked = true;
     console.log("[AlarmSound] 🔓 AudioContext unlocked (state:", ctx.state, ")");
 
-    // unlock 성공 후 대기 중인 play가 있으면 실행
+    // unlock 성공 후 대기 중인 play가 있으면 가드 체크 후 실행
     if (s.pendingPlay) {
       s.pendingPlay = false;
-      console.log("[AlarmSound] 🔄 Executing pending play after unlock");
-      play();
+      if (!isMuted() && !isSuppressed()) {
+        console.log("[AlarmSound] 🔄 Executing pending play after unlock");
+        play();
+      } else {
+        console.log("[AlarmSound] ⏭ Pending play cancelled (muted or suppressed)");
+      }
     }
   } catch (e) {
     console.warn("[AlarmSound] unlock failed:", e);
