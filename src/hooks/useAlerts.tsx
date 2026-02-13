@@ -44,6 +44,7 @@ export const useAlerts = (deviceId?: string | null) => {
   const mountedRef = useRef(true);
   const deviceIdRef = useRef(deviceId);
   const activeAlertRef = useRef<ActiveAlert | null>(null);
+  const firstSyncDoneRef = useRef(false);
 
   deviceIdRef.current = deviceId;
 
@@ -121,11 +122,20 @@ export const useAlerts = (deviceId?: string | null) => {
     const channel = supabase.channel(channelName);
     channelRef.current = channel;
     isSubscribedRef.current = false;
+    firstSyncDoneRef.current = false;
 
     channel
       // 1. Presence sync — 랩탑이 track()으로 보낸 경보 상태 수신
       .on('presence', { event: 'sync' }, () => {
         if (!mountedRef.current) return;
+
+        // 첫 sync는 stale alert일 수 있으므로 무시
+        if (!firstSyncDoneRef.current) {
+          firstSyncDoneRef.current = true;
+          console.log("[useAlerts] First sync — skipping stale alerts");
+          return;
+        }
+
         const state = channel.presenceState();
 
         let foundAlert: ActiveAlert | null = null;
@@ -147,8 +157,6 @@ export const useAlerts = (deviceId?: string | null) => {
         if (foundAlert) {
           handleAlert(foundAlert);
         }
-        // 참고: 랩탑이 자체 해제한 경우는 명시적 dismiss 로만 처리.
-        // presence sync에서 자동 해제하면 경보음이 즉시 꺼지는 버그 발생.
       })
       // 2. Broadcast — 랩탑이 별도 전송하는 경보
       .on('broadcast', { event: 'active_alert' }, (payload) => {
