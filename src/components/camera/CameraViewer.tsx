@@ -30,13 +30,21 @@ const CameraViewer = ({
   const recordedChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // 사용자가 명시적으로 설정한 음소거 상태 추적
+  const userMutePreferenceRef = useRef(true);
+
   // 안전한 재생 시도 - 여러 번 반복 시도
   const attemptPlay = useCallback(async (retryCount = 0) => {
     const video = videoRef.current;
     if (!video || !video.srcObject) return;
 
     try {
-      video.muted = true; // 모바일에서 muted여야 autoplay 가능
+      // 첫 재생 시에만 muted 강제, 이후에는 사용자 설정 유지
+      if (!isVideoPlaying) {
+        video.muted = true; // 모바일에서 muted여야 autoplay 가능
+      } else {
+        video.muted = userMutePreferenceRef.current;
+      }
       await video.play();
       console.log("[CameraViewer] ✅ Play succeeded (attempt:", retryCount + 1, ")");
       setIsVideoPlaying(true);
@@ -51,7 +59,7 @@ const CameraViewer = ({
         }, 500);
       }
     }
-  }, []);
+  }, [isVideoPlaying]);
 
   // remoteStream이 변경되면 비디오에 연결
   useEffect(() => {
@@ -70,7 +78,7 @@ const CameraViewer = ({
       playRetryTimerRef.current = null;
     }
 
-    video.muted = true;
+    video.muted = userMutePreferenceRef.current;
     video.playsInline = true;
     video.srcObject = remoteStream;
 
@@ -264,8 +272,10 @@ const CameraViewer = ({
 
     const handleToggleMute = () => {
       if (videoRef.current) {
-        videoRef.current.muted = !videoRef.current.muted;
-        setIsMuted(videoRef.current.muted);
+        const newMuted = !videoRef.current.muted;
+        videoRef.current.muted = newMuted;
+        userMutePreferenceRef.current = newMuted;
+        setIsMuted(newMuted);
       }
     };
 
