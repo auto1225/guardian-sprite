@@ -72,8 +72,16 @@ export const useAlerts = (deviceId?: string | null) => {
   const handleAlert = useCallback((alert: ActiveAlert) => {
     if (Alarm.isDismissed(alert.id)) return;
 
+    const alertTime = new Date(alert.created_at).getTime();
+
+    // stop() 이후에 생성된 경보만 허용 — 이전 경보 재트리거 차단
+    if (alertTime <= Alarm.getLastStoppedAt()) {
+      console.log("[useAlerts] ⏭ Alert created before last stop, ignoring:", alert.id);
+      return;
+    }
+
     // 60초 이상 된 stale alert 무시
-    if (Date.now() - new Date(alert.created_at).getTime() > 60_000) {
+    if (Date.now() - alertTime > 60_000) {
       Alarm.addDismissed(alert.id);
       return;
     }
