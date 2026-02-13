@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 Deno.serve(async (req) => {
@@ -23,12 +23,12 @@ Deno.serve(async (req) => {
 
     const normalizedKey = serial_key.trim().toUpperCase();
 
-    // Service role로 라이선스 조회
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // 시리얼 조회
     const { data: license, error: licenseError } = await supabaseAdmin
       .from("licenses")
       .select("*")
@@ -56,57 +56,63 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 이미 등록된 디바이스 확인 또는 새로 등록
-    const { data: existingDevices } = await supabaseAdmin
-      .from("devices")
-      .select("id, name")
-      .eq("user_id", license.user_id);
-
-    let deviceId: string;
-
-    if (existingDevices && existingDevices.length > 0) {
-      // 기존 디바이스 반환
-      deviceId = existingDevices[0].id;
-      
-      // 상태 업데이트
+    // 이미 기기가 연결된 시리얼인지 확인
+    if (license.device_id) {
+      // 기존 기기 상태 업데이트 (재연결)
       await supabaseAdmin
         .from("devices")
         .update({
           status: "online",
           last_seen_at: new Date().toISOString(),
-          device_type: device_type || "laptop",
         })
-        .eq("id", deviceId);
-    } else {
-      // 새 디바이스 등록
-      const { data: newDevice, error: deviceError } = await supabaseAdmin
-        .from("devices")
-        .insert({
+        .eq("id", license.device_id);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          device_id: license.device_id,
           user_id: license.user_id,
-          name: device_name || "My Computer",
-          device_type: device_type || "laptop",
-          status: "online",
-          last_seen_at: new Date().toISOString(),
-        })
-        .select("id")
-        .single();
-
-      if (deviceError || !newDevice) {
-        return new Response(
-          JSON.stringify({ error: "기기 등록에 실패했습니다." }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      deviceId = newDevice.id;
+          serial_key: license.serial_key,
+          reconnected: true,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    // 새 기기 등록
+    const { data: newDevice, error: deviceError } = await supabaseAdmin
+      .from("devices")
+      .insert({
+        user_id: license.user_id,
+        name: device_name || "My Computer",
+        device_type: device_type || "laptop",
+        status: "online",
+        last_seen_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
+
+    if (deviceError || !newDevice) {
+      console.error("Device creation error:", deviceError);
+      return new Response(
+        JSON.stringify({ error: "기기 등록에 실패했습니다." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // 라이선스에 기기 ID 연결
+    await supabaseAdmin
+      .from("licenses")
+      .update({ device_id: newDevice.id })
+      .eq("id", license.id);
 
     return new Response(
       JSON.stringify({
         success: true,
-        device_id: deviceId,
+        device_id: newDevice.id,
         user_id: license.user_id,
         serial_key: license.serial_key,
+        reconnected: false,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
