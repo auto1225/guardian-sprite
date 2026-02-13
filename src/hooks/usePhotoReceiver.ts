@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-// Alarm sound is handled solely by useAlerts hook — not here
+import * as Alarm from "@/lib/alarmSound";
 import {
   PhotoAlert,
   PhotoEventType,
@@ -113,8 +113,10 @@ export function usePhotoReceiver(deviceId: string | null | undefined): UsePhotoR
         setLatestAlert(completed);
         loadAlerts();
 
-        // 경보음은 useAlerts 훅에서만 담당 — 여기서는 소리를 내지 않음
-        // (두 곳에서 동시에 play()하면 소리가 겹치고 해제가 안 됨)
+        // 경보음 재생
+        if (!Alarm.isPlaying() && !Alarm.isSuppressed() && !Alarm.isMuted()) {
+          Alarm.play();
+        }
       })
       .subscribe((status) => {
         console.log("[PhotoReceiver] Channel status:", status);
