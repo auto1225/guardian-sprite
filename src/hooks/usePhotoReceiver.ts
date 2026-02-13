@@ -113,8 +113,8 @@ export function usePhotoReceiver(deviceId: string | null | undefined): UsePhotoR
         setLatestAlert(completed);
         loadAlerts();
 
-        // 경보음 재생
-        if (!Alarm.isPlaying() && !Alarm.isSuppressed() && !Alarm.isMuted()) {
+        // 경보음 재생 (해제된 경보 ID만 차단, 새 경보는 항상 울림)
+        if (!Alarm.isPlaying() && !Alarm.isDismissed(completed.id) && !Alarm.isMuted()) {
           Alarm.play();
         }
       })
