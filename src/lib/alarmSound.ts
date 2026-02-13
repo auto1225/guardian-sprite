@@ -17,6 +17,7 @@ interface AlarmState {
   dismissed: Set<string>;
   suppressUntil: number;
   unlocked: boolean;
+  pendingPlay: boolean; // play() 실패 시 터치 후 재시도 대기
 }
 
 const GLOBAL_KEY = '__meercop_alarm_v3';
@@ -33,6 +34,7 @@ function getState(): AlarmState {
       dismissed: new Set<string>(),
       suppressUntil: 0,
       unlocked: false,
+      pendingPlay: false,
     };
     try {
       const raw = localStorage.getItem('meercop_dismissed_ids');
@@ -89,7 +91,15 @@ function ensureAudioContext(): AudioContext {
 /** 사용자 제스처 컨텍스트에서 호출 — AudioContext unlock */
 export function unlockAudio() {
   const s = getState();
-  if (s.unlocked && s.audioCtx && s.audioCtx.state === 'running') return;
+  if (s.unlocked && s.audioCtx && s.audioCtx.state === 'running') {
+    // 이미 unlock 됐지만 대기 중인 play가 있으면 실행
+    if (s.pendingPlay) {
+      s.pendingPlay = false;
+      console.log("[AlarmSound] 🔄 Executing pending play (already unlocked)");
+      play();
+    }
+    return;
+  }
 
   try {
     const ctx = ensureAudioContext();
@@ -106,6 +116,13 @@ export function unlockAudio() {
 
     s.unlocked = true;
     console.log("[AlarmSound] 🔓 AudioContext unlocked (state:", ctx.state, ")");
+
+    // unlock 성공 후 대기 중인 play가 있으면 실행
+    if (s.pendingPlay) {
+      s.pendingPlay = false;
+      console.log("[AlarmSound] 🔄 Executing pending play after unlock");
+      play();
+    }
   } catch (e) {
     console.warn("[AlarmSound] unlock failed:", e);
   }
@@ -261,8 +278,9 @@ export async function play() {
         s.unlocked = true;
         console.log("[AlarmSound] 🔓 Force-unlocked in play() (state:", audioCtx.state, ")");
       } catch {
-        console.warn("[AlarmSound] AudioContext resume failed in play()");
+        console.warn("[AlarmSound] AudioContext resume failed — queuing for next touch");
         s.isAlarming = false;
+        s.pendingPlay = true;  // 다음 터치 시 자동 재시도
         return;
       }
     }
@@ -323,6 +341,7 @@ export function stop() {
   const wasAlarming = s.isAlarming;
 
   s.isAlarming = false;
+  s.pendingPlay = false;  // 대기 중인 재시도도 취소
   s.gen++;  // gen 증가 → 모든 진행 중인 play/interval 즉시 중단
   stopSound();
 
