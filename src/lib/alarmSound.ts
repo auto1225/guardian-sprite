@@ -99,24 +99,34 @@ export async function play() {
   // 기존 리소스 완전 정리 후 시작
   forceCleanup();
 
-  const gen = g.gen;
+  // playing을 먼저 설정하고 gen을 캡처 (원자적 순서 보장)
   g.playing = true;
+  const gen = g.gen;
   console.log("[AlarmSound] ▶ play (gen:", gen, ")");
 
   try {
     const ctx = new AudioContext();
-    // 모바일 브라우저에서 AudioContext가 suspended 상태로 시작되므로 반드시 resume
     await ctx.resume();
+
+    // await 중 stop()이 호출되었는지 확인 (race condition 방지)
+    if (!g.playing || g.gen !== gen) {
+      try { ctx.close(); } catch {}
+      console.log("[AlarmSound] ▶ play aborted (state changed during resume)");
+      return;
+    }
+
     g.ctx = ctx;
 
-    // 모바일에서 AudioContext가 자동 suspend 되지 않도록 무음 유지 노드 생성
-    const keepAlive = ctx.createGain();
-    keepAlive.gain.value = 0.001; // 거의 무음
-    const silentOsc = ctx.createOscillator();
-    silentOsc.frequency.value = 1; // 극저주파
-    silentOsc.connect(keepAlive);
-    keepAlive.connect(ctx.destination);
-    silentOsc.start();
+    // 모바일에서 AudioContext 자동 suspend 방지용 무음 유지
+    try {
+      const keepAlive = ctx.createGain();
+      keepAlive.gain.value = 0.001;
+      const silentOsc = ctx.createOscillator();
+      silentOsc.frequency.value = 1;
+      silentOsc.connect(keepAlive);
+      keepAlive.connect(ctx.destination);
+      silentOsc.start();
+    } catch {}
 
     const beepCycle = async () => {
       const cur = getG();
@@ -127,6 +137,8 @@ export async function play() {
       // suspended 상태면 resume 후 대기
       if (cur.ctx.state === 'suspended') {
         try { await cur.ctx.resume(); } catch { return; }
+        // resume 후 다시 상태 확인
+        if (!cur.playing || cur.gen !== gen) return;
       }
 
       const vol = getVolume();
@@ -158,6 +170,7 @@ export async function play() {
 
 export function stop() {
   const g = getG();
+  const wasPlaying = g.playing;
   g.playing = false;
   g.gen += 1;
 
@@ -167,7 +180,10 @@ export function stop() {
     g.ctx = null;
   }
 
-  console.log("[AlarmSound] ■ stop (gen:", g.gen, ")");
+  // 실제로 재생 중이었을 때만 로그 (불필요한 stop 로그 제거)
+  if (wasPlaying) {
+    console.log("[AlarmSound] ■ stop (gen:", g.gen, ")");
+  }
 }
 
 /** 레거시 리소스까지 포함한 완전 정리 */
