@@ -2,7 +2,8 @@ import { ArrowLeft, ChevronRight, Play, Square, Upload, VolumeX, Volume2 } from 
 import { useState, useEffect, useRef } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
-import { isMuted as isAlarmMuted, setMuted as setAlarmMuted } from "@/lib/alarmSound";
+import { isMuted as isAlarmMuted, setMuted as setAlarmMuted, getVolume as getAlarmVolume, setVolume as setAlarmVolume } from "@/lib/alarmSound";
+import { Slider } from "@/components/ui/slider";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -353,6 +354,30 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
                 }}
               />
             </div>
+
+            {/* 경보음 크기 조절 */}
+            {!isAlarmMuted() && (
+              <div className="px-4 py-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-white font-medium text-sm">경보음 크기</span>
+                  <span className="text-white/50 text-sm">{Math.round(getAlarmVolume() * 100)}%</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <VolumeX className="w-4 h-4 text-white/40 flex-shrink-0" />
+                  <Slider
+                    defaultValue={[getAlarmVolume() * 100]}
+                    min={5}
+                    max={100}
+                    step={5}
+                    onValueChange={(vals) => {
+                      setAlarmVolume(vals[0] / 100);
+                    }}
+                    className="flex-1"
+                  />
+                  <Volume2 className="w-4 h-4 text-white/40 flex-shrink-0" />
+                </div>
+              </div>
+            )}
 
             <div className="px-4 py-4 flex items-center justify-between">
               <div>

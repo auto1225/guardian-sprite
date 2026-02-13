@@ -25,7 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const { devices, selectedDevice, selectedDeviceId, setSelectedDeviceId, isLoading, refreshDeviceStatus } = useDevices();
-  const { alerts, activeAlert, unreadCount, dismissActiveAlert, sendRemoteAlarmOff } = useAlerts(selectedDeviceId);
+  const { alerts, activeAlert, unreadCount, dismissPhoneAlarm, dismissActiveAlert, sendRemoteAlarmOff } = useAlerts(selectedDeviceId);
   const isMonitoring = selectedDevice?.is_monitoring ?? false;
   const { toggleMonitoring } = useCommands();
   const { toast } = useToast();
@@ -174,7 +174,7 @@ const Index = () => {
             {!phoneAlarmDismissed && (
               <button
                 onClick={() => {
-                  dismissActiveAlert();
+                  dismissPhoneAlarm();
                   setPhoneAlarmDismissed(true);
                   toast({ title: "경보 해제", description: "스마트폰 경보음이 해제되었습니다." });
                   if (remoteAlarmDismissed) setShowFallbackAlarmButtons(false);
@@ -316,7 +316,7 @@ const Index = () => {
           phoneAlarmDismissed={phoneAlarmDismissed}
           remoteAlarmDismissed={remoteAlarmDismissed}
           onDismissPhoneAlarm={() => {
-            dismissActiveAlert();
+            dismissPhoneAlarm();
             setPhoneAlarmDismissed(true);
             toast({ title: "경보 해제", description: "스마트폰 경보음이 해제되었습니다." });
           }}
