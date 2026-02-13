@@ -131,6 +131,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
     (meta.motionSensitivity as MotionSensitivity) || "insensitive"
   );
 
+  const [volumePercent, setVolumePercent] = useState(() => Math.round(getAlarmVolume() * 100));
   const [showNicknameDialog, setShowNicknameDialog] = useState(false);
   const [showPinDialog, setShowPinDialog] = useState(false);
   const [showSoundDialog, setShowSoundDialog] = useState(false);
@@ -184,7 +185,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
 
     if (soundId === "custom" && customSoundDataUrl) {
       const audio = new Audio();
-      audio.volume = getAlarmVolume();
+      audio.volume = volumePercent / 100;
       audio.play().catch(() => {});
       audio.src = customSoundDataUrl;
       audioRef.current = audio;
@@ -598,16 +599,17 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-white font-medium text-sm">경보음 크기</span>
-              <span className="text-white/50 text-sm">{Math.round(getAlarmVolume() * 100)}%</span>
+              <span className="text-white/50 text-sm">{volumePercent}%</span>
             </div>
             <div className="flex items-center gap-3">
               <VolumeX className="w-4 h-4 text-white/40 flex-shrink-0" />
               <Slider
-                defaultValue={[getAlarmVolume() * 100]}
-                min={5}
+                value={[volumePercent]}
+                min={0}
                 max={100}
                 step={5}
                 onValueChange={(vals) => {
+                  setVolumePercent(vals[0]);
                   setAlarmVolume(vals[0] / 100);
                 }}
                 className="flex-1"

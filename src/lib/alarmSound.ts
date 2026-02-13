@@ -92,7 +92,7 @@ export function setVolume(vol: number) {
 // ── Play / Stop ──
 export function isPlaying(): boolean { return getG().playing; }
 
-export function play() {
+export async function play() {
   const g = getG();
   if (g.playing || isMuted()) return;
 
@@ -105,12 +105,20 @@ export function play() {
 
   try {
     const ctx = new AudioContext();
+    // 모바일 브라우저에서 AudioContext가 suspended 상태로 시작되므로 반드시 resume
+    await ctx.resume();
     g.ctx = ctx;
 
     const beepCycle = () => {
       const cur = getG();
-      if (!cur.playing || cur.gen !== gen || !cur.ctx || cur.ctx.state === 'closed') return;
+      if (!cur.playing || cur.gen !== gen) return;
+      if (!cur.ctx || cur.ctx.state === 'closed') return;
       if (isMuted()) { stop(); return; }
+
+      // suspended 상태면 resume 시도
+      if (cur.ctx.state === 'suspended') {
+        cur.ctx.resume().catch(() => {});
+      }
 
       const vol = getVolume();
       const beep = (time: number, freq: number) => {
