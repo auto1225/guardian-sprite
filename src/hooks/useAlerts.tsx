@@ -10,28 +10,8 @@ import {
 } from "@/lib/localActivityLogs";
 import * as AlarmSound from "@/lib/alarmSound";
 
-// 하위 호환성을 위한 re-export + 구 코드 잔여 AudioContext 정리
-export const stopAlertSound = () => {
-  AlarmSound.stop();
-  // 구 빌드 캐시의 전역 리소스도 강제 정리
-  try {
-    const w = window as any;
-    if (w.__meercop_ivals) {
-      for (const id of w.__meercop_ivals) clearInterval(id);
-      w.__meercop_ivals = [];
-    }
-    if (w.__meercop_ctxs) {
-      for (const ctx of w.__meercop_ctxs) {
-        try { ctx.suspend?.(); ctx.close?.(); } catch {}
-      }
-      w.__meercop_ctxs = [];
-    }
-    if (w.__meercop_alarm) {
-      w.__meercop_alarm.playing = false;
-      w.__meercop_alarm.generation = (w.__meercop_alarm.generation || 0) + 1;
-    }
-  } catch {}
-};
+// stop()이 window 전역 싱글톤을 정리하므로 단순 위임
+export const stopAlertSound = () => AlarmSound.stop();
 export const getAlarmState = () => ({ muted: AlarmSound.isMuted() });
 export const setAlarmMuted = AlarmSound.setMuted;
 
