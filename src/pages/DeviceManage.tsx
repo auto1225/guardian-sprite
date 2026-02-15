@@ -159,38 +159,36 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
 
       {/* Add Device Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="bg-card">
+        <DialogContent className="bg-primary/80 backdrop-blur-xl border border-white/25 shadow-xl">
           <DialogHeader>
-            <DialogTitle>새 기기 등록</DialogTitle>
+            <DialogTitle className="text-primary-foreground">새 기기 등록</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">기기 이름</label>
+              <label className="text-sm font-medium text-primary-foreground">기기 이름</label>
               <Input
                 placeholder="예: 회사 노트북"
                 value={newDeviceName}
                 onChange={(e) => setNewDeviceName(e.target.value)}
+                className="bg-white/15 border-white/25 text-primary-foreground placeholder:text-primary-foreground/50"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">기기 유형</label>
+              <label className="text-sm font-medium text-primary-foreground">기기 유형</label>
               <Select value={newDeviceType} onValueChange={(v) => setNewDeviceType(v as DeviceType)}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-white/15 border-white/25 text-primary-foreground">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="laptop">노트북</SelectItem>
-                  <SelectItem value="desktop">컴퓨터</SelectItem>
-                  <SelectItem value="tablet">태블릿</SelectItem>
+                <SelectContent className="bg-primary/90 backdrop-blur-xl border border-white/25">
+                  <SelectItem value="laptop" className="text-primary-foreground focus:bg-white/15 focus:text-primary-foreground">노트북</SelectItem>
+                  <SelectItem value="desktop" className="text-primary-foreground focus:bg-white/15 focus:text-primary-foreground">컴퓨터</SelectItem>
+                  <SelectItem value="tablet" className="text-primary-foreground focus:bg-white/15 focus:text-primary-foreground">태블릿</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-              취소
-            </Button>
-            <Button onClick={handleAddDevice}>
+            <Button onClick={handleAddDevice} className="w-full bg-white/20 backdrop-blur-sm border border-white/25 text-primary-foreground hover:bg-white/30">
               등록
             </Button>
           </DialogFooter>
