@@ -88,6 +88,7 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
               <button
                 onClick={() => {
                   stopAlertSound();
+                  Alarm.addDismissed(activeAlert.id);
                   setPhoneDismissed(true);
                   toast({ title: "스마트폰 경보음 해제", description: "스마트폰의 경보음이 해제되었습니다." });
                 }}
