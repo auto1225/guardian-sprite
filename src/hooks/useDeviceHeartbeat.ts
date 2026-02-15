@@ -6,7 +6,7 @@ import { useDevices } from "@/hooks/useDevices";
 /**
  * 스마트폰 디바이스의 온라인/오프라인 상태를 관리하는 훅
  * - 포그라운드 진입 시 status = 'online'
- * - 백그라운드 전환/종료 시 status = 'offline'
+ * - 백그라운드 전환/종료 시 status = 'offline' + 모든 기기 감시 OFF
  * - 30초 간격 heartbeat로 last_seen_at 갱신
  */
 export function useDeviceHeartbeat() {
@@ -20,9 +20,10 @@ export function useDeviceHeartbeat() {
   );
 
   useEffect(() => {
-    if (!smartphoneDevice) return;
+    if (!smartphoneDevice || !user) return;
 
     const deviceId = smartphoneDevice.id;
+    const userId = user.id;
 
     const setOnline = async () => {
       try {
@@ -47,13 +48,11 @@ export function useDeviceHeartbeat() {
           .update({ status: "offline" })
           .eq("id", deviceId);
         // 모든 기기 감시 OFF (스마트폰 앱 종료 시 감시 해제)
-        if (user?.id) {
-          await supabase
-            .from("devices")
-            .update({ is_monitoring: false })
-            .eq("user_id", user.id)
-            .neq("device_type", "smartphone");
-        }
+        await supabase
+          .from("devices")
+          .update({ is_monitoring: false })
+          .eq("user_id", userId)
+          .neq("device_type", "smartphone");
         console.log("[Heartbeat] ⚫ Status set to offline + monitoring OFF:", deviceId.slice(0, 8));
       } catch (err) {
         console.error("[Heartbeat] Failed to set offline:", err);
@@ -81,7 +80,6 @@ export function useDeviceHeartbeat() {
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
         setOnline();
-        // heartbeat 재시작
         if (heartbeatRef.current) clearInterval(heartbeatRef.current);
         heartbeatRef.current = setInterval(sendHeartbeat, 30000);
       } else {
@@ -93,20 +91,25 @@ export function useDeviceHeartbeat() {
       }
     };
 
-    // beforeunload 핸들러
+    // beforeunload 핸들러 — sendBeacon으로 Edge Function 호출 (POST 지원)
     const handleBeforeUnload = () => {
-      // sendBeacon으로 오프라인 + 감시 OFF 전송
       try {
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-        const headers = { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` };
+        const url = `${supabaseUrl}/functions/v1/app-close`;
+        const body = JSON.stringify({
+          user_id: userId,
+          smartphone_device_id: deviceId,
+        });
+        const blob = new Blob([body], { type: "application/json" });
         
-        // 스마트폰 오프라인
-        const blob1 = new Blob([JSON.stringify({ status: "offline" })], { type: 'application/json' });
-        navigator.sendBeacon?.(`${supabaseUrl}/rest/v1/devices?id=eq.${deviceId}`, blob1);
-        
-        // 노트북/데스크탑 감시 OFF - sendBeacon은 PATCH를 지원하지 않으므로 동기 fallback
-      } catch {}
+        // sendBeacon은 POST만 지원 — Edge Function이 POST를 처리
+        const sent = navigator.sendBeacon?.(url, blob);
+        console.log("[Heartbeat] 📡 sendBeacon app-close:", sent ? "sent" : "failed");
+      } catch (err) {
+        console.error("[Heartbeat] sendBeacon error:", err);
+      }
+      // fallback (비동기지만 시도)
       setOffline();
     };
 
@@ -119,5 +122,5 @@ export function useDeviceHeartbeat() {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       setOffline();
     };
-  }, [smartphoneDevice?.id]);
+  }, [smartphoneDevice?.id, user?.id]);
 }
