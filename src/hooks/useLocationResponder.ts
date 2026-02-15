@@ -6,6 +6,7 @@ import { Json } from "@/integrations/supabase/types";
 
 /**
  * 스마트폰의 위치 응답 훅
+ * - 앱 로드 시 위치 권한을 미리 요청 (오버레이 차단 방지)
  * - 자신의 devices 레코드의 metadata.locate_requested를 실시간 감시
  * - 타임스탬프가 감지되면 GPS 위치 획득 → DB 업데이트 → locate_requested를 null로 초기화
  */
@@ -18,6 +19,12 @@ export function useLocationResponder() {
   const smartphoneDevice = devices.find(
     (d) => d.device_type === "smartphone" && d.user_id === user?.id
   );
+
+  // 앱 로드 시 위치 권한 미리 요청 — 오버레이 위에서 권한 다이얼로그 차단 방지
+  useEffect(() => {
+    if (!smartphoneDevice) return;
+    preRequestLocationPermission();
+  }, [smartphoneDevice?.id]);
 
   useEffect(() => {
     if (!smartphoneDevice) return;
@@ -133,4 +140,30 @@ function getPosition(highAccuracy: boolean, timeout: number): Promise<Geolocatio
       maximumAge: 0,
     });
   });
+}
+
+/**
+ * 앱 초기 로드 시 위치 권한을 미리 요청.
+ * Android Chrome은 오버레이(fixed/absolute)가 있을 때 권한 다이얼로그를 차단하므로,
+ * 오버레이가 없는 초기 상태에서 미리 권한을 받아두면 이후 요청 시 다이얼로그 없이 동작함.
+ */
+async function preRequestLocationPermission() {
+  try {
+    // Permissions API로 이미 허용 여부 확인
+    if (navigator.permissions) {
+      const status = await navigator.permissions.query({ name: "geolocation" });
+      if (status.state === "granted") {
+        console.log("[LocationResponder] 📍 Location permission already granted");
+        return;
+      }
+    }
+
+    // 아직 허용되지 않은 경우, 짧은 타임아웃으로 위치 요청하여 권한 다이얼로그 트리거
+    console.log("[LocationResponder] 📍 Pre-requesting location permission...");
+    await getPosition(true, 5000);
+    console.log("[LocationResponder] ✅ Location permission granted via pre-request");
+  } catch (err) {
+    // 사용자가 거부하거나 타임아웃되어도 무시 — 나중에 다시 시도됨
+    console.warn("[LocationResponder] Pre-request failed (user may have denied):", err);
+  }
 }
