@@ -228,8 +228,13 @@ function stopSound() {
   }
   s.oscillators = [];
 
-  // AudioContext는 닫지 않고 유지 (재사용을 위해)
-  // unlock된 AudioContext를 닫으면 다시 사용자 제스처가 필요함
+  // AudioContext를 닫아서 모든 예약된 오실레이터를 즉시 종료
+  // 다음 play() 시 새로 생성됨
+  if (s.audioCtx) {
+    try { s.audioCtx.close(); } catch {}
+    s.audioCtx = null;
+  }
+  s.unlocked = false;
 }
 
 // ══════════════════════════════════════
@@ -374,6 +379,17 @@ export function stop() {
   s.lastStoppedAt = Date.now() + 1000;
   try { localStorage.setItem('meercop_last_stopped_at', String(s.lastStoppedAt)); } catch {}
   stopSound();
+
+  // 시스템 푸시 알림도 함께 닫기
+  try {
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.getNotifications({ tag: 'meercop-alert' }).then(notifications => {
+          notifications.forEach(n => n.close());
+        });
+      }).catch(() => {});
+    }
+  } catch {}
 
   if (wasAlarming) {
     console.log("[AlarmSound] ■ stop (gen:", s.gen, ")");
