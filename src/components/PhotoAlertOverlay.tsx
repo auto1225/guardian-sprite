@@ -370,34 +370,36 @@ export default function PhotoAlertOverlay({
         </div>
       </div>
 
-      {/* Alarm dismiss buttons - fixed at bottom */}
-      <div className="p-4 shrink-0 space-y-3">
-        {!phoneDismissed && (
-          <button
-            onClick={() => {
-              stopAlertSound();
-              Alarm.addDismissed(alert.id);
-              setPhoneDismissed(true);
-            }}
-            className="w-full py-3 bg-white/12 backdrop-blur-md text-white border border-white/25 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
-          >
-            🔕 스마트폰 경보음 해제
-          </button>
-        )}
-        {onDismissRemoteAlarm && (
-          <button
-            onClick={() => {
-              stopAlertSound();
-              Alarm.addDismissed(alert.id);
-              onDismissRemoteAlarm();
-              onDismiss();
-            }}
-            className="w-full py-4 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-full font-bold text-lg shadow-lg active:scale-95 transition-transform"
-          >
-            🔇 컴퓨터 경보음 해제 (경보 해제)
-          </button>
-        )}
-      </div>
+      {/* Alarm dismiss buttons - fixed at bottom (hide in history view) */}
+      {!isHistoryView && (
+        <div className="p-4 shrink-0 space-y-3">
+          {!phoneDismissed && (
+            <button
+              onClick={() => {
+                stopAlertSound();
+                Alarm.addDismissed(alert.id);
+                setPhoneDismissed(true);
+              }}
+              className="w-full py-3 bg-white/12 backdrop-blur-md text-white border border-white/25 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
+            >
+              🔕 스마트폰 경보음 해제
+            </button>
+          )}
+          {onDismissRemoteAlarm && (
+            <button
+              onClick={() => {
+                stopAlertSound();
+                Alarm.addDismissed(alert.id);
+                onDismissRemoteAlarm();
+                onDismiss();
+              }}
+              className="w-full py-4 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-full font-bold text-lg shadow-lg active:scale-95 transition-transform"
+            >
+              🔇 컴퓨터 경보음 해제 (경보 해제)
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
