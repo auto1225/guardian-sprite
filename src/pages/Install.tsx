@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Download, Smartphone, Monitor, CheckCircle } from "lucide-react";
+import { Download, Smartphone, Monitor, CheckCircle, ArrowLeft } from "lucide-react";
 import meercopCharacter from "@/assets/meercop-character.png";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -9,6 +10,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const Install = () => {
+  const navigate = useNavigate();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
@@ -49,7 +51,14 @@ const Install = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-light to-primary flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-b from-sky-light to-primary flex flex-col items-center justify-center p-6 relative">
+      {/* Back button */}
+      <button
+        onClick={() => navigate(-1)}
+        className="absolute top-4 left-4 bg-white/15 backdrop-blur-md border border-white/25 rounded-full p-2.5 text-white active:scale-95 transition-transform shadow-lg"
+      >
+        <ArrowLeft size={20} />
+      </button>
       <div className="max-w-md w-full bg-white/12 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-xl">
         {/* Logo */}
         <div className="flex justify-center mb-6">
