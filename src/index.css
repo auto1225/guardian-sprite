@@ -132,13 +132,13 @@ All colors MUST be HSL.
   background: transparent;
 }
 .alert-glass-scroll::-webkit-scrollbar-thumb {
-  background: hsla(200, 80%, 70%, 0.35);
+  background: hsla(0, 70%, 70%, 0.35);
   border-radius: 10px;
 }
 .alert-glass-scroll::-webkit-scrollbar-thumb:hover {
-  background: hsla(200, 80%, 70%, 0.55);
+  background: hsla(0, 70%, 70%, 0.55);
 }
 .alert-glass-scroll {
   scrollbar-width: thin;
-  scrollbar-color: hsla(200, 80%, 70%, 0.35) transparent;
+  scrollbar-color: hsla(0, 70%, 70%, 0.35) transparent;
 }

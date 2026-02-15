@@ -34,7 +34,7 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
   };
 
   return (
-    <div className="fixed inset-0 bg-sky-700/60 backdrop-blur-2xl z-50 flex flex-col">
+    <div className="fixed inset-0 bg-red-800/60 backdrop-blur-2xl z-50 flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4">
         <div className="flex items-center gap-2">
