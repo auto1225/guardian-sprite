@@ -66,7 +66,24 @@ export async function savePhotos(
     }
   }
 
-  // 데스크톱 폴백: 개별 다운로드 (한번에 처리)
+  // 데스크톱: File System Access API로 폴더 한 번 선택 후 일괄 저장
+  if ("showDirectoryPicker" in window) {
+    try {
+      const dirHandle = await (window as any).showDirectoryPicker({ mode: "readwrite" });
+      for (const file of files) {
+        const fileHandle = await dirHandle.getFileHandle(file.name, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(file);
+        await writable.close();
+      }
+      return;
+    } catch (e: any) {
+      if (e.name === "AbortError") return;
+      // API 미지원 또는 실패 시 아래 폴백
+    }
+  }
+
+  // 최종 폴백: 개별 다운로드
   for (const file of files) {
     downloadBlob(file, file.name);
   }
