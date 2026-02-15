@@ -246,13 +246,14 @@ export const useAlerts = (deviceId?: string | null) => {
 
   // ── 전체 해제 (스마트폰 UI 닫기) ──
   const dismissAll = useCallback(() => {
-    Alarm.stop();           // isAlarming=false, pendingPlay=false, gen++
-    Alarm.suppressFor(10_000); // 10초간 새 경보 수신 억제 (원격 해제 신호 전달 대기)
+    Alarm.stop();           // isAlarming=false, pendingPlay=false, gen++, lastStoppedAt=now+1s
+    // suppressFor 제거 — Presence sync는 한 번만 발생하므로 억제하면 새 경보가 영구 누락됨
+    // addDismissed + lastStoppedAt으로 동일 경보 재트리거는 충분히 차단됨
     const id = activeAlertRef.current?.id;
     if (id) Alarm.addDismissed(id);
     safeSetActiveAlert(null);
     activeAlertRef.current = null;
-    console.log("[useAlerts] ✅ All dismissed (suppressed 10s)");
+    console.log("[useAlerts] ✅ All dismissed");
   }, [safeSetActiveAlert]);
 
   return {
