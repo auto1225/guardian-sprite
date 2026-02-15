@@ -166,8 +166,8 @@ export const useDevices = () => {
         if (d.device_type === "smartphone") return d; // 스마트폰은 자기 자신이므로 스킵
         // Realtime으로 온라인 확인된 디바이스는 stale 보정 건너뛰기
         if (realtimeConfirmedOnline.has(d.id)) return d;
-        const lastSeen = d.last_seen_at ? new Date(d.last_seen_at).getTime() : 0;
-        if (now - lastSeen > STALE_THRESHOLD_MS && d.status !== "offline") {
+        const lastSeen = d.last_seen_at ? new Date(d.last_seen_at).getTime() : null;
+        if (lastSeen !== null && now - lastSeen > STALE_THRESHOLD_MS && d.status !== "offline") {
           console.log("[Devices] Stale device corrected to offline:", d.id.slice(0, 8), { lastSeen: d.last_seen_at });
           return { ...d, status: "offline" as Device["status"], is_network_connected: false };
         }
