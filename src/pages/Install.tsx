@@ -50,7 +50,7 @@ const Install = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-light to-primary flex flex-col items-center justify-center p-6">
-      <div className="max-w-md w-full bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-xl">
+      <div className="max-w-md w-full bg-white/12 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-xl">
         {/* Logo */}
         <div className="flex justify-center mb-6">
           <img 
@@ -61,47 +61,47 @@ const Install = () => {
         </div>
 
         {/* Title */}
-        <h1 className="text-2xl font-bold text-center text-gray-800 mb-2">
+        <h1 className="text-2xl font-bold text-center text-white mb-2 drop-shadow-sm">
           MeerCOP 설치하기
         </h1>
-        <p className="text-center text-gray-600 mb-8">
+        <p className="text-center text-white/70 mb-8">
           노트북 도난 방지 앱을 설치하세요
         </p>
 
         {isInstalled ? (
           <div className="text-center">
-            <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <p className="text-lg font-medium text-gray-800">
+            <CheckCircle className="w-16 h-16 text-status-active mx-auto mb-4" />
+            <p className="text-lg font-medium text-white">
               이미 설치되어 있습니다!
             </p>
-            <p className="text-gray-600 mt-2">
+            <p className="text-white/70 mt-2">
               홈 화면에서 MeerCOP을 실행하세요.
             </p>
           </div>
         ) : isIOS ? (
           <div className="space-y-4">
-            <div className="bg-sky-50 rounded-xl p-4">
-              <h3 className="font-medium text-gray-800 mb-3">
+            <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-xl p-4">
+              <h3 className="font-medium text-white mb-3">
                 iOS에서 설치하기
               </h3>
-              <ol className="space-y-3 text-sm text-gray-600">
+              <ol className="space-y-3 text-sm text-white/80">
                 <li className="flex items-start gap-3">
-                  <span className="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0">
+                  <span className="bg-white/20 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0 border border-white/25">
                     1
                   </span>
-                  <span>Safari 브라우저 하단의 <strong>공유</strong> 버튼을 탭하세요</span>
+                  <span>Safari 브라우저 하단의 <strong className="text-white">공유</strong> 버튼을 탭하세요</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0">
+                  <span className="bg-white/20 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0 border border-white/25">
                     2
                   </span>
-                  <span>스크롤하여 <strong>"홈 화면에 추가"</strong>를 탭하세요</span>
+                  <span>스크롤하여 <strong className="text-white">"홈 화면에 추가"</strong>를 탭하세요</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0">
+                  <span className="bg-white/20 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0 border border-white/25">
                     3
                   </span>
-                  <span>오른쪽 상단의 <strong>"추가"</strong>를 탭하세요</span>
+                  <span>오른쪽 상단의 <strong className="text-white">"추가"</strong>를 탭하세요</span>
                 </li>
               </ol>
             </div>
@@ -109,13 +109,13 @@ const Install = () => {
         ) : deferredPrompt ? (
           <Button 
             onClick={handleInstall}
-            className="w-full h-14 text-lg bg-primary hover:bg-primary/90"
+            className="w-full h-14 text-lg bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30 text-white rounded-full font-bold shadow-lg"
           >
             <Download className="w-5 h-5 mr-2" />
             앱 설치하기
           </Button>
         ) : (
-          <div className="text-center text-gray-600">
+          <div className="text-center text-white/70">
             <p className="mb-4">
               브라우저 메뉴에서 "앱 설치" 또는 "홈 화면에 추가"를 선택하세요.
             </p>
@@ -124,19 +124,19 @@ const Install = () => {
 
         {/* Features */}
         <div className="mt-8 space-y-3">
-          <h3 className="font-medium text-gray-800 text-center mb-4">
+          <h3 className="font-medium text-white text-center mb-4">
             주요 기능
           </h3>
-          <div className="flex items-center gap-3 text-sm text-gray-600">
-            <Monitor className="w-5 h-5 text-primary flex-shrink-0" />
+          <div className="flex items-center gap-3 text-sm text-white/80">
+            <Monitor className="w-5 h-5 text-white/60 flex-shrink-0" />
             <span>노트북 실시간 모니터링</span>
           </div>
-          <div className="flex items-center gap-3 text-sm text-gray-600">
-            <Smartphone className="w-5 h-5 text-primary flex-shrink-0" />
+          <div className="flex items-center gap-3 text-sm text-white/80">
+            <Smartphone className="w-5 h-5 text-white/60 flex-shrink-0" />
             <span>스마트폰으로 원격 제어</span>
           </div>
-          <div className="flex items-center gap-3 text-sm text-gray-600">
-            <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
+          <div className="flex items-center gap-3 text-sm text-white/80">
+            <CheckCircle className="w-5 h-5 text-white/60 flex-shrink-0" />
             <span>오프라인에서도 작동</span>
           </div>
         </div>
