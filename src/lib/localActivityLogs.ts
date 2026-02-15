@@ -92,7 +92,7 @@ export function addActivityLog(
   return newLog;
 }
 
-export function getAlertLogs(deviceId: string, limit = 50): LocalActivityLog[] {
+export function getAlertLogs(deviceId?: string, limit = 50): LocalActivityLog[] {
   const alertTypes = ["alert_shock", "alert_mouse", "alert_keyboard", "alert_movement", "intrusion"];
   const allLogs = getActivityLogs(deviceId, MAX_LOGS);
   return allLogs.filter(log => alertTypes.includes(log.event_type)).slice(0, limit);
@@ -122,14 +122,14 @@ export function markLogAsRead(logId: string): void {
   }
 }
 
-export function markAllLogsAsRead(deviceId: string): void {
+export function markAllLogsAsRead(deviceId?: string): void {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return;
     
     const logs: LocalActivityLog[] = JSON.parse(stored);
     const updatedLogs = logs.map(log => 
-      log.device_id === deviceId ? { ...log, is_read: true } : log
+      (!deviceId || log.device_id === deviceId) ? { ...log, is_read: true } : log
     );
     
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedLogs));

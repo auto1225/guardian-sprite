@@ -33,7 +33,7 @@ export const stopAlertSound = Alarm.stop;
 export const getAlarmState = () => ({ muted: Alarm.isMuted() });
 export const setAlarmMuted = Alarm.setMuted;
 
-export const useAlerts = (deviceId?: string | null) => {
+export const useAlerts = (deviceId?: string | null, allDeviceIds?: string[]) => {
   const [alerts, setAlerts] = useState<LocalActivityLog[]>([]);
   const [activeAlert, setActiveAlert] = useState<ActiveAlert | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,7 +43,7 @@ export const useAlerts = (deviceId?: string | null) => {
   const mountedRef = useRef(true);
   const deviceIdRef = useRef(deviceId);
   const activeAlertRef = useRef<ActiveAlert | null>(null);
-  const handleAlertRef = useRef<(alert: ActiveAlert) => void>(() => {});
+  const handleAlertRef = useRef<(alert: ActiveAlert, fromDeviceId?: string) => void>(() => {});
 
   deviceIdRef.current = deviceId;
 
@@ -56,11 +56,10 @@ export const useAlerts = (deviceId?: string | null) => {
 
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
 
-  // ── 로컬 로그 로드 ──
+  // ── 로컬 로그 로드 (모든 기기) ──
   const loadAlerts = useCallback(() => {
-    const did = deviceIdRef.current;
-    if (!did) { safeSetAlerts([]); safeSetIsLoading(false); return; }
-    safeSetAlerts(getAlertLogs(did, 50));
+    // deviceId 없으면 전체 로그 로드
+    safeSetAlerts(getAlertLogs(undefined, 50));
     safeSetIsLoading(false);
   }, [safeSetAlerts, safeSetIsLoading]);
 
@@ -69,7 +68,7 @@ export const useAlerts = (deviceId?: string | null) => {
   const unreadCount = alerts.filter(a => !a.is_read).length;
 
   // ── 경보 수신 처리 ──
-  const handleAlert = useCallback((alert: ActiveAlert) => {
+  const handleAlert = useCallback((alert: ActiveAlert, fromDeviceId?: string) => {
     // 음소거 상태면 경보 전체 무시 (UI + 소리 모두)
     if (Alarm.isMuted()) return;
     if (Alarm.isDismissed(alert.id)) return;
@@ -92,7 +91,7 @@ export const useAlerts = (deviceId?: string | null) => {
     // 이미 같은 alert가 활성 상태면 무시
     if (activeAlertRef.current?.id === alert.id) return;
 
-    console.log("[useAlerts] 🚨 New alert:", alert.id);
+    console.log("[useAlerts] 🚨 New alert:", alert.id, "from device:", fromDeviceId?.slice(0, 8));
     activeAlertRef.current = alert;
     safeSetActiveAlert(alert); // ← 핵심 수정: AlertMode 오버레이 표시
 
@@ -101,11 +100,11 @@ export const useAlerts = (deviceId?: string | null) => {
       Alarm.play();
     }
 
-    // 로컬 로그에 기록
-    const did = deviceIdRef.current;
-    if (did) {
+    // 로컬 로그에 기록 — fromDeviceId가 있으면 해당 기기 ID로 기록
+    const logDeviceId = fromDeviceId || deviceIdRef.current;
+    if (logDeviceId) {
       try {
-        addActivityLog(did, alert.type, {
+        addActivityLog(logDeviceId, alert.type, {
           title: alert.title,
           message: alert.message,
           alertType: alert.type,
@@ -118,76 +117,88 @@ export const useAlerts = (deviceId?: string | null) => {
   // ref로 최신 handleAlert를 유지 — 채널 의존성에서 제거
   handleAlertRef.current = handleAlert;
 
-  // ── 채널 구독 ──
+  // ── 채널 구독 (모든 기기) ──
+  const allIdsRef = useRef<string[]>([]);
+  const channelsRef = useRef<Map<string, ReturnType<typeof supabase.channel>>>(new Map());
+
   useEffect(() => {
-    if (!deviceId) return;
+    const ids = allDeviceIds && allDeviceIds.length > 0 ? allDeviceIds : (deviceId ? [deviceId] : []);
+    if (ids.length === 0) return;
 
-    const channelName = `device-alerts-${deviceId}`;
+    // 변경 없으면 스킵
+    const sortedIds = [...ids].sort().join(',');
+    const prevIds = [...allIdsRef.current].sort().join(',');
+    if (sortedIds === prevIds && channelsRef.current.size > 0) return;
+    allIdsRef.current = ids;
 
-    // 기존 동일 토픽 채널 정리
-    const existing = supabase.getChannels().find(
-      ch => ch.topic === `realtime:${channelName}`
-    );
-    if (existing) supabase.removeChannel(existing);
-
-    const channel = supabase.channel(channelName);
-    channelRef.current = channel;
+    // 기존 채널 정리
+    channelsRef.current.forEach((ch) => supabase.removeChannel(ch));
+    channelsRef.current.clear();
+    channelRef.current = null;
     isSubscribedRef.current = false;
 
-    channel
-      // 1. Presence sync — 랩탑이 track()으로 보낸 경보 상태 수신
-      .on('presence', { event: 'sync' }, () => {
-        if (!mountedRef.current) return;
+    for (const did of ids) {
+      const channelName = `device-alerts-${did}`;
 
-        const state = channel.presenceState();
+      // 기존 동일 토픽 채널 정리
+      const existing = supabase.getChannels().find(
+        ch => ch.topic === `realtime:${channelName}`
+      );
+      if (existing) supabase.removeChannel(existing);
 
-        let foundAlert: ActiveAlert | null = null;
-        for (const key of Object.keys(state)) {
-          const entries = state[key] as Array<{
-            active_alert?: ActiveAlert | null;
-            status?: string;
-          }>;
-          for (const entry of entries) {
-            if (entry.status === 'listening') continue;
-            if (entry.active_alert) {
-              foundAlert = entry.active_alert;
-              break;
+      const channel = supabase.channel(channelName);
+      channelsRef.current.set(did, channel);
+
+      // 현재 선택된 기기의 채널을 메인으로 설정
+      if (did === deviceId) {
+        channelRef.current = channel;
+      }
+
+      channel
+        .on('presence', { event: 'sync' }, () => {
+          if (!mountedRef.current) return;
+          const state = channel.presenceState();
+          let foundAlert: ActiveAlert | null = null;
+          for (const key of Object.keys(state)) {
+            const entries = state[key] as Array<{
+              active_alert?: ActiveAlert | null;
+              status?: string;
+            }>;
+            for (const entry of entries) {
+              if (entry.status === 'listening') continue;
+              if (entry.active_alert) {
+                foundAlert = entry.active_alert;
+                break;
+              }
             }
+            if (foundAlert) break;
           }
-          if (foundAlert) break;
-        }
-
-        if (foundAlert) {
-          handleAlertRef.current(foundAlert);
-        }
-      })
-      // 2. Broadcast — 랩탑이 별도 전송하는 경보
-      .on('broadcast', { event: 'active_alert' }, (payload) => {
-        if (!mountedRef.current) return;
-        const alert = payload?.payload?.active_alert as ActiveAlert | undefined;
-        if (alert) handleAlertRef.current(alert);
-      })
-      // 3. remote_alarm_off — 이 이벤트는 스마트폰→랩탑 방향이므로 phone에서는 무시
-      .on('broadcast', { event: 'remote_alarm_off' }, () => {
-        // no-op on phone
-      })
-      .subscribe(async (status) => {
-        console.log("[useAlerts] Channel:", status);
-        if (status === 'SUBSCRIBED' && mountedRef.current) {
-          isSubscribedRef.current = true;
-          
-          await channel.track({ role: 'phone', joined_at: new Date().toISOString() });
-        } else {
-          isSubscribedRef.current = false;
-        }
-      });
+          if (foundAlert) handleAlertRef.current(foundAlert, did);
+        })
+        .on('broadcast', { event: 'active_alert' }, (payload) => {
+          if (!mountedRef.current) return;
+          const alert = payload?.payload?.active_alert as ActiveAlert | undefined;
+          if (alert) handleAlertRef.current(alert, did);
+        })
+        .on('broadcast', { event: 'remote_alarm_off' }, () => {})
+        .subscribe(async (status) => {
+          console.log(`[useAlerts] Channel ${did.slice(0, 8)}:`, status);
+          if (status === 'SUBSCRIBED' && mountedRef.current) {
+            if (did === deviceIdRef.current) {
+              isSubscribedRef.current = true;
+            }
+            await channel.track({ role: 'phone', joined_at: new Date().toISOString() });
+          }
+        });
+    }
 
     return () => {
       isSubscribedRef.current = false;
       channelRef.current = null;
-      supabase.removeChannel(channel);
+      channelsRef.current.forEach((ch) => supabase.removeChannel(ch));
+      channelsRef.current.clear();
     };
-  }, [deviceId]); // handleAlert 제거 — ref로 대체
+  }, [deviceId, allDeviceIds?.join(',')]); // allDeviceIds 변경 시 재구독
 
 
   // ── 컴퓨터 경보음 원격 해제 ──
@@ -263,7 +274,7 @@ export const useAlerts = (deviceId?: string | null) => {
     isLoading,
     error: null,
     markAsRead: { mutate: (id: string) => { markLogAsRead(id); loadAlerts(); } },
-    markAllAsRead: { mutate: () => { const d = deviceIdRef.current; if (d) { markAllLogsAsRead(d); loadAlerts(); } } },
+    markAllAsRead: { mutate: () => { markAllLogsAsRead(); loadAlerts(); } },
     dismissRemoteAlarm,
     dismissAll,
     refreshAlerts: loadAlerts,

@@ -62,9 +62,14 @@ const AlertItem = ({ alert, onMarkRead }: AlertItemProps) => {
               {!alert.is_read && <span className="w-2 h-2 rounded-full" style={{ background: 'hsla(52, 100%, 60%, 1)', boxShadow: '0 0 6px hsla(52, 100%, 60%, 0.5)' }} />}
             </span>
           </div>
-          {alert.message && (
-            <p className="text-xs text-white/80 mt-0.5 truncate font-medium">{alert.message}</p>
-        )}
+          <div className="flex items-center gap-1 mt-0.5">
+            {alert.device_name && (
+              <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-md bg-white/15 text-white/90">{alert.device_name}</span>
+            )}
+            {alert.message && (
+              <p className="text-xs text-white/80 truncate font-medium">{alert.message}</p>
+            )}
+          </div>
       </div>
     </div>
   );
