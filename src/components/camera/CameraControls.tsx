@@ -47,10 +47,10 @@ const CameraControls = ({
 
       <button
         onClick={onTogglePause}
-        className="w-14 h-14 rounded-full flex items-center justify-center text-white bg-white/20 border border-white/30 hover:bg-white/30 transition-colors"
+        className="w-11 h-11 rounded-full flex items-center justify-center text-white bg-white/20 border border-white/30 hover:bg-white/30 transition-colors"
         title={isPaused ? "스트리밍 재개" : "스트리밍 일시정지"}
       >
-        {isPaused ? <Play className="w-7 h-7 ml-0.5" /> : <Pause className="w-7 h-7" />}
+        {isPaused ? <Play className="w-5 h-5 ml-0.5" /> : <Pause className="w-5 h-5" />}
       </button>
 
       <button

@@ -215,16 +215,18 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
     }
   }, [isRecording, remoteStream]);
 
-  // 일시정지/재개
+  // 일시정지/재개 (비디오만 시각적으로 정지, WebRTC 연결은 유지)
   const togglePause = useCallback(() => {
-    if (!remoteStream) return;
-    const videoTracks = remoteStream.getVideoTracks();
-    const audioTracks = remoteStream.getAudioTracks();
+    const video = document.querySelector('video');
+    if (!video) return;
     const newPaused = !isPaused;
-    videoTracks.forEach(t => (t.enabled = !newPaused));
-    audioTracks.forEach(t => (t.enabled = !newPaused));
+    if (newPaused) {
+      video.pause();
+    } else {
+      video.play().catch(() => {});
+    }
     setIsPaused(newPaused);
-  }, [remoteStream, isPaused]);
+  }, [isPaused]);
 
   // 스냅샷 (미리보기로 표시)
   const captureSnapshot = useCallback(() => {
