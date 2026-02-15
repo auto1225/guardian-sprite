@@ -2,7 +2,7 @@ import { useState } from "react";
 import { PhotoAlert } from "@/lib/photoAlertStorage";
 import { stopAlertSound } from "@/hooks/useAlerts";
 import * as Alarm from "@/lib/alarmSound";
-import { X, Download, ChevronLeft, ChevronRight, Maximize2, ZoomIn } from "lucide-react";
+import { X, Download, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 const EVENT_LABELS: Record<string, string> = {
@@ -54,21 +54,21 @@ export default function PhotoAlertOverlay({
   // Fullscreen viewer
   if (fullscreenIndex !== null) {
     return (
-      <div className="fixed inset-0 bg-black z-[60] flex flex-col">
+      <div className="fixed inset-0 bg-black/90 backdrop-blur-2xl z-[60] flex flex-col">
         <div className="flex items-center justify-between p-4">
-          <span className="text-white text-sm">
+          <span className="text-white/90 text-sm">
             {fullscreenIndex + 1} / {alert.photos.length}
           </span>
           <div className="flex gap-3">
             <button
               onClick={() => downloadPhoto(alert.photos[fullscreenIndex], fullscreenIndex)}
-              className="text-white/80 active:text-white"
+              className="text-white/70 active:text-white"
             >
               <Download size={22} />
             </button>
             <button
               onClick={() => setFullscreenIndex(null)}
-              className="text-white/80 active:text-white"
+              className="text-white/70 active:text-white"
             >
               <X size={22} />
             </button>
@@ -78,7 +78,7 @@ export default function PhotoAlertOverlay({
           {fullscreenIndex > 0 && (
             <button
               onClick={() => setFullscreenIndex(fullscreenIndex - 1)}
-              className="absolute left-2 z-10 bg-black/50 rounded-full p-2 text-white"
+              className="absolute left-2 z-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-full p-2 text-white"
             >
               <ChevronLeft size={24} />
             </button>
@@ -91,7 +91,7 @@ export default function PhotoAlertOverlay({
           {fullscreenIndex < alert.photos.length - 1 && (
             <button
               onClick={() => setFullscreenIndex(fullscreenIndex + 1)}
-              className="absolute right-2 z-10 bg-black/50 rounded-full p-2 text-white"
+              className="absolute right-2 z-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-full p-2 text-white"
             >
               <ChevronRight size={24} />
             </button>
@@ -102,13 +102,13 @@ export default function PhotoAlertOverlay({
   }
 
   return (
-    <div className="fixed inset-0 bg-destructive z-50 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-sky-700/60 backdrop-blur-2xl z-50 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-4 shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-destructive-foreground font-black text-xl">🚨 보안 경보</span>
+          <span className="text-white font-black text-xl">🚨 보안 경보</span>
         </div>
-        <button onClick={onDismiss} className="text-destructive-foreground/80 active:text-destructive-foreground">
+        <button onClick={onDismiss} className="text-white/70 active:text-white">
           <X size={24} />
         </button>
       </div>
@@ -116,26 +116,26 @@ export default function PhotoAlertOverlay({
       {/* Receiving progress */}
       {receiving && (
         <div className="px-4 pb-2 shrink-0">
-          <div className="bg-destructive-foreground/20 rounded-lg p-3">
-            <p className="text-destructive-foreground text-sm mb-2">사진 수신 중... {progress}%</p>
-            <Progress value={progress} className="h-2 bg-destructive-foreground/30" />
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-3">
+            <p className="text-white text-sm mb-2">사진 수신 중... {progress}%</p>
+            <Progress value={progress} className="h-2 bg-white/20" />
           </div>
         </div>
       )}
 
       {/* Event info */}
       <div className="px-4 pb-3 shrink-0">
-        <div className="bg-destructive-foreground/20 rounded-xl p-4">
-          <p className="text-destructive-foreground font-bold text-lg">{eventLabel}</p>
-          <p className="text-destructive-foreground/80 text-sm mt-1">
+        <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl p-4">
+          <p className="text-white font-bold text-lg">{eventLabel}</p>
+          <p className="text-white/70 text-sm mt-1">
             {createdDate.toLocaleString("ko-KR")}
           </p>
           {alert.event_type === "camera_motion" && alert.change_percent != null && (
-            <p className="text-destructive-foreground/90 text-sm mt-1">
+            <p className="text-white/80 text-sm mt-1">
               변화율: {alert.change_percent.toFixed(1)}%
             </p>
           )}
-          <p className="text-destructive-foreground/80 text-sm mt-1">
+          <p className="text-white/70 text-sm mt-1">
             사진 {alert.photos.length}장 수신됨
           </p>
         </div>
@@ -145,48 +145,48 @@ export default function PhotoAlertOverlay({
       <div className="flex gap-2 px-4 pb-2 shrink-0">
         <button
           onClick={() => setViewMode("grid")}
-          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${
             viewMode === "grid"
-              ? "bg-destructive-foreground text-destructive"
-              : "bg-destructive-foreground/20 text-destructive-foreground"
+              ? "bg-white/25 text-white border-white/40"
+              : "bg-white/8 text-white/70 border-white/15"
           }`}
         >
           그리드
         </button>
         <button
           onClick={() => setViewMode("slide")}
-          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${
             viewMode === "slide"
-              ? "bg-destructive-foreground text-destructive"
-              : "bg-destructive-foreground/20 text-destructive-foreground"
+              ? "bg-white/25 text-white border-white/40"
+              : "bg-white/8 text-white/70 border-white/15"
           }`}
         >
           슬라이드
         </button>
         <button
           onClick={downloadAll}
-          className="ml-auto px-3 py-1.5 rounded-full text-sm font-medium bg-destructive-foreground/20 text-destructive-foreground flex items-center gap-1"
+          className="ml-auto px-3 py-1.5 rounded-full text-sm font-medium bg-white/10 text-white/80 border border-white/20 flex items-center gap-1"
         >
           <Download size={14} /> 전체 저장
         </button>
       </div>
 
       {/* Photos */}
-      <div className="flex-1 overflow-auto px-4 pb-4">
+      <div className="flex-1 overflow-auto px-4 pb-4 alert-glass-scroll">
         {viewMode === "grid" ? (
           <div className="grid grid-cols-2 gap-2">
             {alert.photos.map((photo, i) => (
               <div
                 key={i}
-                className="relative rounded-lg overflow-hidden bg-black/30 cursor-pointer active:opacity-80"
+                className="relative rounded-xl overflow-hidden bg-black/20 border border-white/15 cursor-pointer active:opacity-80"
                 onClick={() => setFullscreenIndex(i)}
               >
                 <img src={photo} alt={`사진 ${i + 1}`} className="w-full aspect-[4/3] object-cover" />
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
-                  <span className="text-white text-xs">{i + 1}번</span>
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-2">
+                  <span className="text-white/90 text-xs">{i + 1}번</span>
                 </div>
                 <div className="absolute top-2 right-2">
-                  <ZoomIn size={16} className="text-white/70" />
+                  <ZoomIn size={16} className="text-white/60" />
                 </div>
               </div>
             ))}
@@ -197,7 +197,7 @@ export default function PhotoAlertOverlay({
               {slideIndex > 0 && (
                 <button
                   onClick={() => setSlideIndex(slideIndex - 1)}
-                  className="absolute left-0 z-10 bg-black/40 rounded-full p-2 text-white"
+                  className="absolute left-0 z-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-full p-2 text-white"
                 >
                   <ChevronLeft size={20} />
                 </button>
@@ -205,13 +205,13 @@ export default function PhotoAlertOverlay({
               <img
                 src={alert.photos[slideIndex]}
                 alt={`사진 ${slideIndex + 1}`}
-                className="max-w-full max-h-full object-contain rounded-lg cursor-pointer"
+                className="max-w-full max-h-full object-contain rounded-xl border border-white/15 cursor-pointer"
                 onClick={() => setFullscreenIndex(slideIndex)}
               />
               {slideIndex < alert.photos.length - 1 && (
                 <button
                   onClick={() => setSlideIndex(slideIndex + 1)}
-                  className="absolute right-0 z-10 bg-black/40 rounded-full p-2 text-white"
+                  className="absolute right-0 z-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-full p-2 text-white"
                 >
                   <ChevronRight size={20} />
                 </button>
@@ -223,7 +223,7 @@ export default function PhotoAlertOverlay({
                   key={i}
                   onClick={() => setSlideIndex(i)}
                   className={`w-2 h-2 rounded-full transition-colors ${
-                    i === slideIndex ? "bg-destructive-foreground" : "bg-destructive-foreground/30"
+                    i === slideIndex ? "bg-white" : "bg-white/30"
                   }`}
                 />
               ))}
@@ -241,7 +241,7 @@ export default function PhotoAlertOverlay({
               Alarm.addDismissed(alert.id);
               setPhoneDismissed(true);
             }}
-            className="w-full py-3 bg-destructive-foreground/20 text-destructive-foreground border-2 border-destructive-foreground/40 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
+            className="w-full py-3 bg-white/12 backdrop-blur-md text-white border border-white/25 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
           >
             🔕 스마트폰 경보음 해제
           </button>
@@ -249,13 +249,12 @@ export default function PhotoAlertOverlay({
         {onDismissRemoteAlarm && (
           <button
             onClick={() => {
-              // 컴퓨터 경보음 해제 = 전체 경보해제 → 스마트폰 경보음도 해제 + 오버레이 닫기
               stopAlertSound();
               Alarm.addDismissed(alert.id);
               onDismissRemoteAlarm();
               onDismiss();
             }}
-            className="w-full py-4 bg-destructive-foreground text-destructive rounded-full font-bold text-lg shadow-lg active:scale-95 transition-transform"
+            className="w-full py-4 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-full font-bold text-lg shadow-lg active:scale-95 transition-transform"
           >
             🔇 컴퓨터 경보음 해제 (경보 해제)
           </button>

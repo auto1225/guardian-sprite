@@ -18,13 +18,11 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
   const [phoneDismissed, setPhoneDismissed] = useState(false);
   const [capturedImages] = useState<string[]>([]);
 
-  // 컴퓨터 경보음 원격 해제 = 전체 경보해제
   const handleDismissRemoteAlarm = async () => {
     try {
       if (onSendRemoteAlarmOff) {
         await onSendRemoteAlarmOff();
       }
-      // 컴퓨터 경보 해제 = 전체 경보해제 → 스마트폰 경보음도 해제 + 오버레이 닫기
       stopAlertSound();
       Alarm.addDismissed(activeAlert.id);
       toast({ title: "경보 해제", description: "컴퓨터와 스마트폰의 경보가 모두 해제되었습니다." });
@@ -36,12 +34,11 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
   };
 
   return (
-    <div className="fixed inset-0 bg-destructive z-50 flex flex-col">
+    <div className="fixed inset-0 bg-sky-700/60 backdrop-blur-2xl z-50 flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4">
         <div className="flex items-center gap-2">
-          <span className="text-destructive-foreground font-black text-xl italic">Meer</span>
-          <span className="text-destructive-foreground font-black text-xl">COP</span>
+          <span className="text-white font-black text-xl">🚨 보안 경보</span>
         </div>
       </div>
 
@@ -53,9 +50,9 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
               <img
                 src={img}
                 alt={`캡처 ${index + 1}`}
-                className="w-24 h-24 object-cover rounded-lg border-2 border-destructive-foreground/50"
+                className="w-24 h-24 object-cover rounded-xl border border-white/20"
               />
-              <span className="absolute top-1 left-1 bg-black/50 text-white text-xs px-1 rounded">
+              <span className="absolute top-1 left-1 bg-black/40 backdrop-blur-sm text-white text-xs px-1 rounded">
                 -{index * 1}초
               </span>
             </div>
@@ -63,48 +60,48 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
         </div>
       )}
 
-        <>
-          {/* Alert message */}
-          <div className="flex-1 flex flex-col items-center justify-center px-4">
-            <div className="bg-destructive-foreground/20 rounded-2xl p-6 text-center max-w-sm">
-              <p className="text-destructive-foreground font-bold text-lg">
-                {activeAlert.title}
+      <>
+        {/* Alert message */}
+        <div className="flex-1 flex flex-col items-center justify-center px-4">
+          <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-2xl p-6 text-center max-w-sm">
+            <p className="text-white font-bold text-lg">
+              {activeAlert.title}
+            </p>
+            {activeAlert.message && (
+              <p className="text-white/70 text-sm mt-2">
+                {activeAlert.message}
               </p>
-              {activeAlert.message && (
-                <p className="text-destructive-foreground/80 text-sm mt-2">
-                  {activeAlert.message}
-                </p>
-              )}
-            </div>
-
-            <div className="mt-8 w-48 h-48 bg-destructive-foreground/10 rounded-full flex items-center justify-center">
-              <span className="text-6xl">🚨</span>
-            </div>
-          </div>
-
-          {/* Buttons */}
-          <div className="p-6 space-y-3">
-            {!phoneDismissed && (
-              <button
-                onClick={() => {
-                  stopAlertSound();
-                  Alarm.addDismissed(activeAlert.id);
-                  setPhoneDismissed(true);
-                  toast({ title: "스마트폰 경보음 해제", description: "스마트폰의 경보음이 해제되었습니다." });
-                }}
-                className="w-full py-3 bg-destructive-foreground/20 text-destructive-foreground border-2 border-destructive-foreground/40 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
-              >
-                🔕 스마트폰 경보음 해제
-              </button>
             )}
-            <button
-              onClick={handleDismissRemoteAlarm}
-              className="w-full py-3 bg-destructive-foreground text-destructive rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
-            >
-              🔇 컴퓨터 경보음 해제 (경보 해제)
-            </button>
           </div>
-        </>
+
+          <div className="mt-8 w-48 h-48 bg-white/8 border border-white/15 rounded-full flex items-center justify-center">
+            <span className="text-6xl">🚨</span>
+          </div>
+        </div>
+
+        {/* Buttons */}
+        <div className="p-6 space-y-3">
+          {!phoneDismissed && (
+            <button
+              onClick={() => {
+                stopAlertSound();
+                Alarm.addDismissed(activeAlert.id);
+                setPhoneDismissed(true);
+                toast({ title: "스마트폰 경보음 해제", description: "스마트폰의 경보음이 해제되었습니다." });
+              }}
+              className="w-full py-3 bg-white/12 backdrop-blur-md text-white border border-white/25 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
+            >
+              🔕 스마트폰 경보음 해제
+            </button>
+          )}
+          <button
+            onClick={handleDismissRemoteAlarm}
+            className="w-full py-3 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
+          >
+            🔇 컴퓨터 경보음 해제 (경보 해제)
+          </button>
+        </div>
+      </>
     </div>
   );
 };
