@@ -71,16 +71,18 @@ const DeviceCard = ({ device, isSelected, isMain, onSelect }: DeviceCardProps) =
           <StatusIcon active={true} label="Camera" isCamera />
         </div>
 
-        {/* Monitoring status */}
-        <span
-          className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
-            device.is_monitoring
-              ? "bg-status-active text-white"
-              : "bg-muted-foreground text-white"
-          }`}
-        >
-          {device.is_monitoring ? "ON" : "OFF"}
-        </span>
+        {/* Monitoring status - hide for smartphones */}
+        {device.device_type !== "smartphone" && (
+          <span
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
+              device.is_monitoring
+                ? "bg-status-active text-white"
+                : "bg-muted-foreground text-white"
+            }`}
+          >
+            {device.is_monitoring ? "ON" : "OFF"}
+          </span>
+        )}
       </div>
     </div>
   );
