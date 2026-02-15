@@ -149,7 +149,20 @@ export const useDevices = () => {
         .order("created_at", { ascending: true });
       
       if (error) throw error;
-      return data as Device[];
+      
+      // last_seen_at이 2분 이상 지난 디바이스는 offline으로 보정
+      const STALE_THRESHOLD_MS = 2 * 60 * 1000;
+      const now = Date.now();
+      const corrected = (data as Device[]).map((d) => {
+        if (d.device_type === "smartphone") return d; // 스마트폰은 자기 자신이므로 스킵
+        const lastSeen = d.last_seen_at ? new Date(d.last_seen_at).getTime() : 0;
+        if (now - lastSeen > STALE_THRESHOLD_MS && d.status !== "offline") {
+          console.log("[Devices] Stale device corrected to offline:", d.id.slice(0, 8), { lastSeen: d.last_seen_at });
+          return { ...d, status: "offline" as Device["status"], is_network_connected: false };
+        }
+        return d;
+      });
+      return corrected;
     },
     enabled: !!user,
   });
