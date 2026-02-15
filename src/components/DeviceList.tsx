@@ -57,7 +57,7 @@ const DeviceList = ({ isExpanded, onToggle }: DeviceListProps) => {
                   key={device.id}
                   device={device}
                   isSelected={device.id === selectedDeviceId}
-                  isMain={index === 0}
+                  isMain={!!((device.metadata as Record<string, unknown>)?.is_main)}
                   onSelect={() => {
                     setSelectedDeviceId(device.id);
                     onToggle();
