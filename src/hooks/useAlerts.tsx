@@ -70,6 +70,8 @@ export const useAlerts = (deviceId?: string | null) => {
 
   // ── 경보 수신 처리 ──
   const handleAlert = useCallback((alert: ActiveAlert) => {
+    // 음소거 상태면 경보 전체 무시 (UI + 소리 모두)
+    if (Alarm.isMuted()) return;
     if (Alarm.isDismissed(alert.id)) return;
     if (Alarm.isSuppressed()) return;
 
