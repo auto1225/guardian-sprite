@@ -206,7 +206,7 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
       </SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col border-none" style={{ background: 'linear-gradient(180deg, hsla(200, 70%, 55%, 0.85) 0%, hsla(200, 60%, 45%, 0.9) 100%)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
         {/* Header */}
-        <SheetHeader className="p-4 pb-3 border-b border-white/20">
+        <SheetHeader className="p-4 pb-3 pr-12 border-b border-white/20">
           <div className="flex items-center justify-between">
             <SheetTitle className="text-lg font-bold text-white">경보 이력</SheetTitle>
             <div className="flex items-center gap-2">
