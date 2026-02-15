@@ -54,6 +54,8 @@ export function usePhotoReceiver(
   const [alerts, setAlerts] = useState<PhotoAlert[]>([]);
   const pendingRef = useRef<PendingAlert | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const deviceNameMapRef = useRef(deviceNameMap);
+  deviceNameMapRef.current = deviceNameMap;
 
   const loadAlerts = useCallback(() => {
     setAlerts(getPhotoAlerts());
@@ -86,7 +88,7 @@ export function usePhotoReceiver(
         pendingRef.current = {
           id: payload.id,
           device_id: deviceId,
-          device_name: deviceNameMap?.[deviceId] || payload.device_name,
+          device_name: deviceNameMapRef.current?.[deviceId] || payload.device_name,
           event_type: payload.event_type,
           total_photos: payload.total_photos,
           change_percent: payload.change_percent,
@@ -144,7 +146,7 @@ export function usePhotoReceiver(
       supabase.removeChannel(channel);
       channelRef.current = null;
     };
-  }, [user?.id, deviceNameMap, loadAlerts]);
+  }, [user?.id, loadAlerts]);
 
   const dismissLatest = useCallback(() => {
     if (latestAlert) {
