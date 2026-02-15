@@ -94,7 +94,7 @@ function setupPresenceChannelSingleton(
           activeLeaveTimers.delete(device.id);
           supabase
             .from("devices")
-            .select("is_camera_connected")
+            .select("status, is_camera_connected, is_network_connected")
             .eq("id", device.id)
             .maybeSingle()
             .then(({ data }) => {
@@ -102,7 +102,12 @@ function setupPresenceChannelSingleton(
                 if (!oldDevices) return oldDevices;
                 return oldDevices.map((d) =>
                   d.id === device.id
-                    ? { ...d, status: 'offline' as const, is_camera_connected: data?.is_camera_connected ?? d.is_camera_connected }
+                    ? {
+                        ...d,
+                        status: (data?.status ?? 'offline') as Device["status"],
+                        is_network_connected: data?.is_network_connected ?? false,
+                        is_camera_connected: data?.is_camera_connected ?? d.is_camera_connected,
+                      }
                     : d
                 );
               });
