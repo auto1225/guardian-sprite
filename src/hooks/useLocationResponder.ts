@@ -50,16 +50,16 @@ export function useLocationResponder() {
           console.log("[LocationResponder] 📍 Location request detected:", metadata.locate_requested);
 
           try {
-            const position = await getCurrentPosition();
+            const { position, source } = await getLocationWithFallback();
             const { latitude, longitude } = position.coords;
 
-            console.log("[LocationResponder] GPS acquired:", { latitude, longitude });
+            console.log(`[LocationResponder] Location acquired (${source}):`, { latitude, longitude });
 
-            // 기존 metadata를 보존하면서 locate_requested를 null로 초기화
             const existingMeta = metadata as Record<string, unknown>;
             const updatedMeta: Record<string, unknown> = {
               ...existingMeta,
               locate_requested: null,
+              location_source: source,
             };
 
             const { error } = await supabase
@@ -75,12 +75,11 @@ export function useLocationResponder() {
             if (error) {
               console.error("[LocationResponder] DB update failed:", error);
             } else {
-              console.log("[LocationResponder] ✅ Location updated successfully");
+              console.log("[LocationResponder] ✅ Location updated successfully (source:", source, ")");
             }
           } catch (err) {
-            console.error("[LocationResponder] GPS acquisition failed:", err);
+            console.error("[LocationResponder] All location methods failed:", err);
 
-            // GPS 실패 시에도 locate_requested를 null로 초기화 (무한 재시도 방지)
             const existingMeta = (metadata as Record<string, unknown>) || {};
             await supabase
               .from("devices")
@@ -88,7 +87,8 @@ export function useLocationResponder() {
                 metadata: {
                   ...existingMeta,
                   locate_requested: null,
-                  locate_error: "GPS acquisition failed",
+                  locate_error: "All location methods failed",
+                  location_source: null,
                 } as unknown as Json,
               })
               .eq("id", deviceId);
@@ -107,16 +107,29 @@ export function useLocationResponder() {
   }, [smartphoneDevice?.id]);
 }
 
-function getCurrentPosition(): Promise<GeolocationPosition> {
+async function getLocationWithFallback(): Promise<{ position: GeolocationPosition; source: "gps" | "wifi" }> {
+  // 1순위: GPS (High Accuracy)
+  try {
+    const position = await getPosition(true, 10000);
+    return { position, source: "gps" };
+  } catch {
+    console.warn("[LocationResponder] GPS failed, falling back to Wi-Fi/network");
+  }
+
+  // 2순위: Wi-Fi/네트워크 위치
+  const position = await getPosition(false, 15000);
+  return { position, source: "wifi" };
+}
+
+function getPosition(highAccuracy: boolean, timeout: number): Promise<GeolocationPosition> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error("Geolocation not supported"));
       return;
     }
-
     navigator.geolocation.getCurrentPosition(resolve, reject, {
-      enableHighAccuracy: true,
-      timeout: 15000,
+      enableHighAccuracy: highAccuracy,
+      timeout,
       maximumAge: 0,
     });
   });
