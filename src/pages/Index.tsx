@@ -33,6 +33,7 @@ const Index = () => {
   const { devices, selectedDevice, selectedDeviceId, setSelectedDeviceId, isLoading, refreshDeviceStatus } = useDevices();
   const nonSmartphoneDevices = devices.filter(d => d.device_type !== "smartphone");
   const allDeviceIds = nonSmartphoneDevices.map(d => d.id);
+  const deviceNameMap = Object.fromEntries(nonSmartphoneDevices.map(d => [d.id, d.name]));
   const { alerts, activeAlert, unreadCount, dismissRemoteAlarm, dismissAll } = useAlerts(selectedDeviceId, allDeviceIds);
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, subscribe: subscribePush } = usePushSubscription(selectedDeviceId);
   const isMonitoring = selectedDevice?.is_monitoring ?? false;
@@ -59,7 +60,7 @@ const Index = () => {
     viewingAlert: viewingPhotoAlert,
     dismissViewing: dismissViewingPhoto,
     removeAlert: removePhotoAlert,
-  } = usePhotoReceiver(selectedDeviceId);
+  } = usePhotoReceiver(selectedDeviceId, allDeviceIds, deviceNameMap);
 
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
   const [isDeviceListExpanded, setIsDeviceListExpanded] = useState(false);
