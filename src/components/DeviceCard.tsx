@@ -37,31 +37,32 @@ const DeviceCard = ({ device, isSelected, isMain, onSelect }: DeviceCardProps) =
   return (
     <div
       onClick={onSelect}
-      className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${
+      className={`flex items-center gap-2 p-3 rounded-xl cursor-pointer transition-all min-h-[56px] ${
         isSelected
           ? "bg-primary/30 border-2 border-primary-foreground"
           : "bg-sky-dark/30 border border-primary-foreground/20"
       }`}
     >
-      <div className="flex items-center gap-3">
+      {/* Left: name area - truncated */}
+      <div className="flex items-center gap-2 min-w-0 shrink-1">
         {isMain && (
-          <span className="bg-secondary text-secondary-foreground px-2 py-0.5 rounded text-xs font-bold">
+          <span className="bg-secondary text-secondary-foreground px-2 py-0.5 rounded text-xs font-bold shrink-0">
             MAIN
           </span>
         )}
-        <span className="text-primary-foreground font-semibold">{device.name}</span>
-        <Settings className="w-4 h-4 text-primary-foreground/70" />
+        <span className="text-primary-foreground font-semibold truncate text-sm">{device.name}</span>
       </div>
 
-      <div className="flex items-center gap-3">
+      {/* Right: status area - no shrink */}
+      <div className="flex items-center gap-2 shrink-0 ml-auto">
         {/* Battery indicator */}
-        <div className="flex items-center gap-1">
-          <span className="text-primary-foreground text-sm">{batteryLevel}%</span>
-          <Battery className={`w-5 h-5 ${batteryLevel < 20 ? "text-destructive" : "text-primary-foreground"}`} />
+        <div className="flex items-center gap-0.5">
+          <span className="text-primary-foreground text-xs">{batteryLevel}%</span>
+          <Battery className={`w-4 h-4 ${batteryLevel < 20 ? "text-destructive" : "text-primary-foreground"}`} />
         </div>
 
         {/* Status icons */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <StatusIcon active={device.status !== "offline"} label="Laptop" />
           <StatusIcon active={device.is_monitoring} label="MeerCOP" isMeerCOP />
           <StatusIcon active={device.status !== "offline"} label="Network" isNetwork />
@@ -70,7 +71,7 @@ const DeviceCard = ({ device, isSelected, isMain, onSelect }: DeviceCardProps) =
 
         {/* Monitoring status */}
         <span
-          className={`px-3 py-1 rounded-lg text-sm font-semibold ${
+          className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
             device.is_monitoring
               ? "bg-status-active text-white"
               : "bg-muted-foreground text-white"
