@@ -228,13 +228,8 @@ function stopSound() {
   }
   s.oscillators = [];
 
-  // AudioContext를 닫아서 모든 예약된 오실레이터를 즉시 종료
-  // 다음 play() 시 새로 생성됨
-  if (s.audioCtx) {
-    try { s.audioCtx.close(); } catch {}
-    s.audioCtx = null;
-  }
-  s.unlocked = false;
+  // AudioContext는 닫지 않고 유지 (재사용을 위해)
+  // unlock된 AudioContext를 닫으면 해제 버튼 터치 시 재unlock → 재트리거 위험
 }
 
 // ══════════════════════════════════════
