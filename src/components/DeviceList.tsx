@@ -51,7 +51,7 @@ const DeviceList = ({ isExpanded, onToggle }: DeviceListProps) => {
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="space-y-2.5">
+            <div className="max-h-[50vh] overflow-y-auto space-y-2.5 alert-history-scroll">
               {devices.map((device, index) => (
                 <DeviceCard
                   key={device.id}
@@ -60,7 +60,7 @@ const DeviceList = ({ isExpanded, onToggle }: DeviceListProps) => {
                   isMain={index === 0}
                   onSelect={() => {
                     setSelectedDeviceId(device.id);
-                    onToggle(); // 선택 시 자동 닫기
+                    onToggle();
                   }}
                 />
               ))}
