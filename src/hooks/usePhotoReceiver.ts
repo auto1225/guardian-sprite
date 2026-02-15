@@ -8,6 +8,7 @@ import {
   deletePhotoAlert,
   markPhotoAlertRead,
 } from "@/lib/photoAlertStorage";
+import { deleteAlertVideo } from "@/lib/alertVideoStorage";
 
 interface PendingAlert {
   id: string;
@@ -150,6 +151,7 @@ export function usePhotoReceiver(deviceId: string | null | undefined): UsePhotoR
   const removeAlert = useCallback(
     (alertId: string) => {
       deletePhotoAlert(alertId);
+      deleteAlertVideo(alertId).catch(() => {}); // Clean up video from IndexedDB
       if (viewingAlert?.id === alertId) setViewingAlert(null);
       if (latestAlert?.id === alertId) setLatestAlert(null);
       loadAlerts();

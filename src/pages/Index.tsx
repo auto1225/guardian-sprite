@@ -337,6 +337,7 @@ const Index = () => {
       {(latestPhotoAlert || viewingPhotoAlert) && (
         <PhotoAlertOverlay
           alert={(viewingPhotoAlert || latestPhotoAlert)!}
+          isHistoryView={!!viewingPhotoAlert && !latestPhotoAlert}
           onDismiss={() => {
             if (!remoteAlarmDismissed) {
               setShowFallbackAlarmButtons(true);
