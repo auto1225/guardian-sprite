@@ -106,35 +106,21 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const synthRef = useRef<{ stop: () => void } | null>(null);
-  const [serialKey, setSerialKey] = useState<string | null>(null);
+  const [licenses, setLicenses] = useState<{ serial_key: string; device_id: string | null; is_active: boolean }[]>([]);
 
-  // 시리얼 넘버 조회 (기기별 → user_id 폴백)
+  // 시리얼 넘버 전체 조회 (사용자의 모든 라이선스)
   useEffect(() => {
     if (!isOpen) return;
-    const fetchSerial = async () => {
-      // 1) 기기에 연결된 시리얼 조회
-      const { data: byDevice } = await supabase
+    const fetchLicenses = async () => {
+      const { data } = await supabase
         .from("licenses")
-        .select("serial_key")
-        .eq("device_id", device.id)
-        .limit(1)
-        .maybeSingle();
-      if (byDevice) {
-        setSerialKey(byDevice.serial_key);
-        return;
-      }
-      // 2) 기기에 연결 안 되었으면 user_id로 폴백
-      const { data: byUser } = await supabase
-        .from("licenses")
-        .select("serial_key")
+        .select("serial_key, device_id, is_active")
         .eq("user_id", device.user_id)
-        .eq("is_active", true)
-        .limit(1)
-        .maybeSingle();
-      setSerialKey(byUser?.serial_key ?? null);
+        .order("created_at", { ascending: true });
+      setLicenses(data ?? []);
     };
-    fetchSerial();
-  }, [isOpen, device.id, device.user_id]);
+    fetchLicenses();
+  }, [isOpen, device.user_id]);
 
   const meta = (device.metadata as Record<string, unknown>) || {};
 
@@ -365,30 +351,37 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
         {/* Settings list */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3 alert-history-scroll">
 
-          {/* Serial Number */}
-          <div className="rounded-2xl p-4 border border-white/25" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-white font-semibold text-sm block">시리얼 넘버</span>
-                <span className="text-white/80 text-xs">이 기기에 연결된 시리얼</span>
-              </div>
-              {serialKey ? (
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(serialKey);
-                    toast({ title: "복사됨", description: "시리얼 넘버가 클립보드에 복사되었습니다." });
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <span className="font-mono font-bold text-sm tracking-wider" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>
-                    {serialKey}
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-white/60" />
-                </button>
-              ) : (
-                <span className="text-white/60 text-sm">미연결</span>
-              )}
+          {/* Serial Numbers */}
+          <div className="rounded-2xl p-4 border border-white/25 space-y-3" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
+            <div>
+              <span className="text-white font-semibold text-sm block">시리얼 넘버</span>
+              <span className="text-white/80 text-xs">등록된 모든 시리얼 ({licenses.length}개)</span>
             </div>
+            {licenses.length === 0 ? (
+              <span className="text-white/60 text-sm">등록된 시리얼이 없습니다</span>
+            ) : (
+              licenses.map((lic, idx) => (
+                <div key={lic.serial_key} className={`flex items-center justify-between ${idx > 0 ? 'pt-2 border-t border-white/10' : ''}`}>
+                  <div className="flex flex-col">
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(lic.serial_key);
+                        toast({ title: "복사됨", description: "시리얼 넘버가 클립보드에 복사되었습니다." });
+                      }}
+                      className="font-mono font-bold text-sm tracking-wider text-left"
+                      style={{ color: 'hsla(52, 100%, 60%, 1)' }}
+                    >
+                      {lic.serial_key}
+                    </button>
+                    <span className="text-white/60 text-xs mt-0.5">
+                      {lic.device_id === device.id ? '📌 현재 기기' : lic.device_id ? '🔗 다른 기기 연결됨' : '⏳ 미연결'}
+                      {!lic.is_active && ' · 비활성'}
+                    </span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-white/60 shrink-0" />
+                </div>
+              ))
+            )}
           </div>
 
           {/* General Settings Group */}
