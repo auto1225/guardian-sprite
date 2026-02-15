@@ -12,6 +12,9 @@ export interface PhotoAlert {
   photos: string[]; // base64 dataURLs
   created_at: string;
   is_read: boolean;
+  latitude?: number | null;
+  longitude?: number | null;
+  auto_streaming?: boolean;
 }
 
 export function getPhotoAlerts(deviceId?: string): PhotoAlert[] {

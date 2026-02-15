@@ -93,6 +93,7 @@ export function usePhotoReceiver(deviceId: string | null | undefined): UsePhotoR
         if (!pending || pending.id !== payload.id) return;
 
         console.log("[PhotoReceiver] Complete:", payload.total_photos, "photos");
+        console.log("[PhotoReceiver] Location:", payload.latitude, payload.longitude, "Streaming:", payload.auto_streaming);
 
         const completed: PhotoAlert = {
           id: pending.id,
@@ -103,6 +104,9 @@ export function usePhotoReceiver(deviceId: string | null | undefined): UsePhotoR
           photos: pending.photos,
           created_at: pending.created_at,
           is_read: false,
+          latitude: payload.latitude ?? null,
+          longitude: payload.longitude ?? null,
+          auto_streaming: payload.auto_streaming ?? false,
         };
 
         savePhotoAlert(completed);
