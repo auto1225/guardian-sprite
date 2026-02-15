@@ -122,9 +122,9 @@ export function useDeviceHeartbeat() {
         });
         const blob = new Blob([payload], { type: 'application/json' });
         
-        // sendBeacon은 POST를 보내므로 Edge Function으로 처리
+        // sendBeacon은 커스텀 헤더를 지원하지 않으므로 apikey를 쿼리 파라미터로 전달
         const sent = navigator.sendBeacon?.(
-          `${supabaseUrl}/functions/v1/app-close`,
+          `${supabaseUrl}/functions/v1/app-close?apikey=${supabaseKey}`,
           blob
         );
         console.log("[Heartbeat] sendBeacon to app-close:", sent);
