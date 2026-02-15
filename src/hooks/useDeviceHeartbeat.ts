@@ -93,20 +93,28 @@ export function useDeviceHeartbeat() {
       }
     };
 
-    // beforeunload 핸들러
+    // beforeunload 핸들러 - Edge Function을 sendBeacon으로 호출 (POST 지원)
     const handleBeforeUnload = () => {
-      // sendBeacon으로 오프라인 + 감시 OFF 전송
       try {
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-        const headers = { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` };
         
-        // 스마트폰 오프라인
-        const blob1 = new Blob([JSON.stringify({ status: "offline" })], { type: 'application/json' });
-        navigator.sendBeacon?.(`${supabaseUrl}/rest/v1/devices?id=eq.${deviceId}`, blob1);
+        const payload = JSON.stringify({
+          device_id: deviceId,
+          user_id: user?.id,
+        });
+        const blob = new Blob([payload], { type: 'application/json' });
         
-        // 노트북/데스크탑 감시 OFF - sendBeacon은 PATCH를 지원하지 않으므로 동기 fallback
-      } catch {}
+        // sendBeacon은 POST를 보내므로 Edge Function으로 처리
+        const sent = navigator.sendBeacon?.(
+          `${supabaseUrl}/functions/v1/app-close`,
+          blob
+        );
+        console.log("[Heartbeat] sendBeacon to app-close:", sent);
+      } catch (err) {
+        console.error("[Heartbeat] sendBeacon failed:", err);
+      }
+      // Fallback: async setOffline (may not complete)
       setOffline();
     };
 
