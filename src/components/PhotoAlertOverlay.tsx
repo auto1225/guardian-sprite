@@ -209,7 +209,7 @@ export default function PhotoAlertOverlay({
 
         {/* 위치 지도 */}
         {alert.latitude != null && alert.longitude != null && (
-          <AlertLocationMap latitude={alert.latitude} longitude={alert.longitude} />
+          <AlertLocationMap latitude={alert.latitude} longitude={alert.longitude} locationSource={alert.location_source} />
         )}
 
         {/* View mode & save controls */}

@@ -14,6 +14,7 @@ export interface PhotoAlert {
   is_read: boolean;
   latitude?: number | null;
   longitude?: number | null;
+  location_source?: string | null;
   auto_streaming?: boolean;
 }
 

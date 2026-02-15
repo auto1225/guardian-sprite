@@ -107,6 +107,7 @@ export function usePhotoReceiver(deviceId: string | null | undefined): UsePhotoR
           is_read: false,
           latitude: payload.latitude ?? null,
           longitude: payload.longitude ?? null,
+          location_source: payload.location_source ?? null,
           auto_streaming: payload.auto_streaming ?? false,
         };
 
