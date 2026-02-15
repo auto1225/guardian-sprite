@@ -28,6 +28,7 @@ interface ViewerConnection {
   pc: RTCPeerConnection;
   viewerId: string;
   hasRemoteDescription: boolean;
+  pendingIceCandidates: RTCIceCandidateInit[];
 }
 
 export const useWebRTCBroadcaster = ({
@@ -51,7 +52,31 @@ export const useWebRTCBroadcaster = ({
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "stun:stun2.l.google.com:19302" },
+      { urls: "stun:stun3.l.google.com:19302" },
+      { urls: "stun:stun4.l.google.com:19302" },
+      {
+        urls: "turn:a.relay.metered.ca:80",
+        username: "e8dd65e92f3940c5b29dbd07",
+        credential: "mJLhNuL2ZiSJabcV",
+      },
+      {
+        urls: "turn:a.relay.metered.ca:80?transport=tcp",
+        username: "e8dd65e92f3940c5b29dbd07",
+        credential: "mJLhNuL2ZiSJabcV",
+      },
+      {
+        urls: "turn:a.relay.metered.ca:443",
+        username: "e8dd65e92f3940c5b29dbd07",
+        credential: "mJLhNuL2ZiSJabcV",
+      },
+      {
+        urls: "turns:a.relay.metered.ca:443",
+        username: "e8dd65e92f3940c5b29dbd07",
+        credential: "mJLhNuL2ZiSJabcV",
+      },
     ],
+    iceCandidatePoolSize: 10,
   };
 
   const cleanup = useCallback(() => {
@@ -208,7 +233,7 @@ export const useWebRTCBroadcaster = ({
 
       // Create peer connection for this viewer
       const pc = createPeerConnectionForViewer(viewerId);
-      viewerConnectionsRef.current.set(viewerId, { pc, viewerId, hasRemoteDescription: false });
+      viewerConnectionsRef.current.set(viewerId, { pc, viewerId, hasRemoteDescription: false, pendingIceCandidates: [] });
       setViewerCount(viewerConnectionsRef.current.size);
 
       try {
@@ -307,30 +332,31 @@ export const useWebRTCBroadcaster = ({
             }));
             viewerConnection.hasRemoteDescription = true;
             console.log("[WebRTC Broadcaster] ✅ Remote description set successfully for viewer:", viewerId);
-          } else {
-            console.error("[WebRTC Broadcaster] ❌ Invalid answer SDP format:", record.data);
-          }
-        } else if (record.type === "ice-candidate" && record.data.candidate) {
-          // ICE candidate는 remote description 설정 후에만 추가
-          if (!hasRemoteDescription) {
-            console.log("[WebRTC Broadcaster] ⏳ Buffering ICE candidate (remote description not set yet)");
-            // 잠시 후 다시 시도
-            setTimeout(async () => {
-              const conn = viewerConnectionsRef.current.get(viewerId);
-              if (conn?.hasRemoteDescription) {
+            
+            // Flush pending ICE candidates
+            if (viewerConnection.pendingIceCandidates.length > 0) {
+              console.log("[WebRTC Broadcaster] Flushing", viewerConnection.pendingIceCandidates.length, "pending ICE candidates");
+              for (const candidate of viewerConnection.pendingIceCandidates) {
                 try {
-                  await conn.pc.addIceCandidate(new RTCIceCandidate(record.data.candidate!));
-                  console.log("[WebRTC Broadcaster] ✅ Added buffered ICE candidate");
+                  await pc.addIceCandidate(new RTCIceCandidate(candidate));
                 } catch (e) {
                   console.warn("[WebRTC Broadcaster] Failed to add buffered ICE candidate:", e);
                 }
               }
-            }, 500);
-            return;
+              viewerConnection.pendingIceCandidates = [];
+            }
+          } else {
+            console.error("[WebRTC Broadcaster] ❌ Invalid answer SDP format:", record.data);
           }
-          console.log("[WebRTC Broadcaster] Adding ICE candidate from viewer:", viewerId);
-          await pc.addIceCandidate(new RTCIceCandidate(record.data.candidate));
-          console.log("[WebRTC Broadcaster] ✅ ICE candidate added");
+        } else if (record.type === "ice-candidate" && record.data.candidate) {
+          if (!viewerConnection.hasRemoteDescription) {
+            console.log("[WebRTC Broadcaster] ⏳ Buffering ICE candidate (remote description not set yet)");
+            viewerConnection.pendingIceCandidates.push(record.data.candidate);
+          } else {
+            console.log("[WebRTC Broadcaster] Adding ICE candidate from viewer:", viewerId);
+            await pc.addIceCandidate(new RTCIceCandidate(record.data.candidate));
+            console.log("[WebRTC Broadcaster] ✅ ICE candidate added");
+          }
         }
       } catch (error) {
         console.error("[WebRTC Broadcaster] Error handling signaling message:", error);

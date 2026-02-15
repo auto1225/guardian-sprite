@@ -42,7 +42,31 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "stun:stun2.l.google.com:19302" },
+      { urls: "stun:stun3.l.google.com:19302" },
+      { urls: "stun:stun4.l.google.com:19302" },
+      {
+        urls: "turn:a.relay.metered.ca:80",
+        username: "e8dd65e92f3940c5b29dbd07",
+        credential: "mJLhNuL2ZiSJabcV",
+      },
+      {
+        urls: "turn:a.relay.metered.ca:80?transport=tcp",
+        username: "e8dd65e92f3940c5b29dbd07",
+        credential: "mJLhNuL2ZiSJabcV",
+      },
+      {
+        urls: "turn:a.relay.metered.ca:443",
+        username: "e8dd65e92f3940c5b29dbd07",
+        credential: "mJLhNuL2ZiSJabcV",
+      },
+      {
+        urls: "turns:a.relay.metered.ca:443",
+        username: "e8dd65e92f3940c5b29dbd07",
+        credential: "mJLhNuL2ZiSJabcV",
+      },
     ],
+    iceCandidatePoolSize: 10,
   };
 
   const cleanup = useCallback(() => {
