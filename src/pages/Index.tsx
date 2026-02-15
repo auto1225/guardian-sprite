@@ -346,6 +346,8 @@ const Index = () => {
             } else {
               dismissPhotoAlert();
             }
+            // activeAlert도 함께 해제 — PhotoAlertOverlay 닫은 후 AlertMode가 다시 뜨는 것 방지
+            dismissAll();
           }}
           receiving={photoReceiving}
           progress={photoProgress}
