@@ -33,7 +33,14 @@ export function useSmartphoneRegistration() {
 
         if (existing && existing.length > 0) {
           console.log("[SmartphoneReg] Already registered:", existing[0].id.slice(0, 8));
+          // 앱 시작 시 항상 감시 OFF 상태로 리셋 (터치 인터랙션 확보를 위해)
+          await supabase
+            .from("devices")
+            .update({ is_monitoring: false, status: "online", last_seen_at: new Date().toISOString() })
+            .eq("id", existing[0].id);
+          console.log("[SmartphoneReg] ♻️ Reset monitoring to OFF on app start");
           registeredRef.current = true;
+          queryClient.invalidateQueries({ queryKey: ["devices", user.id] });
           return;
         }
 
