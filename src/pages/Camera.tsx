@@ -328,11 +328,18 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-      <div className="bg-primary rounded-2xl w-full max-w-[400px] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div
+        className="rounded-2xl w-full max-w-[400px] overflow-hidden flex flex-col border border-white/25 shadow-2xl"
+        style={{
+          background: 'linear-gradient(180deg, hsla(200, 70%, 55%, 0.88) 0%, hsla(210, 60%, 40%, 0.92) 100%)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+        }}
+      >
         <CameraHeader onClose={handleClose} deviceName={device.name} />
 
-        <div className="p-4 flex flex-col gap-4">
+        <div className="px-4 pb-2 flex flex-col gap-3">
           <CameraViewer
             isStreaming={isStreaming}
             isConnecting={isConnecting || isWaitingForCamera}
@@ -342,13 +349,13 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
             onRetry={startStreaming}
             onCapture={captureSnapshot}
           />
-
-          <CameraControls
-            isStreaming={isStreaming}
-            onStart={startStreaming}
-            onStop={stopStreaming}
-          />
         </div>
+
+        <CameraControls
+          isStreaming={isStreaming}
+          onStart={startStreaming}
+          onStop={stopStreaming}
+        />
       </div>
     </div>
   );
