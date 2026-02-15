@@ -453,13 +453,13 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     };
 
     try {
-      // 이전 시그널링 메시지 정리 (don't await to avoid delay)
-      supabase
+      // 이전 시그널링 메시지 정리 — await 필수! viewer-join이 삭제되는 레이스 컨디션 방지
+      await supabase
         .from("webrtc_signaling")
         .delete()
         .eq("device_id", deviceId)
-        .eq("sender_type", "viewer")
-        .then(() => console.log("[WebRTC Viewer] Old signaling cleaned"));
+        .eq("sender_type", "viewer");
+      console.log("[WebRTC Viewer] Old signaling cleaned");
 
       // PeerConnection 생성
       peerConnectionRef.current = createPeerConnection();
