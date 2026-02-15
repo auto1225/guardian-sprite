@@ -1,9 +1,10 @@
-import { useState, useMemo } from "react";
-import { Bell, Image, Trash2, CheckCheck } from "lucide-react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { Bell, Image, Trash2, CheckCheck, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Square, CheckSquare, MinusSquare } from "lucide-react";
 import { useAlerts } from "@/hooks/useAlerts";
 import AlertItem from "./AlertItem";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { getPhotoAlerts, PhotoAlert, deletePhotoAlert, markPhotoAlertRead } from "@/lib/photoAlertStorage";
+import { deleteActivityLogs, markLogsAsReadByIds } from "@/lib/localActivityLogs";
 import { useDevices } from "@/hooks/useDevices";
 
 interface AlertPanelProps {
@@ -25,12 +26,17 @@ interface UnifiedAlert {
 
 type FilterType = "all" | "photo" | "activity";
 
+const ITEMS_PER_PAGE = 10;
+
 const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
-  const { alerts: activityAlerts, unreadCount: activityUnread, markAsRead, markAllAsRead } = useAlerts(deviceId);
+  const { alerts: activityAlerts, unreadCount: activityUnread, markAsRead, markAllAsRead, refreshAlerts } = useAlerts(deviceId);
   const { devices } = useDevices();
   const [refreshKey, setRefreshKey] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [filter, setFilter] = useState<FilterType>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isSelectMode, setIsSelectMode] = useState(false);
 
   const photoAlerts = useMemo(() => {
     void refreshKey;
@@ -85,6 +91,39 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
     );
   }, [activityAlerts, photoAlerts, devices, filter]);
 
+  const totalPages = Math.max(1, Math.ceil(unifiedAlerts.length / ITEMS_PER_PAGE));
+
+  // Reset page when filter changes
+  useEffect(() => { setCurrentPage(1); setSelectedIds(new Set()); }, [filter]);
+
+  // Clamp page
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [totalPages, currentPage]);
+
+  const pageAlerts = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return unifiedAlerts.slice(start, start + ITEMS_PER_PAGE);
+  }, [unifiedAlerts, currentPage]);
+
+  // Auto-mark page items as read when page is viewed
+  useEffect(() => {
+    if (!isOpen || pageAlerts.length === 0) return;
+    const unreadActivity = pageAlerts.filter(a => !a.is_read && a.type === "activity");
+    const unreadPhoto = pageAlerts.filter(a => !a.is_read && a.type === "photo");
+
+    if (unreadActivity.length > 0) {
+      markLogsAsReadByIds(unreadActivity.map(a => a.id));
+      refreshAlerts();
+    }
+    if (unreadPhoto.length > 0) {
+      unreadPhoto.forEach(a => {
+        if (a.photoAlert) markPhotoAlertRead(a.photoAlert.id);
+      });
+      setRefreshKey(k => k + 1);
+    }
+  }, [isOpen, currentPage, pageAlerts.length]);
+
   const handleMarkAllRead = () => {
     markAllAsRead.mutate();
     photoAlerts.forEach(a => {
@@ -98,14 +137,63 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
     setRefreshKey(k => k + 1);
   };
 
+  // Selection helpers
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    const ids = pageAlerts.map(a => a.id);
+    setSelectedIds(new Set(ids));
+  };
+
+  const deselectAll = () => setSelectedIds(new Set());
+
+  const allSelected = pageAlerts.length > 0 && pageAlerts.every(a => selectedIds.has(a.id));
+  const someSelected = pageAlerts.some(a => selectedIds.has(a.id));
+
+  const handleDeleteSelected = () => {
+    const activityIds: string[] = [];
+    const photoIds: string[] = [];
+    selectedIds.forEach(id => {
+      const alert = unifiedAlerts.find(a => a.id === id);
+      if (!alert) return;
+      if (alert.type === "photo" && alert.photoAlert) {
+        photoIds.push(alert.photoAlert.id);
+      } else if (alert.type === "activity") {
+        activityIds.push(alert.id);
+      }
+    });
+    if (activityIds.length > 0) { deleteActivityLogs(activityIds); refreshAlerts(); }
+    photoIds.forEach(id => deletePhotoAlert(id));
+    if (photoIds.length > 0) setRefreshKey(k => k + 1);
+    setSelectedIds(new Set());
+  };
+
   const filterButtons: { key: FilterType; label: string }[] = [
     { key: "all", label: "전체" },
     { key: "photo", label: "📸 사진" },
     { key: "activity", label: "🔔 경보" },
   ];
 
+  // Pagination helpers
+  const goToPage = (p: number) => {
+    setCurrentPage(Math.max(1, Math.min(totalPages, p)));
+    setSelectedIds(new Set());
+  };
+
+  const pageGroup = Math.floor((currentPage - 1) / 10);
+  const pageGroupStart = pageGroup * 10 + 1;
+  const pageGroupEnd = Math.min(pageGroupStart + 9, totalPages);
+  const pageNumbers: number[] = [];
+  for (let i = pageGroupStart; i <= pageGroupEnd; i++) pageNumbers.push(i);
+
   return (
-    <Sheet open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (open) setRefreshKey(k => k + 1); }}>
+    <Sheet open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (open) { setRefreshKey(k => k + 1); setSelectedIds(new Set()); setIsSelectMode(false); } }}>
       <SheetTrigger asChild>
         <button className="relative p-2 text-primary-foreground">
           <Bell className="w-6 h-6" />
@@ -121,16 +209,25 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
         <SheetHeader className="p-4 pb-3 border-b border-white/20">
           <div className="flex items-center justify-between">
             <SheetTitle className="text-lg font-bold text-white">경보 이력</SheetTitle>
-            {totalUnread > 0 && (
+            <div className="flex items-center gap-2">
               <button
-                onClick={handleMarkAllRead}
-                className="flex items-center gap-1 text-sm font-medium"
-                style={{ color: 'hsla(52, 100%, 60%, 1)' }}
+                onClick={() => { setIsSelectMode(!isSelectMode); setSelectedIds(new Set()); }}
+                className="text-xs font-medium px-2 py-1 rounded-lg transition-all"
+                style={{ background: isSelectMode ? 'hsla(52, 100%, 60%, 0.9)' : 'hsla(0,0%,100%,0.15)', color: isSelectMode ? '#333' : 'white' }}
               >
-                <CheckCheck className="w-4 h-4" />
-                모두 읽음
+                {isSelectMode ? "취소" : "선택"}
               </button>
-            )}
+              {totalUnread > 0 && !isSelectMode && (
+                <button
+                  onClick={handleMarkAllRead}
+                  className="flex items-center gap-1 text-xs font-medium"
+                  style={{ color: 'hsla(52, 100%, 60%, 1)' }}
+                >
+                  <CheckCheck className="w-3.5 h-3.5" />
+                  모두 읽음
+                </button>
+              )}
+            </div>
           </div>
         </SheetHeader>
 
@@ -152,7 +249,30 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
           ))}
         </div>
 
-        {/* Scrollable list */}
+        {/* Select mode toolbar */}
+        {isSelectMode && unifiedAlerts.length > 0 && (
+          <div className="flex items-center justify-between px-4 py-2 border-b border-white/15" style={{ background: 'hsla(0,0%,0%,0.15)' }}>
+            <button
+              onClick={allSelected ? deselectAll : selectAll}
+              className="flex items-center gap-1.5 text-xs font-medium text-white/90"
+            >
+              {allSelected ? <CheckSquare className="w-4 h-4" /> : someSelected ? <MinusSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+              {allSelected ? "전체 해제" : "전체 선택"}
+            </button>
+            {selectedIds.size > 0 && (
+              <button
+                onClick={handleDeleteSelected}
+                className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg"
+                style={{ background: 'hsla(0, 70%, 55%, 0.8)', color: 'white' }}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {selectedIds.size}개 삭제
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* List */}
         <div className="flex-1 overflow-y-auto p-4 space-y-2 alert-history-scroll">
           {unifiedAlerts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-white/50">
@@ -160,39 +280,96 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
               <p className="text-sm font-semibold text-white/70">경보 이력이 없습니다</p>
             </div>
           ) : (
-            unifiedAlerts.map((alert) => (
-              <div key={alert.id}>
-                {alert.type === "photo" && alert.photoAlert ? (
-                  <PhotoAlertItem
-                    alert={alert}
-                    onView={() => {
-                      if (alert.photoAlert) {
-                        markPhotoAlertRead(alert.photoAlert.id);
-                        setRefreshKey(k => k + 1);
-                        onViewPhoto?.(alert.photoAlert);
-                        setIsOpen(false);
-                      }
-                    }}
-                    onDelete={() => {
-                      if (alert.photoAlert) handleDeletePhoto(alert.photoAlert.id);
-                    }}
-                  />
-                ) : alert.activityLog ? (
-                  <AlertItem
-                    alert={alert.activityLog}
-                    onMarkRead={(id) => markAsRead.mutate(id)}
-                  />
-                ) : null}
+            pageAlerts.map((alert) => (
+              <div key={alert.id} className="flex items-center gap-2">
+                {isSelectMode && (
+                  <button onClick={() => toggleSelect(alert.id)} className="flex-shrink-0 text-white/80">
+                    {selectedIds.has(alert.id) ? <CheckSquare className="w-5 h-5" style={{ color: 'hsla(52, 100%, 60%, 1)' }} /> : <Square className="w-5 h-5" />}
+                  </button>
+                )}
+                <div className="flex-1 min-w-0">
+                  {alert.type === "photo" && alert.photoAlert ? (
+                    <PhotoAlertItem
+                      alert={alert}
+                      onView={() => {
+                        if (alert.photoAlert) {
+                          markPhotoAlertRead(alert.photoAlert.id);
+                          setRefreshKey(k => k + 1);
+                          onViewPhoto?.(alert.photoAlert);
+                          setIsOpen(false);
+                        }
+                      }}
+                      onDelete={() => {
+                        if (alert.photoAlert) handleDeletePhoto(alert.photoAlert.id);
+                      }}
+                      hideDelete={isSelectMode}
+                    />
+                  ) : alert.activityLog ? (
+                    <AlertItem
+                      alert={alert.activityLog}
+                      onMarkRead={(id) => markAsRead.mutate(id)}
+                    />
+                  ) : null}
+                </div>
               </div>
             ))
           )}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-1 px-4 py-3 border-t border-white/20" style={{ background: 'hsla(0,0%,0%,0.1)' }}>
+            {/* First */}
+            <button onClick={() => goToPage(1)} disabled={currentPage === 1}
+              className="p-1.5 rounded-lg text-white/80 disabled:text-white/30 hover:bg-white/15 disabled:hover:bg-transparent transition-colors">
+              <ChevronsLeft className="w-4 h-4" />
+            </button>
+            {/* Prev 10 */}
+            <button onClick={() => goToPage(pageGroupStart - 10)} disabled={pageGroupStart <= 1}
+              className="p-1.5 rounded-lg text-white/80 disabled:text-white/30 hover:bg-white/15 disabled:hover:bg-transparent transition-colors">
+              <ChevronLeft className="w-4 h-4" /><ChevronLeft className="w-4 h-4 -ml-3" />
+            </button>
+            {/* Prev */}
+            <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}
+              className="p-1.5 rounded-lg text-white/80 disabled:text-white/30 hover:bg-white/15 disabled:hover:bg-transparent transition-colors">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            {/* Page numbers */}
+            {pageNumbers.map(p => (
+              <button key={p} onClick={() => goToPage(p)}
+                className={`w-7 h-7 rounded-lg text-xs font-bold transition-all ${
+                  p === currentPage ? "text-slate-800 shadow-sm" : "text-white/80 hover:bg-white/15"
+                }`}
+                style={p === currentPage ? { background: 'hsla(52, 100%, 60%, 0.9)' } : undefined}
+              >
+                {p}
+              </button>
+            ))}
+
+            {/* Next */}
+            <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}
+              className="p-1.5 rounded-lg text-white/80 disabled:text-white/30 hover:bg-white/15 disabled:hover:bg-transparent transition-colors">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            {/* Next 10 */}
+            <button onClick={() => goToPage(pageGroupEnd + 1)} disabled={pageGroupEnd >= totalPages}
+              className="p-1.5 rounded-lg text-white/80 disabled:text-white/30 hover:bg-white/15 disabled:hover:bg-transparent transition-colors">
+              <ChevronRight className="w-4 h-4" /><ChevronRight className="w-4 h-4 -ml-3" />
+            </button>
+            {/* Last */}
+            <button onClick={() => goToPage(totalPages)} disabled={currentPage === totalPages}
+              className="p-1.5 rounded-lg text-white/80 disabled:text-white/30 hover:bg-white/15 disabled:hover:bg-transparent transition-colors">
+              <ChevronsRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   );
 };
 
-function PhotoAlertItem({ alert, onView, onDelete }: { alert: UnifiedAlert; onView: () => void; onDelete: () => void }) {
+function PhotoAlertItem({ alert, onView, onDelete, hideDelete }: { alert: UnifiedAlert; onView: () => void; onDelete: () => void; hideDelete?: boolean }) {
   const photo = alert.photoAlert;
   const thumbnail = photo?.photos?.[0];
 
@@ -205,7 +382,6 @@ function PhotoAlertItem({ alert, onView, onDelete }: { alert: UnifiedAlert; onVi
       }`}
       style={{ backdropFilter: 'blur(12px)' }}
     >
-      {/* Thumbnail */}
       <button
         onClick={onView}
         className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center border border-white/25"
@@ -218,7 +394,6 @@ function PhotoAlertItem({ alert, onView, onDelete }: { alert: UnifiedAlert; onVi
         )}
       </button>
 
-      {/* Content */}
       <button onClick={onView} className="flex-1 min-w-0 text-left">
         <div className="flex items-center justify-between gap-2">
           <h4 className={`font-bold text-sm truncate ${alert.is_read ? "text-white/70" : "text-white"}`}>
@@ -228,27 +403,23 @@ function PhotoAlertItem({ alert, onView, onDelete }: { alert: UnifiedAlert; onVi
             <span className="text-[11px] text-white/70 whitespace-nowrap font-medium">
               {new Date(alert.created_at).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
             </span>
-            {!alert.is_read && <span className="w-2 h-2 rounded-full" style={{ background: 'hsla(52, 100%, 60%, 1)', boxShadow: '0 0 6px hsla(52, 100%, 60%, 0.5)' }} />}
           </span>
         </div>
         <div className="flex items-center gap-1 mt-0.5">
-          {alert.device_name && (
-            <span className="text-xs text-white/80 font-medium">{alert.device_name}</span>
-          )}
+          {alert.device_name && <span className="text-xs text-white/80 font-medium">{alert.device_name}</span>}
           {alert.device_name && alert.message && <span className="text-xs text-white/50">·</span>}
-          {alert.message && (
-            <span className="text-xs text-white/80 truncate font-medium">{alert.message}</span>
-          )}
+          {alert.message && <span className="text-xs text-white/80 truncate font-medium">{alert.message}</span>}
         </div>
       </button>
 
-      {/* Delete */}
-      <button
-        onClick={(e) => { e.stopPropagation(); onDelete(); }}
-        className="p-1 text-white/50 hover:text-red-300 transition-colors flex-shrink-0"
-      >
-        <Trash2 className="w-3.5 h-3.5" />
-      </button>
+      {!hideDelete && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="p-1 text-white/50 hover:text-red-300 transition-colors flex-shrink-0"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      )}
     </div>
   );
 }

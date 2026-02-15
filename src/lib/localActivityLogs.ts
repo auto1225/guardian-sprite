@@ -137,3 +137,40 @@ export function markAllLogsAsRead(deviceId: string): void {
     console.error("Error marking all logs as read:", error);
   }
 }
+
+export function deleteActivityLog(logId: string): void {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return;
+    const logs: LocalActivityLog[] = JSON.parse(stored);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(logs.filter(l => l.id !== logId)));
+  } catch (error) {
+    console.error("Error deleting activity log:", error);
+  }
+}
+
+export function deleteActivityLogs(logIds: string[]): void {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return;
+    const idSet = new Set(logIds);
+    const logs: LocalActivityLog[] = JSON.parse(stored);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(logs.filter(l => !idSet.has(l.id))));
+  } catch (error) {
+    console.error("Error deleting activity logs:", error);
+  }
+}
+
+export function markLogsAsReadByIds(logIds: string[]): void {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return;
+    const idSet = new Set(logIds);
+    const logs: LocalActivityLog[] = JSON.parse(stored);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(
+      logs.map(l => idSet.has(l.id) ? { ...l, is_read: true } : l)
+    ));
+  } catch (error) {
+    console.error("Error marking logs as read:", error);
+  }
+}
