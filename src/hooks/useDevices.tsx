@@ -47,7 +47,7 @@ export const useDevices = () => {
       
       if (error) throw error;
       
-      const STALE_THRESHOLD_MS = 2 * 60 * 1000;
+      const STALE_THRESHOLD_MS = 3 * 60 * 1000;
       const now = Date.now();
       const corrected = (data as Device[]).map((d) => {
         if (d.device_type === "smartphone") return d;
