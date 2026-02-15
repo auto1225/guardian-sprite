@@ -452,10 +452,10 @@ serve(async (req) => {
       const { device_id, title, body: msgBody, tag, repeat = 5, interval = 5000 } = body;
       if (!device_id) return jsonResponse({ error: "device_id required" }, 400);
 
-      // 디바이스 소유자 확인
+      // 디바이스 소유자 확인 + 기기 이름 조회
       const { data: device } = await supabaseAdmin
         .from("devices")
-        .select("user_id")
+        .select("user_id, name")
         .eq("id", device_id)
         .single();
 
@@ -487,13 +487,19 @@ serve(async (req) => {
           await new Promise((resolve) => setTimeout(resolve, delayMs));
         }
 
+        const deviceName = device.name || "알 수 없는 기기";
+        const defaultTitle = `🚨 ${deviceName}에서 경보 발생`;
+        const defaultBody = `${deviceName}에서 새로운 경보가 감지되었습니다!`;
+
         const payload = JSON.stringify({
-          title: title || "🚨 경보 알림",
-          body: msgBody || "새로운 경보가 발생했습니다!",
-          tag: tag || "meercop-alert",
+          title: title || defaultTitle,
+          body: msgBody || defaultBody,
+          tag: tag || `meercop-alert-${device_id}`,
           icon: "/pwa-192x192.png",
           round: round + 1,
           maxRound: maxRepeat,
+          device_id,
+          device_name: deviceName,
         });
 
         for (const sub of subs) {

@@ -6,6 +6,7 @@ export type PhotoEventType = "camera_motion" | "keyboard" | "mouse" | "lid" | "p
 export interface PhotoAlert {
   id: string;
   device_id: string;
+  device_name?: string;
   event_type: PhotoEventType;
   total_photos: number;
   change_percent?: number;
