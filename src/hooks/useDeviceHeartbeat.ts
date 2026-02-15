@@ -78,17 +78,34 @@ export function useDeviceHeartbeat() {
     heartbeatRef.current = setInterval(sendHeartbeat, 30000);
 
     // visibilitychange 핸들러
-    const handleVisibility = () => {
+    const handleVisibility = async () => {
       if (document.visibilityState === "visible") {
         setOnline();
         // heartbeat 재시작
         if (heartbeatRef.current) clearInterval(heartbeatRef.current);
         heartbeatRef.current = setInterval(sendHeartbeat, 30000);
       } else {
-        setOffline();
-        if (heartbeatRef.current) {
-          clearInterval(heartbeatRef.current);
-          heartbeatRef.current = null;
+        // 감시 중이면 백그라운드 전환 시 offline으로 바꾸지 않음
+        // (다른 앱 사용 중에도 감시 유지)
+        const { data } = await supabase
+          .from("devices")
+          .select("is_monitoring")
+          .eq("user_id", user!.id)
+          .neq("device_type", "smartphone")
+          .eq("is_monitoring", true)
+          .limit(1);
+        
+        const anyMonitoring = data && data.length > 0;
+        
+        if (anyMonitoring) {
+          console.log("[Heartbeat] 🟡 Background but monitoring active — staying online");
+          // heartbeat는 유지하여 last_seen_at 갱신 계속
+        } else {
+          setOffline();
+          if (heartbeatRef.current) {
+            clearInterval(heartbeatRef.current);
+            heartbeatRef.current = null;
+          }
         }
       }
     };
