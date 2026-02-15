@@ -166,9 +166,10 @@ export const useDevices = () => {
     const dbChannelName = `devices-db-${user.id}`;
     const existingDbCh = supabase.getChannels().find(ch => ch.topic === `realtime:${dbChannelName}`);
     if (existingDbCh) {
-      activeDbChannel = existingDbCh as ReturnType<typeof supabase.channel>;
-    } else {
-      activeDbChannel = supabase
+      supabase.removeChannel(existingDbCh);
+    }
+
+    activeDbChannel = supabase
         .channel(dbChannelName, { config: { broadcast: { self: false } } })
         .on("postgres_changes", { event: "UPDATE", schema: "public", table: "devices", filter: `user_id=eq.${user.id}` },
           (payload) => {
@@ -205,7 +206,6 @@ export const useDevices = () => {
         .subscribe((status) => {
           if (status === "CHANNEL_ERROR") console.error("[Realtime] DB channel error");
         });
-    }
 
     // ── 단일 Presence 채널: user-presence-{userId} ──
     // 모든 노트북이 이 채널에 join하고 key=deviceId로 track
