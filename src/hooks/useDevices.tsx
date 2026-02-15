@@ -180,10 +180,11 @@ export const useDevices = () => {
 
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
 
-  // Auto-select first device when devices load
+  // Auto-select first non-smartphone device when devices load
   useEffect(() => {
     if (devices.length > 0 && !selectedDeviceId) {
-      setSelectedDeviceId(devices[0].id);
+      const nonSmartphone = devices.find(d => d.device_type !== "smartphone");
+      setSelectedDeviceId(nonSmartphone?.id ?? devices[0].id);
     }
   }, [devices, selectedDeviceId]);
 
