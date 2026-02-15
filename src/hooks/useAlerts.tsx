@@ -71,6 +71,7 @@ export const useAlerts = (deviceId?: string | null) => {
   // ── 경보 수신 처리 ──
   const handleAlert = useCallback((alert: ActiveAlert) => {
     if (Alarm.isDismissed(alert.id)) return;
+    if (Alarm.isSuppressed()) return;
 
     const alertTime = new Date(alert.created_at).getTime();
 
@@ -244,11 +245,12 @@ export const useAlerts = (deviceId?: string | null) => {
   // ── 전체 해제 (스마트폰 UI 닫기) ──
   const dismissAll = useCallback(() => {
     Alarm.stop();           // isAlarming=false, pendingPlay=false, gen++
+    Alarm.suppressFor(10_000); // 10초간 새 경보 수신 억제 (원격 해제 신호 전달 대기)
     const id = activeAlertRef.current?.id;
     if (id) Alarm.addDismissed(id);
     safeSetActiveAlert(null);
     activeAlertRef.current = null;
-    console.log("[useAlerts] ✅ All dismissed");
+    console.log("[useAlerts] ✅ All dismissed (suppressed 10s)");
   }, [safeSetActiveAlert]);
 
   return {
