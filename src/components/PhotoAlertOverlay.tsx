@@ -238,6 +238,7 @@ export default function PhotoAlertOverlay({
           <button
             onClick={() => {
               stopAlertSound();
+              Alarm.addDismissed(alert.id);
               setPhoneDismissed(true);
             }}
             className="w-full py-3 bg-destructive-foreground/20 text-destructive-foreground border-2 border-destructive-foreground/40 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
