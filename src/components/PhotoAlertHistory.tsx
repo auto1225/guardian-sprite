@@ -1,5 +1,5 @@
 import { PhotoAlert } from "@/lib/photoAlertStorage";
-import { X, Trash2, ChevronRight, Image } from "lucide-react";
+import { X, Trash2, ChevronRight, Image, MapPin } from "lucide-react";
 
 const EVENT_LABELS: Record<string, string> = {
   camera_motion: "움직임 감지",
@@ -86,6 +86,15 @@ export default function PhotoAlertHistory({
                     {alert.event_type === "camera_motion" && alert.change_percent != null && (
                       <p className="text-muted-foreground text-xs">
                         변화율 {alert.change_percent.toFixed(1)}%
+                      </p>
+                    )}
+                    {alert.latitude != null && alert.longitude != null && (
+                      <p className="text-muted-foreground text-xs flex items-center gap-1 mt-0.5">
+                        <MapPin size={10} className="shrink-0" />
+                        위치 정보 포함
+                        {alert.location_source && alert.location_source !== "gps" && (
+                          <span className="text-muted-foreground/70">(Wi-Fi/IP)</span>
+                        )}
                       </p>
                     )}
                   </div>
