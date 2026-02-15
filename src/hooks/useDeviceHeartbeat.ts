@@ -142,7 +142,8 @@ export function useDeviceHeartbeat() {
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("beforeunload", handleBeforeUnload);
-      setOffline();
+      // setOffline()을 cleanup에서 호출하지 않음 — 리렌더/HMR 시 레이스 컨디션 방지
+      // 실제 종료는 beforeunload(sendBeacon)과 visibilitychange가 처리
     };
   }, [smartphoneDevice?.id]);
 }
