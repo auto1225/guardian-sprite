@@ -6,6 +6,8 @@ import { X, Download, ChevronLeft, ChevronRight, ZoomIn, CheckSquare, Square } f
 import { Progress } from "@/components/ui/progress";
 import { saveSinglePhoto, savePhotos } from "@/lib/photoDownload";
 import { useToast } from "@/hooks/use-toast";
+import AlertStreamingViewer from "@/components/alert/AlertStreamingViewer";
+import AlertLocationMap from "@/components/alert/AlertLocationMap";
 
 const EVENT_LABELS: Record<string, string> = {
   camera_motion: "카메라 움직임 감지",
@@ -190,6 +192,16 @@ export default function PhotoAlertOverlay({
           </p>
         </div>
       </div>
+
+      {/* 동영상 스트리밍 — 최상단 */}
+      {alert.auto_streaming && alert.device_id && (
+        <AlertStreamingViewer deviceId={alert.device_id} />
+      )}
+
+      {/* 위치 지도 */}
+      {alert.latitude != null && alert.longitude != null && (
+        <AlertLocationMap latitude={alert.latitude} longitude={alert.longitude} />
+      )}
 
       {/* View mode & save controls */}
       <div className="flex flex-wrap gap-2 px-4 pb-2 shrink-0">
