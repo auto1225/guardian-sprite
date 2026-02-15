@@ -314,6 +314,11 @@ const Index = () => {
         isOpen={isDeviceManageOpen}
         onClose={() => setIsDeviceManageOpen(false)}
         onSelectDevice={setSelectedDeviceId}
+        onViewAlertHistory={(deviceId) => {
+          setSelectedDeviceId(deviceId);
+          setIsDeviceManageOpen(false);
+          setIsPhotoHistoryOpen(true);
+        }}
       />
 
       {/* Alert Mode Overlay - 경보 발생 시 전체 화면 */}
