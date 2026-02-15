@@ -90,6 +90,17 @@ function setupPresenceChannelSingleton(
         const existingTimer = activeLeaveTimers.get(device.id);
         if (existingTimer) clearTimeout(existingTimer);
 
+        // 즉시 오프라인으로 UI 반영
+        queryClient.setQueryData(["devices", userId], (oldDevices: Device[] | undefined) => {
+          if (!oldDevices) return oldDevices;
+          return oldDevices.map((d) =>
+            d.id === device.id
+              ? { ...d, status: 'offline' as Device["status"], is_network_connected: false }
+              : d
+          );
+        });
+
+        // 3초 후 DB에서 실제 상태 재확인 (일시적 단절 보정)
         const timer = setTimeout(() => {
           activeLeaveTimers.delete(device.id);
           supabase
