@@ -4,7 +4,7 @@ import { stopAlertSound } from "@/hooks/useAlerts";
 import * as Alarm from "@/lib/alarmSound";
 import { X, Download, ChevronLeft, ChevronRight, ZoomIn, CheckSquare, Square } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { saveSinglePhoto, savePhotosAsZip } from "@/lib/photoDownload";
+import { saveSinglePhoto, savePhotos } from "@/lib/photoDownload";
 import { useToast } from "@/hooks/use-toast";
 
 const EVENT_LABELS: Record<string, string> = {
@@ -68,7 +68,7 @@ export default function PhotoAlertOverlay({
     }
     setSaving(true);
     try {
-      await savePhotosAsZip(alert.photos, alert.event_type, Array.from(selectedIndices));
+      await savePhotos(alert.photos, alert.event_type, Array.from(selectedIndices));
       toast({ title: "저장 완료", description: `${selectedIndices.size}장 저장됨` });
     } catch {
       toast({ title: "저장 실패", variant: "destructive" });
@@ -80,7 +80,7 @@ export default function PhotoAlertOverlay({
   const handleSaveAll = useCallback(async () => {
     setSaving(true);
     try {
-      await savePhotosAsZip(alert.photos, alert.event_type);
+      await savePhotos(alert.photos, alert.event_type);
       toast({ title: "저장 완료", description: `${alert.photos.length}장 저장됨` });
     } catch {
       toast({ title: "저장 실패", variant: "destructive" });
