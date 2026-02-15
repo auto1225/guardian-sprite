@@ -41,11 +41,20 @@ export function useDeviceHeartbeat() {
 
     const setOffline = async () => {
       try {
+        // 스마트폰 오프라인 설정
         await supabase
           .from("devices")
           .update({ status: "offline" })
           .eq("id", deviceId);
-        console.log("[Heartbeat] ⚫ Status set to offline:", deviceId.slice(0, 8));
+        // 모든 기기 감시 OFF (스마트폰 앱 종료 시 감시 해제)
+        if (user?.id) {
+          await supabase
+            .from("devices")
+            .update({ is_monitoring: false })
+            .eq("user_id", user.id)
+            .neq("device_type", "smartphone");
+        }
+        console.log("[Heartbeat] ⚫ Status set to offline + monitoring OFF:", deviceId.slice(0, 8));
       } catch (err) {
         console.error("[Heartbeat] Failed to set offline:", err);
       }
@@ -86,11 +95,18 @@ export function useDeviceHeartbeat() {
 
     // beforeunload 핸들러
     const handleBeforeUnload = () => {
-      // sendBeacon 으로 오프라인 상태 전송 (비동기 요청이 완료되기 전에 페이지가 닫힐 수 있으므로)
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/devices?id=eq.${deviceId}`;
-      const body = JSON.stringify({ status: "offline" });
-      navigator.sendBeacon?.(url); // fallback, 실제로는 supabase REST 직접 호출이 어려움
-      // 동기 방식 fallback
+      // sendBeacon으로 오프라인 + 감시 OFF 전송
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        const headers = { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` };
+        
+        // 스마트폰 오프라인
+        const blob1 = new Blob([JSON.stringify({ status: "offline" })], { type: 'application/json' });
+        navigator.sendBeacon?.(`${supabaseUrl}/rest/v1/devices?id=eq.${deviceId}`, blob1);
+        
+        // 노트북/데스크탑 감시 OFF - sendBeacon은 PATCH를 지원하지 않으므로 동기 fallback
+      } catch {}
       setOffline();
     };
 
