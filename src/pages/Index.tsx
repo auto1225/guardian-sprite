@@ -24,6 +24,7 @@ import { usePhotoReceiver } from "@/hooks/usePhotoReceiver";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { useDeviceHeartbeat } from "@/hooks/useDeviceHeartbeat";
 import { useLocationResponder } from "@/hooks/useLocationResponder";
+import { useSmartphoneRegistration } from "@/hooks/useSmartphoneRegistration";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -35,7 +36,8 @@ const Index = () => {
   const { toggleMonitoring } = useCommands();
   const { toast } = useToast();
 
-  // 스마트폰 상태 하트비트 & 위치 응답 로직
+  // 스마트폰 자동 등록 & 상태 하트비트 & 위치 응답 로직
+  useSmartphoneRegistration();
   useDeviceHeartbeat();
   useLocationResponder();
 
