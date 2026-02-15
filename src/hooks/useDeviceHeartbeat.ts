@@ -24,16 +24,28 @@ export function useDeviceHeartbeat() {
 
     const deviceId = smartphoneDevice.id;
 
+    const getBatteryLevel = async (): Promise<number | null> => {
+      try {
+        if ('getBattery' in navigator) {
+          const battery = await (navigator as any).getBattery();
+          return Math.round(battery.level * 100);
+        }
+      } catch {}
+      return null;
+    };
+
     const setOnline = async () => {
       try {
+        const battery = await getBatteryLevel();
         await supabase
           .from("devices")
           .update({
             status: "online",
             last_seen_at: new Date().toISOString(),
+            ...(battery !== null ? { battery_level: battery } : {}),
           })
           .eq("id", deviceId);
-        console.log("[Heartbeat] ✅ Status set to online:", deviceId.slice(0, 8));
+        console.log("[Heartbeat] ✅ Status set to online:", deviceId.slice(0, 8), "battery:", battery);
       } catch (err) {
         console.error("[Heartbeat] Failed to set online:", err);
       }
@@ -62,9 +74,13 @@ export function useDeviceHeartbeat() {
 
     const sendHeartbeat = async () => {
       try {
+        const battery = await getBatteryLevel();
         await supabase
           .from("devices")
-          .update({ last_seen_at: new Date().toISOString() })
+          .update({
+            last_seen_at: new Date().toISOString(),
+            ...(battery !== null ? { battery_level: battery } : {}),
+          })
           .eq("id", deviceId);
       } catch (err) {
         console.error("[Heartbeat] Heartbeat failed:", err);
