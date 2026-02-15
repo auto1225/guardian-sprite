@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { saveSinglePhoto, savePhotos } from "@/lib/photoDownload";
 import { useToast } from "@/hooks/use-toast";
 import AlertStreamingViewer from "@/components/alert/AlertStreamingViewer";
+import AlertVideoPlayer from "@/components/alert/AlertVideoPlayer";
 import AlertLocationMap from "@/components/alert/AlertLocationMap";
 
 const EVENT_LABELS: Record<string, string> = {
@@ -24,6 +25,7 @@ interface PhotoAlertOverlayProps {
   progress?: number;
   onDismissRemoteAlarm?: () => void;
   remoteAlarmDismissed?: boolean;
+  isHistoryView?: boolean;
 }
 
 export default function PhotoAlertOverlay({
@@ -33,6 +35,7 @@ export default function PhotoAlertOverlay({
   progress = 0,
   onDismissRemoteAlarm,
   remoteAlarmDismissed,
+  isHistoryView = false,
 }: PhotoAlertOverlayProps) {
   const { toast } = useToast();
   const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null);
@@ -195,9 +198,13 @@ export default function PhotoAlertOverlay({
           </div>
         </div>
 
-        {/* 동영상 스트리밍 — 최상단 */}
-        {alert.auto_streaming && alert.device_id && (
-          <AlertStreamingViewer deviceId={alert.device_id} />
+        {/* 동영상: 이력 보기 → 녹화 재생 / 실시간 → 라이브 스트리밍 */}
+        {isHistoryView ? (
+          <AlertVideoPlayer alertId={alert.id} />
+        ) : (
+          alert.auto_streaming && alert.device_id && (
+            <AlertStreamingViewer deviceId={alert.device_id} alertId={alert.id} />
+          )
         )}
 
         {/* 위치 지도 */}

@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useWebRTCViewer } from "@/hooks/useWebRTCViewer";
 import { Video, VideoOff, Loader2, Circle } from "lucide-react";
+import { saveAlertVideo } from "@/lib/alertVideoStorage";
 
 interface AlertStreamingViewerProps {
   deviceId: string;
+  alertId?: string;
 }
 
-export default function AlertStreamingViewer({ deviceId }: AlertStreamingViewerProps) {
+export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreamingViewerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -92,15 +94,28 @@ export default function AlertStreamingViewer({ deviceId }: AlertStreamingViewerP
         if (e.data.size > 0) recordedChunksRef.current.push(e.data);
       };
 
-      recorder.onstop = () => {
+      recorder.onstop = async () => {
         if (recordedChunksRef.current.length > 0) {
           const blob = new Blob(recordedChunksRef.current, { type: mimeType });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `meercop-alert-${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.webm`;
-          a.click();
-          URL.revokeObjectURL(url);
+          // Save to IndexedDB for later playback
+          if (alertId) {
+            try {
+              await saveAlertVideo(alertId, blob, mimeType);
+              console.log("[AlertStreaming] Video saved to IndexedDB for alert:", alertId);
+            } catch (err) {
+              console.error("[AlertStreaming] Failed to save video:", err);
+            }
+          } else {
+            // Fallback: direct download if no alertId
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `meercop-alert-${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.webm`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+          }
         }
         setIsRecording(false);
         setRecordingTime(0);

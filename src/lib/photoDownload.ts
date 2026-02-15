@@ -19,19 +19,9 @@ function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** 단일 사진 저장 */
+/** 단일 사진 저장 — 항상 파일 다운로드 (공유 시트 사용 안 함) */
 export async function saveSinglePhoto(dataUrl: string, filename: string): Promise<void> {
   const blob = dataUrlToBlob(dataUrl);
-  const file = new File([blob], filename, { type: blob.type });
-
-  if (navigator.share && navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file] });
-      return;
-    } catch (e: any) {
-      if (e.name === "AbortError") return;
-    }
-  }
   downloadBlob(blob, filename);
 }
 
@@ -54,17 +44,6 @@ export async function savePhotos(
         type: "image/jpeg",
       })
   );
-
-  // 모바일: Web Share API로 묶음 공유 (카카오톡 묶음저장처럼 개별 사진으로 저장됨)
-  if (navigator.share && navigator.canShare?.({ files })) {
-    try {
-      await navigator.share({ files });
-      return;
-    } catch (e: any) {
-      if (e.name === "AbortError") return;
-      // 공유 실패 시 아래 폴백
-    }
-  }
 
   // 데스크톱: File System Access API로 폴더 한 번 선택 후 일괄 저장
   if ("showDirectoryPicker" in window) {
