@@ -82,13 +82,27 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
 
   if (!isOpen) return null;
 
-  const handleSetAsMain = (deviceId: string) => {
-    setSelectedDeviceId(deviceId);
-    onSelectDevice(deviceId);
-    toast({
-      title: "메인 기기 설정",
-      description: "선택한 기기가 메인으로 설정되었습니다.",
-    });
+  const handleSetAsMain = async (deviceId: string) => {
+    try {
+      // 기존 메인 해제
+      for (const d of managedDevices) {
+        const m = (d.metadata as Record<string, unknown>) || {};
+        if (m.is_main) {
+          await supabase.from("devices").update({ metadata: { ...m, is_main: false } }).eq("id", d.id);
+        }
+      }
+      // 새 메인 설정
+      const target = managedDevices.find(d => d.id === deviceId);
+      const targetMeta = (target?.metadata as Record<string, unknown>) || {};
+      await supabase.from("devices").update({ metadata: { ...targetMeta, is_main: true } }).eq("id", deviceId);
+
+      setSelectedDeviceId(deviceId);
+      onSelectDevice(deviceId);
+      queryClient.invalidateQueries({ queryKey: ["devices"] });
+      toast({ title: "메인 기기 설정", description: "선택한 기기가 메인으로 설정되었습니다." });
+    } catch {
+      toast({ title: "오류", description: "메인 기기 설정에 실패했습니다.", variant: "destructive" });
+    }
   };
 
   const handleToggleMonitoring = async (device: Device) => {
@@ -193,7 +207,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
           <DeviceCard
             key={device.id}
             device={device}
-            isMain={device.id === selectedDeviceId}
+            isMain={!!((device.metadata as Record<string, unknown>)?.is_main)}
             serialKey={serialMap[device.id]}
             onSetAsMain={() => handleSetAsMain(device.id)}
             onToggleMonitoring={() => handleToggleMonitoring(device)}

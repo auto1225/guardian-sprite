@@ -70,9 +70,12 @@ export const useDevices = () => {
     if (devices.length === 0) return;
     const currentDevice = devices.find(d => d.id === selectedDeviceId);
     if (!selectedDeviceId || currentDevice?.device_type === "smartphone") {
-      const nonSmartphone = devices.find(d => d.device_type !== "smartphone");
-      if (nonSmartphone) {
-        setSelectedDeviceId(nonSmartphone.id);
+      const nonSmartphones = devices.filter(d => d.device_type !== "smartphone");
+      // 메인 기기 우선 선택
+      const mainDevice = nonSmartphones.find(d => (d.metadata as Record<string, unknown>)?.is_main);
+      const target = mainDevice || nonSmartphones[0];
+      if (target) {
+        setSelectedDeviceId(target.id);
       }
     }
   }, [devices, selectedDeviceId]);
