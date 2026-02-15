@@ -54,7 +54,7 @@ export default function PhotoAlertOverlay({
   // Fullscreen viewer
   if (fullscreenIndex !== null) {
     return (
-      <div className="fixed inset-0 bg-black/90 backdrop-blur-2xl z-[60] flex flex-col">
+      <div className="fixed inset-0 bg-red-950/90 backdrop-blur-2xl z-[60] flex flex-col">
         <div className="flex items-center justify-between p-4">
           <span className="text-white/90 text-sm">
             {fullscreenIndex + 1} / {alert.photos.length}
@@ -102,7 +102,7 @@ export default function PhotoAlertOverlay({
   }
 
   return (
-    <div className="fixed inset-0 bg-sky-700/60 backdrop-blur-2xl z-50 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-red-800/60 backdrop-blur-2xl z-50 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-4 shrink-0">
         <div className="flex items-center gap-2">
