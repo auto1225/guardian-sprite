@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, MoreVertical, Plus, Copy } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { useDevices } from "@/hooks/useDevices";
@@ -49,9 +50,11 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
   const { devices, selectedDeviceId, setSelectedDeviceId, addDevice, deleteDevice } = useDevices();
   const { user } = useAuth();
   const { toggleMonitoring } = useCommands();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
   const [newDeviceName, setNewDeviceName] = useState("");
   const [newDeviceType, setNewDeviceType] = useState<DeviceType>("laptop");
   const [serialMap, setSerialMap] = useState<Record<string, string>>({});
@@ -102,6 +105,9 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
       return;
     }
 
+    if (isAdding) return;
+    setIsAdding(true);
+
     try {
       // 1. 시리얼 넘버 생성
       const { data: serialData, error: serialError } = await supabase.functions.invoke("create-serial", {
@@ -114,29 +120,20 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
 
       const newSerialKey = serialData.license.serial_key;
 
-      // 2. 기기 등록
-      await addDevice.mutateAsync({
-        name: newDeviceName,
-        device_type: newDeviceType,
+      // 2. validate-serial로 기기 등록 + 시리얼 연결을 한번에 처리
+      const { data: validateData, error: validateError } = await supabase.functions.invoke("validate-serial", {
+        body: { serial_key: newSerialKey, device_name: newDeviceName, device_type: newDeviceType },
       });
 
-      // 3. 새로 등록된 기기에 시리얼 연결
-      // 방금 생성된 기기를 찾아서 시리얼에 연결
-      const { data: latestDevices } = await supabase
-        .from("devices")
-        .select("id")
-        .eq("user_id", user!.id)
-        .eq("name", newDeviceName)
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      if (latestDevices && latestDevices.length > 0) {
-        await supabase.functions.invoke("validate-serial", {
-          body: { serial_key: newSerialKey, device_name: newDeviceName, device_type: newDeviceType },
-        });
-        // 시리얼맵 갱신
-        setSerialMap(prev => ({ ...prev, [latestDevices[0].id]: newSerialKey }));
+      if (validateError || !validateData?.success) {
+        throw new Error("기기 등록 실패");
       }
+
+      // 시리얼맵 갱신
+      setSerialMap(prev => ({ ...prev, [validateData.device_id]: newSerialKey }));
+
+      // 기기 목록 갱신
+      queryClient.invalidateQueries({ queryKey: ["devices"] });
 
       toast({
         title: "기기 등록 완료",
@@ -151,6 +148,8 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
         description: "기기 등록에 실패했습니다.",
         variant: "destructive",
       });
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -242,8 +241,8 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleAddDevice} className="w-full bg-white/20 backdrop-blur-sm border border-white/25 text-primary-foreground hover:bg-white/30">
-              등록
+            <Button onClick={handleAddDevice} disabled={isAdding} className="w-full bg-white/20 backdrop-blur-sm border border-white/25 text-primary-foreground hover:bg-white/30 disabled:opacity-50">
+              {isAdding ? "등록 중..." : "등록"}
             </Button>
           </DialogFooter>
         </DialogContent>
