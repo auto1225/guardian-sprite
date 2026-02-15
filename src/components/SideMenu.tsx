@@ -1,4 +1,4 @@
-import { X, User, Laptop, Settings, LogOut, HelpCircle, Plus, Pencil, Camera } from "lucide-react";
+import { X, User, Laptop, LogOut, HelpCircle, Plus, Pencil, UserCog } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -138,14 +138,12 @@ const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick }: SideMenuProps) => {
 
         {/* Bottom Menu */}
         <div className="border-t border-white/20">
-          <MenuItem icon={Camera} label="사진 알림 기록" onClick={() => { onPhotoHistoryClick?.(); onClose(); }} />
+          <MenuItem icon={UserCog} label="내 정보 수정" onClick={() => handleNavigate("/settings")} />
           <MenuItem icon={HelpCircle} label="Q&A / 도움말" />
-          <MenuItem icon={Settings} label="설정" onClick={() => handleNavigate("/settings")} />
           <MenuItem 
             icon={LogOut} 
             label="로그아웃" 
             onClick={handleSignOut}
-            destructive
           />
         </div>
       </div>
@@ -157,16 +155,15 @@ interface MenuItemProps {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   onClick?: () => void;
-  destructive?: boolean;
 }
 
-const MenuItem = ({ icon: Icon, label, onClick, destructive }: MenuItemProps) => (
+const MenuItem = ({ icon: Icon, label, onClick }: MenuItemProps) => (
   <button
     onClick={onClick}
     className="flex items-center gap-3 w-full px-4 py-4 hover:bg-white/10 transition-colors"
   >
-    <Icon className={`w-5 h-5 ${destructive ? 'text-destructive' : 'text-primary-foreground'}`} />
-    <span className={`text-sm font-semibold ${destructive ? 'text-destructive' : 'text-primary-foreground'}`}>
+    <Icon className="w-5 h-5 text-primary-foreground" />
+    <span className="text-sm font-semibold text-primary-foreground">
       {label}
     </span>
   </button>
