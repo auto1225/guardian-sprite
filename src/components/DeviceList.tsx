@@ -12,7 +12,10 @@ const DeviceList = ({ isExpanded, onToggle }: DeviceListProps) => {
   const { devices: allDevices, selectedDevice, selectedDeviceId, setSelectedDeviceId } = useDevices();
   const devices = allDevices.filter(d => d.device_type !== "smartphone");
 
-  if (!selectedDevice) return null;
+  if (!selectedDevice || selectedDevice.device_type === "smartphone") {
+    if (devices.length === 0) return null;
+    return null;
+  }
 
   return (
     <div className="px-4 py-2">
