@@ -47,19 +47,7 @@ export const useDevices = () => {
       
       if (error) throw error;
       
-      const STALE_THRESHOLD_MS = 3 * 60 * 1000;
-      const now = Date.now();
-      const corrected = (data as Device[]).map((d) => {
-        if (d.device_type === "smartphone") return d;
-        if (realtimeConfirmedOnline.has(d.id)) return d;
-        const lastSeen = d.last_seen_at ? new Date(d.last_seen_at).getTime() : null;
-        if (lastSeen !== null && now - lastSeen > STALE_THRESHOLD_MS && d.status !== "offline") {
-          console.log("[Devices] Stale device corrected to offline:", d.id.slice(0, 8));
-          return { ...d, status: "offline" as Device["status"], is_network_connected: false };
-        }
-        return d;
-      });
-      return corrected;
+      return data as Device[];
     },
     enabled: !!user,
   });
