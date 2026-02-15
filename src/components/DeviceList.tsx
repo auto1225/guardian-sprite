@@ -9,7 +9,8 @@ interface DeviceListProps {
 }
 
 const DeviceList = ({ isExpanded, onToggle }: DeviceListProps) => {
-  const { devices, selectedDevice, selectedDeviceId, setSelectedDeviceId } = useDevices();
+  const { devices: allDevices, selectedDevice, selectedDeviceId, setSelectedDeviceId } = useDevices();
+  const devices = allDevices.filter(d => d.device_type !== "smartphone");
 
   if (!selectedDevice) return null;
 
