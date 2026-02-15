@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Settings } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import { useDevices } from "@/hooks/useDevices";
 import DeviceCard from "./DeviceCard";
@@ -24,7 +24,6 @@ const DeviceList = ({ isExpanded, onToggle }: DeviceListProps) => {
           <span className="text-secondary-foreground font-bold text-sm">
             {selectedDevice.name}
           </span>
-          <Settings className="w-4 h-4 text-secondary-foreground" />
           {devices.length > 1 && (
             isExpanded ? (
               <ChevronUp className="w-4 h-4 text-secondary-foreground" />
