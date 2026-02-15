@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { PhotoAlert } from "@/lib/photoAlertStorage";
 import { stopAlertSound } from "@/hooks/useAlerts";
 import * as Alarm from "@/lib/alarmSound";
-import { X, Download, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
+import { X, Download, ChevronLeft, ChevronRight, ZoomIn, CheckSquare, Square } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { saveSinglePhoto, savePhotosAsZip } from "@/lib/photoDownload";
+import { useToast } from "@/hooks/use-toast";
 
 const EVENT_LABELS: Record<string, string> = {
   camera_motion: "카메라 움직임 감지",
@@ -30,26 +32,73 @@ export default function PhotoAlertOverlay({
   onDismissRemoteAlarm,
   remoteAlarmDismissed,
 }: PhotoAlertOverlayProps) {
+  const { toast } = useToast();
   const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "slide">("grid");
   const [slideIndex, setSlideIndex] = useState(0);
   const [phoneDismissed, setPhoneDismissed] = useState(false);
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  const [selectMode, setSelectMode] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const eventLabel = EVENT_LABELS[alert.event_type] || alert.event_type;
   const createdDate = new Date(alert.created_at);
 
-  const downloadPhoto = (dataUrl: string, index: number) => {
-    const link = document.createElement("a");
-    link.href = dataUrl;
-    link.download = `meercop_${alert.event_type}_${index + 1}.jpg`;
-    link.click();
-  };
-
-  const downloadAll = () => {
-    alert.photos.forEach((photo, i) => {
-      setTimeout(() => downloadPhoto(photo, i), i * 200);
+  const toggleSelect = useCallback((index: number) => {
+    setSelectedIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
     });
-  };
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    if (selectedIndices.size === alert.photos.length) {
+      setSelectedIndices(new Set());
+    } else {
+      setSelectedIndices(new Set(alert.photos.map((_, i) => i)));
+    }
+  }, [selectedIndices.size, alert.photos]);
+
+  const handleSaveSelected = useCallback(async () => {
+    if (selectedIndices.size === 0) {
+      toast({ title: "선택된 사진이 없습니다", description: "저장할 사진을 선택해주세요." });
+      return;
+    }
+    setSaving(true);
+    try {
+      await savePhotosAsZip(alert.photos, alert.event_type, Array.from(selectedIndices));
+      toast({ title: "저장 완료", description: `${selectedIndices.size}장 저장됨` });
+    } catch {
+      toast({ title: "저장 실패", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }, [selectedIndices, alert, toast]);
+
+  const handleSaveAll = useCallback(async () => {
+    setSaving(true);
+    try {
+      await savePhotosAsZip(alert.photos, alert.event_type);
+      toast({ title: "저장 완료", description: `${alert.photos.length}장 저장됨` });
+    } catch {
+      toast({ title: "저장 실패", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }, [alert, toast]);
+
+  const handleSaveSingle = useCallback(async (dataUrl: string, index: number) => {
+    setSaving(true);
+    try {
+      await saveSinglePhoto(dataUrl, `meercop-${alert.event_type}_${index + 1}.jpg`);
+    } catch {
+      toast({ title: "저장 실패", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }, [alert.event_type, toast]);
 
   // Fullscreen viewer
   if (fullscreenIndex !== null) {
@@ -61,8 +110,9 @@ export default function PhotoAlertOverlay({
           </span>
           <div className="flex gap-3">
             <button
-              onClick={() => downloadPhoto(alert.photos[fullscreenIndex], fullscreenIndex)}
+              onClick={() => handleSaveSingle(alert.photos[fullscreenIndex], fullscreenIndex)}
               className="text-white/70 active:text-white"
+              disabled={saving}
             >
               <Download size={22} />
             </button>
@@ -141,8 +191,8 @@ export default function PhotoAlertOverlay({
         </div>
       </div>
 
-      {/* View mode toggle */}
-      <div className="flex gap-2 px-4 pb-2 shrink-0">
+      {/* View mode & save controls */}
+      <div className="flex flex-wrap gap-2 px-4 pb-2 shrink-0">
         <button
           onClick={() => setViewMode("grid")}
           className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${
@@ -163,13 +213,62 @@ export default function PhotoAlertOverlay({
         >
           슬라이드
         </button>
-        <button
-          onClick={downloadAll}
-          className="ml-auto px-3 py-1.5 rounded-full text-sm font-medium bg-white/10 text-white/80 border border-white/20 flex items-center gap-1"
-        >
-          <Download size={14} /> 전체 저장
-        </button>
+
+        <div className="ml-auto flex gap-2">
+          {viewMode === "grid" && (
+            <button
+              onClick={() => {
+                setSelectMode((v) => {
+                  if (v) setSelectedIndices(new Set());
+                  return !v;
+                });
+              }}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium border flex items-center gap-1 ${
+                selectMode
+                  ? "bg-white/25 text-white border-white/40"
+                  : "bg-white/8 text-white/70 border-white/15"
+              }`}
+            >
+              <CheckSquare size={14} /> 선택
+            </button>
+          )}
+
+          {selectMode && selectedIndices.size > 0 ? (
+            <button
+              onClick={handleSaveSelected}
+              disabled={saving}
+              className="px-3 py-1.5 rounded-full text-sm font-medium bg-white/20 text-white border border-white/30 flex items-center gap-1"
+            >
+              <Download size={14} /> {selectedIndices.size}장 저장
+            </button>
+          ) : (
+            <button
+              onClick={handleSaveAll}
+              disabled={saving}
+              className="px-3 py-1.5 rounded-full text-sm font-medium bg-white/10 text-white/80 border border-white/20 flex items-center gap-1"
+            >
+              <Download size={14} /> 전체 저장
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Select all toggle */}
+      {selectMode && viewMode === "grid" && (
+        <div className="px-4 pb-2 shrink-0">
+          <button
+            onClick={toggleSelectAll}
+            className="text-white/80 text-sm flex items-center gap-1.5"
+          >
+            {selectedIndices.size === alert.photos.length ? (
+              <CheckSquare size={16} className="text-white" />
+            ) : (
+              <Square size={16} className="text-white/50" />
+            )}
+            전체 선택 ({selectedIndices.size}/{alert.photos.length})
+          </button>
+        </div>
+      )}
 
       {/* Photos */}
       <div className="flex-1 overflow-auto px-4 pb-4 alert-glass-scroll">
@@ -178,16 +277,33 @@ export default function PhotoAlertOverlay({
             {alert.photos.map((photo, i) => (
               <div
                 key={i}
-                className="relative rounded-xl overflow-hidden bg-black/20 border border-white/15 cursor-pointer active:opacity-80"
-                onClick={() => setFullscreenIndex(i)}
+                className={`relative rounded-xl overflow-hidden bg-black/20 border cursor-pointer active:opacity-80 ${
+                  selectMode && selectedIndices.has(i)
+                    ? "border-white/60 ring-2 ring-white/40"
+                    : "border-white/15"
+                }`}
+                onClick={() => {
+                  if (selectMode) toggleSelect(i);
+                  else setFullscreenIndex(i);
+                }}
               >
                 <img src={photo} alt={`사진 ${i + 1}`} className="w-full aspect-[4/3] object-cover" />
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-2">
                   <span className="text-white/90 text-xs">{i + 1}번</span>
                 </div>
-                <div className="absolute top-2 right-2">
-                  <ZoomIn size={16} className="text-white/60" />
-                </div>
+                {selectMode ? (
+                  <div className="absolute top-2 right-2">
+                    {selectedIndices.has(i) ? (
+                      <CheckSquare size={20} className="text-white" />
+                    ) : (
+                      <Square size={20} className="text-white/40" />
+                    )}
+                  </div>
+                ) : (
+                  <div className="absolute top-2 right-2">
+                    <ZoomIn size={16} className="text-white/60" />
+                  </div>
+                )}
               </div>
             ))}
           </div>
