@@ -13,6 +13,8 @@ let activeDbChannel: ReturnType<typeof supabase.channel> | null = null;
 const activePresenceChannels = new Map<string, ReturnType<typeof supabase.channel>>();
 const activeDeviceIds = new Set<string>();
 const activeLeaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
+// Realtime으로 온라인 확인된 디바이스 추적 (stale 보정 방지)
+const realtimeConfirmedOnline = new Set<string>();
 let subscriberCount = 0;
 
 function cleanupAllChannels() {
@@ -25,6 +27,7 @@ function cleanupAllChannels() {
   activePresenceChannels.forEach((ch) => supabase.removeChannel(ch));
   activePresenceChannels.clear();
   activeDeviceIds.clear();
+  realtimeConfirmedOnline.clear();
   activeUserId = null;
   subscriberCount = 0;
 }
@@ -64,6 +67,11 @@ function setupPresenceChannelSingleton(
             if (d.id !== device.id) return d;
             const newNetworkConnected = laptopPresence.is_network_connected;
             const newStatus = laptopPresence.status === 'online' ? 'online' : 'offline';
+            if (newStatus === 'online') {
+              realtimeConfirmedOnline.add(device.id);
+            } else {
+              realtimeConfirmedOnline.delete(device.id);
+            }
             const hasChanges = d.is_network_connected !== newNetworkConnected || d.status !== newStatus;
             if (!hasChanges) return d;
             console.log("[Presence] ✅ Updating:", device.id.slice(0, 8), { status: `${d.status}→${newStatus}` });
@@ -91,6 +99,7 @@ function setupPresenceChannelSingleton(
         if (existingTimer) clearTimeout(existingTimer);
 
         // 즉시 오프라인으로 UI 반영
+        realtimeConfirmedOnline.delete(device.id);
         queryClient.setQueryData(["devices", userId], (oldDevices: Device[] | undefined) => {
           if (!oldDevices) return oldDevices;
           return oldDevices.map((d) =>
@@ -155,6 +164,8 @@ export const useDevices = () => {
       const now = Date.now();
       const corrected = (data as Device[]).map((d) => {
         if (d.device_type === "smartphone") return d; // 스마트폰은 자기 자신이므로 스킵
+        // Realtime으로 온라인 확인된 디바이스는 stale 보정 건너뛰기
+        if (realtimeConfirmedOnline.has(d.id)) return d;
         const lastSeen = d.last_seen_at ? new Date(d.last_seen_at).getTime() : 0;
         if (now - lastSeen > STALE_THRESHOLD_MS && d.status !== "offline") {
           console.log("[Devices] Stale device corrected to offline:", d.id.slice(0, 8), { lastSeen: d.last_seen_at });
@@ -333,6 +344,11 @@ export const useDevices = () => {
           (payload) => {
             const updatedDevice = payload.new as Device;
             // Realtime 이벤트는 "방금 발생"한 것이므로 stale 체크 없이 그대로 신뢰
+            if (updatedDevice.status === "online") {
+              realtimeConfirmedOnline.add(updatedDevice.id);
+            } else if (updatedDevice.status === "offline") {
+              realtimeConfirmedOnline.delete(updatedDevice.id);
+            }
             console.log("[Realtime] Device updated:", {
               id: updatedDevice.id,
               is_camera_connected: updatedDevice.is_camera_connected,
