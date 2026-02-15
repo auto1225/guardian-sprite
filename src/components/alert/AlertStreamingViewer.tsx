@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useWebRTCViewer } from "@/hooks/useWebRTCViewer";
-import { Video, VideoOff, Loader2 } from "lucide-react";
+import { Video, VideoOff, Loader2, Circle } from "lucide-react";
 
 interface AlertStreamingViewerProps {
   deviceId: string;
@@ -8,17 +8,44 @@ interface AlertStreamingViewerProps {
 
 export default function AlertStreamingViewer({ deviceId }: AlertStreamingViewerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [showLastFrame, setShowLastFrame] = useState(false);
 
   const { isConnecting, isConnected, remoteStream, connect, disconnect } = useWebRTCViewer({
     deviceId,
-    onError: (err) => setError(err),
+    onError: (err) => {
+      setError(err);
+      // Capture last frame when connection drops
+      captureLastFrame();
+    },
   });
+
+  // Capture the last frame to canvas for persistence
+  const captureLastFrame = useCallback(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (video && canvas && video.videoWidth > 0 && video.videoHeight > 0) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(video, 0, 0);
+        setShowLastFrame(true);
+      }
+    }
+  }, []);
 
   // Auto-connect on mount
   useEffect(() => {
     connect();
     return () => {
+      stopRecording();
       disconnect();
     };
   }, []);
@@ -27,15 +54,101 @@ export default function AlertStreamingViewer({ deviceId }: AlertStreamingViewerP
   useEffect(() => {
     if (videoRef.current && remoteStream) {
       videoRef.current.srcObject = remoteStream;
+      setShowLastFrame(false);
     }
   }, [remoteStream]);
 
+  // Auto-start recording when connected
+  useEffect(() => {
+    if (isConnected && remoteStream && !isRecording) {
+      startRecording();
+    }
+  }, [isConnected, remoteStream]);
+
+  // Monitor connection loss to preserve last frame
+  useEffect(() => {
+    if (!isConnected && !isConnecting && videoRef.current) {
+      captureLastFrame();
+    }
+  }, [isConnected, isConnecting, captureLastFrame]);
+
+  const startRecording = useCallback(() => {
+    if (!remoteStream || mediaRecorderRef.current) return;
+
+    try {
+      const stream = new MediaStream();
+      remoteStream.getTracks().forEach((t) => stream.addTrack(t));
+
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+        ? "video/webm;codecs=vp9,opus"
+        : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
+        ? "video/webm;codecs=vp8,opus"
+        : "video/webm";
+
+      const recorder = new MediaRecorder(stream, { mimeType });
+      recordedChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        if (recordedChunksRef.current.length > 0) {
+          const blob = new Blob(recordedChunksRef.current, { type: mimeType });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `meercop-alert-${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.webm`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+        setIsRecording(false);
+        setRecordingTime(0);
+        if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      };
+
+      recorder.start(1000);
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+      setRecordingTime(0);
+
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime((t) => t + 1);
+      }, 1000);
+    } catch (err) {
+      console.error("[AlertStreaming] Recording failed:", err);
+    }
+  }, [remoteStream]);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current = null;
+    }
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+  }, []);
+
+  const formatTime = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
+  };
+
   return (
-    <div className="mx-4 mb-3 shrink-0">
+    <div className="mx-4 mb-3">
       <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10">
           <Video size={16} className="text-white/80" />
           <span className="text-white font-bold text-sm">🎥 실시간 스트리밍</span>
+          {isRecording && (
+            <span className="flex items-center gap-1 text-xs text-red-400">
+              <Circle size={8} className="fill-red-500 text-red-500 animate-pulse" />
+              REC {formatTime(recordingTime)}
+            </span>
+          )}
           {isConnected && (
             <span className="ml-auto text-xs text-green-400 flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
@@ -44,18 +157,29 @@ export default function AlertStreamingViewer({ deviceId }: AlertStreamingViewerP
           )}
         </div>
         <div className="relative aspect-video bg-black/40">
-          {isConnecting && !isConnected && (
+          {isConnecting && !isConnected && !showLastFrame && (
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <Loader2 className="w-8 h-8 text-white/60 animate-spin mb-2" />
               <span className="text-sm text-white/60">스트리밍 연결 중...</span>
             </div>
           )}
-          {error && !isConnected && (
+          {error && !isConnected && !showLastFrame && (
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <VideoOff className="w-8 h-8 text-white/40 mb-2" />
               <span className="text-sm text-white/60">{error}</span>
             </div>
           )}
+          {/* Last frame canvas - shown when disconnected */}
+          <canvas
+            ref={canvasRef}
+            className={`w-full h-full object-contain ${showLastFrame && !isConnected ? "" : "hidden"}`}
+          />
+          {showLastFrame && !isConnected && (
+            <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white/80 text-xs px-2 py-1 rounded">
+              ⏸ 연결 끊김 — 마지막 프레임
+            </div>
+          )}
+          {/* Live video */}
           <video
             ref={videoRef}
             autoPlay
