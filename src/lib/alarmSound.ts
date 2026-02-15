@@ -160,7 +160,18 @@ export function isMuted(): boolean {
 
 export function setMuted(muted: boolean) {
   try { localStorage.setItem('meercop_alarm_muted', String(muted)); } catch {}
-  if (muted) stop();
+  if (muted) {
+    stop();
+  } else {
+    // 음소거 해제 시 lastStoppedAt 리셋 — 기존 경보가 다시 울릴 수 있도록
+    const s = getState();
+    s.lastStoppedAt = 0;
+    try { localStorage.setItem('meercop_last_stopped_at', '0'); } catch {}
+    s.dismissed.clear();
+    try { localStorage.removeItem('meercop_dismissed_ids'); } catch {}
+    s.suppressUntil = 0;
+    console.log("[AlarmSound] 🔊 Unmuted — lastStoppedAt/dismissed/suppress reset");
+  }
 }
 
 // ══════════════════════════════════════
