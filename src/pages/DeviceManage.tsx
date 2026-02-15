@@ -40,9 +40,10 @@ interface DeviceManagePageProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectDevice: (deviceId: string) => void;
+  onViewAlertHistory?: (deviceId: string) => void;
 }
 
-const DeviceManagePage = ({ isOpen, onClose, onSelectDevice }: DeviceManagePageProps) => {
+const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory }: DeviceManagePageProps) => {
   const { devices, selectedDeviceId, setSelectedDeviceId, addDevice, deleteDevice } = useDevices();
   const { toggleMonitoring } = useCommands();
   const { toast } = useToast();
@@ -144,6 +145,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice }: DeviceManagePageP
             onSetAsMain={() => handleSetAsMain(device.id)}
             onToggleMonitoring={() => handleToggleMonitoring(device)}
             onDelete={() => handleDeleteDevice(device.id)}
+            onViewAlertHistory={() => onViewAlertHistory?.(device.id)}
           />
         ))}
 
@@ -204,9 +206,10 @@ interface DeviceCardProps {
   onSetAsMain: () => void;
   onToggleMonitoring: () => void;
   onDelete: () => void;
+  onViewAlertHistory: () => void;
 }
 
-const DeviceCard = ({ device, isMain, onSetAsMain, onToggleMonitoring, onDelete }: DeviceCardProps) => {
+const DeviceCard = ({ device, isMain, onSetAsMain, onToggleMonitoring, onDelete, onViewAlertHistory }: DeviceCardProps) => {
   const isOnline = device.status !== "offline";
   const isMonitoring = device.is_monitoring;
 
@@ -235,20 +238,17 @@ const DeviceCard = ({ device, isMain, onSetAsMain, onToggleMonitoring, onDelete 
               <MoreVertical className="w-5 h-5" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="bg-primary/90 backdrop-blur-xl border border-white/25 shadow-xl z-[100]">
             {!isMain && (
-              <DropdownMenuItem onClick={onSetAsMain}>
+              <DropdownMenuItem onClick={onSetAsMain} className="text-primary-foreground focus:bg-white/15 focus:text-primary-foreground">
                 메인으로 설정
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem>
-              이벤트 조회
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              설정
+            <DropdownMenuItem onClick={onViewAlertHistory} className="text-primary-foreground focus:bg-white/15 focus:text-primary-foreground">
+              경보 이력
             </DropdownMenuItem>
             <DropdownMenuItem
-              className="text-destructive"
+              className="text-destructive focus:bg-white/15 focus:text-destructive"
               onClick={onDelete}
             >
               삭제
