@@ -6,6 +6,7 @@ import { useWebRTCViewer } from "@/hooks/useWebRTCViewer";
 import CameraHeader from "@/components/camera/CameraHeader";
 import CameraViewer from "@/components/camera/CameraViewer";
 import CameraControls from "@/components/camera/CameraControls";
+import SnapshotPreview from "@/components/camera/SnapshotPreview";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 
@@ -23,6 +24,8 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
   const [isMuted, setIsMuted] = useState(false); // 기본: 소리 켜짐
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
   const waitingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const subscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const isConnectingRef = useRef(false);
@@ -212,46 +215,43 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
     }
   }, [isRecording, remoteStream]);
 
-  // 스냅샷
+  // 일시정지/재개
+  const togglePause = useCallback(() => {
+    if (!remoteStream) return;
+    const videoTracks = remoteStream.getVideoTracks();
+    const audioTracks = remoteStream.getAudioTracks();
+    const newPaused = !isPaused;
+    videoTracks.forEach(t => (t.enabled = !newPaused));
+    audioTracks.forEach(t => (t.enabled = !newPaused));
+    setIsPaused(newPaused);
+  }, [remoteStream, isPaused]);
+
+  // 스냅샷 (미리보기로 표시)
   const captureSnapshot = useCallback(() => {
-    if (!remoteStream) { toast({ title: "오류", description: "스트리밍이 활성화되지 않았습니다", variant: "destructive" }); return; }
+    if (!remoteStream) return;
     try {
       const video = document.querySelector('video');
-      if (!video || video.videoWidth === 0) { toast({ title: "오류", description: "비디오가 준비되지 않았습니다", variant: "destructive" }); return; }
+      if (!video || video.videoWidth === 0) return;
       const canvas = document.createElement("canvas");
       canvas.width = video.videoWidth || 1280;
       canvas.height = video.videoHeight || 720;
       const ctx = canvas.getContext("2d");
       if (ctx) {
         ctx.drawImage(video, 0, 0);
-        const link = document.createElement("a");
-        link.href = canvas.toDataURL("image/jpeg", 0.9);
-        link.download = `meercop-snapshot-${device.name}-${Date.now()}.jpg`;
-        link.click();
-        toast({ title: "스냅샷 저장 완료", description: "갤러리에서 확인하세요" });
+        setSnapshotUrl(canvas.toDataURL("image/jpeg", 0.9));
       }
     } catch (err) {
       console.error("Failed to capture snapshot:", err);
-      toast({ title: "오류", description: "스냅샷 캡처에 실패했습니다", variant: "destructive" });
     }
-  }, [remoteStream, device.name, toast]);
+  }, [remoteStream]);
 
-  // 다운로드 (스냅샷과 동일)
-  const handleDownload = useCallback(() => {
-    const video = document.querySelector('video');
-    if (!video) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth || 1280;
-    canvas.height = video.videoHeight || 720;
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.drawImage(video, 0, 0);
-      const link = document.createElement("a");
-      link.href = canvas.toDataURL("image/jpeg", 0.9);
-      link.download = `meercop-capture-${Date.now()}.jpg`;
-      link.click();
-    }
-  }, []);
+  const downloadSnapshot = useCallback(() => {
+    if (!snapshotUrl) return;
+    const link = document.createElement("a");
+    link.href = snapshotUrl;
+    link.download = `meercop-snapshot-${device.name}-${Date.now()}.jpg`;
+    link.click();
+  }, [snapshotUrl, device.name]);
 
   const handleToggleMute = useCallback(() => setIsMuted(m => !m), []);
 
@@ -297,7 +297,7 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
       >
         <CameraHeader onClose={handleClose} deviceName={device.name} />
 
-        <div className="px-2 pb-2 flex flex-col gap-2">
+        <div className="px-2 pb-2 flex flex-col gap-2 relative">
           <CameraViewer
             isStreaming={isStreaming}
             isConnecting={isConnecting || isWaitingForCamera}
@@ -309,17 +309,24 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
             isRecording={isRecording}
             recordingDuration={recordingDuration}
           />
+          {snapshotUrl && (
+            <SnapshotPreview
+              imageUrl={snapshotUrl}
+              onClose={() => setSnapshotUrl(null)}
+              onDownload={downloadSnapshot}
+            />
+          )}
         </div>
 
         <CameraControls
           isStreaming={isStreaming}
-          onStop={stopStreaming}
+          isPaused={isPaused}
+          onTogglePause={togglePause}
           isMuted={isMuted}
           onToggleMute={handleToggleMute}
           isRecording={isRecording}
           onToggleRecording={toggleRecording}
           onCapture={captureSnapshot}
-          onDownload={handleDownload}
         />
       </div>
     </div>

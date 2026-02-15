@@ -1,25 +1,25 @@
-import { StopCircle, Volume2, VolumeX, Circle, Square, Camera, Download } from "lucide-react";
+import { Volume2, VolumeX, Circle, Square, Camera, Play, Pause } from "lucide-react";
 
 interface CameraControlsProps {
   isStreaming: boolean;
-  onStop: () => void;
+  isPaused: boolean;
+  onTogglePause: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
   isRecording: boolean;
   onToggleRecording: () => void;
   onCapture: () => void;
-  onDownload: () => void;
 }
 
 const CameraControls = ({
   isStreaming,
-  onStop,
+  isPaused,
+  onTogglePause,
   isMuted,
   onToggleMute,
   isRecording,
   onToggleRecording,
   onCapture,
-  onDownload,
 }: CameraControlsProps) => {
   if (!isStreaming) return null;
 
@@ -46,11 +46,11 @@ const CameraControls = ({
       </button>
 
       <button
-        onClick={onStop}
+        onClick={onTogglePause}
         className="w-14 h-14 rounded-full flex items-center justify-center text-white bg-white/20 border border-white/30 hover:bg-white/30 transition-colors"
-        title="스트리밍 중지"
+        title={isPaused ? "스트리밍 재개" : "스트리밍 일시정지"}
       >
-        <StopCircle className="w-7 h-7" />
+        {isPaused ? <Play className="w-7 h-7 ml-0.5" /> : <Pause className="w-7 h-7" />}
       </button>
 
       <button
@@ -59,14 +59,6 @@ const CameraControls = ({
         title="스냅샷 저장"
       >
         <Camera className="w-5 h-5" />
-      </button>
-
-      <button
-        onClick={onDownload}
-        className="w-11 h-11 bg-white/15 rounded-full flex items-center justify-center text-white hover:bg-white/25 transition-colors"
-        title="다운로드"
-      >
-        <Download className="w-5 h-5" />
       </button>
     </div>
   );
