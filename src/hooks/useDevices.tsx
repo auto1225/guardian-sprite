@@ -182,9 +182,14 @@ export const useDevices = () => {
 
   // Auto-select first non-smartphone device when devices load
   useEffect(() => {
-    if (devices.length > 0 && !selectedDeviceId) {
+    if (devices.length === 0) return;
+    // Re-select if no selection or current selection is a smartphone
+    const currentDevice = devices.find(d => d.id === selectedDeviceId);
+    if (!selectedDeviceId || currentDevice?.device_type === "smartphone") {
       const nonSmartphone = devices.find(d => d.device_type !== "smartphone");
-      setSelectedDeviceId(nonSmartphone?.id ?? devices[0].id);
+      if (nonSmartphone) {
+        setSelectedDeviceId(nonSmartphone.id);
+      }
     }
   }, [devices, selectedDeviceId]);
 
