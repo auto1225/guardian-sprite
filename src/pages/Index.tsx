@@ -18,6 +18,7 @@ import DeviceManagePage from "@/pages/DeviceManage";
 import PhotoAlertOverlay from "@/components/PhotoAlertOverlay";
 import PhotoAlertHistory from "@/components/PhotoAlertHistory";
 import { useDevices } from "@/hooks/useDevices";
+import * as Alarm from "@/lib/alarmSound";
 import { useAlerts } from "@/hooks/useAlerts";
 import { useCommands } from "@/hooks/useCommands";
 import { usePhotoReceiver } from "@/hooks/usePhotoReceiver";
@@ -71,7 +72,16 @@ const Index = () => {
   const [remoteAlarmDismissed, setRemoteAlarmDismissed] = useState(false);
   const [showFallbackAlarmButtons, setShowFallbackAlarmButtons] = useState(false);
   const [isPhotoHistoryOpen, setIsPhotoHistoryOpen] = useState(false);
+  const [alarmPlaying, setAlarmPlaying] = useState(false);
 
+
+  // 경보음 재생 상태 주기적 체크 — 컴포넌트 재마운트 후에도 폴백 버튼 표시
+  useEffect(() => {
+    const checkAlarm = () => setAlarmPlaying(Alarm.isPlaying());
+    checkAlarm();
+    const id = setInterval(checkAlarm, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   // 경보 해제 상태 리셋
   useEffect(() => {
@@ -192,23 +202,38 @@ const Index = () => {
       
       {/* Toggle Buttons - highest z-index */}
       <div className="absolute bottom-6 left-0 right-0 z-20 flex flex-col items-center gap-3 px-4">
-        {/* 경보 오버레이 닫은 후 컴퓨터 해제 버튼 표시 */}
-        {showFallbackAlarmButtons && selectedDevice && !remoteAlarmDismissed && (
-          <button
-            onClick={async () => {
-              try {
-                await dismissRemoteAlarm();
-                setRemoteAlarmDismissed(true);
-                toast({ title: "컴퓨터 경보 해제", description: "컴퓨터의 경보음이 해제되었습니다." });
-                setShowFallbackAlarmButtons(false);
-              } catch (err) {
-                toast({ title: "오류", description: "컴퓨터 경보 해제에 실패했습니다.", variant: "destructive" });
-              }
-            }}
-            className="px-5 py-2.5 bg-destructive text-destructive-foreground rounded-full font-bold text-sm shadow-lg active:scale-95 transition-transform flex items-center gap-2"
-          >
-            🔇 컴퓨터 경보음 해제
-          </button>
+        {/* 경보음이 재생 중이거나, 경보 오버레이 닫은 후 컴퓨터 해제 버튼 표시 */}
+        {(showFallbackAlarmButtons || (alarmPlaying && !activeAlert && !latestPhotoAlert && !viewingPhotoAlert)) && selectedDevice && !remoteAlarmDismissed && (
+          <div className="flex flex-col items-center gap-2">
+            {alarmPlaying && (
+              <button
+                onClick={() => {
+                  Alarm.stop();
+                  setAlarmPlaying(false);
+                }}
+                className="px-5 py-2.5 bg-white/15 backdrop-blur-md text-white border border-white/25 rounded-full font-bold text-sm shadow-lg active:scale-95 transition-transform flex items-center gap-2"
+              >
+                🔕 스마트폰 경보음 해제
+              </button>
+            )}
+            <button
+              onClick={async () => {
+                try {
+                  await dismissRemoteAlarm();
+                  setRemoteAlarmDismissed(true);
+                  Alarm.stop();
+                  setAlarmPlaying(false);
+                  toast({ title: "컴퓨터 경보 해제", description: "컴퓨터의 경보음이 해제되었습니다." });
+                  setShowFallbackAlarmButtons(false);
+                } catch (err) {
+                  toast({ title: "오류", description: "컴퓨터 경보 해제에 실패했습니다.", variant: "destructive" });
+                }
+              }}
+              className="px-5 py-2.5 bg-destructive text-destructive-foreground rounded-full font-bold text-sm shadow-lg active:scale-95 transition-transform flex items-center gap-2"
+            >
+              🔇 컴퓨터 경보음 해제
+            </button>
+          </div>
         )}
         <ToggleButton 
           isOn={isMonitoring}
