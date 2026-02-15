@@ -309,7 +309,7 @@ const CameraViewer = ({
   // Not streaming yet
   if (!isStreaming) {
     return (
-      <div className="flex-1 bg-black/50 rounded-xl mx-4 flex items-center justify-center aspect-video">
+      <div className="flex-1 bg-black/50 rounded-xl flex items-center justify-center aspect-video">
         <div className="text-center flex flex-col items-center gap-4">
           <Video className="w-12 h-12 text-white/50" />
           <p className="text-white/70 text-sm px-4">
@@ -323,7 +323,7 @@ const CameraViewer = ({
   // Connecting
   if (isConnecting && !isConnected) {
     return (
-      <div className="flex-1 bg-black/50 rounded-xl mx-4 flex items-center justify-center aspect-video">
+      <div className="flex-1 bg-black/50 rounded-xl flex items-center justify-center aspect-video">
         <div className="text-center flex flex-col items-center gap-4">
           <RefreshCw className="w-8 h-8 text-white/50 animate-spin" />
           <p className="text-white/70 text-sm">카메라 연결 중...</p>
@@ -336,7 +336,7 @@ const CameraViewer = ({
   // Error state
   if (error) {
     return (
-      <div className="flex-1 bg-black/50 rounded-xl mx-4 flex items-center justify-center aspect-video">
+      <div className="flex-1 bg-black/50 rounded-xl flex items-center justify-center aspect-video">
         <div className="text-center flex flex-col items-center gap-4">
           <p className="text-white/70 text-sm">{error}</p>
           <button
@@ -367,7 +367,7 @@ const CameraViewer = ({
     };
 
     return (
-      <div className="flex-1 bg-black rounded-xl mx-4 flex items-center justify-center relative overflow-hidden aspect-video">
+      <div className="flex-1 bg-black rounded-xl flex items-center justify-center relative overflow-hidden">
         <video
           ref={videoRef}
           autoPlay
@@ -474,7 +474,7 @@ const CameraViewer = ({
 
   // Waiting for connection
   return (
-    <div className="flex-1 bg-black/50 rounded-xl mx-4 flex items-center justify-center aspect-video">
+    <div className="flex-1 bg-black/50 rounded-xl flex items-center justify-center aspect-video">
       <div className="text-center flex flex-col items-center gap-4">
         <RefreshCw className="w-6 h-6 text-white/50 animate-spin" />
         <p className="text-white/70 text-sm">노트북에서 카메라 시작 대기 중...</p>

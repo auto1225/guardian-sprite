@@ -339,7 +339,7 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
       >
         <CameraHeader onClose={handleClose} deviceName={device.name} />
 
-        <div className="px-4 pb-2 flex flex-col gap-3">
+        <div className="px-2 pb-2 flex flex-col gap-2">
           <CameraViewer
             isStreaming={isStreaming}
             isConnecting={isConnecting || isWaitingForCamera}
