@@ -164,6 +164,38 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
     return () => { cleanupSubscription(); };
   }, [cleanupSubscription]);
 
+  // 모바일 호환 다운로드 헬퍼
+  const mobileDownload = useCallback(async (blob: Blob, filename: string) => {
+    // 1) Web Share API 사용 (모바일에서 가장 안정적)
+    if (navigator.share && navigator.canShare) {
+      try {
+        const file = new File([blob], filename, { type: blob.type });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: filename });
+          return;
+        }
+      } catch (err) {
+        // 사용자가 취소한 경우 등 - fallback으로 진행
+        if ((err as Error)?.name === 'AbortError') return;
+        console.warn("[Camera] Share failed, falling back:", err);
+      }
+    }
+
+    // 2) Blob URL + a 태그 (DOM에 추가하여 클릭)
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    // 약간의 딜레이 후 정리
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 1000);
+  }, []);
+
   // 녹화 시작/중지
   const toggleRecording = useCallback(() => {
     if (isRecording) {
@@ -171,7 +203,7 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
         mediaRecorderRef.current.stop();
       }
-      mediaRecorderRef.current = null;
+      // onstop 핸들러에서 다운로드 처리하므로 ref는 onstop 후 정리
       setIsRecording(false);
       setRecordingDuration(0);
       if (recordingTimerRef.current) { clearInterval(recordingTimerRef.current); recordingTimerRef.current = null; }
@@ -197,13 +229,10 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
       recorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
       recorder.onstop = () => {
         const blob = new Blob(recordedChunksRef.current, { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `meercop-recording-${Date.now()}.webm`;
-        link.click();
-        URL.revokeObjectURL(url);
+        const filename = `meercop-recording-${Date.now()}.webm`;
+        mobileDownload(blob, filename);
         recordedChunksRef.current = [];
+        mediaRecorderRef.current = null;
       };
       recorder.start(1000);
       mediaRecorderRef.current = recorder;
@@ -213,7 +242,7 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
     } catch (err) {
       console.error("[Camera] Recording failed:", err);
     }
-  }, [isRecording, remoteStream]);
+  }, [isRecording, remoteStream, mobileDownload]);
 
   // 일시정지/재개 (비디오만 시각적으로 정지, WebRTC 연결은 유지)
   const togglePause = useCallback(() => {
@@ -247,13 +276,17 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
     }
   }, [remoteStream]);
 
-  const downloadSnapshot = useCallback(() => {
+  const downloadSnapshot = useCallback(async () => {
     if (!snapshotUrl) return;
-    const link = document.createElement("a");
-    link.href = snapshotUrl;
-    link.download = `meercop-snapshot-${device.name}-${Date.now()}.jpg`;
-    link.click();
-  }, [snapshotUrl, device.name]);
+    try {
+      const res = await fetch(snapshotUrl);
+      const blob = await res.blob();
+      const filename = `meercop-snapshot-${device.name}-${Date.now()}.jpg`;
+      await mobileDownload(blob, filename);
+    } catch (err) {
+      console.error("[Camera] Snapshot download failed:", err);
+    }
+  }, [snapshotUrl, device.name, mobileDownload]);
 
   const handleToggleMute = useCallback(() => setIsMuted(m => !m), []);
 
