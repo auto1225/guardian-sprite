@@ -37,28 +37,28 @@ const DeviceCard = ({ device, isSelected, isMain, onSelect }: DeviceCardProps) =
   return (
     <div
       onClick={onSelect}
-      className={`flex items-center gap-2 p-3 rounded-xl cursor-pointer transition-all min-h-[56px] ${
+      className={`flex items-center gap-2 p-3 rounded-xl cursor-pointer transition-all min-h-[56px] backdrop-blur-md ${
         isSelected
-          ? "bg-primary/30 border-2 border-primary-foreground"
-          : "bg-sky-dark/30 border border-primary-foreground/20"
+          ? "bg-white/20 border-2 border-white/50 shadow-[0_0_15px_rgba(255,255,255,0.15)]"
+          : "bg-white/8 border border-white/15 hover:bg-white/12"
       }`}
     >
       {/* Left: name area - truncated */}
       <div className="flex items-center gap-2 min-w-0 shrink-1">
         {isMain && (
-          <span className="bg-secondary text-secondary-foreground px-2 py-0.5 rounded text-xs font-bold shrink-0">
+          <span className="bg-secondary/90 text-secondary-foreground px-2 py-0.5 rounded-md text-xs font-bold shrink-0 shadow-sm">
             MAIN
           </span>
         )}
-        <span className="text-primary-foreground font-semibold truncate text-sm">{device.name}</span>
+        <span className="text-white font-semibold truncate text-sm drop-shadow-sm">{device.name}</span>
       </div>
 
       {/* Right: status area - no shrink */}
       <div className="flex items-center gap-2 shrink-0 ml-auto">
         {/* Battery indicator */}
         <div className="flex items-center gap-0.5">
-          <span className="text-primary-foreground text-xs">{batteryLevel}%</span>
-          <Battery className={`w-4 h-4 ${batteryLevel < 20 ? "text-destructive" : "text-primary-foreground"}`} />
+          <span className="text-white/90 text-xs drop-shadow-sm">{batteryLevel}%</span>
+          <Battery className={`w-4 h-4 ${batteryLevel < 20 ? "text-red-400" : "text-white/80"}`} />
         </div>
 
         {/* Status icons */}
@@ -74,10 +74,10 @@ const DeviceCard = ({ device, isSelected, isMain, onSelect }: DeviceCardProps) =
         {/* Monitoring status - hide for smartphones */}
         {device.device_type !== "smartphone" && (
           <span
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
+            className={`px-2.5 py-1 rounded-full text-xs font-bold shadow-sm ${
               device.is_monitoring
-                ? "bg-status-active text-white"
-                : "bg-muted-foreground text-white"
+                ? "bg-status-active/90 text-white shadow-[0_0_8px_rgba(76,175,80,0.4)]"
+                : "bg-white/15 text-white/70 backdrop-blur-sm"
             }`}
           >
             {device.is_monitoring ? "ON" : "OFF"}
@@ -97,8 +97,10 @@ interface StatusIconProps {
 }
 
 const StatusIcon = ({ active, isMeerCOP, isNetwork, isCamera }: StatusIconProps) => {
-  const baseClass = "w-6 h-6 rounded-full flex items-center justify-center";
-  const activeClass = active ? "bg-status-active" : "bg-destructive";
+  const baseClass = "w-6 h-6 rounded-full flex items-center justify-center shadow-sm";
+  const activeClass = active
+    ? "bg-status-active/90 shadow-[0_0_6px_rgba(76,175,80,0.3)]"
+    : "bg-red-500/80 shadow-[0_0_6px_rgba(239,68,68,0.3)]";
 
   return (
     <div className={`${baseClass} ${activeClass}`}>

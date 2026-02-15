@@ -36,7 +36,7 @@ const DeviceList = ({ isExpanded, onToggle }: DeviceListProps) => {
 
       {/* Expanded device list */}
       {isExpanded && devices.length > 1 && (
-        <div className="mt-3 space-y-2 animate-in slide-in-from-top-2 duration-200">
+        <div className="mt-3 space-y-2.5 animate-in slide-in-from-top-2 duration-200 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-3 shadow-lg">
           {devices.map((device, index) => (
             <DeviceCard
               key={device.id}
