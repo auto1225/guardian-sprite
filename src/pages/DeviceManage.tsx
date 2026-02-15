@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { ArrowLeft, MoreVertical, Plus } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, MoreVertical, Plus, Copy } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { useDevices } from "@/hooks/useDevices";
 import { useCommands } from "@/hooks/useCommands";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,15 +47,35 @@ interface DeviceManagePageProps {
 
 const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory }: DeviceManagePageProps) => {
   const { devices, selectedDeviceId, setSelectedDeviceId, addDevice, deleteDevice } = useDevices();
+  const { user } = useAuth();
   const { toggleMonitoring } = useCommands();
   const { toast } = useToast();
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newDeviceName, setNewDeviceName] = useState("");
   const [newDeviceType, setNewDeviceType] = useState<DeviceType>("laptop");
+  const [serialMap, setSerialMap] = useState<Record<string, string>>({});
 
   // 스마트폰 제외한 기기 목록
   const managedDevices = devices.filter(d => d.device_type !== "smartphone");
+
+  // 시리얼 넘버 로드
+  useEffect(() => {
+    if (!isOpen || !user) return;
+    const fetchSerials = async () => {
+      const { data } = await supabase
+        .from("licenses")
+        .select("device_id, serial_key")
+        .eq("user_id", user.id)
+        .eq("is_active", true);
+      if (data) {
+        const map: Record<string, string> = {};
+        data.forEach(l => { if (l.device_id) map[l.device_id] = l.serial_key; });
+        setSerialMap(map);
+      }
+    };
+    fetchSerials();
+  }, [isOpen, user]);
 
   if (!isOpen) return null;
 
@@ -81,13 +103,44 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
     }
 
     try {
+      // 1. 시리얼 넘버 생성
+      const { data: serialData, error: serialError } = await supabase.functions.invoke("create-serial", {
+        body: {},
+      });
+
+      if (serialError || !serialData?.success) {
+        throw new Error("시리얼 생성 실패");
+      }
+
+      const newSerialKey = serialData.license.serial_key;
+
+      // 2. 기기 등록
       await addDevice.mutateAsync({
         name: newDeviceName,
         device_type: newDeviceType,
       });
+
+      // 3. 새로 등록된 기기에 시리얼 연결
+      // 방금 생성된 기기를 찾아서 시리얼에 연결
+      const { data: latestDevices } = await supabase
+        .from("devices")
+        .select("id")
+        .eq("user_id", user!.id)
+        .eq("name", newDeviceName)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (latestDevices && latestDevices.length > 0) {
+        await supabase.functions.invoke("validate-serial", {
+          body: { serial_key: newSerialKey, device_name: newDeviceName, device_type: newDeviceType },
+        });
+        // 시리얼맵 갱신
+        setSerialMap(prev => ({ ...prev, [latestDevices[0].id]: newSerialKey }));
+      }
+
       toast({
-        title: "기기 등록",
-        description: "새 기기가 등록되었습니다.",
+        title: "기기 등록 완료",
+        description: `시리얼: ${newSerialKey}`,
       });
       setNewDeviceName("");
       setNewDeviceType("laptop");
@@ -142,6 +195,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
             key={device.id}
             device={device}
             isMain={device.id === selectedDeviceId}
+            serialKey={serialMap[device.id]}
             onSetAsMain={() => handleSetAsMain(device.id)}
             onToggleMonitoring={() => handleToggleMonitoring(device)}
             onDelete={() => handleDeleteDevice(device.id)}
@@ -201,20 +255,21 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
 interface DeviceCardProps {
   device: Device;
   isMain: boolean;
+  serialKey?: string;
   onSetAsMain: () => void;
   onToggleMonitoring: () => void;
   onDelete: () => void;
   onViewAlertHistory: () => void;
 }
 
-const DeviceCard = ({ device, isMain, onSetAsMain, onToggleMonitoring, onDelete, onViewAlertHistory }: DeviceCardProps) => {
+const DeviceCard = ({ device, isMain, serialKey, onSetAsMain, onToggleMonitoring, onDelete, onViewAlertHistory }: DeviceCardProps) => {
   const isOnline = device.status !== "offline";
   const isMonitoring = device.is_monitoring;
 
   return (
     <div className="rounded-2xl p-4 bg-white/15 backdrop-blur-xl border border-white/25 shadow-lg">
       {/* Header row */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2 min-w-0">
           {isMain && (
             <span className="bg-status-active text-accent-foreground px-2.5 py-1 rounded text-xs font-bold shrink-0">
@@ -254,6 +309,19 @@ const DeviceCard = ({ device, isMain, onSetAsMain, onToggleMonitoring, onDelete,
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* Serial number */}
+      {serialKey && (
+        <div className="flex items-center gap-1.5 mb-3 mt-1">
+          <span className="text-primary-foreground/60 text-xs">시리얼:</span>
+          <span className="font-mono text-xs font-bold tracking-wider" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>{serialKey}</span>
+        </div>
+      )}
+      {!serialKey && (
+        <div className="flex items-center gap-1.5 mb-3 mt-1">
+          <span className="text-primary-foreground/40 text-xs">시리얼 미연결</span>
+        </div>
+      )}
 
       {/* Status icons and toggle */}
       <div className="flex items-center justify-between">
