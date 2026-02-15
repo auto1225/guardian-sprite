@@ -123,3 +123,22 @@ All colors MUST be HSL.
   scrollbar-width: thin;
   scrollbar-color: hsla(0, 0%, 100%, 0.25) transparent;
 }
+
+/* Alert glass overlay scrollbar */
+.alert-glass-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+.alert-glass-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.alert-glass-scroll::-webkit-scrollbar-thumb {
+  background: hsla(200, 80%, 70%, 0.35);
+  border-radius: 10px;
+}
+.alert-glass-scroll::-webkit-scrollbar-thumb:hover {
+  background: hsla(200, 80%, 70%, 0.55);
+}
+.alert-glass-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: hsla(200, 80%, 70%, 0.35) transparent;
+}
