@@ -352,36 +352,43 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
         <div className="flex-1 overflow-y-auto p-4 space-y-3 alert-history-scroll">
 
           {/* Serial Numbers */}
-          <div className="rounded-2xl p-4 border border-white/25 space-y-3" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
-            <div>
-              <span className="text-white font-semibold text-sm block">시리얼 넘버</span>
-              <span className="text-white/80 text-xs">등록된 모든 시리얼 ({licenses.length}개)</span>
+          <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
+            <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+              <div>
+                <span className="text-white font-semibold text-sm block">시리얼 넘버</span>
+                <span className="text-white/80 text-xs">등록된 시리얼 {licenses.length}개</span>
+              </div>
+              <span className="text-white/40 text-xs">탭하여 복사</span>
             </div>
-            {licenses.length === 0 ? (
-              <span className="text-white/60 text-sm">등록된 시리얼이 없습니다</span>
-            ) : (
-              licenses.map((lic, idx) => (
-                <div key={lic.serial_key} className={`flex items-center justify-between ${idx > 0 ? 'pt-2 border-t border-white/10' : ''}`}>
-                  <div className="flex flex-col">
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(lic.serial_key);
-                        toast({ title: "복사됨", description: "시리얼 넘버가 클립보드에 복사되었습니다." });
-                      }}
-                      className="font-mono font-bold text-sm tracking-wider text-left"
-                      style={{ color: 'hsla(52, 100%, 60%, 1)' }}
-                    >
-                      {lic.serial_key}
-                    </button>
-                    <span className="text-white/60 text-xs mt-0.5">
-                      {lic.device_id === device.id ? '📌 현재 기기' : lic.device_id ? '🔗 다른 기기 연결됨' : '⏳ 미연결'}
-                      {!lic.is_active && ' · 비활성'}
-                    </span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-white/60 shrink-0" />
+            <div className="max-h-[180px] overflow-y-auto alert-history-scroll">
+              {licenses.length === 0 ? (
+                <div className="px-4 pb-4">
+                  <span className="text-white/60 text-sm">등록된 시리얼이 없습니다</span>
                 </div>
-              ))
-            )}
+              ) : (
+                licenses.map((lic, idx) => (
+                  <button
+                    key={lic.serial_key}
+                    onClick={() => {
+                      navigator.clipboard.writeText(lic.serial_key);
+                      toast({ title: "복사됨", description: "시리얼 넘버가 클립보드에 복사되었습니다." });
+                    }}
+                    className={`w-full px-4 py-3 flex items-center justify-between text-left hover:bg-white/5 active:bg-white/10 transition-colors ${idx > 0 ? 'border-t border-white/10' : ''}`}
+                  >
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-mono font-bold text-sm tracking-wider" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>
+                        {lic.serial_key}
+                      </span>
+                      <span className="text-white/50 text-xs mt-0.5">
+                        {lic.device_id === device.id ? '📌 현재 기기' : lic.device_id ? '🔗 다른 기기 연결됨' : '⏳ 미연결'}
+                        {!lic.is_active && ' · 비활성'}
+                      </span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-white/40 shrink-0 ml-2" />
+                  </button>
+                ))
+              )}
+            </div>
           </div>
 
           {/* General Settings Group */}
