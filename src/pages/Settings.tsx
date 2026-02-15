@@ -147,6 +147,9 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
   const [motionSensitivity, setMotionSensitivity] = useState<MotionSensitivity>(
     (meta.motionSensitivity as MotionSensitivity) || "insensitive"
   );
+  const [mouseSensitivity, setMouseSensitivity] = useState<MotionSensitivity>(
+    (meta.mouseSensitivity as MotionSensitivity) || "sensitive"
+  );
 
   const [volumePercent, setVolumePercent] = useState(() => Math.round(getAlarmVolume() * 100));
   const [showNicknameDialog, setShowNicknameDialog] = useState(false);
@@ -164,6 +167,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
     const saved = m.sensorSettings as SensorSettings | undefined;
     if (saved) setSensorSettings({ ...DEFAULT_SENSOR_SETTINGS, ...saved });
     setMotionSensitivity((m.motionSensitivity as MotionSensitivity) || "insensitive");
+    setMouseSensitivity((m.mouseSensitivity as MotionSensitivity) || "sensitive");
   }, [device]);
 
   // 설정 페이지를 처음 열 때 DB에 기본 설정값이 없으면 자동 저장
@@ -177,6 +181,7 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
         alarm_sound_id: (m.alarm_sound_id as string) || "whistle",
         require_pc_pin: m.require_pc_pin ?? true,
         motionSensitivity: (m.motionSensitivity as string) || "insensitive",
+        mouseSensitivity: (m.mouseSensitivity as string) || "sensitive",
       };
       console.log("[Settings] Saving initial defaults to DB:", defaults);
       saveMetadata(defaults);
@@ -307,6 +312,15 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
     setMotionSensitivity(val);
     try {
       await saveMetadata({ motionSensitivity: val });
+    } catch {
+      toast({ title: "오류", description: "설정 저장에 실패했습니다.", variant: "destructive" });
+    }
+  };
+
+  const handleMouseSensitivityChange = async (val: MotionSensitivity) => {
+    setMouseSensitivity(val);
+    try {
+      await saveMetadata({ mouseSensitivity: val });
     } catch {
       toast({ title: "오류", description: "설정 저장에 실패했습니다.", variant: "destructive" });
     }
@@ -510,6 +524,34 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
             <SensorSection>
               <SensorToggle label="마우스 감지" description="마우스 움직임을 감지합니다" checked={sensorSettings.mouse} onChange={(v) => handleSensorToggle("mouse", v)} />
             </SensorSection>
+
+            {sensorSettings.mouse && (
+              <>
+                <div className="border-t border-white/10" />
+                <div className="px-4 py-4">
+                  <span className="text-white font-semibold text-sm block mb-3">마우스 감지 민감도</span>
+                  <div className="flex gap-2">
+                    {(Object.keys(SENSITIVITY_MAP) as MotionSensitivity[]).map((key) => (
+                      <button
+                        key={key}
+                        onClick={() => handleMouseSensitivityChange(key)}
+                        className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                          mouseSensitivity === key
+                            ? "text-slate-800 shadow-md"
+                            : "text-white hover:bg-white/15"
+                        }`}
+                        style={mouseSensitivity === key
+                          ? { background: 'hsla(52, 100%, 60%, 0.9)' }
+                          : { background: 'hsla(0,0%,100%,0.1)' }
+                        }
+                      >
+                        {SENSITIVITY_MAP[key].label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="border-t border-white/10" />
             <SensorSection>
