@@ -27,6 +27,7 @@ const CameraViewer = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const playRetryTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isMutedRef = useRef(isMuted);
 
   // 오디오 레벨 시각화
   const [audioLevel, setAudioLevel] = useState(0);
@@ -94,6 +95,11 @@ const CameraViewer = ({
     };
   }, [remoteStream]);
 
+  // Keep ref in sync
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
+
   const attemptPlay = useCallback(async (retryCount = 0) => {
     const video = videoRef.current;
     if (!video || !video.srcObject) return;
@@ -103,7 +109,7 @@ const CameraViewer = ({
       await video.play();
       setIsVideoPlaying(true);
       // 재생 성공 후 사용자 설정 반영
-      video.muted = isMuted;
+      video.muted = isMutedRef.current;
     } catch (err) {
       console.warn("[CameraViewer] Play failed (attempt:", retryCount + 1, "):", err);
       setIsVideoPlaying(false);
@@ -111,7 +117,7 @@ const CameraViewer = ({
         playRetryTimerRef.current = setTimeout(() => attemptPlay(retryCount + 1), 500);
       }
     }
-  }, [isMuted]);
+  }, []);
 
   // isMuted prop 변경 시 비디오에 반영
   useEffect(() => {
