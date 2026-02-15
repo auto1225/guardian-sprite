@@ -91,7 +91,6 @@ export const useAlerts = (deviceId?: string | null) => {
 
     console.log("[useAlerts] 🚨 New alert:", alert.id);
     activeAlertRef.current = alert;
-    safeSetActiveAlert(alert);
 
     // 경보음 재생
     if (!Alarm.isPlaying() && !Alarm.isMuted()) {
