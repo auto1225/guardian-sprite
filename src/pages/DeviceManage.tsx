@@ -32,7 +32,6 @@ import wifiOn from "@/assets/wifi-on.png";
 import wifiOff from "@/assets/wifi-off.png";
 import cameraOn from "@/assets/camera-on.png";
 import cameraOff from "@/assets/camera-off.png";
-import meercopOn from "@/assets/meercop-on.png";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 type DeviceType = Database["public"]["Enums"]["device_type"];
@@ -51,6 +50,9 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice }: DeviceManagePageP
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newDeviceName, setNewDeviceName] = useState("");
   const [newDeviceType, setNewDeviceType] = useState<DeviceType>("laptop");
+
+  // 스마트폰 제외한 기기 목록
+  const managedDevices = devices.filter(d => d.device_type !== "smartphone");
 
   if (!isOpen) return null;
 
@@ -115,14 +117,14 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice }: DeviceManagePageP
   };
 
   return (
-    <div className="fixed inset-0 bg-primary z-50 flex flex-col">
+    <div className="fixed inset-0 bg-background z-50 flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-primary-foreground/20">
+      <div className="flex items-center justify-between p-4 border-b border-white/20">
         <div className="flex items-center gap-3">
           <button onClick={onClose} className="text-primary-foreground">
             <ArrowLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-primary-foreground font-bold text-lg">노트북 관리</h1>
+          <h1 className="text-primary-foreground font-bold text-lg">기기 관리</h1>
         </div>
         <button 
           onClick={() => setIsAddDialogOpen(true)}
@@ -134,7 +136,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice }: DeviceManagePageP
 
       {/* Device list */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {devices.map((device) => (
+        {managedDevices.map((device) => (
           <DeviceCard
             key={device.id}
             device={device}
@@ -145,9 +147,9 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice }: DeviceManagePageP
           />
         ))}
 
-        {devices.length === 0 && (
+        {managedDevices.length === 0 && (
           <div className="text-center py-12 text-primary-foreground/70">
-            <p>등록된 노트북이 없습니다</p>
+            <p>등록된 기기가 없습니다</p>
             <p className="text-sm mt-2">+ 버튼을 눌러 기기를 등록하세요</p>
           </div>
         )}
@@ -176,8 +178,8 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice }: DeviceManagePageP
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="laptop">노트북</SelectItem>
-                  <SelectItem value="desktop">데스크탑</SelectItem>
-                  <SelectItem value="smartphone">스마트폰</SelectItem>
+                  <SelectItem value="desktop">컴퓨터</SelectItem>
+                  <SelectItem value="tablet">태블릿</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -209,27 +211,27 @@ const DeviceCard = ({ device, isMain, onSetAsMain, onToggleMonitoring, onDelete 
   const isMonitoring = device.is_monitoring;
 
   return (
-    <div className="rounded-2xl p-3" style={{ backgroundColor: '#6BC5D2' }}>
+    <div className="rounded-2xl p-4 bg-white/15 backdrop-blur-xl border border-white/25 shadow-lg">
       {/* Header row */}
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           {isMain && (
-            <span className="text-white px-2.5 py-1 rounded text-xs font-bold" style={{ backgroundColor: '#4CAF50' }}>
+            <span className="bg-status-active text-accent-foreground px-2.5 py-1 rounded text-xs font-bold shrink-0">
               MAIN
             </span>
           )}
-          <span className="text-white font-semibold">{device.name}</span>
+          <span className="text-primary-foreground font-semibold truncate">{device.name}</span>
           {device.battery_level !== null && (
-            <span className="text-white text-sm flex items-center gap-1">
+            <span className="text-primary-foreground/80 text-sm flex items-center gap-1 shrink-0">
               {device.battery_level}%
-              <span style={{ color: '#4CAF50' }}>⚡</span>
+              <span className="text-status-active">⚡</span>
             </span>
           )}
         </div>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="text-white p-1">
+            <button className="text-primary-foreground p-1 shrink-0">
               <MoreVertical className="w-5 h-5" />
             </button>
           </DropdownMenuTrigger>
@@ -280,11 +282,11 @@ const DeviceCard = ({ device, isMain, onSetAsMain, onToggleMonitoring, onDelete 
 
         <button
           onClick={onToggleMonitoring}
-          className="px-6 py-2 rounded-lg text-base font-bold"
-          style={{ 
-            backgroundColor: isMonitoring ? '#D4E157' : '#9E9E9E',
-            color: isMonitoring ? '#424242' : '#FFFFFF'
-          }}
+          className={`px-6 py-2 rounded-lg text-base font-bold transition-all ${
+            isMonitoring
+              ? "bg-status-active text-accent-foreground shadow-[0_0_12px_hsla(48,100%,55%,0.4)]"
+              : "bg-white/20 text-primary-foreground/70 backdrop-blur-sm"
+          }`}
         >
           {isMonitoring ? "ON" : "OFF"}
         </button>
@@ -308,7 +310,7 @@ const StatusIconItem = ({ iconOn, iconOff, isActive, label }: StatusIconItemProp
         alt={label} 
         className="w-10 h-10 object-contain"
       />
-      <span className="text-white text-[10px] font-medium">{label}</span>
+      <span className="text-primary-foreground text-[10px] font-medium">{label}</span>
     </div>
   );
 };
