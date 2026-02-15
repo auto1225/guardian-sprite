@@ -108,21 +108,33 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
   const synthRef = useRef<{ stop: () => void } | null>(null);
   const [serialKey, setSerialKey] = useState<string | null>(null);
 
-  // 시리얼 넘버 조회 (기기별)
+  // 시리얼 넘버 조회 (기기별 → user_id 폴백)
   useEffect(() => {
     if (!isOpen) return;
     const fetchSerial = async () => {
-      const { data } = await supabase
+      // 1) 기기에 연결된 시리얼 조회
+      const { data: byDevice } = await supabase
         .from("licenses")
         .select("serial_key")
         .eq("device_id", device.id)
         .limit(1)
-        .single();
-      if (data) setSerialKey(data.serial_key);
-      else setSerialKey(null);
+        .maybeSingle();
+      if (byDevice) {
+        setSerialKey(byDevice.serial_key);
+        return;
+      }
+      // 2) 기기에 연결 안 되었으면 user_id로 폴백
+      const { data: byUser } = await supabase
+        .from("licenses")
+        .select("serial_key")
+        .eq("user_id", device.user_id)
+        .eq("is_active", true)
+        .limit(1)
+        .maybeSingle();
+      setSerialKey(byUser?.serial_key ?? null);
     };
     fetchSerial();
-  }, [isOpen, device.id]);
+  }, [isOpen, device.id, device.user_id]);
 
   const meta = (device.metadata as Record<string, unknown>) || {};
 
