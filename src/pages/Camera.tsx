@@ -164,37 +164,28 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
     return () => { cleanupSubscription(); };
   }, [cleanupSubscription]);
 
-  // 모바일 호환 다운로드 헬퍼
+  // 모바일 호환 다운로드 헬퍼 (공유 없이 직접 다운로드)
   const mobileDownload = useCallback(async (blob: Blob, filename: string) => {
-    // 1) Web Share API 사용 (모바일에서 가장 안정적)
-    if (navigator.share && navigator.canShare) {
-      try {
-        const file = new File([blob], filename, { type: blob.type });
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: filename });
-          return;
-        }
-      } catch (err) {
-        // 사용자가 취소한 경우 등 - fallback으로 진행
-        if ((err as Error)?.name === 'AbortError') return;
-        console.warn("[Camera] Share failed, falling back:", err);
-      }
+    try {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.style.display = "none";
+      document.body.appendChild(link);
+      // 모바일 브라우저 호환을 위해 약간의 딜레이 후 클릭
+      await new Promise(r => setTimeout(r, 100));
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 2000);
+      toast({ title: "저장 완료", description: filename });
+    } catch (err) {
+      console.error("[Camera] Download failed:", err);
+      toast({ title: "저장 실패", description: "파일을 저장할 수 없습니다.", variant: "destructive" });
     }
-
-    // 2) Blob URL + a 태그 (DOM에 추가하여 클릭)
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.style.display = "none";
-    document.body.appendChild(link);
-    link.click();
-    // 약간의 딜레이 후 정리
-    setTimeout(() => {
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }, 1000);
-  }, []);
+  }, [toast]);
 
   // 녹화 시작/중지
   const toggleRecording = useCallback(() => {
@@ -227,10 +218,18 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
     try {
       const recorder = new MediaRecorder(recordingStream, { mimeType });
       recorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
-      recorder.onstop = () => {
+      recorder.onstop = async () => {
+        console.log("[Camera] Recording stopped, chunks:", recordedChunksRef.current.length);
+        if (recordedChunksRef.current.length === 0) {
+          console.warn("[Camera] No recorded chunks available");
+          toast({ title: "녹화 실패", description: "녹화된 데이터가 없습니다.", variant: "destructive" });
+          mediaRecorderRef.current = null;
+          return;
+        }
         const blob = new Blob(recordedChunksRef.current, { type: mimeType });
+        console.log("[Camera] Recording blob size:", blob.size);
         const filename = `meercop-recording-${Date.now()}.webm`;
-        mobileDownload(blob, filename);
+        await mobileDownload(blob, filename);
         recordedChunksRef.current = [];
         mediaRecorderRef.current = null;
       };
