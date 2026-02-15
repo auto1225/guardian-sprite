@@ -332,16 +332,28 @@ export const useDevices = () => {
         .on("postgres_changes", { event: "UPDATE", schema: "public", table: "devices", filter: `user_id=eq.${user.id}` },
           (payload) => {
             const updatedDevice = payload.new as Device;
+            
+            // 스마트폰이 아닌 기기: last_seen_at이 2분 이상 stale이면 online 상태를 무시
+            const STALE_THRESHOLD_MS = 2 * 60 * 1000;
+            let corrected = updatedDevice;
+            if (updatedDevice.device_type !== "smartphone" && updatedDevice.status !== "offline") {
+              const lastSeen = updatedDevice.last_seen_at ? new Date(updatedDevice.last_seen_at).getTime() : 0;
+              if (Date.now() - lastSeen > STALE_THRESHOLD_MS) {
+                console.log("[Realtime] Stale device update ignored:", updatedDevice.id.slice(0, 8));
+                corrected = { ...updatedDevice, status: "offline" as Device["status"], is_network_connected: false };
+              }
+            }
+            
             console.log("[Realtime] Device updated:", {
-              id: updatedDevice.id,
-              is_camera_connected: updatedDevice.is_camera_connected,
-              status: updatedDevice.status,
+              id: corrected.id,
+              is_camera_connected: corrected.is_camera_connected,
+              status: corrected.status,
             });
             queryClient.setQueryData(["devices", user.id], (oldDevices: Device[] | undefined) => {
               if (!oldDevices) return oldDevices;
               return oldDevices.map((device) =>
-                device.id === updatedDevice.id
-                  ? { ...device, ...updatedDevice, is_camera_connected: updatedDevice.is_camera_connected ?? device.is_camera_connected }
+                device.id === corrected.id
+                  ? { ...device, ...corrected, is_camera_connected: corrected.is_camera_connected ?? device.is_camera_connected }
                   : device
               );
             });
