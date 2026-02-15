@@ -91,6 +91,7 @@ export const useAlerts = (deviceId?: string | null) => {
 
     console.log("[useAlerts] 🚨 New alert:", alert.id);
     activeAlertRef.current = alert;
+    safeSetActiveAlert(alert); // ← 핵심 수정: AlertMode 오버레이 표시
 
     // 경보음 재생
     if (!Alarm.isPlaying() && !Alarm.isMuted()) {
@@ -109,7 +110,7 @@ export const useAlerts = (deviceId?: string | null) => {
       } catch {}
       loadAlerts();
     }
-  }, [loadAlerts]);
+  }, [loadAlerts, safeSetActiveAlert]);
 
   // ref로 최신 handleAlert를 유지 — 채널 의존성에서 제거
   handleAlertRef.current = handleAlert;

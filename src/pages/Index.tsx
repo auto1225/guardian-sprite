@@ -209,6 +209,8 @@ const Index = () => {
               <button
                 onClick={() => {
                   Alarm.stop();
+                  // 현재 활성 경보 ID를 dismissed에 추가 — Presence 재전송 시 재트리거 방지
+                  if (activeAlert?.id) Alarm.addDismissed(activeAlert.id);
                   setAlarmPlaying(false);
                 }}
                 className="px-5 py-2.5 bg-white/15 backdrop-blur-md text-white border border-white/25 rounded-full font-bold text-sm shadow-lg active:scale-95 transition-transform flex items-center gap-2"
