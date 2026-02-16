@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, forwardRef } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -16,7 +16,7 @@ interface CameraPageProps {
   onClose: () => void;
 }
 
-const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
+const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen, onClose }, ref) => {
   const { toast } = useToast();
   const [isStreaming, setIsStreaming] = useState(false);
   const [isWaitingForCamera, setIsWaitingForCamera] = useState(false);
@@ -365,6 +365,8 @@ const CameraPage = ({ device, isOpen, onClose }: CameraPageProps) => {
       </div>
     </div>
   );
-};
+});
+
+CameraPage.displayName = "CameraPage";
 
 export default CameraPage;
