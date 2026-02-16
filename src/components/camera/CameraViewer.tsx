@@ -147,10 +147,12 @@ const CameraViewer = ({
 
     setIsVideoPlaying(false);
 
-    // ★ 이전에 동작하던 초기화 시퀀스 복원
+    // ★ 모바일 필수 속성 강제 재할당 (재연결 시 브라우저가 잊어버리는 것 방지)
     video.pause();
     video.srcObject = null;
     video.muted = true;
+    video.setAttribute("playsinline", "true");
+    video.setAttribute("webkit-playsinline", "true");
     video.srcObject = remoteStream;
 
     let playing = false;

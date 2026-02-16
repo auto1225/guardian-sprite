@@ -189,7 +189,13 @@ export const useWebRTCBroadcaster = ({
             const videoTrack = localStreamRef.current.getVideoTracks()[0];
             if (videoTrack) {
               console.log("[WebRTC Broadcaster] 🔑 Forcing keyframe via applyConstraints");
-              videoTrack.applyConstraints(videoTrack.getConstraints()).catch(() => {});
+              const caps = videoTrack.getCapabilities?.() as Record<string, unknown> | undefined;
+              if (caps?.focusMode) {
+                videoTrack.applyConstraints({ advanced: [{ focusMode: "continuous" } as MediaTrackConstraintSet] }).catch(() => {});
+              } else {
+                // fallback: 기존 constraints 재적용
+                videoTrack.applyConstraints(videoTrack.getConstraints()).catch(() => {});
+              }
             }
           }
         } else if (
