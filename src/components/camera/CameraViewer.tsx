@@ -164,59 +164,77 @@ const CameraViewer = ({
     const video = videoRef.current;
     if (!video || !remoteStream) return;
 
+    // 기존 타이머 정리
     if (playRetryTimerRef.current) {
       clearTimeout(playRetryTimerRef.current);
       playRetryTimerRef.current = null;
+    }
+    if (playDebounceRef.current) {
+      clearTimeout(playDebounceRef.current);
+      playDebounceRef.current = null;
     }
 
     // 새 스트림이 도착하면 재생 상태 리셋
     setIsVideoPlaying(false);
 
-    video.playsInline = true;
-    // srcObject 완전 리셋 후 재할당 — 재연결 시 브라우저가 새 스트림으로 인식하도록
+    // 핵심: pause() → srcObject 리셋 → 새 스트림 할당 → loadedmetadata 대기 → play()
+    video.pause();
     video.srcObject = null;
-    video.load();
+    video.playsInline = true;
     video.srcObject = remoteStream;
 
-    const onLoadedMetadata = () => attemptPlay(0);
-    const onCanPlay = () => attemptPlay(0);
-    const onLoadedData = () => attemptPlay(0);
-
-    // 새로 추가된 트랙에도 unmute 리스너 등록
     const trackCleanups: Array<() => void> = [];
-    const onAddTrack = (e: MediaStreamTrackEvent) => {
-      console.log("[CameraViewer] Track added:", e.track.kind);
-      attemptPlay(0);
-      const t = e.track;
-      const onUnmute = () => {
-        console.log("[CameraViewer] New track unmuted:", t.kind, "- attempting play");
-        attemptPlay(0);
-      };
-      t.addEventListener("unmute", onUnmute);
-      trackCleanups.push(() => t.removeEventListener("unmute", onUnmute));
+
+    // loadedmetadata 이벤트를 기다린 후 play() — setTimeout보다 신뢰성 높음
+    const onReady = async () => {
+      console.log("[CameraViewer] 📹 loadedmetadata fired, attempting play");
+      try {
+        video.muted = true;
+        await video.play();
+        setIsVideoPlaying(true);
+        video.muted = isMutedRef.current;
+        console.log("[CameraViewer] ✅ Play succeeded after stream change");
+      } catch (e: any) {
+        if (e?.name === "AbortError") {
+          console.log("[CameraViewer] ⏭️ play() AbortError (stream replaced), ignoring");
+          return;
+        }
+        console.warn("[CameraViewer] ⚠️ play() failed after loadedmetadata, starting retry:", e);
+        attemptPlay(1);
+      }
     };
 
-    video.addEventListener("loadedmetadata", onLoadedMetadata);
-    video.addEventListener("canplay", onCanPlay);
-    video.addEventListener("loadeddata", onLoadedData);
+    video.addEventListener("loadedmetadata", onReady, { once: true });
+
+    // 새로 추가된 트랙에도 unmute 리스너 등록
+    const onAddTrack = (e: MediaStreamTrackEvent) => {
+      console.log("[CameraViewer] Track added:", e.track.kind);
+      const t = e.track;
+      if (t.muted) {
+        const onUnmute = () => {
+          console.log("[CameraViewer] New track unmuted:", t.kind);
+          if (!isVideoPlaying) attemptPlay(0);
+        };
+        t.addEventListener("unmute", onUnmute, { once: true });
+        trackCleanups.push(() => t.removeEventListener("unmute", onUnmute));
+      }
+    };
     remoteStream.addEventListener("addtrack", onAddTrack);
 
-    // 기존 트랙의 unmute 이벤트 감지
+    // 기존 muted 트랙의 unmute 이벤트 감지
     remoteStream.getTracks().forEach(track => {
-      const onUnmute = () => {
-        console.log("[CameraViewer] Track unmuted:", track.kind, "- attempting play");
-        attemptPlay(0);
-      };
-      track.addEventListener("unmute", onUnmute);
-      trackCleanups.push(() => track.removeEventListener("unmute", onUnmute));
+      if (track.muted) {
+        const onUnmute = () => {
+          console.log("[CameraViewer] Track unmuted:", track.kind);
+          if (!isVideoPlaying) attemptPlay(0);
+        };
+        track.addEventListener("unmute", onUnmute, { once: true });
+        trackCleanups.push(() => track.removeEventListener("unmute", onUnmute));
+      }
     });
 
-    attemptPlay(0);
-
     return () => {
-      video.removeEventListener("loadedmetadata", onLoadedMetadata);
-      video.removeEventListener("canplay", onCanPlay);
-      video.removeEventListener("loadeddata", onLoadedData);
+      video.removeEventListener("loadedmetadata", onReady);
       remoteStream.removeEventListener("addtrack", onAddTrack);
       trackCleanups.forEach(fn => fn());
       if (playRetryTimerRef.current) {
