@@ -26,6 +26,7 @@ const CameraViewer = ({
 }: CameraViewerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [videoKey, setVideoKey] = useState(0); // ★ key 변경 시 <video> DOM 완전 재생성
   const playRetryTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isMutedRef = useRef(isMuted);
 
@@ -130,12 +131,14 @@ const CameraViewer = ({
       console.log("[CameraViewer] Stream cleared, hard-resetting video");
       video.pause();
       video.srcObject = null;
-      video.load(); // ★ 내부 버퍼를 비우고 미디어 파이프라인 강제 리셋
+      video.load();
       setIsVideoPlaying(false);
+      // ★ videoKey를 증가시켜 다음 스트림 도착 시 <video> DOM을 완전히 새로 생성
+      setVideoKey(k => k + 1);
       return;
     }
 
-    console.log("[CameraViewer] 📹 New stream received, setting up video playback");
+    console.log("[CameraViewer] 📹 New stream received, setting up video playback (videoKey:", videoKey, ")");
 
     if (playRetryTimerRef.current) {
       clearTimeout(playRetryTimerRef.current);
@@ -268,6 +271,7 @@ const CameraViewer = ({
     <div className="flex-1 bg-black rounded-xl flex items-center justify-center relative overflow-hidden aspect-video">
       {/* ★ video 요소는 항상 DOM에 존재 — videoRef가 null이 되지 않도록 */}
       <video
+        key={videoKey}
         ref={videoRef}
         autoPlay
         playsInline
