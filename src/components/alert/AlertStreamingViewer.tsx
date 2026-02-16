@@ -57,14 +57,25 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
     const video = videoRef.current;
     if (!video || !remoteStream) return;
 
+    console.log("[AlertStreaming] 📹 Attaching stream to video element", {
+      streamId: remoteStream.id,
+      active: remoteStream.active,
+      tracks: remoteStream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, muted: t.muted, readyState: t.readyState })),
+    });
+
     video.srcObject = remoteStream;
     setShowLastFrame(false);
 
     // 모바일 브라우저에서 autoPlay가 작동하지 않을 수 있으므로 명시적 play() 호출
     const attemptPlay = (retries = 0) => {
-      if (!videoRef.current || videoRef.current.srcObject !== remoteStream) return;
-      videoRef.current.play().catch(() => {
-        if (retries < 5) {
+      const v = videoRef.current;
+      if (!v || v.srcObject !== remoteStream) return;
+      
+      v.play().then(() => {
+        console.log("[AlertStreaming] ✅ Video playing!", { videoWidth: v.videoWidth, videoHeight: v.videoHeight });
+      }).catch((err) => {
+        console.warn("[AlertStreaming] ⚠️ play() failed (attempt", retries + 1, "):", err.message);
+        if (retries < 10) {
           setTimeout(() => attemptPlay(retries + 1), 500);
         }
       });
@@ -72,10 +83,41 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
     attemptPlay();
 
     // 트랙이 늦게 도착할 경우 대비
-    const handleAddTrack = () => attemptPlay();
+    const handleAddTrack = (e: MediaStreamTrackEvent) => {
+      console.log("[AlertStreaming] 🆕 Track added to stream:", e.track.kind, e.track.readyState);
+      attemptPlay();
+    };
     remoteStream.addEventListener("addtrack", handleAddTrack);
+
+    // 비디오 트랙 상태 모니터링
+    const videoTracks = remoteStream.getVideoTracks();
+    const trackHandlers: Array<() => void> = [];
+    videoTracks.forEach(track => {
+      const onUnmute = () => {
+        console.log("[AlertStreaming] ✅ Video track unmuted, attempting play");
+        attemptPlay();
+      };
+      const onEnded = () => {
+        console.log("[AlertStreaming] ⚠️ Video track ended");
+      };
+      track.addEventListener("unmute", onUnmute);
+      track.addEventListener("ended", onEnded);
+      trackHandlers.push(() => {
+        track.removeEventListener("unmute", onUnmute);
+        track.removeEventListener("ended", onEnded);
+      });
+    });
+
+    // loadedmetadata 이벤트로 비디오가 실제로 데이터를 받았는지 확인
+    const onLoadedMetadata = () => {
+      console.log("[AlertStreaming] ✅ Video loadedmetadata:", { width: video.videoWidth, height: video.videoHeight });
+    };
+    video.addEventListener("loadedmetadata", onLoadedMetadata);
+
     return () => {
       remoteStream.removeEventListener("addtrack", handleAddTrack);
+      video.removeEventListener("loadedmetadata", onLoadedMetadata);
+      trackHandlers.forEach(cleanup => cleanup());
     };
   }, [remoteStream]);
 
