@@ -37,9 +37,14 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
   const hasAutoStarted = useRef(false);
 
   const handleWebRTCError = useCallback((err: string) => {
-    if (isConnectedRef.current && !err.includes("실패")) return;
-    if (!isConnectingRef.current && !isConnectedRef.current) return;
+    // 연결 해제("끊어") 및 실패("실패") 메시지는 항상 표시
+    const isCriticalError = err.includes("실패") || err.includes("끊어") || err.includes("초과");
+    if (!isCriticalError && isConnectedRef.current) return;
+    if (!isCriticalError && !isConnectingRef.current && !isConnectedRef.current) return;
+    console.log("[Camera] Error received:", err);
     setError(err);
+    setIsStreaming(false);
+    isConnectingRef.current = false;
     toast({ title: "연결 오류", description: err, variant: "destructive" });
   }, [toast]);
 
@@ -92,13 +97,25 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
   }, [device.id]);
 
   const startStreaming = useCallback(async () => {
-    if (isConnectingRef.current || isStreaming) return;
+    if (isConnectingRef.current) return;
+    // 이미 연결 중이거나 스트리밍 중이면 일단 정리 후 재시작
+    if (isConnectedRef.current || isStreaming) {
+      console.log("[Camera] Cleaning up previous connection before restart...");
+      disconnect();
+      await new Promise(r => setTimeout(r, 500));
+    }
 
     // 에러 상태 초기화
     setError(null);
 
-    // 카메라 미연결 시 즉시 에러 표시
-    if (!device.is_camera_connected) {
+    // 카메라 미연결 시 최신 DB 상태 확인
+    const { data: latestDevice } = await supabase
+      .from("devices")
+      .select("is_camera_connected")
+      .eq("id", device.id)
+      .single();
+    
+    if (!latestDevice?.is_camera_connected) {
       setError(`${device.name} 카메라가 인식되지 않습니다.`);
       return;
     }
@@ -135,7 +152,7 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
         setError("WebRTC 연결 시간 초과. 다시 시도해주세요.");
       }
     }, 30000);
-  }, [isStreaming, requestStreamingStart, waitForBroadcaster, connect, cleanupSubscription]);
+  }, [isStreaming, device.id, device.name, requestStreamingStart, waitForBroadcaster, connect, disconnect, cleanupSubscription]);
 
   const stopStreaming = useCallback(async () => {
     const elapsed = Date.now() - connectionStartTimeRef.current;
@@ -168,6 +185,47 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
       hasAutoStarted.current = false;
     }
   }, [isOpen, startStreaming]);
+
+  // 카메라 재연결 감지 → 자동 스트리밍 재시작
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const channel = supabase
+      .channel(`camera-reconnect-${device.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "devices",
+          filter: `id=eq.${device.id}`,
+        },
+        (payload) => {
+          const newDevice = payload.new as Device;
+          const oldDevice = payload.old as Partial<Device>;
+          
+          // 카메라가 false → true로 변경되었고, 현재 스트리밍 중이 아닌 경우 자동 재시작
+          if (
+            newDevice.is_camera_connected &&
+            oldDevice.is_camera_connected === false &&
+            !isConnectingRef.current &&
+            !isConnectedRef.current
+          ) {
+            console.log("[Camera] 📸 Camera reconnected, auto-restarting stream...");
+            setError(null);
+            // 약간의 딜레이 후 재시작 (카메라 안정화 대기)
+            setTimeout(() => {
+              startStreaming();
+            }, 1500);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isOpen, device.id, startStreaming]);
 
   useEffect(() => {
     return () => { cleanupSubscription(); };
