@@ -307,9 +307,27 @@ export const WebRTCViewer = ({ deviceId }: { deviceId: string }) => {
     pcRef.current = pc;
 
     pc.ontrack = (event) => {
-      if (event.streams && event.streams[0]) {
-        setRemoteStream(event.streams[0]);
-        setIsConnected(true);
+      const track = event.track;
+      const stream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([track]);
+
+      // 디바운스 처리: AbortError 방지 (150ms)
+      const updateStream = () => {
+        if (this.debounceTimer) clearTimeout(this.debounceTimer);
+        this.debounceTimer = setTimeout(() => {
+          setRemoteStream(stream);
+          setIsConnected(true);
+        }, 150);
+      };
+
+      if (track.muted) {
+        // muted 상태라면 데이터가 올 때까지 대기
+        const onUnmute = () => {
+          track.removeEventListener("unmute", onUnmute);
+          updateStream();
+        };
+        track.addEventListener("unmute", onUnmute);
+      } else {
+        updateStream();
       }
     };
 
