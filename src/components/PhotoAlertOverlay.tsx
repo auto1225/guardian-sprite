@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { PhotoAlert } from "@/lib/photoAlertStorage";
 import { stopAlertSound } from "@/hooks/useAlerts";
 import * as Alarm from "@/lib/alarmSound";
-import { X, Download, ChevronLeft, ChevronRight, ZoomIn, CheckSquare, Square } from "lucide-react";
+import { X, Download, ChevronLeft, ChevronRight, ZoomIn, CheckSquare, Square, Video, VideoOff, MapPin } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { saveSinglePhoto, savePhotos } from "@/lib/photoDownload";
 import { useToast } from "@/hooks/use-toast";
@@ -202,18 +202,44 @@ export default function PhotoAlertOverlay({
         {isHistoryView ? (
           <AlertVideoPlayer alertId={alert.id} />
         ) : (
-          alert.auto_streaming && alert.device_id && (
+          alert.auto_streaming && alert.device_id ? (
             <AlertStreamingViewer deviceId={alert.device_id} alertId={alert.id} />
+          ) : (
+            <div className="mx-4 mb-3">
+              <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10">
+                  <Video size={16} className="text-white/80" />
+                  <span className="text-white font-bold text-sm">🎥 실시간 스트리밍</span>
+                </div>
+                <div className="relative aspect-video bg-black/40 flex flex-col items-center justify-center">
+                  <VideoOff className="w-8 h-8 text-white/40 mb-2" />
+                  <span className="text-sm text-white/60">카메라 미연결</span>
+                </div>
+              </div>
+            </div>
           )
         )}
 
         {/* 위치 지도 */}
-        {alert.latitude != null && alert.longitude != null && (
+        {alert.latitude != null && alert.longitude != null ? (
           <AlertLocationMap latitude={alert.latitude} longitude={alert.longitude} locationSource={alert.location_source} />
+        ) : (
+          <div className="mx-4 mb-3 shrink-0">
+            <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10">
+                <MapPin size={16} className="text-white/80" />
+                <span className="text-white font-bold text-sm">📍 노트북 위치</span>
+              </div>
+              <div className="h-48 bg-black/40 flex flex-col items-center justify-center">
+                <MapPin className="w-8 h-8 text-white/40 mb-2" />
+                <span className="text-sm text-white/60">위치 정보 없음</span>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* View mode & save controls */}
-        <div className="flex flex-wrap gap-2 px-4 pb-2">
+        {alert.photos.length > 0 && <div className="flex flex-wrap gap-2 px-4 pb-2">
           <button
             onClick={() => setViewMode("grid")}
             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${
@@ -272,10 +298,10 @@ export default function PhotoAlertOverlay({
               </button>
             )}
           </div>
-        </div>
+        </div>}
 
         {/* Select all toggle */}
-        {selectMode && viewMode === "grid" && (
+        {alert.photos.length > 0 && selectMode && viewMode === "grid" && (
           <div className="px-4 pb-2">
             <button
               onClick={toggleSelectAll}
@@ -293,6 +319,19 @@ export default function PhotoAlertOverlay({
 
         {/* Photos */}
         <div className="px-4 pb-4">
+          {alert.photos.length === 0 ? (
+            <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10">
+                <VideoOff size={16} className="text-white/80" />
+                <span className="text-white font-bold text-sm">📷 캡처 사진</span>
+              </div>
+              <div className="aspect-[4/3] bg-black/40 flex flex-col items-center justify-center">
+                <VideoOff className="w-8 h-8 text-white/40 mb-2" />
+                <span className="text-sm text-white/60">카메라 미연결</span>
+              </div>
+            </div>
+          ) : (
+            <>
           {viewMode === "grid" ? (
             <div className="grid grid-cols-2 gap-2">
               {alert.photos.map((photo, i) => (
@@ -366,6 +405,8 @@ export default function PhotoAlertOverlay({
                 ))}
               </div>
             </div>
+          )}
+            </>
           )}
         </div>
       </div>
