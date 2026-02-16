@@ -220,6 +220,20 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
           const newDevice = payload.new as Device;
           const oldDevice = payload.old as Partial<Device>;
           
+          // 카메라가 true → false로 변경: 카메라 해제 감지
+          if (
+            !newDevice.is_camera_connected &&
+            oldDevice.is_camera_connected === true
+          ) {
+            console.log("[Camera] 📷 Camera disconnected detected via DB");
+            // WebRTC 연결 정리 및 에러 표시
+            isConnectingRef.current = false;
+            setIsStreaming(false);
+            setIsWaitingForCamera(false);
+            disconnect();
+            setError(`${device.name} 카메라가 인식되지 않습니다.`);
+          }
+          
           // 카메라가 false → true로 변경되었고, 현재 스트리밍 중이 아닌 경우 자동 재시작
           if (
             newDevice.is_camera_connected &&
