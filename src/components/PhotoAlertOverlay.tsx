@@ -213,7 +213,7 @@ export default function PhotoAlertOverlay({
                 </div>
                 <div className="relative aspect-video bg-black/40 flex flex-col items-center justify-center">
                   <VideoOff className="w-8 h-8 text-white/40 mb-2" />
-                  <span className="text-sm text-white/60">카메라 미연결</span>
+                  <span className="text-sm text-white/60">카메라가 인식되지 않습니다</span>
                 </div>
               </div>
             </div>
@@ -327,7 +327,7 @@ export default function PhotoAlertOverlay({
               </div>
               <div className="aspect-[4/3] bg-black/40 flex flex-col items-center justify-center">
                 <VideoOff className="w-8 h-8 text-white/40 mb-2" />
-                <span className="text-sm text-white/60">카메라 미연결</span>
+                <span className="text-sm text-white/60">카메라가 인식되지 않습니다</span>
               </div>
             </div>
           ) : (
