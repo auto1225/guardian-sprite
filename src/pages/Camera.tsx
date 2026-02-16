@@ -31,6 +31,7 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
   const isConnectingRef = useRef(false);
   const connectionStartTimeRef = useRef<number>(0);
   const isConnectedRef = useRef(false);
+  const connectionSucceededAtRef = useRef(0); // 연결 성공 시각 (disconnect 보호용)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -61,6 +62,12 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
 
   useEffect(() => {
     isConnectedRef.current = isConnected;
+    if (isConnected) {
+      // 연결 성공 시 isConnectingRef 리셋 + 타임스탬프 기록
+      isConnectingRef.current = false;
+      connectionSucceededAtRef.current = Date.now();
+      console.log("[Camera] ✅ Connection succeeded, isConnectingRef reset");
+    }
   }, [isConnected]);
 
   const requestStreamingStart = useCallback(async () => {
@@ -102,6 +109,12 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
     if (isConnectingRef.current) return;
     // 이미 연결 중이거나 스트리밍 중이면 일단 정리 후 재시작
     if (isConnectedRef.current) {
+      // 연결 성공 후 5초 이내에는 disconnect 방지 (레이스 컨디션 보호)
+      const elapsed = Date.now() - connectionSucceededAtRef.current;
+      if (elapsed < 5000) {
+        console.log("[Camera] ⏭️ Skipping startStreaming — connected", elapsed, "ms ago (< 5s)");
+        return;
+      }
       console.log("[Camera] Cleaning up previous connection before restart...");
       disconnect();
       await new Promise(r => setTimeout(r, 500));
