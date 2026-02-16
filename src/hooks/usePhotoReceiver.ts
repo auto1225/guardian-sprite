@@ -10,6 +10,7 @@ import {
   markPhotoAlertRead,
 } from "@/lib/photoAlertStorage";
 import { deleteAlertVideo } from "@/lib/alertVideoStorage";
+import * as Alarm from "@/lib/alarmSound";
 
 interface PendingAlert {
   id: string;
@@ -99,6 +100,12 @@ export function usePhotoReceiver(
         };
         setReceiving(true);
         setProgress(0);
+
+        // 🔊 사진 수신 시작 시 즉시 경보음 트리거
+        if (!Alarm.isMuted() && !Alarm.isPlaying() && !Alarm.isDismissed(payload.id)) {
+          console.log("[PhotoReceiver] 🔊 Triggering alarm at photo_alert_start:", payload.id);
+          Alarm.play();
+        }
       })
       .on("broadcast", { event: "photo_alert_chunk" }, ({ payload }) => {
         const pending = pendingRef.current;
@@ -137,6 +144,12 @@ export function usePhotoReceiver(
         setProgress(100);
         setLatestAlert(completed);
         loadAlerts();
+
+        // 🔊 사진 경보 수신 시 경보음 직접 트리거
+        if (!Alarm.isMuted() && !Alarm.isPlaying() && !Alarm.isDismissed(completed.id)) {
+          console.log("[PhotoReceiver] 🔊 Triggering alarm sound for photo alert:", completed.id);
+          Alarm.play();
+        }
       })
       .subscribe((status) => {
         console.log("[PhotoReceiver] Channel status:", status);
