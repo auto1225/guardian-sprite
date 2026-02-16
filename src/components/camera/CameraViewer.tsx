@@ -153,6 +153,9 @@ const CameraViewer = ({
     setIsVideoPlaying(false);
 
     video.playsInline = true;
+    // srcObject 완전 리셋 후 재할당 — 재연결 시 브라우저가 새 스트림으로 인식하도록
+    video.srcObject = null;
+    video.load();
     video.srcObject = remoteStream;
 
     const onLoadedMetadata = () => attemptPlay(0);
@@ -160,6 +163,7 @@ const CameraViewer = ({
     const onLoadedData = () => attemptPlay(0);
 
     // 새로 추가된 트랙에도 unmute 리스너 등록
+    const trackCleanups: Array<() => void> = [];
     const onAddTrack = (e: MediaStreamTrackEvent) => {
       console.log("[CameraViewer] Track added:", e.track.kind);
       attemptPlay(0);
@@ -178,7 +182,6 @@ const CameraViewer = ({
     remoteStream.addEventListener("addtrack", onAddTrack);
 
     // 기존 트랙의 unmute 이벤트 감지
-    const trackCleanups: Array<() => void> = [];
     remoteStream.getTracks().forEach(track => {
       const onUnmute = () => {
         console.log("[CameraViewer] Track unmuted:", track.kind, "- attempting play");
@@ -265,7 +268,7 @@ const CameraViewer = ({
     const showDisconnectOverlay = !isConnected && !isConnecting;
 
     return (
-      <div className="flex-1 bg-black rounded-xl flex items-center justify-center relative overflow-hidden">
+      <div className="flex-1 bg-black rounded-xl flex items-center justify-center relative overflow-hidden aspect-video">
         <video
           ref={videoRef}
           autoPlay

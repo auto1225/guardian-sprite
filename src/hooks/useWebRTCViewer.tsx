@@ -180,16 +180,9 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       
       isConnectedRef.current = true;
       isConnectingRef.current = false;
-      // 항상 새 참조로 설정하여 React 리렌더링 보장
-      setRemoteStream(prev => {
-        if (prev && prev.id === stream.id) {
-          // 같은 스트림이면 새 객체로 래핑하여 리렌더링 트리거
-          console.log("[WebRTC Viewer] 📹 Same stream ID, creating wrapper to force re-render");
-          const wrapper = new MediaStream(stream.getTracks());
-          return wrapper;
-        }
-        return stream;
-      });
+      // 스트림을 직접 설정 — 불필요한 래핑 제거
+      // React 리렌더링은 stream 객체 자체가 달라지면 자동으로 발생
+      setRemoteStream(stream);
       setIsConnected(true);
       setIsConnecting(false);
     };
