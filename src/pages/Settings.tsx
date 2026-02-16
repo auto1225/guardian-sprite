@@ -421,7 +421,9 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
                       <span className="font-mono font-bold text-sm tracking-wider" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>
                         {lic.serial_key}
                       </span>
-                      <span className="text-white/50 text-xs mt-0.5">
+                      <span className={`text-xs mt-0.5 font-semibold ${lic.device_id === device.id ? '' : 'text-white/50'}`}
+                        style={lic.device_id === device.id ? { color: 'hsla(52, 100%, 60%, 0.9)' } : undefined}
+                      >
                         {lic.device_id === device.id ? '📌 현재 기기' : lic.device_id ? '🔗 다른 기기 연결됨' : '⏳ 미연결'}
                         {!lic.is_active && ' · 비활성'}
                       </span>
