@@ -73,7 +73,7 @@ const DeviceCard = ({ device, isSelected, isMain, onSelect }: DeviceCardProps) =
           {device.device_type !== "smartphone" && (
             <StatusIcon active={device.is_monitoring} label="MeerCOP" isMeerCOP />
           )}
-          <StatusIcon active={device.status !== "offline"} label="Network" isNetwork />
+          <StatusIcon active={device.status !== "offline" && device.is_network_connected} label="Network" isNetwork />
           <StatusIcon active={device.status !== "offline" && device.is_camera_connected} label="Camera" isCamera />
         </div>
         <div className="flex items-center gap-0.5">
