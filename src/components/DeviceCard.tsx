@@ -74,7 +74,7 @@ const DeviceCard = ({ device, isSelected, isMain, onSelect }: DeviceCardProps) =
             <StatusIcon active={device.is_monitoring} label="MeerCOP" isMeerCOP />
           )}
           <StatusIcon active={device.status !== "offline"} label="Network" isNetwork />
-          <StatusIcon active={true} label="Camera" isCamera />
+          <StatusIcon active={device.status !== "offline" && device.is_camera_connected} label="Camera" isCamera />
         </div>
         <div className="flex items-center gap-0.5">
           <span className="text-white/90 text-xs drop-shadow-sm">{batteryLevel}%</span>
