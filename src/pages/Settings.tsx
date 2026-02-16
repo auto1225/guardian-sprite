@@ -20,7 +20,8 @@ import { Button } from "@/components/ui/button";
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 
 interface SettingsPageProps {
-  device: Device;
+  devices: Device[];
+  initialDeviceId: string;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -100,7 +101,7 @@ async function playBuiltinSound(sound: typeof ALARM_SOUNDS[number], duration = 2
   };
 }
 
-const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
+const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPageProps) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -108,9 +109,19 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
   const synthRef = useRef<{ stop: () => void } | null>(null);
   const [licenses, setLicenses] = useState<{ serial_key: string; device_id: string | null; is_active: boolean }[]>([]);
 
+  // 기기 선택 상태 (설정 페이지 내부)
+  const [settingsDeviceId, setSettingsDeviceId] = useState(initialDeviceId);
+
+  // 열릴 때 초기 기기로 리셋
+  useEffect(() => {
+    if (isOpen) setSettingsDeviceId(initialDeviceId);
+  }, [isOpen, initialDeviceId]);
+
+  const device = devices.find(d => d.id === settingsDeviceId) || devices[0];
+
   // 시리얼 넘버 전체 조회 (사용자의 모든 라이선스)
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !device) return;
     const fetchLicenses = async () => {
       const { data } = await supabase
         .from("licenses")
@@ -120,11 +131,11 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
       setLicenses(data ?? []);
     };
     fetchLicenses();
-  }, [isOpen, device.user_id]);
+  }, [isOpen, device?.user_id]);
 
-  const meta = (device.metadata as Record<string, unknown>) || {};
+  const meta = (device?.metadata as Record<string, unknown>) || {};
 
-  const [nickname, setNickname] = useState(device.name);
+  const [nickname, setNickname] = useState(device?.name || "");
   const [alarmPin, setAlarmPin] = useState((meta.alarm_pin as string) || "1234");
   const [selectedSoundId, setSelectedSoundId] = useState(
     (meta.alarm_sound_id as string) || "whistle"
@@ -133,14 +144,14 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
     (meta.custom_sound_name as string) || ""
   );
   const [customSoundDataUrl, setCustomSoundDataUrl] = useState(
-    localStorage.getItem(`meercop_custom_sound_${device.id}`) || ""
+    device ? localStorage.getItem(`meercop_custom_sound_${device.id}`) || "" : ""
   );
   const [playingSoundId, setPlayingSoundId] = useState<string | null>(null);
   const [sensorSettings, setSensorSettings] = useState<SensorSettings>(() => {
     const saved = meta.sensorSettings as SensorSettings | undefined;
     return saved
       ? { ...DEFAULT_SENSOR_SETTINGS, ...saved }
-      : { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device.device_type as "laptop" | "desktop" | "tablet") || "laptop" };
+      : { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device?.device_type as "laptop" | "desktop" | "tablet") || "laptop" };
   });
   const [motionSensitivity, setMotionSensitivity] = useState<MotionSensitivity>(
     (meta.motionSensitivity as MotionSensitivity) || "insensitive"
@@ -156,17 +167,22 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
   const [tempNickname, setTempNickname] = useState(nickname);
   const [tempPin, setTempPin] = useState(alarmPin);
 
+  // 기기가 바뀌면 설정값 재초기화
   useEffect(() => {
+    if (!device) return;
     setNickname(device.name);
     const m = (device.metadata as Record<string, unknown>) || {};
     setAlarmPin((m.alarm_pin as string) || "1234");
     setSelectedSoundId((m.alarm_sound_id as string) || "whistle");
     setCustomSoundName((m.custom_sound_name as string) || "");
+    setCustomSoundDataUrl(localStorage.getItem(`meercop_custom_sound_${device.id}`) || "");
     const saved = m.sensorSettings as SensorSettings | undefined;
-    if (saved) setSensorSettings({ ...DEFAULT_SENSOR_SETTINGS, ...saved });
+    setSensorSettings(saved
+      ? { ...DEFAULT_SENSOR_SETTINGS, ...saved }
+      : { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device.device_type as "laptop" | "desktop" | "tablet") || "laptop" });
     setMotionSensitivity((m.motionSensitivity as MotionSensitivity) || "insensitive");
     setMouseSensitivity((m.mouseSensitivity as MotionSensitivity) || "sensitive");
-  }, [device]);
+  }, [device?.id, device?.metadata]);
 
   // 설정 페이지를 처음 열 때 DB에 기본 설정값이 없으면 자동 저장
   useEffect(() => {
@@ -348,8 +364,34 @@ const SettingsPage = ({ device, isOpen, onClose }: SettingsPageProps) => {
           <h1 className="text-white font-bold text-lg">설정</h1>
         </div>
 
-        {/* Settings list */}
+        {/* Device Selector */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3 alert-history-scroll">
+          {devices.length > 1 && (
+            <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
+              <div className="px-4 pt-3 pb-1">
+                <span className="text-white font-semibold text-sm">설정 대상 기기</span>
+              </div>
+              <div className="px-4 pb-3 flex gap-2 flex-wrap">
+                {devices.map((d) => (
+                  <button
+                    key={d.id}
+                    onClick={() => setSettingsDeviceId(d.id)}
+                    className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
+                      settingsDeviceId === d.id
+                        ? "text-slate-800 shadow-md"
+                        : "text-white hover:bg-white/15"
+                    }`}
+                    style={settingsDeviceId === d.id
+                      ? { background: 'hsla(52, 100%, 60%, 0.9)' }
+                      : { background: 'hsla(0,0%,100%,0.1)' }
+                    }
+                  >
+                    {d.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Serial Numbers */}
           <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
