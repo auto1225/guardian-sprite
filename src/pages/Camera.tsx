@@ -36,6 +36,7 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
   const recordedChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasAutoStarted = useRef(false);
+  const lastCameraConnectedRef = useRef<boolean | null>(null);
 
   const handleWebRTCError = useCallback((err: string) => {
     // 연결 해제("끊어") 및 실패("실패") 메시지는 항상 표시
@@ -195,12 +196,14 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
   useEffect(() => {
     if (isOpen && !hasAutoStarted.current) {
       hasAutoStarted.current = true;
+      lastCameraConnectedRef.current = device.is_camera_connected;
       startStreamingRef.current?.();
     }
     if (!isOpen) {
       hasAutoStarted.current = false;
+      lastCameraConnectedRef.current = null;
     }
-  }, [isOpen]);
+  }, [isOpen, device.is_camera_connected]);
 
   // 카메라 재연결 감지 → 자동 스트리밍 재시작
   useEffect(() => {
@@ -218,15 +221,15 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
         },
         (payload) => {
           const newDevice = payload.new as Device;
-          const oldDevice = payload.old as Partial<Device>;
+          const prevCameraConnected = lastCameraConnectedRef.current;
+          lastCameraConnectedRef.current = newDevice.is_camera_connected;
           
-          // 카메라가 true → false로 변경: 카메라 해제 감지
+          // 카메라가 해제됨: 이전에 연결 상태였거나 현재 스트리밍 중인데 카메라가 false가 된 경우
           if (
             !newDevice.is_camera_connected &&
-            oldDevice.is_camera_connected === true
+            (prevCameraConnected === true || isConnectedRef.current || isConnectingRef.current)
           ) {
-            console.log("[Camera] 📷 Camera disconnected detected via DB");
-            // WebRTC 연결 정리 및 에러 표시
+            console.log("[Camera] 📷 Camera disconnected detected via DB, prev:", prevCameraConnected);
             isConnectingRef.current = false;
             setIsStreaming(false);
             setIsWaitingForCamera(false);
@@ -234,16 +237,15 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
             setError(`${device.name} 카메라가 인식되지 않습니다.`);
           }
           
-          // 카메라가 false → true로 변경되었고, 현재 스트리밍 중이 아닌 경우 자동 재시작
+          // 카메라가 재연결됨: 이전에 해제 상태였거나 null이었는데 true가 된 경우
           if (
             newDevice.is_camera_connected &&
-            oldDevice.is_camera_connected === false &&
+            prevCameraConnected !== true &&
             !isConnectingRef.current &&
             !isConnectedRef.current
           ) {
             console.log("[Camera] 📸 Camera reconnected, auto-restarting stream...");
             setError(null);
-            // 약간의 딜레이 후 재시작 (카메라 안정화 대기)
             setTimeout(() => {
               if (!isConnectedRef.current && !isConnectingRef.current) {
                 startStreamingRef.current?.();
