@@ -39,6 +39,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
   const offerRetryCountRef = useRef(0); // Track offer retry count
   const offerRetryIntervalRef = useRef<NodeJS.Timeout | null>(null); // Retry interval
   const lastViewerJoinSentRef = useRef<number>(0); // broadcaster-ready 디바운스용
+  const isProcessingOfferRef = useRef(false); // ★ offer 중복 처리 방지
 
   const ICE_SERVERS: RTCConfiguration = {
     iceServers: [
@@ -105,6 +106,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     hasRemoteDescriptionRef.current = false;
     hasSentAnswerRef.current = false;
     offerRetryCountRef.current = 0;
+    isProcessingOfferRef.current = false;
     isConnectingRef.current = false;
     isConnectedRef.current = false;
     if (!preserveStream) {
@@ -285,16 +287,22 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
           return;
         }
         
-        // Skip duplicate offers - if we already sent an answer
+        // ★ 이미 offer를 처리 중이거나 완료된 경우 스킵
+        if (isProcessingOfferRef.current) {
+          console.log("[WebRTC Viewer] ⏭️ Skipping offer (already processing)");
+          return;
+        }
         if (hasSentAnswerRef.current) {
           console.log("[WebRTC Viewer] ⏭️ Skipping duplicate offer (already sent answer)");
           return;
         }
-        // Also skip if we already have a remote description set
         if (hasRemoteDescriptionRef.current) {
           console.log("[WebRTC Viewer] ⏭️ Skipping duplicate offer (already have remote description)");
           return;
         }
+        
+        // ★ 즉시 플래그 설정 — 비동기 작업 전에 잠금
+        isProcessingOfferRef.current = true;
         // Debug: log the data structure
         console.log("[WebRTC Viewer] ✅ Received offer for my session:", record.session_id);
         
