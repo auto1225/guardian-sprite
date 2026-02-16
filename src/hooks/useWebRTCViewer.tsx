@@ -386,8 +386,37 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     console.log("[WebRTC Viewer] Starting connection...");
     setIsConnecting(true);
     
-    // Don't cleanup at start - just reset refs
+    // ★ 기존 PeerConnection을 동기적으로 완전히 정리 (좀비 세션 방지)
+    if (peerConnectionRef.current) {
+      console.log("[WebRTC Viewer] Closing previous PeerConnection before new connect");
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+    
+    // 모든 ref 상태 초기화
     processedMessagesRef.current.clear();
+    pendingIceCandidatesRef.current = [];
+    hasRemoteDescriptionRef.current = false;
+    hasSentAnswerRef.current = false;
+    isProcessingOfferRef.current = false;
+    offerRetryCountRef.current = 0;
+    if (offerRetryIntervalRef.current) {
+      clearInterval(offerRetryIntervalRef.current);
+      offerRetryIntervalRef.current = null;
+    }
+    if (connectionTimeoutRef.current) {
+      clearTimeout(connectionTimeoutRef.current);
+      connectionTimeoutRef.current = null;
+    }
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    setRemoteStream(null);
 
     // 새 세션 ID 생성
     sessionIdRef.current = `viewer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;

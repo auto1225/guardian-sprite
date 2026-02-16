@@ -127,9 +127,10 @@ const CameraViewer = ({
     if (!video) return;
     
     if (!remoteStream) {
-      console.log("[CameraViewer] Stream cleared, resetting video");
+      console.log("[CameraViewer] Stream cleared, hard-resetting video");
       video.pause();
       video.srcObject = null;
+      video.load(); // ★ 내부 버퍼를 비우고 미디어 파이프라인 강제 리셋
       setIsVideoPlaying(false);
       return;
     }
