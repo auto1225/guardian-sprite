@@ -110,11 +110,12 @@ const CameraViewer = ({
       setIsVideoPlaying(true);
       // 재생 성공 후 사용자 설정 반영
       video.muted = isMutedRef.current;
+      console.log("[CameraViewer] ✅ Play succeeded on attempt", retryCount + 1);
     } catch (err) {
       console.warn("[CameraViewer] Play failed (attempt:", retryCount + 1, "):", err);
       setIsVideoPlaying(false);
-      if (retryCount < 5) {
-        playRetryTimerRef.current = setTimeout(() => attemptPlay(retryCount + 1), 500);
+      if (retryCount < 15) {
+        playRetryTimerRef.current = setTimeout(() => attemptPlay(retryCount + 1), retryCount < 5 ? 300 : 600);
       }
     }
   }, []);
@@ -144,13 +145,19 @@ const CameraViewer = ({
 
     const onLoadedMetadata = () => attemptPlay(0);
     const onAddTrack = () => attemptPlay(0);
+    const onCanPlay = () => attemptPlay(0);
+    const onLoadedData = () => attemptPlay(0);
 
     video.addEventListener("loadedmetadata", onLoadedMetadata);
+    video.addEventListener("canplay", onCanPlay);
+    video.addEventListener("loadeddata", onLoadedData);
     remoteStream.addEventListener("addtrack", onAddTrack);
     attemptPlay(0);
 
     return () => {
       video.removeEventListener("loadedmetadata", onLoadedMetadata);
+      video.removeEventListener("canplay", onCanPlay);
+      video.removeEventListener("loadeddata", onLoadedData);
       remoteStream.removeEventListener("addtrack", onAddTrack);
       if (playRetryTimerRef.current) {
         clearTimeout(playRetryTimerRef.current);
