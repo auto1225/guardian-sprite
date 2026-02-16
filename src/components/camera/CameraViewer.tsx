@@ -152,6 +152,18 @@ const CameraViewer = ({
     video.addEventListener("canplay", onCanPlay);
     video.addEventListener("loadeddata", onLoadedData);
     remoteStream.addEventListener("addtrack", onAddTrack);
+
+    // 비디오 트랙의 unmute 이벤트 감지 — 카메라 재연결 시 트랙이 muted 상태로 도착할 수 있음
+    const trackCleanups: Array<() => void> = [];
+    remoteStream.getTracks().forEach(track => {
+      const onUnmute = () => {
+        console.log("[CameraViewer] Track unmuted:", track.kind, "- attempting play");
+        attemptPlay(0);
+      };
+      track.addEventListener("unmute", onUnmute);
+      trackCleanups.push(() => track.removeEventListener("unmute", onUnmute));
+    });
+
     attemptPlay(0);
 
     return () => {
@@ -159,6 +171,7 @@ const CameraViewer = ({
       video.removeEventListener("canplay", onCanPlay);
       video.removeEventListener("loadeddata", onLoadedData);
       remoteStream.removeEventListener("addtrack", onAddTrack);
+      trackCleanups.forEach(fn => fn());
       if (playRetryTimerRef.current) {
         clearTimeout(playRetryTimerRef.current);
         playRetryTimerRef.current = null;
