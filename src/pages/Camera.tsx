@@ -106,18 +106,14 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
   const startStreamingRef = useRef<() => Promise<void>>();
 
   const startStreaming = useCallback(async () => {
-    if (isConnectingRef.current) return;
-    // 이미 연결 중이거나 스트리밍 중이면 일단 정리 후 재시작
+    if (isConnectingRef.current) {
+      console.log("[Camera] ⏭️ Skipping startStreaming — already connecting");
+      return;
+    }
+    // 이미 연결된 상태라면 재시작하지 않고 스킵
     if (isConnectedRef.current) {
-      // 연결 성공 후 5초 이내에는 disconnect 방지 (레이스 컨디션 보호)
-      const elapsed = Date.now() - connectionSucceededAtRef.current;
-      if (elapsed < 5000) {
-        console.log("[Camera] ⏭️ Skipping startStreaming — connected", elapsed, "ms ago (< 5s)");
-        return;
-      }
-      console.log("[Camera] Cleaning up previous connection before restart...");
-      disconnect();
-      await new Promise(r => setTimeout(r, 500));
+      console.log("[Camera] ⏭️ Skipping startStreaming — already connected");
+      return;
     }
 
     // 에러 상태 초기화
@@ -167,7 +163,7 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
         setError("WebRTC 연결 시간 초과. 다시 시도해주세요.");
       }
     }, 30000);
-  }, [device.id, device.name, requestStreamingStart, waitForBroadcaster, connect, disconnect, cleanupSubscription]);
+  }, [device.id, device.name, requestStreamingStart, waitForBroadcaster, connect, cleanupSubscription]);
 
   // Ref에 최신 함수 유지 (useEffect dependency 순환 방지)
   useEffect(() => {
