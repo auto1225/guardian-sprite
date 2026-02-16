@@ -105,6 +105,16 @@ const CameraViewer = ({
     if (!video || !video.srcObject) return;
 
     try {
+      // srcObject가 변경됐을 수 있으므로 재할당 시도
+      if (retryCount > 0 && retryCount % 5 === 0) {
+        const currentStream = video.srcObject as MediaStream;
+        if (currentStream) {
+          console.log("[CameraViewer] 🔄 Re-assigning srcObject on retry", retryCount + 1);
+          video.srcObject = null;
+          video.srcObject = currentStream;
+        }
+      }
+      
       video.muted = true; // 자동 재생 정책 대응
       await video.play();
       setIsVideoPlaying(true);
@@ -114,8 +124,10 @@ const CameraViewer = ({
     } catch (err) {
       console.warn("[CameraViewer] Play failed (attempt:", retryCount + 1, "):", err);
       setIsVideoPlaying(false);
-      if (retryCount < 15) {
-        playRetryTimerRef.current = setTimeout(() => attemptPlay(retryCount + 1), retryCount < 5 ? 300 : 600);
+      if (retryCount < 20) {
+        playRetryTimerRef.current = setTimeout(() => attemptPlay(retryCount + 1), retryCount < 5 ? 300 : retryCount < 10 ? 600 : 1000);
+      } else {
+        console.error("[CameraViewer] ❌ All play attempts failed");
       }
     }
   }, []);
@@ -144,16 +156,28 @@ const CameraViewer = ({
     video.srcObject = remoteStream;
 
     const onLoadedMetadata = () => attemptPlay(0);
-    const onAddTrack = () => attemptPlay(0);
     const onCanPlay = () => attemptPlay(0);
     const onLoadedData = () => attemptPlay(0);
+
+    // 새로 추가된 트랙에도 unmute 리스너 등록
+    const onAddTrack = (e: MediaStreamTrackEvent) => {
+      console.log("[CameraViewer] Track added:", e.track.kind);
+      attemptPlay(0);
+      const t = e.track;
+      const onUnmute = () => {
+        console.log("[CameraViewer] New track unmuted:", t.kind, "- attempting play");
+        attemptPlay(0);
+      };
+      t.addEventListener("unmute", onUnmute);
+      trackCleanups.push(() => t.removeEventListener("unmute", onUnmute));
+    };
 
     video.addEventListener("loadedmetadata", onLoadedMetadata);
     video.addEventListener("canplay", onCanPlay);
     video.addEventListener("loadeddata", onLoadedData);
     remoteStream.addEventListener("addtrack", onAddTrack);
 
-    // 비디오 트랙의 unmute 이벤트 감지 — 카메라 재연결 시 트랙이 muted 상태로 도착할 수 있음
+    // 기존 트랙의 unmute 이벤트 감지
     const trackCleanups: Array<() => void> = [];
     remoteStream.getTracks().forEach(track => {
       const onUnmute = () => {
