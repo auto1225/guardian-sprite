@@ -234,6 +234,8 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
             setIsStreaming(false);
             setIsWaitingForCamera(false);
             disconnect();
+            // 스트리밍 요청 플래그 리셋 — 재연결 시 false→true 변경을 브로드캐스터가 감지하도록
+            supabase.from("devices").update({ is_streaming_requested: false }).eq("id", device.id);
             setError(`${device.name} 카메라가 인식되지 않습니다.`);
           }
           
