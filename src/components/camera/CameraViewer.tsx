@@ -27,6 +27,8 @@ const CameraViewer = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const playRetryTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const playDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const playingPromiseRef = useRef<Promise<void> | null>(null);
   const isMutedRef = useRef(isMuted);
 
   // 오디오 레벨 시각화
@@ -100,12 +102,11 @@ const CameraViewer = ({
     isMutedRef.current = isMuted;
   }, [isMuted]);
 
-  const attemptPlay = useCallback(async (retryCount = 0) => {
+  const attemptPlayInternal = useCallback(async (retryCount = 0) => {
     const video = videoRef.current;
     if (!video || !video.srcObject) return;
 
     try {
-      // srcObject가 변경됐을 수 있으므로 재할당 시도
       if (retryCount > 0 && retryCount % 5 === 0) {
         const currentStream = video.srcObject as MediaStream;
         if (currentStream) {
@@ -115,22 +116,41 @@ const CameraViewer = ({
         }
       }
       
-      video.muted = true; // 자동 재생 정책 대응
-      await video.play();
+      video.muted = true;
+      const p = video.play();
+      playingPromiseRef.current = p;
+      await p;
       setIsVideoPlaying(true);
-      // 재생 성공 후 사용자 설정 반영
       video.muted = isMutedRef.current;
       console.log("[CameraViewer] ✅ Play succeeded on attempt", retryCount + 1);
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.name === "AbortError") {
+        // Stream replaced or element removed mid-play — safe to ignore
+        console.log("[CameraViewer] ⏭️ play() AbortError (stream replaced), ignoring");
+        return;
+      }
       console.warn("[CameraViewer] Play failed (attempt:", retryCount + 1, "):", err);
       setIsVideoPlaying(false);
       if (retryCount < 20) {
-        playRetryTimerRef.current = setTimeout(() => attemptPlay(retryCount + 1), retryCount < 5 ? 300 : retryCount < 10 ? 600 : 1000);
+        playRetryTimerRef.current = setTimeout(() => attemptPlayInternal(retryCount + 1), retryCount < 5 ? 300 : retryCount < 10 ? 600 : 1000);
       } else {
         console.error("[CameraViewer] ❌ All play attempts failed");
       }
     }
   }, []);
+
+  // Debounced wrapper — multiple events fire near-simultaneously, only trigger once
+  const attemptPlay = useCallback((retryCount = 0) => {
+    if (playDebounceRef.current) clearTimeout(playDebounceRef.current);
+    if (playRetryTimerRef.current) {
+      clearTimeout(playRetryTimerRef.current);
+      playRetryTimerRef.current = null;
+    }
+    playDebounceRef.current = setTimeout(() => {
+      playDebounceRef.current = null;
+      attemptPlayInternal(retryCount);
+    }, 100);
+  }, [attemptPlayInternal]);
 
   // isMuted prop 변경 시 비디오에 반영
   useEffect(() => {
@@ -222,6 +242,7 @@ const CameraViewer = ({
   useEffect(() => {
     return () => {
       if (playRetryTimerRef.current) clearTimeout(playRetryTimerRef.current);
+      if (playDebounceRef.current) clearTimeout(playDebounceRef.current);
     };
   }, []);
 
