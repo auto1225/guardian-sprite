@@ -203,7 +203,7 @@ export const useWebRTCBroadcaster = ({
                 advanced: [{ zoom: 1 } as MediaTrackConstraintSet],
               }).catch(() => {});
             });
-          }, 50);
+          }, 100);
         }
       };
 
