@@ -27,8 +27,6 @@ const CameraViewer = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const playRetryTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const playDebounceRef = useRef<NodeJS.Timeout | null>(null);
-  const playingPromiseRef = useRef<Promise<void> | null>(null);
   const isMutedRef = useRef(isMuted);
 
   // 오디오 레벨 시각화
@@ -102,55 +100,35 @@ const CameraViewer = ({
     isMutedRef.current = isMuted;
   }, [isMuted]);
 
-  const attemptPlayInternal = useCallback(async (retryCount = 0) => {
+  // 재생 시도 (재시도 포함)
+  const attemptPlay = useCallback(async (retryCount = 0) => {
     const video = videoRef.current;
-    if (!video || !video.srcObject) return;
+    if (!video || !video.srcObject) {
+      console.log("[CameraViewer] ⚠️ attemptPlay skipped: video=", !!video, "srcObject=", !!(video?.srcObject));
+      return;
+    }
 
     try {
-      if (retryCount > 0 && retryCount % 5 === 0) {
-        const currentStream = video.srcObject as MediaStream;
-        if (currentStream) {
-          console.log("[CameraViewer] 🔄 Re-assigning srcObject on retry", retryCount + 1);
-          video.srcObject = null;
-          video.srcObject = currentStream;
-        }
-      }
-      
       video.muted = true;
-      const p = video.play();
-      playingPromiseRef.current = p;
-      await p;
+      await video.play();
       setIsVideoPlaying(true);
       video.muted = isMutedRef.current;
       console.log("[CameraViewer] ✅ Play succeeded on attempt", retryCount + 1);
     } catch (err: any) {
       if (err?.name === "AbortError") {
-        // Stream replaced or element removed mid-play — safe to ignore
-        console.log("[CameraViewer] ⏭️ play() AbortError (stream replaced), ignoring");
+        console.log("[CameraViewer] ⏭️ play() AbortError, ignoring");
         return;
       }
-      console.warn("[CameraViewer] Play failed (attempt:", retryCount + 1, "):", err);
+      console.warn("[CameraViewer] Play failed (attempt:", retryCount + 1, "):", err?.message);
       setIsVideoPlaying(false);
-      if (retryCount < 20) {
-        playRetryTimerRef.current = setTimeout(() => attemptPlayInternal(retryCount + 1), retryCount < 5 ? 300 : retryCount < 10 ? 600 : 1000);
+      if (retryCount < 15) {
+        const delay = retryCount < 3 ? 200 : retryCount < 8 ? 500 : 1000;
+        playRetryTimerRef.current = setTimeout(() => attemptPlay(retryCount + 1), delay);
       } else {
         console.error("[CameraViewer] ❌ All play attempts failed");
       }
     }
   }, []);
-
-  // Debounced wrapper — multiple events fire near-simultaneously, only trigger once
-  const attemptPlay = useCallback((retryCount = 0) => {
-    if (playDebounceRef.current) clearTimeout(playDebounceRef.current);
-    if (playRetryTimerRef.current) {
-      clearTimeout(playRetryTimerRef.current);
-      playRetryTimerRef.current = null;
-    }
-    playDebounceRef.current = setTimeout(() => {
-      playDebounceRef.current = null;
-      attemptPlayInternal(retryCount);
-    }, 100);
-  }, [attemptPlayInternal]);
 
   // isMuted prop 변경 시 비디오에 반영
   useEffect(() => {
@@ -159,27 +137,36 @@ const CameraViewer = ({
     }
   }, [isMuted, isVideoPlaying]);
 
-  // remoteStream 변경 시 비디오 연결
+  // ★ 핵심: remoteStream 변경 시 비디오 연결
+  // video 요소는 항상 DOM에 존재하므로 videoRef.current가 null일 수 없음
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !remoteStream) return;
+    if (!video) {
+      console.log("[CameraViewer] ⚠️ videoRef is null (should not happen)");
+      return;
+    }
+    
+    if (!remoteStream) {
+      console.log("[CameraViewer] Stream cleared, resetting video");
+      video.pause();
+      video.srcObject = null;
+      setIsVideoPlaying(false);
+      return;
+    }
+
+    console.log("[CameraViewer] 📹 New stream received, setting up video playback");
 
     // 기존 타이머 정리
     if (playRetryTimerRef.current) {
       clearTimeout(playRetryTimerRef.current);
       playRetryTimerRef.current = null;
     }
-    if (playDebounceRef.current) {
-      clearTimeout(playDebounceRef.current);
-      playDebounceRef.current = null;
-    }
 
     setIsVideoPlaying(false);
 
-    // 핵심: pause() → srcObject 리셋 → 새 스트림 할당
+    // 핵심 순서: pause() → srcObject 리셋 → 새 스트림 할당
     video.pause();
     video.srcObject = null;
-    video.playsInline = true;
     video.muted = true;
     video.srcObject = remoteStream;
 
@@ -191,7 +178,7 @@ const CameraViewer = ({
       const v = videoRef.current;
       if (!v || v.srcObject !== remoteStream) return;
       
-      console.log(`[CameraViewer] 🎬 tryPlay triggered by: ${source}`);
+      console.log(`[CameraViewer] 🎬 tryPlay via: ${source}`);
       try {
         v.muted = true;
         await v.play();
@@ -205,30 +192,28 @@ const CameraViewer = ({
           return;
         }
         console.warn("[CameraViewer] ⚠️ play() failed via", source, ":", e?.message);
-        // 실패 시 retry
         if (!played) attemptPlay(1);
       }
     };
 
-    // 1) loadedmetadata — 가장 신뢰성 높은 이벤트
+    // 1) loadedmetadata
     video.addEventListener("loadedmetadata", () => tryPlay("loadedmetadata"), { once: true });
 
-    // 2) canplay — loadedmetadata가 안 올 경우 fallback
+    // 2) canplay fallback
     video.addEventListener("canplay", () => tryPlay("canplay"), { once: true });
 
-    // 3) 즉시 시도 — 트랙이 이미 활성 상태일 수 있음 (재연결 시)
-    //    50ms 딜레이로 srcObject 할당이 반영되도록
-    const immediateTimer = setTimeout(() => tryPlay("immediate-fallback"), 50);
+    // 3) 즉시 시도 (50ms) — 재연결 시 트랙이 이미 활성 상태일 수 있음
+    const t1 = setTimeout(() => tryPlay("immediate-50ms"), 50);
 
-    // 4) 최종 fallback — 300ms 후에도 재생 안 되면 강제 시도
-    const fallbackTimer = setTimeout(() => {
+    // 4) 최종 fallback (500ms)
+    const t2 = setTimeout(() => {
       if (!played) {
-        console.log("[CameraViewer] ⏰ 300ms fallback triggered");
+        console.log("[CameraViewer] ⏰ 500ms fallback");
         attemptPlay(0);
       }
-    }, 300);
+    }, 500);
 
-    // 새로 추가된 트랙
+    // 트랙 추가/unmute 이벤트
     const onAddTrack = (e: MediaStreamTrackEvent) => {
       console.log("[CameraViewer] Track added:", e.track.kind);
       if (e.track.muted) {
@@ -241,7 +226,6 @@ const CameraViewer = ({
     };
     remoteStream.addEventListener("addtrack", onAddTrack);
 
-    // 기존 muted 트랙
     remoteStream.getTracks().forEach(track => {
       if (track.muted) {
         const onUnmute = () => tryPlay("existing-track-unmute");
@@ -251,8 +235,8 @@ const CameraViewer = ({
     });
 
     return () => {
-      clearTimeout(immediateTimer);
-      clearTimeout(fallbackTimer);
+      clearTimeout(t1);
+      clearTimeout(t2);
       remoteStream.removeEventListener("addtrack", onAddTrack);
       trackCleanups.forEach(fn => fn());
       if (playRetryTimerRef.current) {
@@ -278,7 +262,6 @@ const CameraViewer = ({
   useEffect(() => {
     return () => {
       if (playRetryTimerRef.current) clearTimeout(playRetryTimerRef.current);
-      if (playDebounceRef.current) clearTimeout(playDebounceRef.current);
     };
   }, []);
 
@@ -288,139 +271,133 @@ const CameraViewer = ({
     return `${m}:${s}`;
   };
 
-  // Connecting
-  if (isConnecting && !isConnected) {
-    return (
-      <div className="flex-1 bg-black/50 rounded-xl flex items-center justify-center aspect-video">
-        <div className="text-center flex flex-col items-center gap-4">
-          <RefreshCw className="w-8 h-8 text-white/50 animate-spin" />
-          <p className="text-white/70 text-sm">카메라 연결 중...</p>
-          <p className="text-white/50 text-xs">노트북에서 카메라가 시작될 때까지 대기 중</p>
-        </div>
-      </div>
-    );
-  }
+  const handlePlayClick = () => attemptPlay(0);
 
-  // Error state
-  if (error) {
-    return (
-      <div className="flex-1 bg-black/50 rounded-xl flex items-center justify-center aspect-video">
-        <div className="text-center flex flex-col items-center gap-4">
+  // 현재 표시할 상태 결정
+  const showConnecting = isConnecting && !isConnected && !remoteStream;
+  const showError = !!error && !isConnected && !remoteStream;
+  const showVideo = !!remoteStream;
+  const showWaiting = !showConnecting && !showError && !showVideo;
+  const showDisconnectOverlay = showVideo && !isConnected && !isConnecting;
+
+  return (
+    <div className="flex-1 bg-black rounded-xl flex items-center justify-center relative overflow-hidden aspect-video">
+      {/* ★ video 요소는 항상 DOM에 존재 — videoRef가 null이 되지 않도록 */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        preload="auto"
+        className={`w-full h-full object-contain ${showVideo ? "" : "hidden"}`}
+        onClick={handlePlayClick}
+      />
+
+      {/* Connecting */}
+      {showConnecting && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
+          <RefreshCw className="w-8 h-8 text-white/50 animate-spin" />
+          <p className="text-white/70 text-sm mt-4">카메라 연결 중...</p>
+          <p className="text-white/50 text-xs mt-1">노트북에서 카메라가 시작될 때까지 대기 중</p>
+        </div>
+      )}
+
+      {/* Error */}
+      {showError && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
           <p className="text-white/70 text-sm">{error}</p>
           <button
             onClick={onRetry}
-            className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg flex items-center gap-2 text-white/70 text-sm hover:bg-white/20 transition-colors"
+            className="mt-4 px-4 py-2 bg-white/10 border border-white/20 rounded-lg flex items-center gap-2 text-white/70 text-sm hover:bg-white/20 transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             다시 시도
           </button>
         </div>
-      </div>
-    );
-  }
+      )}
 
-  // Connected with stream OR was connected (show frozen frame with disconnect message)
-  if (remoteStream) {
-    const handlePlayClick = () => attemptPlay(0);
-    const showDisconnectOverlay = !isConnected && !isConnecting;
+      {/* Waiting */}
+      {showWaiting && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
+          <RefreshCw className="w-6 h-6 text-white/50 animate-spin" />
+          <p className="text-white/70 text-sm mt-4">노트북에서 카메라 시작 대기 중...</p>
+        </div>
+      )}
 
-    return (
-      <div className="flex-1 bg-black rounded-xl flex items-center justify-center relative overflow-hidden aspect-video">
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          preload="auto"
-          className="w-full h-full object-contain"
-          onClick={handlePlayClick}
-        />
-
-        {/* 카메라 연결 해제 오버레이 */}
-        {showDisconnectOverlay && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60">
-            <VideoOff className="w-10 h-10 text-white/50 mb-2" />
-            <p className="text-white/70 text-sm">카메라가 인식되지 않습니다</p>
-            <button
-              onClick={onRetry}
-              className="mt-3 px-4 py-2 bg-white/10 border border-white/20 rounded-lg flex items-center gap-2 text-white/70 text-sm hover:bg-white/20 transition-colors"
-            >
-              <RefreshCw className="w-4 h-4" />
-              다시 시도
-            </button>
-          </div>
-        )}
-
-        {/* 터치하여 재생 오버레이 */}
-        {!isVideoPlaying && isConnected && (
-          <div
-            className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 cursor-pointer"
-            onClick={handlePlayClick}
+      {/* 카메라 연결 해제 오버레이 */}
+      {showDisconnectOverlay && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60">
+          <VideoOff className="w-10 h-10 text-white/50 mb-2" />
+          <p className="text-white/70 text-sm">카메라가 인식되지 않습니다</p>
+          <button
+            onClick={onRetry}
+            className="mt-3 px-4 py-2 bg-white/10 border border-white/20 rounded-lg flex items-center gap-2 text-white/70 text-sm hover:bg-white/20 transition-colors"
           >
-            <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mb-2">
-              <Play className="w-8 h-8 text-white ml-1" fill="white" />
-            </div>
-            <p className="text-white text-sm">터치하여 재생</p>
-          </div>
-        )}
+            <RefreshCw className="w-4 h-4" />
+            다시 시도
+          </button>
+        </div>
+      )}
 
-        {/* LIVE / REC indicator */}
-        {isConnected && (
-          <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded">
-            {isRecording ? (
-              <>
-                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-white text-xs font-bold">REC {formatDuration(recordingDuration)}</span>
-              </>
-            ) : (
-              <>
-                <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-                <span className="text-white text-xs font-bold">LIVE</span>
-              </>
-            )}
+      {/* 터치하여 재생 오버레이 */}
+      {showVideo && !isVideoPlaying && isConnected && (
+        <div
+          className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 cursor-pointer"
+          onClick={handlePlayClick}
+        >
+          <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mb-2">
+            <Play className="w-8 h-8 text-white ml-1" fill="white" />
           </div>
-        )}
+          <p className="text-white text-sm">터치하여 재생</p>
+        </div>
+      )}
 
-        {/* 오디오 레벨 인디케이터 */}
-        {isConnected && (
-          <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 px-2 py-1.5 rounded">
-            {hasAudioTrack ? (
-              <>
-                <Mic className="w-3 h-3 text-green-400" />
-                <div className="flex items-end gap-[2px] h-3">
-                  {[0.15, 0.3, 0.45, 0.6, 0.75].map((threshold, i) => (
-                    <div
-                      key={i}
-                      className="w-[3px] rounded-sm transition-all duration-100"
-                      style={{
-                        height: `${4 + i * 2}px`,
-                        backgroundColor: audioLevel >= threshold
-                          ? audioLevel > 0.5 ? '#f59e0b' : '#4ade80'
-                          : 'rgba(255,255,255,0.2)',
-                      }}
-                    />
-                  ))}
-                </div>
-              </>
-            ) : (
-              <>
-                <MicOff className="w-3 h-3 text-white/40" />
-                <span className="text-white/40 text-[10px]">No Audio</span>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  }
+      {/* LIVE / REC indicator */}
+      {isConnected && (
+        <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded">
+          {isRecording ? (
+            <>
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-white text-xs font-bold">REC {formatDuration(recordingDuration)}</span>
+            </>
+          ) : (
+            <>
+              <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+              <span className="text-white text-xs font-bold">LIVE</span>
+            </>
+          )}
+        </div>
+      )}
 
-  // Waiting for connection
-  return (
-    <div className="flex-1 bg-black/50 rounded-xl flex items-center justify-center aspect-video">
-      <div className="text-center flex flex-col items-center gap-4">
-        <RefreshCw className="w-6 h-6 text-white/50 animate-spin" />
-        <p className="text-white/70 text-sm">노트북에서 카메라 시작 대기 중...</p>
-      </div>
+      {/* 오디오 레벨 인디케이터 */}
+      {isConnected && (
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 px-2 py-1.5 rounded">
+          {hasAudioTrack ? (
+            <>
+              <Mic className="w-3 h-3 text-green-400" />
+              <div className="flex items-end gap-[2px] h-3">
+                {[0.15, 0.3, 0.45, 0.6, 0.75].map((threshold, i) => (
+                  <div
+                    key={i}
+                    className="w-[3px] rounded-sm transition-all duration-100"
+                    style={{
+                      height: `${4 + i * 2}px`,
+                      backgroundColor: audioLevel >= threshold
+                        ? audioLevel > 0.5 ? '#f59e0b' : '#4ade80'
+                        : 'rgba(255,255,255,0.2)',
+                    }}
+                  />
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <MicOff className="w-3 h-3 text-white/40" />
+              <span className="text-white/40 text-[10px]">No Audio</span>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };
