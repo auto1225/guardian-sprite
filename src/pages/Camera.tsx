@@ -26,6 +26,7 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
+  const [streamKey, setStreamKey] = useState(0); // CameraViewer 강제 리마운트용 키
   const waitingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const subscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const isConnectingRef = useRef(false);
@@ -248,6 +249,8 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
           ) {
             console.log("[Camera] 📸 Camera reconnected, auto-restarting stream...");
             setError(null);
+            // ★ streamKey를 변경하여 CameraViewer를 완전히 새로 마운트 — 처음 연결과 동일한 상태
+            setStreamKey(k => k + 1);
             setTimeout(() => {
               if (!isConnectedRef.current && !isConnectingRef.current) {
                 startStreamingRef.current?.();
@@ -436,6 +439,7 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
 
         <div className="px-2 pb-2 flex flex-col gap-2 relative">
           <CameraViewer
+            key={streamKey}
             isStreaming={isStreaming}
             isConnecting={isConnecting || isWaitingForCamera}
             isConnected={isConnected}
