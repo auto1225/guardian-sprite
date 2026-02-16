@@ -231,9 +231,11 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
             (prevCameraConnected === true || isConnectedRef.current || isConnectingRef.current)
           ) {
             console.log("[Camera] 📷 Camera disconnected detected via DB, prev:", prevCameraConnected);
+            // ★ 즉시 동기적으로 상태 리셋
             isConnectingRef.current = false;
             setIsStreaming(false);
             setIsWaitingForCamera(false);
+            // ★ disconnect()로 PC close + 시그널링 정리 + 스트림 해제
             disconnect();
             // 스트리밍 요청 플래그 리셋 — 재연결 시 false→true 변경을 브로드캐스터가 감지하도록
             supabase.from("devices").update({ is_streaming_requested: false }).eq("id", device.id);
@@ -247,15 +249,17 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
             !isConnectingRef.current &&
             !isConnectedRef.current
           ) {
-            console.log("[Camera] 📸 Camera reconnected, auto-restarting stream...");
+            console.log("[Camera] 📸 Camera reconnected, scheduling auto-restart with delay...");
             setError(null);
             // ★ streamKey를 변경하여 CameraViewer를 완전히 새로 마운트 — 처음 연결과 동일한 상태
             setStreamKey(k => k + 1);
+            // ★ 디바운스 2초: 이전 시그널링 잔재가 지나가도록 충분한 대기 후 연결 시도
             setTimeout(() => {
               if (!isConnectedRef.current && !isConnectingRef.current) {
+                console.log("[Camera] 🔄 Debounce complete, starting stream...");
                 startStreamingRef.current?.();
               }
-            }, 1500);
+            }, 2000);
           }
         }
       )
