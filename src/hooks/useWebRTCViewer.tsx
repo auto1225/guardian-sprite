@@ -507,6 +507,12 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
             if (record.sender_type === "broadcaster") {
               // broadcaster-ready 시그널 감지 → 자동 재연결
               if (record.type === "broadcaster-ready") {
+                // 초기 연결 시도 중(isConnecting)에는 완전히 무시
+                // — retry 루프가 이미 offer를 폴링하고 있으므로 PC를 리셋할 필요 없음
+                if (isConnectingRef.current && !isConnectedRef.current) {
+                  console.log("[WebRTC Viewer] ⏭️ Ignoring broadcaster-ready (initial connection in progress)");
+                  return;
+                }
                 // 이미 offer를 받았거나 연결됐으면 무시
                 if (hasRemoteDescriptionRef.current || isConnectedRef.current) {
                   console.log("[WebRTC Viewer] ⏭️ Ignoring broadcaster-ready (already have offer or connected)");
@@ -514,7 +520,6 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
                 }
                 
                 console.log("[WebRTC Viewer] 📡 Broadcaster ready signal received! Resetting PC and waiting for offer...");
-                // PeerConnection만 리셋 (새 viewer-join을 보내지 않음 — 기존 것으로 offer를 기다림)
                 if (peerConnectionRef.current) {
                   peerConnectionRef.current.close();
                   peerConnectionRef.current = null;
@@ -524,14 +529,12 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
                 hasRemoteDescriptionRef.current = false;
                 hasSentAnswerRef.current = false;
                 
-                // React 상태 리셋
                 isConnectedRef.current = false;
                 isConnectingRef.current = true;
                 setIsConnected(false);
                 setIsConnecting(true);
                 setRemoteStream(null);
                 
-                // 새 PeerConnection 생성 (세션 ID는 유지)
                 peerConnectionRef.current = createPeerConnection();
                 return;
               }
