@@ -69,8 +69,9 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     iceCandidatePoolSize: 10,
   };
 
-  const cleanup = useCallback(() => {
-    console.log("[WebRTC Viewer] Cleaning up... isConnecting:", isConnectingRef.current);
+  // preserveStream=true: 연결 해제 시 마지막 프레임 유지 (disconnect overlay 표시용)
+  const cleanup = useCallback((preserveStream = false) => {
+    console.log("[WebRTC Viewer] Cleaning up... isConnecting:", isConnectingRef.current, "preserveStream:", preserveStream);
     
     // Clear timeout
     if (connectionTimeoutRef.current) {
@@ -98,7 +99,9 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     hasSentAnswerRef.current = false;
     offerRetryCountRef.current = 0;
     isConnectedRef.current = false;
-    setRemoteStream(null);
+    if (!preserveStream) {
+      setRemoteStream(null);
+    }
     setIsConnected(false);
     setIsConnecting(false);
   }, []);
@@ -212,24 +215,26 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         setIsConnected(true);
         setIsConnecting(false);
       } else if (pc.connectionState === "disconnected") {
-        // disconnected는 일시적일 수 있으므로 바로 종료하지 않음
-        // 10초 대기 후에도 복구되지 않으면 종료
-        console.log("[WebRTC Viewer] ⚠️ Connection disconnected, waiting for recovery...");
+        // disconnected → 즉시 UI에 반영 (isConnected=false), 스트림은 유지하여 마지막 프레임 표시
+        console.log("[WebRTC Viewer] ⚠️ Connection disconnected, preserving last frame...");
+        isConnectedRef.current = false;
+        isConnectingRef.current = false;
+        setIsConnected(false);
+        setIsConnecting(false);
+        // 10초 후에도 복구되지 않으면 에러 콜백
         setTimeout(() => {
           if (peerConnectionRef.current?.connectionState === "disconnected") {
             console.log("[WebRTC Viewer] Connection did not recover after 10s");
-            isConnectingRef.current = false;
-            isConnectedRef.current = false;
-            cleanup();
+            cleanup(true); // preserveStream: 마지막 프레임 유지
             onError?.("연결이 끊어졌습니다");
           }
         }, 10000);
       } else if (pc.connectionState === "failed") {
-        // failed는 즉시 종료
+        // failed → 즉시 UI에 반영, 스트림 유지
         console.log("[WebRTC Viewer] Connection failed");
         isConnectingRef.current = false;
         isConnectedRef.current = false;
-        cleanup();
+        cleanup(true); // preserveStream: 마지막 프레임 유지
         onError?.("연결에 실패했습니다");
       }
     };
@@ -500,7 +505,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
               // broadcaster-ready 시그널 감지 → 자동 재연결
               if (record.type === "broadcaster-ready") {
                 console.log("[WebRTC Viewer] 📡 Broadcaster ready signal received! Re-sending viewer-join...");
-                // 기존 연결 정리 후 새 viewer-join 전송
+                // 기존 연결 정리 (스트림도 초기화)
                 if (peerConnectionRef.current) {
                   peerConnectionRef.current.close();
                   peerConnectionRef.current = null;
@@ -509,6 +514,13 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
                 pendingIceCandidatesRef.current = [];
                 hasRemoteDescriptionRef.current = false;
                 hasSentAnswerRef.current = false;
+                
+                // React 상태 리셋 → CameraViewer가 "연결 중" 표시
+                isConnectedRef.current = false;
+                isConnectingRef.current = true;
+                setIsConnected(false);
+                setIsConnecting(true);
+                setRemoteStream(null); // 이전 죽은 스트림 제거
                 
                 // 새 세션 ID 생성
                 sessionIdRef.current = `viewer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -563,8 +575,8 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     console.log("[WebRTC Viewer] Disconnecting..., wasConnecting:", isConnectingRef.current);
     isConnectingRef.current = false;
     
-    // 먼저 연결 정리
-    cleanup();
+    // 완전 정리 (스트림 포함)
+    cleanup(false);
     
     // 시그널링 테이블에서 viewer 메시지 정리 (연결 종료 후)
     try {
