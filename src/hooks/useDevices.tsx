@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,6 +14,26 @@ let activePresenceChannel: ReturnType<typeof supabase.channel> | null = null;
 const activeLeaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const realtimeConfirmedOnline = new Set<string>();
 let subscriberCount = 0;
+
+// ── 모듈 레벨 싱글톤: 기기 선택 상태 (모든 컴포넌트가 공유) ──
+let _selectedDeviceId: string | null = null;
+let _selectionInitialized = false;
+const _selectionListeners = new Set<() => void>();
+
+function getSelectedDeviceId() {
+  return _selectedDeviceId;
+}
+
+function setGlobalSelectedDeviceId(id: string | null) {
+  if (_selectedDeviceId === id) return;
+  _selectedDeviceId = id;
+  _selectionListeners.forEach(l => l());
+}
+
+function subscribeSelection(listener: () => void) {
+  _selectionListeners.add(listener);
+  return () => { _selectionListeners.delete(listener); };
+}
 
 function cleanupAllChannels() {
   activeLeaveTimers.forEach((timer) => clearTimeout(timer));
@@ -52,25 +72,34 @@ export const useDevices = () => {
     enabled: !!user,
   });
 
-  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
+  // 전역 싱글톤 선택 상태 사용
+  const selectedDeviceId = useSyncExternalStore(subscribeSelection, getSelectedDeviceId);
+  const setSelectedDeviceId = useCallback((id: string | null) => {
+    setGlobalSelectedDeviceId(id);
+  }, []);
 
+  // 자동 선택: 유효한 기기가 선택되지 않았을 때만
   useEffect(() => {
     if (devices.length === 0) return;
     const nonSmartphones = devices.filter(d => d.device_type !== "smartphone");
     
-    // 이미 유효한 비-스마트폰 기기가 선택되어 있으면 변경하지 않음
-    if (selectedDeviceId) {
-      const currentDevice = nonSmartphones.find(d => d.id === selectedDeviceId);
-      if (currentDevice) return; // 유효한 선택 유지
+    if (_selectedDeviceId) {
+      const currentDevice = nonSmartphones.find(d => d.id === _selectedDeviceId);
+      if (currentDevice) {
+        _selectionInitialized = true;
+        return;
+      }
     }
     
-    // 선택된 기기가 없거나 유효하지 않을 때만 자동 선택
-    const mainDevice = nonSmartphones.find(d => (d.metadata as Record<string, unknown>)?.is_main);
-    const target = mainDevice || nonSmartphones[0];
-    if (target) {
-      setSelectedDeviceId(target.id);
+    if (!_selectionInitialized || !_selectedDeviceId) {
+      const mainDevice = nonSmartphones.find(d => (d.metadata as Record<string, unknown>)?.is_main);
+      const target = mainDevice || nonSmartphones[0];
+      if (target) {
+        setGlobalSelectedDeviceId(target.id);
+        _selectionInitialized = true;
+      }
     }
-  }, [devices, selectedDeviceId]);
+  }, [devices]);
 
   const selectedDevice = devices.find((d) => d.id === selectedDeviceId) || null;
 
