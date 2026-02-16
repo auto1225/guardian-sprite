@@ -195,6 +195,8 @@ export const useDevices = () => {
         .on("postgres_changes", { event: "UPDATE", schema: "public", table: "devices", filter: `user_id=eq.${user.id}` },
           (payload) => {
             const updatedDevice = payload.new as Device;
+            // 스마트폰 하트비트는 무시 (30초마다 last_seen_at만 바뀌므로 불필요한 리렌더 방지)
+            if (updatedDevice.device_type === "smartphone") return;
             if (updatedDevice.status === "online") realtimeConfirmedOnline.add(updatedDevice.id);
             else if (updatedDevice.status === "offline") realtimeConfirmedOnline.delete(updatedDevice.id);
             console.log("[Realtime] Device updated:", { id: updatedDevice.id, status: updatedDevice.status });
