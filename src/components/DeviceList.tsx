@@ -1,14 +1,20 @@
 import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { useDevices } from "@/hooks/useDevices";
 import DeviceCard from "./DeviceCard";
+import { Database } from "@/integrations/supabase/types";
+
+type Device = Database["public"]["Tables"]["devices"]["Row"];
 
 interface DeviceListProps {
   isExpanded: boolean;
   onToggle: () => void;
+  selectedDeviceId: string | null;
+  selectedDevice: Device | null;
+  onSelectDevice: (id: string) => void;
 }
 
-const DeviceList = ({ isExpanded, onToggle }: DeviceListProps) => {
-  const { devices: allDevices, selectedDevice, selectedDeviceId, setSelectedDeviceId } = useDevices();
+const DeviceList = ({ isExpanded, onToggle, selectedDeviceId, selectedDevice, onSelectDevice }: DeviceListProps) => {
+  const { devices: allDevices } = useDevices();
   const devices = allDevices.filter(d => d.device_type !== "smartphone");
 
   if (!selectedDevice || selectedDevice.device_type === "smartphone") {
@@ -59,7 +65,7 @@ const DeviceList = ({ isExpanded, onToggle }: DeviceListProps) => {
                   isSelected={device.id === selectedDeviceId}
                   isMain={!!((device.metadata as Record<string, unknown>)?.is_main)}
                   onSelect={() => {
-                    setSelectedDeviceId(device.id);
+                    onSelectDevice(device.id);
                     onToggle();
                   }}
                 />

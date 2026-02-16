@@ -190,6 +190,9 @@ const Index = () => {
           <DeviceList 
             isExpanded={isDeviceListExpanded}
             onToggle={() => setIsDeviceListExpanded(!isDeviceListExpanded)}
+            selectedDeviceId={selectedDeviceId}
+            selectedDevice={selectedDevice}
+            onSelectDevice={setSelectedDeviceId}
           />
         </div>
         
