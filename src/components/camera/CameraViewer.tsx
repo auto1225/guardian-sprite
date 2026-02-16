@@ -179,11 +179,11 @@ const CameraViewer = ({
       });
     };
 
-    // 다양한 타이밍에 play() 시도
-    const t1 = setTimeout(() => firePlay("immediate-50ms"), 50);
-    
-    const onLoadedMetadata = () => firePlay("loadedmetadata");
-    video.addEventListener("loadedmetadata", onLoadedMetadata, { once: true });
+    // ★ GPU 과부하 방지: 즉시 play() 금지, loadeddata 이후 500ms 딜레이
+    const onLoadedData = () => {
+      setTimeout(() => firePlay("loadeddata-500ms"), 500);
+    };
+    video.addEventListener("loadeddata", onLoadedData, { once: true });
     
     const onCanPlay = () => firePlay("canplay");
     video.addEventListener("canplay", onCanPlay, { once: true });
@@ -220,10 +220,9 @@ const CameraViewer = ({
     });
 
     return () => {
-      clearTimeout(t1);
       clearInterval(retryInterval);
       video.removeEventListener("playing", onPlaying);
-      video.removeEventListener("loadedmetadata", onLoadedMetadata);
+      video.removeEventListener("loadeddata", onLoadedData);
       video.removeEventListener("canplay", onCanPlay);
       trackCleanups.forEach(fn => fn());
       if (playRetryTimerRef.current) {

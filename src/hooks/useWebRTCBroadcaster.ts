@@ -184,6 +184,14 @@ export const useWebRTCBroadcaster = ({
         console.log(`[WebRTC Broadcaster] Connection state with ${viewerId}:`, pc.connectionState);
         if (pc.connectionState === "connected") {
           console.log("[WebRTC Broadcaster] ✅ Connected to viewer:", viewerId);
+          // ★ 키프레임 강제 생성: 뷰어가 즉시 영상을 볼 수 있도록 I-Frame 트리거
+          if (localStreamRef.current) {
+            const videoTrack = localStreamRef.current.getVideoTracks()[0];
+            if (videoTrack) {
+              console.log("[WebRTC Broadcaster] 🔑 Forcing keyframe via applyConstraints");
+              videoTrack.applyConstraints(videoTrack.getConstraints()).catch(() => {});
+            }
+          }
         } else if (
           pc.connectionState === "disconnected" ||
           pc.connectionState === "failed" ||
@@ -378,8 +386,9 @@ export const useWebRTCBroadcaster = ({
       console.log("[WebRTC Broadcaster] Requesting camera access...");
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          width: { ideal: 640, max: 1280 },
+          height: { ideal: 480, max: 720 },
+          frameRate: { ideal: 24, max: 30 },
           facingMode: "user",
         },
         audio: true,
