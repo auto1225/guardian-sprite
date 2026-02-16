@@ -35,6 +35,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
   const hasRemoteDescriptionRef = useRef(false); // Track if remote description is set
   const hasSentAnswerRef = useRef(false); // Track if answer has been sent
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Timeout reference
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null); // ontrack debounce
   const offerRetryCountRef = useRef(0); // Track offer retry count
   const offerRetryIntervalRef = useRef<NodeJS.Timeout | null>(null); // Retry interval
   const lastViewerJoinSentRef = useRef<number>(0); // broadcaster-ready 디바운스용
@@ -74,10 +75,15 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
   const cleanup = useCallback((preserveStream = false) => {
     console.log("[WebRTC Viewer] Cleaning up... isConnecting:", isConnectingRef.current, "preserveStream:", preserveStream);
     
-    // Clear timeout
+    // Clear timeouts
     if (connectionTimeoutRef.current) {
       clearTimeout(connectionTimeoutRef.current);
       connectionTimeoutRef.current = null;
+    }
+    
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
     }
     
     // Clear retry interval
@@ -141,53 +147,41 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       console.log("[WebRTC Viewer] ✅ Received remote track:", event.track.kind);
       
       const track = event.track;
-      console.log("[WebRTC Viewer] 📹 Track details:", {
-        kind: track.kind,
-        enabled: track.enabled,
-        muted: track.muted,
-        readyState: track.readyState,
-        id: track.id,
-      });
-      
       // event.streams가 비어있을 수 있음 — 이 경우 수동으로 MediaStream 생성
-      let stream: MediaStream;
-      if (event.streams && event.streams[0]) {
-        stream = event.streams[0];
+      const stream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([track]);
+      
+      const updateStream = () => {
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = setTimeout(() => {
+          console.log("[WebRTC Viewer] 📹 Updating remote stream (debounced 150ms)");
+          
+          if (connectionTimeoutRef.current) {
+            clearTimeout(connectionTimeoutRef.current);
+            connectionTimeoutRef.current = null;
+          }
+          
+          isConnectedRef.current = true;
+          isConnectingRef.current = false;
+          setRemoteStream(stream);
+          setIsConnected(true);
+          setIsConnecting(false);
+        }, 150);
+      };
+
+      if (track.muted) {
+        console.log(`[WebRTC Viewer] ⏳ ${track.kind} track is muted, waiting for unmute...`);
+        const onUnmute = () => {
+          console.log(`[WebRTC Viewer] ✅ ${track.kind} track unmuted, triggering stream update`);
+          track.removeEventListener("unmute", onUnmute);
+          updateStream();
+        };
+        track.addEventListener("unmute", onUnmute);
       } else {
-        console.log("[WebRTC Viewer] ⚠️ No streams in event, creating new MediaStream from track");
-        stream = new MediaStream([track]);
+        updateStream();
       }
       
-      console.log("[WebRTC Viewer] 📹 Stream details:", {
-        id: stream.id,
-        active: stream.active,
-        trackCount: stream.getTracks().length,
-      });
-      
-      // Clear timeout - connection successful!
-      if (connectionTimeoutRef.current) {
-        clearTimeout(connectionTimeoutRef.current);
-        connectionTimeoutRef.current = null;
-        console.log("[WebRTC Viewer] ✅ Connection timeout cleared - track received");
-      }
-      
-      track.onended = () => {
-        console.log("[WebRTC Viewer] ⚠️ Track ended:", track.kind);
-      };
-      track.onmute = () => {
-        console.log("[WebRTC Viewer] ⚠️ Track muted:", track.kind);
-      };
-      track.onunmute = () => {
-        console.log("[WebRTC Viewer] ✅ Track unmuted:", track.kind);
-      };
-      
-      isConnectedRef.current = true;
-      isConnectingRef.current = false;
-      // 스트림을 직접 설정 — 불필요한 래핑 제거
-      // React 리렌더링은 stream 객체 자체가 달라지면 자동으로 발생
-      setRemoteStream(stream);
-      setIsConnected(true);
-      setIsConnecting(false);
+      track.onended = () => console.log("[WebRTC Viewer] ⚠️ Track ended:", track.kind);
+      track.onmute = () => console.log("[WebRTC Viewer] ⚠️ Track muted:", track.kind);
     };
 
     pc.onicecandidate = (event) => {
