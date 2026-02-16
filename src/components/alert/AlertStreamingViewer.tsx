@@ -63,6 +63,8 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
       tracks: remoteStream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, muted: t.muted, readyState: t.readyState })),
     });
 
+    video.srcObject = null;
+    video.load();
     video.srcObject = remoteStream;
     setShowLastFrame(false);
 
@@ -75,8 +77,18 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
         console.log("[AlertStreaming] ✅ Video playing!", { videoWidth: v.videoWidth, videoHeight: v.videoHeight });
       }).catch((err) => {
         console.warn("[AlertStreaming] ⚠️ play() failed (attempt", retries + 1, "):", err.message);
-        if (retries < 10) {
-          setTimeout(() => attemptPlay(retries + 1), 500);
+        // "Touch to play" 상태 방지를 위해 더 공격적인 재시도 및 지연
+        if (retries < 20) {
+          const delay = Math.min(100 * (retries + 1), 1000);
+          setTimeout(() => {
+            // 5회마다 srcObject를 살짝 리셋하여 브라우저의 미디어 파이프라인 자극
+            if (retries > 0 && retries % 5 === 0 && v) {
+              const currentStream = v.srcObject;
+              v.srcObject = null;
+              v.srcObject = currentStream;
+            }
+            attemptPlay(retries + 1);
+          }, delay);
         }
       });
     };

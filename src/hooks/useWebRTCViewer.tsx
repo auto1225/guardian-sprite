@@ -132,7 +132,10 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
 
   const createPeerConnection = useCallback(() => {
     console.log("[WebRTC Viewer] Creating peer connection...");
-    const pc = new RTCPeerConnection(ICE_SERVERS);
+    const pc = new RTCPeerConnection({
+      ...ICE_SERVERS,
+      bundlePolicy: "max-bundle",
+    });
 
     pc.ontrack = (event) => {
       console.log("[WebRTC Viewer] ✅ Received remote track:", event.track.kind);
@@ -501,22 +504,21 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
               // broadcaster-ready 시그널 감지 → 자동 재연결
               if (record.type === "broadcaster-ready") {
                 // 초기 연결 시도 중(isConnecting)에는 완전히 무시
-                // — retry 루프가 이미 offer를 폴링하고 있으므로 PC를 리셋할 필요 없음
                 if (isConnectingRef.current && !isConnectedRef.current) {
                   console.log("[WebRTC Viewer] ⏭️ Ignoring broadcaster-ready (initial connection in progress)");
                   return;
                 }
-                // 이미 offer를 받았거나 연결됐으면 무시
-                if (hasRemoteDescriptionRef.current || isConnectedRef.current) {
-                  console.log("[WebRTC Viewer] ⏭️ Ignoring broadcaster-ready (already have offer or connected)");
-                  return;
-                }
                 
-                console.log("[WebRTC Viewer] 📡 Broadcaster ready signal received! Resetting PC and waiting for offer...");
+                // 이미 연결된 상태에서 broadcaster-ready가 오면 연결이 끊겼음을 의미하므로 재연결
+                console.log("[WebRTC Viewer] 📡 Broadcaster ready signal received! Resetting PC and re-joining...");
+                
+                // Clean up previous PC
                 if (peerConnectionRef.current) {
                   peerConnectionRef.current.close();
                   peerConnectionRef.current = null;
                 }
+                
+                // Reset states for re-connection
                 processedMessagesRef.current.clear();
                 pendingIceCandidatesRef.current = [];
                 hasRemoteDescriptionRef.current = false;
@@ -528,7 +530,12 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
                 setIsConnecting(true);
                 setRemoteStream(null);
                 
+                // Create new PC and send join message to trigger new offer
                 peerConnectionRef.current = createPeerConnection();
+                sendSignalingMessage("viewer-join", { 
+                  viewerId: sessionIdRef.current,
+                  reason: "broadcaster-ready"
+                });
                 return;
               }
               

@@ -306,63 +306,67 @@ export const WebRTCViewer = ({ deviceId }: { deviceId: string }) => {
     const pc = new RTCPeerConnection(ICE_SERVERS);
     pcRef.current = pc;
 
-    pc.ontrack = (event: any) => {
+    pc.ontrack = (event) => {
       if (event.streams && event.streams[0]) {
         setRemoteStream(event.streams[0]);
         setIsConnected(true);
       }
     };
 
-    pc.onicecandidate = (event: any) => {
-      if (event.candidate && channelRef.current) {
-        channelRef.current.send({
-          type: "broadcast",
-          event: "signaling",
-          payload: {
-            type: "ice-candidate",
-            payload: event.candidate.toJSON(),
-            from: viewerId.current,
-            to: deviceId,
-          },
-        });
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        supabase.from("webrtc_signaling").insert([{
+          device_id: deviceId,
+          session_id: viewerId.current,
+          type: "ice-candidate",
+          sender_type: "viewer",
+          data: { candidate: event.candidate.toJSON() }
+        }]);
       }
     };
 
-    // Supabase 시그널링 채널 구독
-    const channel = supabase.channel(`webrtc-${deviceId}`);
-    channelRef.current = channel;
+    // Supabase 시그널링 테이블 구독
+    const channel = supabase
+      .channel(`signaling-${deviceId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "webrtc_signaling",
+          filter: `device_id=eq.${deviceId}`,
+        },
+        async (payload) => {
+          const record = payload.new;
+          if (record.sender_type !== "broadcaster") return;
 
-    channel
-      .on("broadcast", { event: "signaling" }, async ({ payload }: any) => {
-        if (payload.to !== viewerId.current && payload.to !== "all") return;
+          if (record.type === "offer" && record.data.target_session === viewerId.current) {
+            await pc.setRemoteDescription(new RTCSessionDescription(record.data));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
 
-        if (payload.type === "offer") {
-          await pc.setRemoteDescription(new RTCSessionDescription(payload.payload));
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-
-          channel.send({
-            type: "broadcast",
-            event: "signaling",
-            payload: {
+            await supabase.from("webrtc_signaling").insert([{
+              device_id: deviceId,
+              session_id: viewerId.current,
               type: "answer",
-              payload: answer,
-              from: viewerId.current,
-              to: payload.from,
-            },
-          });
-        } else if (payload.type === "ice-candidate") {
-          await pc.addIceCandidate(new RTCIceCandidate(payload.payload));
+              sender_type: "viewer",
+              data: { sdp: answer.sdp, target_session: viewerId.current }
+            }]);
+          } else if (record.type === "ice-candidate" && record.data.target_session === viewerId.current) {
+            await pc.addIceCandidate(new RTCIceCandidate(record.data.candidate));
+          }
         }
-      })
-      .subscribe(async (status: string) => {
+      )
+      .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
-          // 노트북에게 연결 요청
-          await channel.send({
-            type: "broadcast",
-            event: "viewer-join",
-            payload: { viewerId: viewerId.current },
-          });
+          // 노트북에게 연결 요청 (테이블 삽입)
+          await supabase.from("webrtc_signaling").insert([{
+            device_id: deviceId,
+            session_id: viewerId.current,
+            type: "viewer-join",
+            sender_type: "viewer",
+            data: { viewerId: viewerId.current }
+          }]);
         }
       });
   }, [deviceId]);
