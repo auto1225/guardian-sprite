@@ -222,7 +222,9 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
             setError(null);
             // 약간의 딜레이 후 재시작 (카메라 안정화 대기)
             setTimeout(() => {
-              startStreamingRef.current?.();
+              if (!isConnectedRef.current && !isConnectingRef.current) {
+                startStreamingRef.current?.();
+              }
             }, 1500);
           }
         }
