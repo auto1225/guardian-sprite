@@ -164,9 +164,10 @@ const CameraViewer = ({
 
     setIsVideoPlaying(false);
 
-    // 핵심 순서: pause() → srcObject 리셋 → 새 스트림 할당
+    // 핵심 순서: pause() → srcObject 리셋 → load() → 새 스트림 할당
     video.pause();
     video.srcObject = null;
+    video.load(); // 모바일 브라우저가 이전 스트림 상태를 완전히 초기화하도록 강제
     video.muted = true;
     video.srcObject = remoteStream;
 
