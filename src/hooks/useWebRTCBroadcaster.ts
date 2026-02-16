@@ -180,35 +180,43 @@ export const useWebRTCBroadcaster = ({
         }
       };
 
+      // ★ 키프레임 강제 생성 헬퍼 (sender 기반)
+      const forceKeyframe = (source: string) => {
+        const senders = pc.getSenders();
+        const videoSender = senders.find(s => s.track && s.track.kind === "video");
+        if (videoSender && videoSender.track) {
+          const track = videoSender.track;
+          console.log(`[WebRTC Broadcaster] 🔑 Forcing keyframe (${source}): disable/enable + frameRate toggle`);
+          track.enabled = false;
+          setTimeout(() => {
+            track.enabled = true;
+            const constraints = track.getConstraints();
+            const currentFr = (constraints.frameRate as ConstrainULongRange)?.ideal ?? 24;
+            const toggledFr = currentFr === 30 ? 29 : 30;
+            track.applyConstraints({
+              ...constraints,
+              frameRate: { ideal: toggledFr, max: 30 },
+            }).catch(() => {
+              // fallback: zoom trick
+              track.applyConstraints({
+                ...constraints,
+                advanced: [{ zoom: 1 } as MediaTrackConstraintSet],
+              }).catch(() => {});
+            });
+          }, 50);
+        }
+      };
+
       pc.onconnectionstatechange = () => {
         console.log(`[WebRTC Broadcaster] Connection state with ${viewerId}:`, pc.connectionState);
         if (pc.connectionState === "connected") {
           console.log("[WebRTC Broadcaster] ✅ Connected to viewer:", viewerId);
-          // ★ 키프레임 강제 생성: 트랙 토글 + frameRate 29↔30 토글
-          if (localStreamRef.current) {
-            const videoTrack = localStreamRef.current.getVideoTracks()[0];
-            if (videoTrack) {
-              console.log("[WebRTC Broadcaster] 🔑 Forcing keyframe: disable/enable track + frameRate toggle");
-              videoTrack.enabled = false;
-              setTimeout(() => {
-                videoTrack.enabled = true;
-                // frameRate를 실제로 변경해야 인코더가 확실히 리셋됨
-                const currentConstraints = videoTrack.getConstraints();
-                const currentFr = (currentConstraints.frameRate as ConstrainULongRange)?.ideal ?? 24;
-                const toggledFr = currentFr === 30 ? 29 : 30;
-                videoTrack.applyConstraints({
-                  ...currentConstraints,
-                  frameRate: { ideal: toggledFr, max: 30 },
-                }).catch(() => {});
-              }, 50);
-            }
-          }
+          forceKeyframe("connectionState");
         } else if (
           pc.connectionState === "disconnected" ||
           pc.connectionState === "failed" ||
           pc.connectionState === "closed"
         ) {
-          // Remove this viewer
           viewerConnectionsRef.current.delete(viewerId);
           setViewerCount(viewerConnectionsRef.current.size);
           onViewerDisconnected?.(viewerId);
@@ -217,6 +225,10 @@ export const useWebRTCBroadcaster = ({
 
       pc.oniceconnectionstatechange = () => {
         console.log(`[WebRTC Broadcaster] ICE state with ${viewerId}:`, pc.iceConnectionState);
+        if (pc.iceConnectionState === "connected") {
+          // ICE connected도 키프레임 트리거 (connectionState보다 먼저 올 수 있음)
+          forceKeyframe("iceConnectionState");
+        }
       };
 
       return pc;
