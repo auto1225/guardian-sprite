@@ -52,12 +52,31 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
     };
   }, []);
 
-  // Attach stream to video element
+  // Attach stream to video element and force play
   useEffect(() => {
-    if (videoRef.current && remoteStream) {
-      videoRef.current.srcObject = remoteStream;
-      setShowLastFrame(false);
-    }
+    const video = videoRef.current;
+    if (!video || !remoteStream) return;
+
+    video.srcObject = remoteStream;
+    setShowLastFrame(false);
+
+    // 모바일 브라우저에서 autoPlay가 작동하지 않을 수 있으므로 명시적 play() 호출
+    const attemptPlay = (retries = 0) => {
+      if (!videoRef.current || videoRef.current.srcObject !== remoteStream) return;
+      videoRef.current.play().catch(() => {
+        if (retries < 5) {
+          setTimeout(() => attemptPlay(retries + 1), 500);
+        }
+      });
+    };
+    attemptPlay();
+
+    // 트랙이 늦게 도착할 경우 대비
+    const handleAddTrack = () => attemptPlay();
+    remoteStream.addEventListener("addtrack", handleAddTrack);
+    return () => {
+      remoteStream.removeEventListener("addtrack", handleAddTrack);
+    };
   }, [remoteStream]);
 
   // Auto-start recording when connected
