@@ -37,6 +37,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Timeout reference
   const offerRetryCountRef = useRef(0); // Track offer retry count
   const offerRetryIntervalRef = useRef<NodeJS.Timeout | null>(null); // Retry interval
+  const lastViewerJoinSentRef = useRef<number>(0); // broadcaster-ready 디바운스용
 
   const ICE_SERVERS: RTCConfiguration = {
     iceServers: [
@@ -471,6 +472,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       peerConnectionRef.current = createPeerConnection();
 
       // viewer-join 메시지 전송 (broadcaster에게 알림)
+      lastViewerJoinSentRef.current = Date.now();
       await sendSignalingMessage("viewer-join", { 
         viewerId: sessionIdRef.current,
       });
@@ -505,6 +507,18 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
             if (record.sender_type === "broadcaster") {
               // broadcaster-ready 시그널 감지 → 자동 재연결
               if (record.type === "broadcaster-ready") {
+                // 최근 5초 이내에 viewer-join을 보냈으면 무시 (디바운스)
+                const elapsed = Date.now() - lastViewerJoinSentRef.current;
+                if (elapsed < 5000) {
+                  console.log("[WebRTC Viewer] ⏭️ Ignoring broadcaster-ready (viewer-join sent", elapsed, "ms ago)");
+                  return;
+                }
+                // 이미 offer를 받았으면 무시
+                if (hasRemoteDescriptionRef.current) {
+                  console.log("[WebRTC Viewer] ⏭️ Ignoring broadcaster-ready (already have offer)");
+                  return;
+                }
+                
                 console.log("[WebRTC Viewer] 📡 Broadcaster ready signal received! Re-sending viewer-join...");
                 // 기존 연결 정리 (스트림도 초기화)
                 if (peerConnectionRef.current) {
@@ -528,6 +542,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
                 
                 // 새 PeerConnection 생성 후 viewer-join 재전송
                 peerConnectionRef.current = createPeerConnection();
+                lastViewerJoinSentRef.current = Date.now();
                 sendSignalingMessage("viewer-join", { viewerId: sessionIdRef.current });
                 return;
               }
