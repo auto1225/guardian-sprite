@@ -289,7 +289,8 @@ const Index = () => {
       {/* Settings Page */}
       {selectedDevice && (
         <SettingsPage
-          device={selectedDevice}
+          devices={devices.filter(d => d.device_type !== "smartphone")}
+          initialDeviceId={selectedDevice.id}
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
         />
