@@ -497,6 +497,28 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
           (payload) => {
             const record = payload.new as SignalingRecord;
             if (record.sender_type === "broadcaster") {
+              // broadcaster-ready 시그널 감지 → 자동 재연결
+              if (record.type === "broadcaster-ready") {
+                console.log("[WebRTC Viewer] 📡 Broadcaster ready signal received! Re-sending viewer-join...");
+                // 기존 연결 정리 후 새 viewer-join 전송
+                if (peerConnectionRef.current) {
+                  peerConnectionRef.current.close();
+                  peerConnectionRef.current = null;
+                }
+                processedMessagesRef.current.clear();
+                pendingIceCandidatesRef.current = [];
+                hasRemoteDescriptionRef.current = false;
+                hasSentAnswerRef.current = false;
+                
+                // 새 세션 ID 생성
+                sessionIdRef.current = `viewer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                
+                // 새 PeerConnection 생성 후 viewer-join 재전송
+                peerConnectionRef.current = createPeerConnection();
+                sendSignalingMessage("viewer-join", { viewerId: sessionIdRef.current });
+                return;
+              }
+              
               console.log("[WebRTC Viewer] ✅ Received:", record.type, "from broadcaster");
               handleSignalingMessage(record);
             }
