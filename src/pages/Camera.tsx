@@ -94,6 +94,9 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
   const startStreaming = useCallback(async () => {
     if (isConnectingRef.current || isStreaming) return;
 
+    // 에러 상태 초기화
+    setError(null);
+
     // 카메라 미연결 시 즉시 에러 표시
     if (!device.is_camera_connected) {
       setError(`${device.name} 카메라가 인식되지 않습니다.`);

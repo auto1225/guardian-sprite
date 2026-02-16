@@ -372,7 +372,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
 
   const connect = useCallback(async () => {
     // Use ref for synchronous check to prevent race conditions
-    if (isConnectingRef.current || isConnected) {
+    if (isConnectingRef.current || isConnectedRef.current) {
       console.log("[WebRTC Viewer] Already connecting or connected, skipping...");
       return;
     }
@@ -535,7 +535,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       cleanup();
       onError?.("연결 중 오류가 발생했습니다");
     }
-  }, [deviceId, isConnected, cleanup, createPeerConnection, sendSignalingMessage, handleSignalingMessage, onError]);
+  }, [deviceId, cleanup, createPeerConnection, sendSignalingMessage, handleSignalingMessage, onError]);
 
   const disconnect = useCallback(async () => {
     console.log("[WebRTC Viewer] Disconnecting..., wasConnecting:", isConnectingRef.current);

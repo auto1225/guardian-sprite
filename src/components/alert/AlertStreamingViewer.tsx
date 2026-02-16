@@ -251,8 +251,9 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
             className={`w-full h-full object-contain ${showLastFrame && !isConnected ? "" : "hidden"}`}
           />
           {showLastFrame && !isConnected && (
-            <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white/80 text-xs px-2 py-1 rounded">
-              ⏸ 연결 끊김 — 마지막 프레임
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60">
+              <VideoOff className="w-8 h-8 text-white/40 mb-2" />
+              <span className="text-sm text-white/60">카메라가 인식되지 않습니다</span>
             </div>
           )}
           {/* Live video */}

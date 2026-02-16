@@ -1,4 +1,4 @@
-import { RefreshCw, Play, Mic, MicOff } from "lucide-react";
+import { RefreshCw, Play, Mic, MicOff, VideoOff } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 
 interface CameraViewerProps {
@@ -212,9 +212,10 @@ const CameraViewer = ({
     );
   }
 
-  // Connected with stream
-  if (isConnected && remoteStream) {
+  // Connected with stream OR was connected (show frozen frame with disconnect message)
+  if (remoteStream) {
     const handlePlayClick = () => attemptPlay(0);
+    const showDisconnectOverlay = !isConnected && !isConnecting;
 
     return (
       <div className="flex-1 bg-black rounded-xl flex items-center justify-center relative overflow-hidden">
@@ -228,8 +229,23 @@ const CameraViewer = ({
           onClick={handlePlayClick}
         />
 
+        {/* 카메라 연결 해제 오버레이 */}
+        {showDisconnectOverlay && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60">
+            <VideoOff className="w-10 h-10 text-white/50 mb-2" />
+            <p className="text-white/70 text-sm">카메라가 인식되지 않습니다</p>
+            <button
+              onClick={onRetry}
+              className="mt-3 px-4 py-2 bg-white/10 border border-white/20 rounded-lg flex items-center gap-2 text-white/70 text-sm hover:bg-white/20 transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+              다시 시도
+            </button>
+          </div>
+        )}
+
         {/* 터치하여 재생 오버레이 */}
-        {!isVideoPlaying && (
+        {!isVideoPlaying && isConnected && (
           <div
             className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 cursor-pointer"
             onClick={handlePlayClick}
@@ -242,47 +258,51 @@ const CameraViewer = ({
         )}
 
         {/* LIVE / REC indicator */}
-        <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded">
-          {isRecording ? (
-            <>
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-white text-xs font-bold">REC {formatDuration(recordingDuration)}</span>
-            </>
-          ) : (
-            <>
-              <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-              <span className="text-white text-xs font-bold">LIVE</span>
-            </>
-          )}
-        </div>
+        {isConnected && (
+          <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded">
+            {isRecording ? (
+              <>
+                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-white text-xs font-bold">REC {formatDuration(recordingDuration)}</span>
+              </>
+            ) : (
+              <>
+                <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+                <span className="text-white text-xs font-bold">LIVE</span>
+              </>
+            )}
+          </div>
+        )}
 
         {/* 오디오 레벨 인디케이터 */}
-        <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 px-2 py-1.5 rounded">
-          {hasAudioTrack ? (
-            <>
-              <Mic className="w-3 h-3 text-green-400" />
-              <div className="flex items-end gap-[2px] h-3">
-                {[0.15, 0.3, 0.45, 0.6, 0.75].map((threshold, i) => (
-                  <div
-                    key={i}
-                    className="w-[3px] rounded-sm transition-all duration-100"
-                    style={{
-                      height: `${4 + i * 2}px`,
-                      backgroundColor: audioLevel >= threshold
-                        ? audioLevel > 0.5 ? '#f59e0b' : '#4ade80'
-                        : 'rgba(255,255,255,0.2)',
-                    }}
-                  />
-                ))}
-              </div>
-            </>
-          ) : (
-            <>
-              <MicOff className="w-3 h-3 text-white/40" />
-              <span className="text-white/40 text-[10px]">No Audio</span>
-            </>
-          )}
-        </div>
+        {isConnected && (
+          <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 px-2 py-1.5 rounded">
+            {hasAudioTrack ? (
+              <>
+                <Mic className="w-3 h-3 text-green-400" />
+                <div className="flex items-end gap-[2px] h-3">
+                  {[0.15, 0.3, 0.45, 0.6, 0.75].map((threshold, i) => (
+                    <div
+                      key={i}
+                      className="w-[3px] rounded-sm transition-all duration-100"
+                      style={{
+                        height: `${4 + i * 2}px`,
+                        backgroundColor: audioLevel >= threshold
+                          ? audioLevel > 0.5 ? '#f59e0b' : '#4ade80'
+                          : 'rgba(255,255,255,0.2)',
+                      }}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <MicOff className="w-3 h-3 text-white/40" />
+                <span className="text-white/40 text-[10px]">No Audio</span>
+              </>
+            )}
+          </div>
+        )}
       </div>
     );
   }
