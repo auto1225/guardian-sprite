@@ -96,10 +96,12 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
     return false;
   }, [device.id]);
 
+  const startStreamingRef = useRef<() => Promise<void>>();
+
   const startStreaming = useCallback(async () => {
     if (isConnectingRef.current) return;
     // 이미 연결 중이거나 스트리밍 중이면 일단 정리 후 재시작
-    if (isConnectedRef.current || isStreaming) {
+    if (isConnectedRef.current) {
       console.log("[Camera] Cleaning up previous connection before restart...");
       disconnect();
       await new Promise(r => setTimeout(r, 500));
@@ -152,7 +154,12 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
         setError("WebRTC 연결 시간 초과. 다시 시도해주세요.");
       }
     }, 30000);
-  }, [isStreaming, device.id, device.name, requestStreamingStart, waitForBroadcaster, connect, disconnect, cleanupSubscription]);
+  }, [device.id, device.name, requestStreamingStart, waitForBroadcaster, connect, disconnect, cleanupSubscription]);
+
+  // Ref에 최신 함수 유지 (useEffect dependency 순환 방지)
+  useEffect(() => {
+    startStreamingRef.current = startStreaming;
+  }, [startStreaming]);
 
   const stopStreaming = useCallback(async () => {
     const elapsed = Date.now() - connectionStartTimeRef.current;
@@ -179,12 +186,12 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
   useEffect(() => {
     if (isOpen && !hasAutoStarted.current) {
       hasAutoStarted.current = true;
-      startStreaming();
+      startStreamingRef.current?.();
     }
     if (!isOpen) {
       hasAutoStarted.current = false;
     }
-  }, [isOpen, startStreaming]);
+  }, [isOpen]);
 
   // 카메라 재연결 감지 → 자동 스트리밍 재시작
   useEffect(() => {
@@ -215,7 +222,7 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
             setError(null);
             // 약간의 딜레이 후 재시작 (카메라 안정화 대기)
             setTimeout(() => {
-              startStreaming();
+              startStreamingRef.current?.();
             }, 1500);
           }
         }
@@ -225,7 +232,7 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [isOpen, device.id, startStreaming]);
+  }, [isOpen, device.id]);
 
   useEffect(() => {
     return () => { cleanupSubscription(); };
