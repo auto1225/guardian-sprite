@@ -98,6 +98,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     hasRemoteDescriptionRef.current = false;
     hasSentAnswerRef.current = false;
     offerRetryCountRef.current = 0;
+    isConnectingRef.current = false;
     isConnectedRef.current = false;
     if (!preserveStream) {
       setRemoteStream(null);
