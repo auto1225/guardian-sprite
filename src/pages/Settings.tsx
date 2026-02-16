@@ -415,7 +415,8 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
                       navigator.clipboard.writeText(lic.serial_key);
                       toast({ title: "복사됨", description: "시리얼 넘버가 클립보드에 복사되었습니다." });
                     }}
-                    className={`w-full px-4 py-3 flex items-center justify-between text-left hover:bg-white/5 active:bg-white/10 transition-colors ${idx > 0 ? 'border-t border-white/10' : ''}`}
+                    className={`w-full px-4 py-3 flex items-center justify-between text-left hover:bg-white/5 active:bg-white/10 transition-colors ${idx > 0 ? 'border-t border-white/10' : ''} ${lic.device_id === device.id ? '' : ''}`}
+                    style={lic.device_id === device.id ? { background: 'hsla(200, 60%, 30%, 0.5)' } : undefined}
                   >
                     <div className="flex flex-col min-w-0">
                       <span className="font-mono font-bold text-sm tracking-wider" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>
