@@ -253,6 +253,21 @@ const Index = () => {
                 .from("devices")
                 .update({ metadata: { ...currentMeta, camouflage_mode: newVal } })
                 .eq("id", selectedDevice.id);
+
+              // 브로드캐스트로 즉시 전달 (RLS 우회)
+              const channel = supabase.channel(`device-commands-${selectedDevice.id}`);
+              await channel.subscribe((status) => {
+                if (status === "SUBSCRIBED") {
+                  channel.send({
+                    type: "broadcast",
+                    event: "camouflage_toggle",
+                    payload: { device_id: selectedDevice.id, camouflage_mode: newVal },
+                  }).then(() => {
+                    supabase.removeChannel(channel);
+                  });
+                }
+              });
+
               toast({
                 title: newVal ? "위장 모드 ON" : "위장 모드 OFF",
                 description: newVal ? "노트북 화면이 꺼진 것처럼 보입니다." : "노트북 화면이 정상으로 복원됩니다.",
