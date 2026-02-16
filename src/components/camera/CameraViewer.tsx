@@ -128,6 +128,7 @@ const CameraViewer = ({
       const video = videoRef.current;
       if (video) {
         video.pause();
+        video.src = "";
         video.srcObject = null;
         video.load();
       }
