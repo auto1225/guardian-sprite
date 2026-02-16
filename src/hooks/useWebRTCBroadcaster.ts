@@ -180,29 +180,17 @@ export const useWebRTCBroadcaster = ({
         }
       };
 
-      // ★ 키프레임 강제 생성 헬퍼 (sender 기반)
+      // ★ 키프레임 강제 생성: 트랙 토글만 (가장 확실한 방법)
       const forceKeyframe = (source: string) => {
         const senders = pc.getSenders();
         const videoSender = senders.find(s => s.track && s.track.kind === "video");
         if (videoSender && videoSender.track) {
           const track = videoSender.track;
-          console.log(`[WebRTC Broadcaster] 🔑 Forcing keyframe (${source}): disable/enable + frameRate toggle`);
+          console.log(`[WebRTC Broadcaster] 🔑 Forcing keyframe (${source}): track toggle`);
           track.enabled = false;
           setTimeout(() => {
             track.enabled = true;
-            const constraints = track.getConstraints();
-            const currentFr = (constraints.frameRate as ConstrainULongRange)?.ideal ?? 24;
-            const toggledFr = currentFr === 30 ? 29 : 30;
-            track.applyConstraints({
-              ...constraints,
-              frameRate: { ideal: toggledFr, max: 30 },
-            }).catch(() => {
-              // fallback: zoom trick
-              track.applyConstraints({
-                ...constraints,
-                advanced: [{ zoom: 1 } as MediaTrackConstraintSet],
-              }).catch(() => {});
-            });
+            console.log("[WebRTC Broadcaster] ✅ Track re-enabled (keyframe sent)");
           }, 100);
         }
       };
