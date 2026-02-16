@@ -145,28 +145,40 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       bundlePolicy: "max-bundle",
     });
 
+    // ★ 수신된 트랙을 수집하여 직접 새 MediaStream을 생성 — event.streams[0] 재사용 금지
+    const receivedTracksRef: { current: MediaStreamTrack[] } = { current: [] };
+    let pendingStreamUpdate: NodeJS.Timeout | null = null;
+
     pc.ontrack = (event) => {
-      console.log("[WebRTC Viewer] ✅ Received remote track:", event.track.kind);
+      console.log("[WebRTC Viewer] ✅ Received remote track:", event.track.kind, "readyState:", event.track.readyState);
       
       const track = event.track;
-      // event.streams가 비어있을 수 있음 — 이 경우 수동으로 MediaStream 생성
-      const stream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([track]);
       
-      const updateStream = () => {
-        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-        debounceTimerRef.current = setTimeout(() => {
-          console.log("[WebRTC Viewer] 📹 Updating remote stream (debounced 150ms)");
-          
-          if (connectionTimeoutRef.current) {
-            clearTimeout(connectionTimeoutRef.current);
-            connectionTimeoutRef.current = null;
-          }
-          
-          isConnectedRef.current = true;
-          isConnectingRef.current = false;
-          setRemoteStream(stream);
-          setIsConnected(true);
-          setIsConnecting(false);
+      // 이미 같은 종류의 트랙이 있으면 교체
+      receivedTracksRef.current = receivedTracksRef.current.filter(t => t.kind !== track.kind);
+      receivedTracksRef.current.push(track);
+
+      const commitStream = () => {
+        // ★ 핵심: event.streams[0] 대신 항상 새 MediaStream 객체를 직접 생성
+        const newStream = new MediaStream(receivedTracksRef.current);
+        console.log("[WebRTC Viewer] 📹 Creating fresh MediaStream with", receivedTracksRef.current.length, "tracks");
+        
+        if (connectionTimeoutRef.current) {
+          clearTimeout(connectionTimeoutRef.current);
+          connectionTimeoutRef.current = null;
+        }
+        
+        isConnectedRef.current = true;
+        isConnectingRef.current = false;
+        setRemoteStream(newStream);
+        setIsConnected(true);
+        setIsConnecting(false);
+      };
+
+      const scheduleUpdate = () => {
+        if (pendingStreamUpdate) clearTimeout(pendingStreamUpdate);
+        pendingStreamUpdate = setTimeout(() => {
+          commitStream();
         }, 150);
       };
 
@@ -175,16 +187,18 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         const onUnmute = () => {
           console.log(`[WebRTC Viewer] ✅ ${track.kind} track unmuted, triggering stream update`);
           track.removeEventListener("unmute", onUnmute);
-          updateStream();
+          scheduleUpdate();
         };
         track.addEventListener("unmute", onUnmute);
       } else {
-        updateStream();
+        scheduleUpdate();
       }
       
       track.onended = () => console.log("[WebRTC Viewer] ⚠️ Track ended:", track.kind);
       track.onmute = () => console.log("[WebRTC Viewer] ⚠️ Track muted:", track.kind);
     };
+
+
 
     pc.onicecandidate = (event) => {
       if (event.candidate) {
