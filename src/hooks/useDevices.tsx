@@ -56,15 +56,19 @@ export const useDevices = () => {
 
   useEffect(() => {
     if (devices.length === 0) return;
-    const currentDevice = devices.find(d => d.id === selectedDeviceId);
-    if (!selectedDeviceId || currentDevice?.device_type === "smartphone") {
-      const nonSmartphones = devices.filter(d => d.device_type !== "smartphone");
-      // 메인 기기 우선 선택
-      const mainDevice = nonSmartphones.find(d => (d.metadata as Record<string, unknown>)?.is_main);
-      const target = mainDevice || nonSmartphones[0];
-      if (target) {
-        setSelectedDeviceId(target.id);
-      }
+    const nonSmartphones = devices.filter(d => d.device_type !== "smartphone");
+    
+    // 이미 유효한 비-스마트폰 기기가 선택되어 있으면 변경하지 않음
+    if (selectedDeviceId) {
+      const currentDevice = nonSmartphones.find(d => d.id === selectedDeviceId);
+      if (currentDevice) return; // 유효한 선택 유지
+    }
+    
+    // 선택된 기기가 없거나 유효하지 않을 때만 자동 선택
+    const mainDevice = nonSmartphones.find(d => (d.metadata as Record<string, unknown>)?.is_main);
+    const target = mainDevice || nonSmartphones[0];
+    if (target) {
+      setSelectedDeviceId(target.id);
     }
   }, [devices, selectedDeviceId]);
 
