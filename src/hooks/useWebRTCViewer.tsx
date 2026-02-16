@@ -507,20 +507,14 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
             if (record.sender_type === "broadcaster") {
               // broadcaster-ready 시그널 감지 → 자동 재연결
               if (record.type === "broadcaster-ready") {
-                // 최근 5초 이내에 viewer-join을 보냈으면 무시 (디바운스)
-                const elapsed = Date.now() - lastViewerJoinSentRef.current;
-                if (elapsed < 5000) {
-                  console.log("[WebRTC Viewer] ⏭️ Ignoring broadcaster-ready (viewer-join sent", elapsed, "ms ago)");
-                  return;
-                }
-                // 이미 offer를 받았으면 무시
-                if (hasRemoteDescriptionRef.current) {
-                  console.log("[WebRTC Viewer] ⏭️ Ignoring broadcaster-ready (already have offer)");
+                // 이미 offer를 받았거나 연결됐으면 무시
+                if (hasRemoteDescriptionRef.current || isConnectedRef.current) {
+                  console.log("[WebRTC Viewer] ⏭️ Ignoring broadcaster-ready (already have offer or connected)");
                   return;
                 }
                 
-                console.log("[WebRTC Viewer] 📡 Broadcaster ready signal received! Re-sending viewer-join...");
-                // 기존 연결 정리 (스트림도 초기화)
+                console.log("[WebRTC Viewer] 📡 Broadcaster ready signal received! Resetting PC and waiting for offer...");
+                // PeerConnection만 리셋 (새 viewer-join을 보내지 않음 — 기존 것으로 offer를 기다림)
                 if (peerConnectionRef.current) {
                   peerConnectionRef.current.close();
                   peerConnectionRef.current = null;
@@ -530,20 +524,15 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
                 hasRemoteDescriptionRef.current = false;
                 hasSentAnswerRef.current = false;
                 
-                // React 상태 리셋 → CameraViewer가 "연결 중" 표시
+                // React 상태 리셋
                 isConnectedRef.current = false;
                 isConnectingRef.current = true;
                 setIsConnected(false);
                 setIsConnecting(true);
-                setRemoteStream(null); // 이전 죽은 스트림 제거
+                setRemoteStream(null);
                 
-                // 새 세션 ID 생성
-                sessionIdRef.current = `viewer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                
-                // 새 PeerConnection 생성 후 viewer-join 재전송
+                // 새 PeerConnection 생성 (세션 ID는 유지)
                 peerConnectionRef.current = createPeerConnection();
-                lastViewerJoinSentRef.current = Date.now();
-                sendSignalingMessage("viewer-join", { viewerId: sessionIdRef.current });
                 return;
               }
               
