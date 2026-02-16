@@ -184,20 +184,21 @@ export const useWebRTCBroadcaster = ({
         console.log(`[WebRTC Broadcaster] Connection state with ${viewerId}:`, pc.connectionState);
         if (pc.connectionState === "connected") {
           console.log("[WebRTC Broadcaster] ✅ Connected to viewer:", viewerId);
-          // ★ 키프레임 강제 생성: 트랙을 껐다 켜서 인코더 리셋 + constraints 재적용
+          // ★ 키프레임 강제 생성: 트랙 토글 + frameRate 29↔30 토글
           if (localStreamRef.current) {
             const videoTrack = localStreamRef.current.getVideoTracks()[0];
             if (videoTrack) {
-              console.log("[WebRTC Broadcaster] 🔑 Forcing keyframe: disable/enable track + applyConstraints");
-              // 방법 1: 트랙을 50ms 동안 비활성화 후 재활성화 → 인코더가 I-Frame 생성
+              console.log("[WebRTC Broadcaster] 🔑 Forcing keyframe: disable/enable track + frameRate toggle");
               videoTrack.enabled = false;
               setTimeout(() => {
                 videoTrack.enabled = true;
-                // 방법 2: constraints 재적용으로 추가 키프레임 트리거
+                // frameRate를 실제로 변경해야 인코더가 확실히 리셋됨
                 const currentConstraints = videoTrack.getConstraints();
+                const currentFr = (currentConstraints.frameRate as ConstrainULongRange)?.ideal ?? 24;
+                const toggledFr = currentFr === 30 ? 29 : 30;
                 videoTrack.applyConstraints({
                   ...currentConstraints,
-                  frameRate: 30,
+                  frameRate: { ideal: toggledFr, max: 30 },
                 }).catch(() => {});
               }, 50);
             }
