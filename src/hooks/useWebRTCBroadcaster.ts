@@ -184,18 +184,22 @@ export const useWebRTCBroadcaster = ({
         console.log(`[WebRTC Broadcaster] Connection state with ${viewerId}:`, pc.connectionState);
         if (pc.connectionState === "connected") {
           console.log("[WebRTC Broadcaster] ✅ Connected to viewer:", viewerId);
-          // ★ 키프레임 강제 생성: 뷰어가 즉시 영상을 볼 수 있도록 I-Frame 트리거
+          // ★ 키프레임 강제 생성: 트랙을 껐다 켜서 인코더 리셋 + constraints 재적용
           if (localStreamRef.current) {
             const videoTrack = localStreamRef.current.getVideoTracks()[0];
             if (videoTrack) {
-              console.log("[WebRTC Broadcaster] 🔑 Forcing keyframe via applyConstraints");
-              const caps = videoTrack.getCapabilities?.() as Record<string, unknown> | undefined;
-              if (caps?.focusMode) {
-                videoTrack.applyConstraints({ advanced: [{ focusMode: "continuous" } as MediaTrackConstraintSet] }).catch(() => {});
-              } else {
-                // fallback: 기존 constraints 재적용
-                videoTrack.applyConstraints(videoTrack.getConstraints()).catch(() => {});
-              }
+              console.log("[WebRTC Broadcaster] 🔑 Forcing keyframe: disable/enable track + applyConstraints");
+              // 방법 1: 트랙을 50ms 동안 비활성화 후 재활성화 → 인코더가 I-Frame 생성
+              videoTrack.enabled = false;
+              setTimeout(() => {
+                videoTrack.enabled = true;
+                // 방법 2: constraints 재적용으로 추가 키프레임 트리거
+                const currentConstraints = videoTrack.getConstraints();
+                videoTrack.applyConstraints({
+                  ...currentConstraints,
+                  frameRate: 30,
+                }).catch(() => {});
+              }, 50);
             }
           }
         } else if (
