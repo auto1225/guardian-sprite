@@ -143,64 +143,73 @@ const CameraViewer = ({
 
     setIsVideoPlaying(false);
 
-    // ★ 'playing' 이벤트로 재생 성공 감지 — play() 프로미스에 의존하지 않음
+    // ★ 이전에 동작하던 초기화 시퀀스 복원
+    video.pause();
+    video.srcObject = null;
+    video.muted = true;
+    video.srcObject = remoteStream;
+
+    let playing = false;
+
+    // ★ 'playing' 이벤트로 재생 성공 감지
     const onPlaying = () => {
+      if (playing) return;
+      playing = true;
       console.log("[CameraViewer] ✅ Video is playing!");
       setIsVideoPlaying(true);
       video.muted = isMutedRef.current;
     };
     video.addEventListener("playing", onPlaying);
 
-    // srcObject 할당 — pause() 호출 없이 autoPlay에 맡김
-    video.srcObject = remoteStream;
-    video.muted = true;
-
-    const trackCleanups: Array<() => void> = [];
-
-    // play() fire-and-forget — 모바일에서 hang되더라도 괜찮음
+    // play()를 fire-and-forget으로 호출 (hang되어도 OK)
     const firePlay = (source: string) => {
+      if (playing) return;
+      const v = videoRef.current;
+      if (!v || v.srcObject !== remoteStream) return;
       console.log(`[CameraViewer] 🎬 firePlay via: ${source}`);
-      video.play().catch((err) => {
+      v.muted = true;
+      v.play().catch((err) => {
         if (err?.name !== "AbortError") {
           console.warn("[CameraViewer] ⚠️ play() rejected via", source, ":", err?.message);
         }
       });
     };
 
-    // 1) 즉시 시도
+    // 다양한 타이밍에 play() 시도
     const t1 = setTimeout(() => firePlay("immediate-50ms"), 50);
-
-    // 2) loadedmetadata
+    
     const onLoadedMetadata = () => firePlay("loadedmetadata");
     video.addEventListener("loadedmetadata", onLoadedMetadata, { once: true });
-
-    // 3) canplay
+    
     const onCanPlay = () => firePlay("canplay");
     video.addEventListener("canplay", onCanPlay, { once: true });
 
-    // 4) 1초 후 fallback
-    const t2 = setTimeout(() => {
-      if (!video.paused) return; // 이미 재생 중이면 스킵
-      console.log("[CameraViewer] ⏰ 1s fallback");
-      firePlay("1s-fallback");
-    }, 1000);
-
-    // 트랙 추가/unmute 이벤트
-    const onAddTrack = (e: MediaStreamTrackEvent) => {
-      console.log("[CameraViewer] Track added:", e.track.kind);
-      if (e.track.muted) {
-        const onUnmute = () => firePlay("track-unmute");
-        e.track.addEventListener("unmute", onUnmute, { once: true });
-        trackCleanups.push(() => e.track.removeEventListener("unmute", onUnmute));
-      } else {
-        firePlay("track-add");
+    // ★ 주기적 재시도: 2초마다 play()를 호출 (playing 이벤트 발생 시 중단)
+    const retryInterval = setInterval(() => {
+      if (playing) {
+        clearInterval(retryInterval);
+        return;
       }
-    };
-    remoteStream.addEventListener("addtrack", onAddTrack);
+      const v = videoRef.current;
+      if (!v || v.srcObject !== remoteStream) {
+        clearInterval(retryInterval);
+        return;
+      }
+      // readyState 로그 추가 — 디버깅용
+      console.log(`[CameraViewer] 🔄 Retry play() — readyState: ${v.readyState}, paused: ${v.paused}, networkState: ${v.networkState}`);
+      v.muted = true;
+      v.play().catch((err) => {
+        if (err?.name !== "AbortError") {
+          console.warn("[CameraViewer] ⚠️ retry play() rejected:", err?.message);
+        }
+      });
+    }, 2000);
 
+    // 트랙 unmute 시에도 시도
+    const trackCleanups: Array<() => void> = [];
     remoteStream.getTracks().forEach(track => {
       if (track.muted) {
-        const onUnmute = () => firePlay("existing-track-unmute");
+        const onUnmute = () => firePlay("track-unmute");
         track.addEventListener("unmute", onUnmute, { once: true });
         trackCleanups.push(() => track.removeEventListener("unmute", onUnmute));
       }
@@ -208,11 +217,10 @@ const CameraViewer = ({
 
     return () => {
       clearTimeout(t1);
-      clearTimeout(t2);
+      clearInterval(retryInterval);
       video.removeEventListener("playing", onPlaying);
       video.removeEventListener("loadedmetadata", onLoadedMetadata);
       video.removeEventListener("canplay", onCanPlay);
-      remoteStream.removeEventListener("addtrack", onAddTrack);
       trackCleanups.forEach(fn => fn());
       if (playRetryTimerRef.current) {
         clearTimeout(playRetryTimerRef.current);
