@@ -190,8 +190,8 @@ export const useWebRTCBroadcaster = ({
           track.enabled = false;
           setTimeout(() => {
             track.enabled = true;
-            console.log("[WebRTC Broadcaster] ✅ Track re-enabled (keyframe sent)");
-          }, 100);
+            console.log("[WebRTC Broadcaster] ✅ Track re-enabled after 1s (keyframe sent)");
+          }, 1000);
         }
       };
 
@@ -397,9 +397,9 @@ export const useWebRTCBroadcaster = ({
       console.log("[WebRTC Broadcaster] Requesting camera access...");
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 640, max: 1280 },
-          height: { ideal: 480, max: 720 },
-          frameRate: { ideal: 24, max: 30 },
+          width: { ideal: 640, max: 640 },
+          height: { ideal: 480, max: 480 },
+          frameRate: { ideal: 15, max: 30 },
           facingMode: "user",
         },
         audio: true,
