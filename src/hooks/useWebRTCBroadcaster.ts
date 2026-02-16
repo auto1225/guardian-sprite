@@ -207,19 +207,20 @@ export const useWebRTCBroadcaster = ({
 
   const handleViewerJoin = useCallback(
     async (viewerId: string) => {
-      // Prevent duplicate viewer-join handling (race condition from React StrictMode or Realtime)
+      // ★ 3중 잠금: 중복 offer 전송 완전 차단
+      // 1) processedViewerJoins — 이미 처리 시작된 viewerId
       if (processedViewerJoinsRef.current.has(viewerId)) {
-        console.log("[WebRTC Broadcaster] ⏭️ Skipping duplicate viewer-join:", viewerId);
+        console.log("[WebRTC Broadcaster] ⏭️ Skipping duplicate viewer-join (processedSet):", viewerId);
         return;
       }
       
-      // 이미 연결된 viewer인지 확인 (더 강력한 중복 체크)
+      // 2) viewerConnections — 이미 연결 객체가 존재
       if (viewerConnectionsRef.current.has(viewerId)) {
         console.log("[WebRTC Broadcaster] ⏭️ Viewer already has connection:", viewerId);
         return;
       }
       
-      // 먼저 Set에 추가하여 동시 호출 방지
+      // ★ 즉시 잠금 — 모든 비동기 작업 전에 동기적으로 설정
       processedViewerJoinsRef.current.add(viewerId);
       
       console.log("[WebRTC Broadcaster] 👋 Viewer joined:", viewerId);
@@ -233,11 +234,12 @@ export const useWebRTCBroadcaster = ({
 
       // Create peer connection for this viewer
       const pc = createPeerConnectionForViewer(viewerId);
+      // ★ 연결 객체를 즉시 Map에 추가하여 두 번째 경로 차단
       viewerConnectionsRef.current.set(viewerId, { pc, viewerId, hasRemoteDescription: false, pendingIceCandidates: [] });
       setViewerCount(viewerConnectionsRef.current.size);
 
       try {
-        // Create and send offer
+        // Create and send offer — 이 시점에서 이미 3중 잠금이 걸려있으므로 중복 불가
         console.log("[WebRTC Broadcaster] Creating offer for viewer:", viewerId);
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
