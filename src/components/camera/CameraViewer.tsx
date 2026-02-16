@@ -100,7 +100,7 @@ const CameraViewer = ({
     isMutedRef.current = isMuted;
   }, [isMuted]);
 
-  // 재생 시도 (재시도 포함)
+  // 재생 시도 (타임아웃 + srcObject 리셋 재시도 포함)
   const attemptPlay = useCallback(async (retryCount = 0) => {
     const video = videoRef.current;
     if (!video || !video.srcObject) {
@@ -110,7 +110,23 @@ const CameraViewer = ({
 
     try {
       video.muted = true;
-      await video.play();
+      
+      // play()가 hang되는 경우를 대비한 타임아웃 래퍼
+      const playWithTimeout = () => new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error("play_timeout"));
+        }, 2000);
+        
+        video.play().then(() => {
+          clearTimeout(timeout);
+          resolve();
+        }).catch((err) => {
+          clearTimeout(timeout);
+          reject(err);
+        });
+      });
+      
+      await playWithTimeout();
       setIsVideoPlaying(true);
       video.muted = isMutedRef.current;
       console.log("[CameraViewer] ✅ Play succeeded on attempt", retryCount + 1);
@@ -121,8 +137,18 @@ const CameraViewer = ({
       }
       console.warn("[CameraViewer] Play failed (attempt:", retryCount + 1, "):", err?.message);
       setIsVideoPlaying(false);
-      if (retryCount < 15) {
-        const delay = retryCount < 3 ? 200 : retryCount < 8 ? 500 : 1000;
+      
+      if (retryCount < 20) {
+        // 매 3회마다 srcObject를 리셋하여 브라우저 미디어 파이프라인 자극
+        if (retryCount > 0 && retryCount % 3 === 0 && video.srcObject) {
+          console.log("[CameraViewer] 🔄 Resetting srcObject at attempt", retryCount + 1);
+          const currentStream = video.srcObject;
+          video.pause();
+          video.srcObject = null;
+          video.srcObject = currentStream;
+        }
+        
+        const delay = retryCount < 3 ? 300 : retryCount < 8 ? 500 : 1000;
         playRetryTimerRef.current = setTimeout(() => attemptPlay(retryCount + 1), delay);
       } else {
         console.error("[CameraViewer] ❌ All play attempts failed");
@@ -164,10 +190,9 @@ const CameraViewer = ({
 
     setIsVideoPlaying(false);
 
-    // 핵심 순서: pause() → srcObject 리셋 → load() → 새 스트림 할당
+    // 핵심 순서: pause() → srcObject 리셋 → 새 스트림 할당 (load() 제거 - 모바일에서 hang 유발)
     video.pause();
     video.srcObject = null;
-    video.load(); // 모바일 브라우저가 이전 스트림 상태를 완전히 초기화하도록 강제
     video.muted = true;
     video.srcObject = remoteStream;
 
@@ -182,7 +207,14 @@ const CameraViewer = ({
       console.log(`[CameraViewer] 🎬 tryPlay via: ${source}`);
       try {
         v.muted = true;
-        await v.play();
+        
+        // 타임아웃 래퍼로 hang 방지
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error("play_timeout")), 2000);
+          v.play().then(() => { clearTimeout(timeout); resolve(); })
+                  .catch((err) => { clearTimeout(timeout); reject(err); });
+        });
+        
         played = true;
         setIsVideoPlaying(true);
         v.muted = isMutedRef.current;
@@ -206,7 +238,7 @@ const CameraViewer = ({
     // 3) 즉시 시도 (50ms) — 재연결 시 트랙이 이미 활성 상태일 수 있음
     const t1 = setTimeout(() => tryPlay("immediate-50ms"), 50);
 
-    // 4) 최종 fallback (500ms)
+    // 4) 최종 fallback (500ms) - attemptPlay의 재시도 + srcObject 리셋 로직 활용
     const t2 = setTimeout(() => {
       if (!played) {
         console.log("[CameraViewer] ⏰ 500ms fallback");
