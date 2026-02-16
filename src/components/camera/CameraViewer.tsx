@@ -100,59 +100,24 @@ const CameraViewer = ({
     isMutedRef.current = isMuted;
   }, [isMuted]);
 
-  // 재생 시도 (타임아웃 + srcObject 리셋 재시도 포함)
-  const attemptPlay = useCallback(async (retryCount = 0) => {
+  // 재생 시도 — 단순하게 play()만 호출, 타임아웃 없음
+  const attemptPlay = useCallback(async () => {
     const video = videoRef.current;
-    if (!video || !video.srcObject) {
-      console.log("[CameraViewer] ⚠️ attemptPlay skipped: video=", !!video, "srcObject=", !!(video?.srcObject));
-      return;
-    }
+    if (!video || !video.srcObject) return;
 
     try {
       video.muted = true;
-      
-      // play()가 hang되는 경우를 대비한 타임아웃 래퍼
-      const playWithTimeout = () => new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error("play_timeout"));
-        }, 2000);
-        
-        video.play().then(() => {
-          clearTimeout(timeout);
-          resolve();
-        }).catch((err) => {
-          clearTimeout(timeout);
-          reject(err);
-        });
-      });
-      
-      await playWithTimeout();
+      await video.play();
       setIsVideoPlaying(true);
       video.muted = isMutedRef.current;
-      console.log("[CameraViewer] ✅ Play succeeded on attempt", retryCount + 1);
+      console.log("[CameraViewer] ✅ Play succeeded");
     } catch (err: any) {
       if (err?.name === "AbortError") {
         console.log("[CameraViewer] ⏭️ play() AbortError, ignoring");
         return;
       }
-      console.warn("[CameraViewer] Play failed (attempt:", retryCount + 1, "):", err?.message);
+      console.warn("[CameraViewer] ⚠️ Play failed:", err?.message);
       setIsVideoPlaying(false);
-      
-      if (retryCount < 20) {
-        // 매 3회마다 srcObject를 리셋하여 브라우저 미디어 파이프라인 자극
-        if (retryCount > 0 && retryCount % 3 === 0 && video.srcObject) {
-          console.log("[CameraViewer] 🔄 Resetting srcObject at attempt", retryCount + 1);
-          const currentStream = video.srcObject;
-          video.pause();
-          video.srcObject = null;
-          video.srcObject = currentStream;
-        }
-        
-        const delay = retryCount < 3 ? 300 : retryCount < 8 ? 500 : 1000;
-        playRetryTimerRef.current = setTimeout(() => attemptPlay(retryCount + 1), delay);
-      } else {
-        console.error("[CameraViewer] ❌ All play attempts failed");
-      }
     }
   }, []);
 
@@ -164,13 +129,9 @@ const CameraViewer = ({
   }, [isMuted, isVideoPlaying]);
 
   // ★ 핵심: remoteStream 변경 시 비디오 연결
-  // video 요소는 항상 DOM에 존재하므로 videoRef.current가 null일 수 없음
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) {
-      console.log("[CameraViewer] ⚠️ videoRef is null (should not happen)");
-      return;
-    }
+    if (!video) return;
     
     if (!remoteStream) {
       console.log("[CameraViewer] Stream cleared, resetting video");
@@ -182,7 +143,6 @@ const CameraViewer = ({
 
     console.log("[CameraViewer] 📹 New stream received, setting up video playback");
 
-    // 기존 타이머 정리
     if (playRetryTimerRef.current) {
       clearTimeout(playRetryTimerRef.current);
       playRetryTimerRef.current = null;
@@ -190,7 +150,7 @@ const CameraViewer = ({
 
     setIsVideoPlaying(false);
 
-    // 핵심 순서: pause() → srcObject 리셋 → 새 스트림 할당 (load() 제거 - 모바일에서 hang 유발)
+    // 단순하게: pause → srcObject 초기화 → 새 스트림 할당
     video.pause();
     video.srcObject = null;
     video.muted = true;
@@ -207,14 +167,7 @@ const CameraViewer = ({
       console.log(`[CameraViewer] 🎬 tryPlay via: ${source}`);
       try {
         v.muted = true;
-        
-        // 타임아웃 래퍼로 hang 방지
-        await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => reject(new Error("play_timeout")), 2000);
-          v.play().then(() => { clearTimeout(timeout); resolve(); })
-                  .catch((err) => { clearTimeout(timeout); reject(err); });
-        });
-        
+        await v.play();
         played = true;
         setIsVideoPlaying(true);
         v.muted = isMutedRef.current;
@@ -225,7 +178,6 @@ const CameraViewer = ({
           return;
         }
         console.warn("[CameraViewer] ⚠️ play() failed via", source, ":", e?.message);
-        if (!played) attemptPlay(1);
       }
     };
 
@@ -235,16 +187,16 @@ const CameraViewer = ({
     // 2) canplay fallback
     video.addEventListener("canplay", () => tryPlay("canplay"), { once: true });
 
-    // 3) 즉시 시도 (50ms) — 재연결 시 트랙이 이미 활성 상태일 수 있음
+    // 3) 즉시 시도 (50ms)
     const t1 = setTimeout(() => tryPlay("immediate-50ms"), 50);
 
-    // 4) 최종 fallback (500ms) - attemptPlay의 재시도 + srcObject 리셋 로직 활용
+    // 4) 1초 후 fallback
     const t2 = setTimeout(() => {
       if (!played) {
-        console.log("[CameraViewer] ⏰ 500ms fallback");
-        attemptPlay(0);
+        console.log("[CameraViewer] ⏰ 1s fallback");
+        attemptPlay();
       }
-    }, 500);
+    }, 1000);
 
     // 트랙 추가/unmute 이벤트
     const onAddTrack = (e: MediaStreamTrackEvent) => {
@@ -304,7 +256,7 @@ const CameraViewer = ({
     return `${m}:${s}`;
   };
 
-  const handlePlayClick = () => attemptPlay(0);
+  const handlePlayClick = () => attemptPlay();
 
   // 현재 표시할 상태 결정
   const showConnecting = isConnecting && !isConnected && !remoteStream;
