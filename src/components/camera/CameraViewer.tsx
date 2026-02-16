@@ -136,6 +136,9 @@ const CameraViewer = ({
       playRetryTimerRef.current = null;
     }
 
+    // 새 스트림이 도착하면 재생 상태 리셋
+    setIsVideoPlaying(false);
+
     video.playsInline = true;
     video.srcObject = remoteStream;
 
