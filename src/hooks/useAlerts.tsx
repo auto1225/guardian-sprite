@@ -69,29 +69,44 @@ export const useAlerts = (deviceId?: string | null) => {
 
   // ── 경보 수신 처리 ──
   const handleAlert = useCallback((alert: ActiveAlert, fromDeviceId?: string) => {
-    if (Alarm.isMuted()) return;
-    if (Alarm.isDismissed(alert.id)) return;
-    if (Alarm.isSuppressed()) return;
-
-    const alertTime = new Date(alert.created_at).getTime();
-    if (alertTime <= Alarm.getLastStoppedAt()) {
-      console.log("[useAlerts] ⏭ Alert created before last stop, ignoring:", alert.id);
+    if (Alarm.isMuted()) {
+      console.log("[useAlerts] ⏭ Muted, ignoring alert:", alert.id);
+      return;
+    }
+    if (Alarm.isDismissed(alert.id)) {
+      console.log("[useAlerts] ⏭ Already dismissed:", alert.id);
+      return;
+    }
+    if (Alarm.isSuppressed()) {
+      console.log("[useAlerts] ⏭ Suppressed, ignoring alert:", alert.id);
       return;
     }
 
-    if (Date.now() - alertTime > 60_000) {
+    const alertTime = new Date(alert.created_at).getTime();
+    const lastStopped = Alarm.getLastStoppedAt();
+    if (alertTime <= lastStopped) {
+      console.log("[useAlerts] ⏭ Alert created before last stop, ignoring:", alert.id, "alertTime:", alertTime, "lastStopped:", lastStopped);
+      return;
+    }
+
+    const age = Date.now() - alertTime;
+    if (age > 60_000) {
+      console.log("[useAlerts] ⏭ Stale alert (age:", Math.round(age / 1000), "s), dismissing:", alert.id);
       Alarm.addDismissed(alert.id);
       return;
     }
 
     if (activeAlertRef.current?.id === alert.id) return;
 
-    console.log("[useAlerts] 🚨 New alert:", alert.id, "from device:", fromDeviceId?.slice(0, 8));
+    console.log("[useAlerts] 🚨 New alert:", alert.id, "from device:", fromDeviceId?.slice(0, 8), "age:", Math.round(age / 1000), "s");
     activeAlertRef.current = alert;
     safeSetActiveAlert(alert);
 
     if (!Alarm.isPlaying() && !Alarm.isMuted()) {
+      console.log("[useAlerts] 🔊 Starting alarm sound...");
       Alarm.play();
+    } else {
+      console.log("[useAlerts] ⏭ Alarm already playing or muted, skipping play");
     }
 
     const logDeviceId = fromDeviceId || deviceIdRef.current;
