@@ -145,17 +145,21 @@ export const useAlerts = (deviceId?: string | null) => {
       .on('presence', { event: 'sync' }, () => {
         if (!mountedRef.current) return;
         const state = channel.presenceState();
+        const keys = Object.keys(state);
+        console.log("[useAlerts] 📡 Presence sync, keys:", keys, "full state:", JSON.stringify(state).slice(0, 500));
 
         // 모든 key 순회 — key=deviceId (phone 제외)
-        for (const key of Object.keys(state)) {
+        for (const key of keys) {
           if (key === 'phone') continue;
           const entries = state[key] as Array<{
             active_alert?: ActiveAlert | null;
             status?: string;
           }>;
+          console.log("[useAlerts] 🔍 Key:", key.slice(0, 8), "entries:", entries.length, "data:", JSON.stringify(entries).slice(0, 300));
           for (const entry of entries) {
             if (entry.status === 'listening') continue;
             if (entry.active_alert) {
+              console.log("[useAlerts] ✅ Found active_alert from device:", key.slice(0, 8));
               handleAlertRef.current(entry.active_alert, key);
               return; // 하나만 처리
             }
