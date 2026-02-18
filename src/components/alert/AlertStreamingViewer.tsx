@@ -75,15 +75,17 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
       const v = videoRef.current;
       if (!v || v.srcObject !== remoteStream) return;
       
+      // 🔧 FIX: 매 시도마다 muted 강제 — srcObject 재할당 시 풀릴 수 있음
+      v.muted = true;
+      v.volume = 0;
+      
       v.play().then(() => {
         console.log("[AlertStreaming] ✅ Video playing!", { videoWidth: v.videoWidth, videoHeight: v.videoHeight });
       }).catch((err) => {
         console.warn("[AlertStreaming] ⚠️ play() failed (attempt", retries + 1, "):", err.message);
-        // "Touch to play" 상태 방지를 위해 더 공격적인 재시도 및 지연
         if (retries < 20) {
           const delay = Math.min(100 * (retries + 1), 1000);
           setTimeout(() => {
-            // 5회마다 srcObject를 살짝 리셋하여 브라우저의 미디어 파이프라인 자극
             if (retries > 0 && retries % 5 === 0 && v) {
               const currentStream = v.srcObject;
               v.srcObject = null;
