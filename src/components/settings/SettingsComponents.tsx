@@ -30,10 +30,10 @@ export interface SensorSettings {
 
 export type MotionSensitivity = "sensitive" | "normal" | "insensitive";
 
-export const SENSITIVITY_MAP: Record<MotionSensitivity, { label: string }> = {
-  sensitive: { label: "민감" },
-  normal: { label: "보통" },
-  insensitive: { label: "둔감" },
+export const SENSITIVITY_MAP: Record<MotionSensitivity, { labelKey: string }> = {
+  sensitive: { labelKey: "settings.sensitivity.sensitive" },
+  normal: { labelKey: "settings.sensitivity.normal" },
+  insensitive: { labelKey: "settings.sensitivity.insensitive" },
 };
 
 export const DEFAULT_SENSOR_SETTINGS: SensorSettings = {
@@ -49,13 +49,13 @@ export const DEFAULT_SENSOR_SETTINGS: SensorSettings = {
   power: false,
 };
 
-export const ALARM_SOUNDS: { id: string; label: string; freq: number[]; pattern: number[] }[] = [
-  { id: "whistle", label: "호루라기", freq: [2200, 1800], pattern: [0.15, 0.1] },
-  { id: "siren", label: "사이렌", freq: [660, 880], pattern: [0.3, 0.3] },
-  { id: "bird", label: "새소리", freq: [1400, 1800, 2200], pattern: [0.1, 0.08, 0.12] },
-  { id: "police", label: "경찰 사이렌", freq: [600, 1200], pattern: [0.5, 0.5] },
-  { id: "radio", label: "전파음", freq: [440, 520, 600], pattern: [0.2, 0.15, 0.2] },
-  { id: "quiet", label: "조용한 사이렌", freq: [400, 500], pattern: [0.4, 0.4] },
+export const ALARM_SOUNDS: { id: string; labelKey: string; freq: number[]; pattern: number[] }[] = [
+  { id: "whistle", labelKey: "settings.sounds.whistle", freq: [2200, 1800], pattern: [0.15, 0.1] },
+  { id: "siren", labelKey: "settings.sounds.siren", freq: [660, 880], pattern: [0.3, 0.3] },
+  { id: "bird", labelKey: "settings.sounds.bird", freq: [1400, 1800, 2200], pattern: [0.1, 0.08, 0.12] },
+  { id: "police", labelKey: "settings.sounds.police", freq: [600, 1200], pattern: [0.5, 0.5] },
+  { id: "radio", labelKey: "settings.sounds.radio", freq: [440, 520, 600], pattern: [0.2, 0.15, 0.2] },
+  { id: "quiet", labelKey: "settings.sounds.quiet", freq: [400, 500], pattern: [0.4, 0.4] },
 ];
 
 // ── Shared Sub-components ──
