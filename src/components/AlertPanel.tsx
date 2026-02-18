@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, forwardRef } from "react";
 import { Bell, Image, Trash2, CheckCheck, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Square, CheckSquare, MinusSquare } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AlertItem from "./AlertItem";
@@ -32,8 +32,6 @@ interface UnifiedAlert {
   activityLog?: LocalActivityLog;
 }
 
-type FilterType = "all" | "photo" | "activity";
-
 const ITEMS_PER_PAGE = 10;
 
 const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
@@ -42,7 +40,6 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Read activity logs directly from localStorage (no Presence subscription)
   const activityAlerts = useMemo(() => {
     void refreshKey;
     void isOpen;
@@ -51,7 +48,6 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
   const activityUnread = activityAlerts.filter(a => !a.is_read).length;
 
   const refreshAlerts = useCallback(() => setRefreshKey(k => k + 1), []);
-  const [filter, setFilter] = useState<FilterType>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSelectMode, setIsSelectMode] = useState(false);
@@ -100,18 +96,12 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
       photoAlert: a,
     }));
 
-    let merged = [...fromActivity, ...fromPhoto];
-    if (filter === "photo") merged = merged.filter(a => a.type === "photo");
-    if (filter === "activity") merged = merged.filter(a => a.type === "activity");
-
-    return merged.sort(
+    return [...fromActivity, ...fromPhoto].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
-  }, [activityAlerts, photoAlerts, devices, filter, t]);
+  }, [activityAlerts, photoAlerts, devices, t]);
 
   const totalPages = Math.max(1, Math.ceil(unifiedAlerts.length / ITEMS_PER_PAGE));
-
-  useEffect(() => { setCurrentPage(1); setSelectedIds(new Set()); }, [filter]);
 
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
@@ -192,12 +182,6 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
     setSelectedIds(new Set());
   };
 
-  const filterButtons: { key: FilterType; label: string }[] = [
-    { key: "all", label: t("alertPanel.all") },
-    { key: "photo", label: t("alertPanel.photo") },
-    { key: "activity", label: t("alertPanel.activity") },
-  ];
-
   const goToPage = (p: number) => {
     setCurrentPage(Math.max(1, Math.min(totalPages, p)));
     setSelectedIds(new Set());
@@ -246,23 +230,6 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
             </div>
           </div>
         </SheetHeader>
-
-        <div className="flex gap-2 px-4 py-3 border-b border-white/15">
-          {filterButtons.map(fb => (
-            <button
-              key={fb.key}
-              onClick={() => setFilter(fb.key)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                filter === fb.key
-                  ? "text-slate-800 shadow-sm"
-                  : "text-white/80 hover:bg-white/15"
-              }`}
-              style={filter === fb.key ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0, 0%, 100%, 0.1)' }}
-            >
-              {fb.label}
-            </button>
-          ))}
-        </div>
 
         {isSelectMode && unifiedAlerts.length > 0 && (
           <div className="flex items-center justify-between px-4 py-2 border-b border-white/15" style={{ background: 'hsla(0,0%,0%,0.15)' }}>
@@ -374,13 +341,15 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
   );
 };
 
-function PhotoAlertItem({ alert, onView, onDelete, hideDelete }: { alert: UnifiedAlert; onView: () => void; onDelete: () => void; hideDelete?: boolean }) {
+const PhotoAlertItem = forwardRef<HTMLDivElement, { alert: UnifiedAlert; onView: () => void; onDelete: () => void; hideDelete?: boolean }>(
+  ({ alert, onView, onDelete, hideDelete }, ref) => {
   const { t } = useTranslation();
   const photo = alert.photoAlert;
   const thumbnail = photo?.photos?.[0];
 
   return (
     <div
+      ref={ref}
       className={`flex items-center gap-3 p-3 rounded-2xl transition-all border ${
         alert.is_read
           ? "bg-white/10 border-white/10"
@@ -421,13 +390,16 @@ function PhotoAlertItem({ alert, onView, onDelete, hideDelete }: { alert: Unifie
       {!hideDelete && (
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="p-1 text-white/50 hover:text-red-300 transition-colors flex-shrink-0"
+          className="p-1 hover:text-red-300 transition-colors flex-shrink-0"
+          style={{ color: 'hsla(0, 0%, 100%, 0.5)' }}
         >
           <Trash2 className="w-4 h-4" />
         </button>
       )}
     </div>
   );
-}
+});
+
+PhotoAlertItem.displayName = "PhotoAlertItem";
 
 export default AlertPanel;
