@@ -523,5 +523,33 @@
     "latitude": "Lat",
     "longitude": "Lon",
     "wifiWarning": "⚠️ Wi-Fi/IP based location may differ from actual location by tens of meters to kilometers."
+  },
+  "commands": {
+    "title": "Remote Commands",
+    "lockTitle": "Lock Screen",
+    "lockDesc": "Remotely lock the laptop screen",
+    "lockButton": "Lock Screen",
+    "lockSent": "Lock command sent",
+    "lockSentDesc": "Lock command has been sent to the laptop.",
+    "lockFailed": "Failed to send lock command.",
+    "messageTitle": "Send Message",
+    "messageDesc": "Display a message on the laptop screen",
+    "messagePlaceholder": "Enter message to display...",
+    "sendButton": "Send",
+    "messageSent": "Message sent",
+    "messageSentDesc": "Message has been sent to the laptop.",
+    "messageFailed": "Failed to send message.",
+    "deviceOffline": "⚠️ Device is offline. Commands cannot be sent."
+  },
+  "locationHistory": {
+    "title": "Location History",
+    "noHistory": "No location history",
+    "latest": "Latest",
+    "records": "{{count}} location records"
+  },
+  "sideMenu2": {
+    "remoteCommands": "Remote Commands",
+    "locationHistory": "Location History",
+    "photoAlertHistory": "Photo Alert History"
   }
 }

@@ -1,4 +1,4 @@
-import { X, User, Laptop, LogOut, HelpCircle, Pencil, UserCog, Globe } from "lucide-react";
+import { X, User, Laptop, LogOut, HelpCircle, Pencil, UserCog, Globe, Lock, MapPin, Camera } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -11,9 +11,11 @@ interface SideMenuProps {
   onClose: () => void;
   onPhotoHistoryClick?: () => void;
   onHelpClick?: () => void;
+  onRemoteCommandsClick?: () => void;
+  onLocationHistoryClick?: () => void;
 }
 
-const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick }: SideMenuProps) => {
+const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick, onRemoteCommandsClick, onLocationHistoryClick }: SideMenuProps) => {
   const { t, i18n } = useTranslation();
   const { user, signOut } = useAuth();
   const { toast } = useToast();
@@ -139,6 +141,9 @@ const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick }: SideMen
 
         {/* Bottom Menu */}
         <div className="border-t border-white/20">
+          <MenuItem icon={Lock} label={t("sideMenu2.remoteCommands")} onClick={() => { if (onRemoteCommandsClick) { onRemoteCommandsClick(); onClose(); } }} />
+          <MenuItem icon={MapPin} label={t("sideMenu2.locationHistory")} onClick={() => { if (onLocationHistoryClick) { onLocationHistoryClick(); onClose(); } }} />
+          <MenuItem icon={Camera} label={t("sideMenu2.photoAlertHistory")} onClick={() => { if (onPhotoHistoryClick) { onPhotoHistoryClick(); onClose(); } }} />
           <MenuItem icon={UserCog} label={t("sideMenu.editProfile")} onClick={() => handleNavigate("/settings")} />
           <MenuItem icon={HelpCircle} label={t("sideMenu.helpQA")} onClick={() => { if (onHelpClick) { onHelpClick(); onClose(); } }} />
           <button
