@@ -13,7 +13,6 @@ import {
   LocalActivityLog,
 } from "@/lib/localActivityLogs";
 import { useDevices } from "@/hooks/useDevices";
-import * as Alarm from "@/lib/alarmSound";
 
 interface AlertPanelProps {
   deviceId: string | null;
@@ -171,9 +170,6 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
         photoIds.push(alert.photoAlert.id);
       } else if (alert.type === "activity") {
         activityIds.push(alert.id);
-        // 삭제된 활동 로그의 alertId를 dismissed에 추가하여 Presence 재생성 방지
-        const alertId = alert.activityLog?.event_data?.alertId as string | undefined;
-        if (alertId) Alarm.addDismissed(alertId);
       }
     });
     if (activityIds.length > 0) { deleteActivityLogs(activityIds); refreshAlerts(); }

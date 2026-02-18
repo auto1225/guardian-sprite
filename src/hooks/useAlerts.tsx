@@ -22,7 +22,8 @@ import {
   markAllLogsAsRead,
   LocalActivityLog,
   LocalAlertType,
-  isAlertIdDeleted,
+  isAlertIdProcessed,
+  addProcessedAlertId,
 } from "@/lib/localActivityLogs";
 import * as Alarm from "@/lib/alarmSound";
 
@@ -84,8 +85,8 @@ export const useAlerts = (deviceId?: string | null) => {
       console.log("[useAlerts] ⏭ Already dismissed:", alert.id);
       return;
     }
-    if (isAlertIdDeleted(alert.id)) {
-      console.log("[useAlerts] ⏭ Previously deleted alert:", alert.id);
+    if (isAlertIdProcessed(alert.id)) {
+      console.log("[useAlerts] ⏭ Already processed alert:", alert.id);
       return;
     }
     if (Alarm.isSuppressed()) {
@@ -123,21 +124,14 @@ export const useAlerts = (deviceId?: string | null) => {
     const logDeviceId = fromDeviceId || deviceIdRef.current;
     if (logDeviceId) {
       try {
-        // 동일 alert ID로 이미 로그가 존재하면 중복 저장 방지
-        const existing = getAlertLogs(undefined, 50);
-        const isDuplicate = existing.some(
-          log => log.event_data && (log.event_data as Record<string, unknown>).alertId === alert.id
-        );
-        if (!isDuplicate) {
-          addActivityLog(logDeviceId, alert.type, {
-            title: alert.title,
-            message: alert.message,
-            alertType: alert.type,
-            eventData: { alertId: alert.id },
-          });
-        } else {
-          console.log("[useAlerts] ⏭ Duplicate log skipped for alert:", alert.id);
-        }
+        // 처리 완료 등록 — 이후 Presence sync에서 재생성 차단
+        addProcessedAlertId(alert.id);
+        addActivityLog(logDeviceId, alert.type, {
+          title: alert.title,
+          message: alert.message,
+          alertType: alert.type,
+          eventData: { alertId: alert.id },
+        });
       } catch (err) {
         console.error("[useAlerts] 활동 로그 저장 실패:", err);
       }
