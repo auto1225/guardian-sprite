@@ -263,18 +263,18 @@ export function setSelectedSoundId(soundId: string) {
 // 모든 소스 정지 (동기적)
 // ══════════════════════════════════════
 function killAllSources() {
-  // 1. 오실레이터 즉시 정지
+  // 1. 반복 인터벌 먼저 정지 (새 오실레이터 생성 차단)
+  if (activeInterval) {
+    clearInterval(activeInterval);
+    activeInterval = null;
+  }
+
+  // 2. 오실레이터 즉시 정지 + 연결 해제
   for (const osc of activeOscillators) {
     try { osc.stop(); } catch {}
     try { osc.disconnect(); } catch {}
   }
   activeOscillators = [];
-
-  // 2. 반복 인터벌 정지
-  if (activeInterval) {
-    clearInterval(activeInterval);
-    activeInterval = null;
-  }
 
   // 3. 커스텀 오디오 정지
   if (customAudioEl) {
@@ -282,10 +282,18 @@ function killAllSources() {
     customAudioEl = null;
   }
 
-  // 4. GainNode 즉시 무음 (연결은 유지 — 재사용을 위해)
+  // 4. GainNode 무음
   if (gainNode) {
     try { gainNode.gain.value = 0; } catch {}
   }
+
+  // 5. AudioContext 완전 파기 — 예약된 모든 소스를 확실히 죽임
+  if (audioCtx && audioCtx.state !== 'closed') {
+    try { audioCtx.close().catch(() => {}); } catch {}
+  }
+  audioCtx = null;
+  gainNode = null;
+  console.log("[AlarmSound] 🔇 killAllSources: AudioContext destroyed");
 }
 
 // ══════════════════════════════════════
