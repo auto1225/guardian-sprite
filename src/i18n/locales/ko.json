@@ -253,7 +253,12 @@
     "saveFailed": "저장 실패",
     "cannotSave": "파일을 저장할 수 없습니다.",
     "recordingFailed": "녹화 실패",
-    "noRecordedData": "녹화된 데이터가 없습니다."
+    "noRecordedData": "녹화된 데이터가 없습니다.",
+    "disconnected": "연결이 끊어졌습니다. 재연결에 실패했습니다.",
+    "invalidSdp": "잘못된 SDP 형식입니다",
+    "signalingError": "시그널링 오류가 발생했습니다",
+    "connectionTimeout": "연결 시간이 초과되었습니다. 노트북 카메라가 활성화되어 있는지 확인하세요.",
+    "connectionError2": "연결 중 오류가 발생했습니다"
   },
   "deviceManage": {
     "title": "기기 관리",

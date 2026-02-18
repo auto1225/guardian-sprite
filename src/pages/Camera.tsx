@@ -42,8 +42,9 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
   const lastCameraConnectedRef = useRef<boolean | null>(null);
 
   const handleWebRTCError = useCallback((err: string) => {
-    // 연결 해제("끊어") 및 실패("실패") 메시지는 항상 표시
-    const isCriticalError = err.includes("실패") || err.includes("끊어") || err.includes("초과");
+    // Critical errors should always be shown
+    const criticalPatterns = ["fail", "disconnect", "timeout", "lost", "실패", "끊어", "초과"];
+    const isCriticalError = criticalPatterns.some(p => err.toLowerCase().includes(p));
     if (!isCriticalError && isConnectedRef.current) return;
     if (!isCriticalError && !isConnectingRef.current && !isConnectedRef.current) return;
     console.log("[Camera] Error received:", err);

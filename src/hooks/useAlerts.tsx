@@ -193,10 +193,10 @@ export const useAlerts = (deviceId?: string | null) => {
   // ── 컴퓨터 경보음 원격 해제 ──
   const dismissRemoteAlarm = useCallback(async () => {
     const did = deviceIdRef.current;
-    if (!did) throw new Error("디바이스 미선택");
+    if (!did) throw new Error("No device selected");
 
     const userId = userIdRef.current;
-    if (!userId) throw new Error("로그인 필요");
+    if (!userId) throw new Error("Login required");
 
     const channelName = `user-alerts-${userId}`;
     const dismissPayload = {
@@ -228,7 +228,7 @@ export const useAlerts = (deviceId?: string | null) => {
 
     try {
       await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error("채널 연결 시간 초과")), 5000);
+        const timeout = setTimeout(() => reject(new Error("Channel connection timeout")), 5000);
         freshChannel.subscribe((status) => {
           if (status === 'SUBSCRIBED') { clearTimeout(timeout); resolve(); }
           if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') { clearTimeout(timeout); reject(new Error(status)); }
