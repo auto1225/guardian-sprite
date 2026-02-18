@@ -8,7 +8,8 @@ import "leaflet/dist/leaflet.css";
 import { useReverseGeocode } from "@/hooks/useReverseGeocode";
 
 // Fix default marker icon issue with bundlers
-delete (L.Icon.Default.prototype as any)._getIconUrl;
+// @ts-expect-error Leaflet bundler icon fix
+delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
   iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
@@ -111,9 +112,9 @@ const LocationMapModal = ({ isOpen, onClose, deviceId, deviceName }: LocationMap
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "devices", filter: `id=eq.${deviceId}` },
         (payload) => {
-          const newData = payload.new as any;
+          const newData = payload.new as { latitude: number | null; longitude: number | null; location_updated_at: string | null; metadata: Record<string, unknown> | null };
           if (newData.latitude !== null && newData.longitude !== null) {
-            const newMeta = (newData.metadata as Record<string, unknown>) || {};
+            const newMeta = newData.metadata || {};
             setLocation({
               latitude: newData.latitude,
               longitude: newData.longitude,

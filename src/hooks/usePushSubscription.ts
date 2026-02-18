@@ -46,7 +46,7 @@ export function usePushSubscription(deviceId?: string | null) {
 
       try {
         const reg = await navigator.serviceWorker.ready;
-        const pm = (reg as any).pushManager;
+        const pm = (reg as unknown as { pushManager: PushManager }).pushManager;
         if (!pm) {
           setState((s) => ({ ...s, isSupported: true, permission }));
           return;
@@ -113,7 +113,7 @@ export function usePushSubscription(deviceId?: string | null) {
 
       // 4. PushManager 구독
       const reg = await navigator.serviceWorker.ready;
-      const pm = (reg as any).pushManager;
+      const pm = (reg as unknown as { pushManager: PushManager }).pushManager;
 
       // 기존 구독 해제 후 새로 구독 (VAPID 키 불일치 방지)
       const existingSub = await pm.getSubscription();
@@ -169,7 +169,7 @@ export function usePushSubscription(deviceId?: string | null) {
   const unsubscribe = useCallback(async () => {
     try {
       const reg = await navigator.serviceWorker.ready;
-      const sub = await (reg as any).pushManager.getSubscription();
+      const sub = await (reg as unknown as { pushManager: PushManager }).pushManager.getSubscription();
       if (sub) {
         const endpoint = sub.endpoint;
         await sub.unsubscribe();

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import AlertMode from "@/components/AlertMode";
 import Header from "@/components/Header";
 import DeviceSelector from "@/components/DeviceSelector";
@@ -45,10 +45,12 @@ const Index = () => {
   useDeviceHeartbeat();
   useLocationResponder();
 
-  // 자동 푸시 구독: 디바이스 선택 + 푸시 미구독 시 자동 시도
+  // 자동 푸시 구독: 디바이스 선택 + 푸시 미구독 시 자동 시도 (S-11: subscribePush를 ref로 안정화)
+  const subscribePushRef = useRef(subscribePush);
+  subscribePushRef.current = subscribePush;
   useEffect(() => {
     if (selectedDeviceId && pushSupported && !pushSubscribed) {
-      subscribePush();
+      subscribePushRef.current();
     }
   }, [selectedDeviceId, pushSupported, pushSubscribed]);
   const {

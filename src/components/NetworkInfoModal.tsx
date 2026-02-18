@@ -40,7 +40,7 @@ const NetworkInfoModal = ({ isOpen, onClose, deviceId, deviceName }: NetworkInfo
       if (data) {
         setIsConnected(data.is_network_connected);
         setIpAddress(data.ip_address);
-        const meta = data.metadata as any;
+        const meta = data.metadata as Record<string, unknown> | null;
         if (meta?.network_info) {
           setNetworkInfo(meta.network_info);
         }
@@ -48,7 +48,7 @@ const NetworkInfoModal = ({ isOpen, onClose, deviceId, deviceName }: NetworkInfo
 
       setLoading(false);
 
-      const currentMeta = (data?.metadata as any) || {};
+      const currentMeta = (data?.metadata as Record<string, unknown>) || {};
       await supabase
         .from("devices")
         .update({
@@ -71,10 +71,10 @@ const NetworkInfoModal = ({ isOpen, onClose, deviceId, deviceName }: NetworkInfo
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "devices", filter: `id=eq.${deviceId}` },
         (payload) => {
-          const newData = payload.new as any;
+          const newData = payload.new as { metadata: Record<string, unknown> | null; ip_address: string; is_network_connected: boolean };
           const meta = newData.metadata;
           if (meta?.network_info && !meta?.network_info_requested) {
-            setNetworkInfo(meta.network_info);
+            setNetworkInfo(meta.network_info as NetworkInfo);
             setIpAddress(newData.ip_address);
             setIsConnected(newData.is_network_connected);
             setRequesting(false);
