@@ -26,6 +26,7 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
     // 항상 로컬 해제를 먼저 수행 (원격 실패해도 오버레이는 닫힘)
     stopAlertSound();
     Alarm.addDismissed(activeAlert.id);
+    Alarm.suppressFor(30000); // v7: 30초간 재트리거 차단
     
     try {
       if (onSendRemoteAlarmOff) {
@@ -44,7 +45,7 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
   const handleForceClose = () => {
     stopAlertSound();
     Alarm.addDismissed(activeAlert.id);
-    Alarm.suppressFor(10000);
+    Alarm.suppressFor(30000); // v7: 30초간 재트리거 차단
     onDismiss();
   };
 
@@ -139,6 +140,7 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
             onClick={() => {
               stopAlertSound();
               Alarm.addDismissed(activeAlert.id);
+              Alarm.suppressFor(30000); // v7: 30초간 재트리거 차단
               setPhoneDismissed(true);
               toast({ title: t("alarm.phoneAlarmDismissed"), description: t("alarm.phoneAlarmDismissedDesc") });
             }}
