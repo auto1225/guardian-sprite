@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import i18n from "@/i18n";
 
 interface WebRTCViewerOptions {
   deviceId: string;
@@ -254,7 +255,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     
     if (attempt >= MAX_RECONNECT) {
       console.log("[WebRTC Viewer] Max reconnect attempts reached");
-      onError?.("연결이 끊어졌습니다. 재연결에 실패했습니다.");
+      onError?.(i18n.t("camera.disconnected"));
       return;
     }
 
@@ -347,7 +348,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         
         if (!sdp || typeof sdp !== 'string') {
           console.error("[WebRTC Viewer] Invalid SDP format:", typeof record.data.sdp, record.data.sdp);
-          onError?.("잘못된 SDP 형식입니다");
+          onError?.(i18n.t("camera.invalidSdp"));
           return;
         }
 
@@ -396,7 +397,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       }
     } catch (error) {
       console.error("[WebRTC Viewer] Error handling signaling:", error);
-      onError?.("시그널링 오류가 발생했습니다");
+      onError?.(i18n.t("camera.signalingError"));
     }
   }, [sendSignalingMessage, onError, processPendingIceCandidates]);
 
@@ -623,7 +624,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
           console.log("[WebRTC Viewer] Connection timeout - isConnecting:", isConnectingRef.current, "isConnected:", isConnectedRef.current);
           isConnectingRef.current = false;
           cleanup();
-          onError?.("연결 시간이 초과되었습니다. 노트북 카메라가 활성화되어 있는지 확인하세요.");
+          onError?.(i18n.t("camera.connectionTimeout"));
         }
       }, 30000);
 
@@ -631,7 +632,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       console.error("[WebRTC Viewer] Error connecting:", error);
       isConnectingRef.current = false;
       cleanup();
-      onError?.("연결 중 오류가 발생했습니다");
+      onError?.(i18n.t("camera.connectionError2"));
     }
   }, [deviceId, cleanup, createPeerConnection, sendSignalingMessage, handleSignalingMessage, onError]);
 

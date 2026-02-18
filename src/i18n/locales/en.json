@@ -253,7 +253,12 @@
     "saveFailed": "Save failed",
     "cannotSave": "Cannot save the file.",
     "recordingFailed": "Recording failed",
-    "noRecordedData": "No recorded data available."
+    "noRecordedData": "No recorded data available.",
+    "disconnected": "Connection lost. Reconnection failed.",
+    "invalidSdp": "Invalid SDP format",
+    "signalingError": "Signaling error occurred",
+    "connectionTimeout": "Connection timed out. Check if the laptop camera is active.",
+    "connectionError2": "Error during connection"
   },
   "deviceManage": {
     "title": "Device Management",

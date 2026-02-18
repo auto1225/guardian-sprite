@@ -368,7 +368,6 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
                       queryClient.invalidateQueries({ queryKey: ["devices"] });
                     } catch {
                       toast({ title: t("common.error"), description: t("common.settingSaveFailed"), variant: "destructive" });
-                      toast({ title: "오류", description: "설정 저장에 실패했습니다.", variant: "destructive" });
                     }
                   }}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
