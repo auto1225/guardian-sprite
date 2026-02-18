@@ -29,7 +29,12 @@ const RemoteCommandsPanel = ({ isOpen, onClose, device }: RemoteCommandsPanelPro
     try {
       await lockDevice(device.id);
       // Also broadcast for RLS-free laptop reception
-      const channel = supabase.channel(`device-commands-${device.id}-lock-${Date.now()}`);
+      // CRITICAL: Channel name must match what the laptop subscribes to
+      const broadcastChannelName = `device-commands-${device.id}`;
+      const existingCh = supabase.getChannels().find(ch => ch.topic === `realtime:${broadcastChannelName}`);
+      if (existingCh) supabase.removeChannel(existingCh);
+      
+      const channel = supabase.channel(broadcastChannelName);
       try {
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => { supabase.removeChannel(channel); resolve(); }, 5000);
@@ -63,7 +68,11 @@ const RemoteCommandsPanel = ({ isOpen, onClose, device }: RemoteCommandsPanelPro
     try {
       await sendMessage(device.id, message.trim());
       // Also broadcast for RLS-free laptop reception
-      const channel = supabase.channel(`device-commands-${device.id}-msg-${Date.now()}`);
+      const broadcastChannelName = `device-commands-${device.id}`;
+      const existingCh = supabase.getChannels().find(ch => ch.topic === `realtime:${broadcastChannelName}`);
+      if (existingCh) supabase.removeChannel(existingCh);
+      
+      const channel = supabase.channel(broadcastChannelName);
       try {
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => { supabase.removeChannel(channel); resolve(); }, 5000);
