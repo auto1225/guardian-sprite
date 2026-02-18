@@ -103,6 +103,89 @@ function nukeAllAudio() {
 // 모듈 로드 시 즉시 레거시 정리
 nukeAllAudio();
 
+/** 디버그: 현재 살아있는 모든 오디오 소스 상태 보고 */
+export function debugAudioSources(): string[] {
+  const report: string[] = [];
+  
+  // 1. 전역 레지스트리
+  const registry = getRegistry();
+  report.push(`[Registry] AudioContexts: ${registry.length} (states: ${registry.map(c => c.state).join(', ') || 'none'})`);
+  report.push(`[Registry] Intervals: ${getAllIntervals().length}`);
+  report.push(`[Registry] HTMLAudios: ${getAllAudios().length} (playing: ${getAllAudios().filter(a => !a.paused).length})`);
+  
+  // 2. 레거시 전역 객체
+  const w = window as unknown as Record<string, unknown>;
+  for (const key of Object.keys(w)) {
+    if (key.startsWith('__meercop')) {
+      const val = w[key];
+      if (val && typeof val === 'object') {
+        const obj = val as Record<string, unknown>;
+        report.push(`[Legacy] ${key}: isAlarming=${obj.isAlarming}, intervals=${Array.isArray(obj.intervals) ? (obj.intervals as unknown[]).length : 'N/A'}`);
+      } else {
+        report.push(`[Legacy] ${key}: ${typeof val}`);
+      }
+    }
+  }
+
+  // 3. AlarmState
+  const s = getState();
+  report.push(`[State] isAlarming=${s.isAlarming}, gen=${s.gen}, pendingPlay=${s.pendingPlayGen}, unlocked=${s.unlocked}`);
+  
+  // 4. Service Worker 알림 확인
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.ready.then(reg => {
+      reg.getNotifications().then(ns => {
+        console.log(`[AudioDebug] Active notifications: ${ns.length}`, ns.map(n => ({ tag: n.tag, title: n.title })));
+      });
+    }).catch(() => {});
+  }
+
+  return report;
+}
+
+/** 비상 정지: 모든 가능한 오디오 소스를 강제 종료 */
+export function emergencyKillAll(): string[] {
+  const report: string[] = [];
+  
+  // 1. 전역 레지스트리 nuke
+  nukeAllAudio();
+  report.push("✅ nukeAllAudio() executed");
+  
+  // 2. 모든 window 키 중 meercop 관련 삭제
+  const w = window as unknown as Record<string, unknown>;
+  let deleted = 0;
+  for (const key of Object.keys(w)) {
+    if (key.startsWith('__meercop')) {
+      try { delete w[key]; deleted++; } catch {}
+    }
+  }
+  report.push(`✅ Deleted ${deleted} __meercop* globals`);
+  
+  // 3. 서비스 워커 알림 닫기
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready.then(reg => {
+      reg.getNotifications().then(ns => {
+        ns.forEach(n => n.close());
+        report.push(`✅ Closed ${ns.length} notifications`);
+        console.log("[EmergencyKill] Closed notifications:", ns.length);
+      });
+    }).catch(() => {});
+  }
+  
+  // 4. 서비스 워커 자체를 unregister (캐시된 old SW 제거)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(r => {
+        r.unregister();
+        report.push(`✅ Unregistered SW: ${r.scope}`);
+        console.log("[EmergencyKill] Unregistered SW:", r.scope);
+      });
+    }).catch(() => {});
+  }
+  
+  return report;
+}
+
 export interface AlarmState {
   isAlarming: boolean;
   gen: number;
