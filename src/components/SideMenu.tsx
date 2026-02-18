@@ -9,9 +9,10 @@ interface SideMenuProps {
   isOpen: boolean;
   onClose: () => void;
   onPhotoHistoryClick?: () => void;
+  onHelpClick?: () => void;
 }
 
-const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick }: SideMenuProps) => {
+const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick }: SideMenuProps) => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -139,7 +140,7 @@ const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick }: SideMenuProps) => {
         {/* Bottom Menu */}
         <div className="border-t border-white/20">
           <MenuItem icon={UserCog} label="내 정보 수정" onClick={() => handleNavigate("/settings")} />
-          <MenuItem icon={HelpCircle} label="Q&A / 도움말" />
+          <MenuItem icon={HelpCircle} label="Q&A / 도움말" onClick={() => { if (onHelpClick) { onHelpClick(); onClose(); } }} />
           <MenuItem 
             icon={LogOut} 
             label="로그아웃" 
