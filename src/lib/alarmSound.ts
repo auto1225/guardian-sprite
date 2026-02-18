@@ -234,13 +234,15 @@ function stopSound() {
   s.intervals = [];
 
   for (const osc of s.oscillators) {
-    try { osc.stop(); } catch {}
+    try { osc.stop(0); } catch {}
     try { osc.disconnect(); } catch {}
   }
   s.oscillators = [];
 
-  // AudioContext는 닫지 않고 유지 (재사용을 위해)
-  // unlock된 AudioContext를 닫으면 해제 버튼 터치 시 재unlock → 재트리거 위험
+  // AudioContext 자체를 suspend하여 스케줄된 모든 오디오 즉시 중단
+  if (s.audioCtx && s.audioCtx.state === 'running') {
+    s.audioCtx.suspend().catch(() => {});
+  }
 }
 
 // ══════════════════════════════════════
