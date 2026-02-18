@@ -357,17 +357,10 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
   }, [isRecording, remoteStream, mobileDownload]);
 
   // 일시정지/재개 (비디오만 시각적으로 정지, WebRTC 연결은 유지)
+  // CameraViewer의 isPaused useEffect에서 실제 video.pause()/play()를 처리
   const togglePause = useCallback(() => {
-    const video = document.querySelector('video');
-    if (!video) return;
-    const newPaused = !isPaused;
-    if (newPaused) {
-      video.pause();
-    } else {
-      video.play().catch(() => {});
-    }
-    setIsPaused(newPaused);
-  }, [isPaused]);
+    setIsPaused(p => !p);
+  }, []);
 
   // 스냅샷 (미리보기로 표시)
   const captureSnapshot = useCallback(() => {
@@ -456,6 +449,7 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
             isMuted={isMuted}
             isRecording={isRecording}
             recordingDuration={recordingDuration}
+            isPaused={isPaused}
           />
           {snapshotUrl && (
             <SnapshotPreview
