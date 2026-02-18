@@ -223,7 +223,7 @@ const Index = () => {
       {/* Toggle Buttons - highest z-index */}
       <div className="absolute bottom-6 left-0 right-0 z-20 flex flex-col items-center gap-3 px-4">
         {/* 경보음이 재생 중이거나, 경보 오버레이 닫은 후 컴퓨터 해제 버튼 표시 */}
-        {(showFallbackAlarmButtons || (alarmPlaying && !activeAlert && !latestPhotoAlert && !viewingPhotoAlert)) && selectedDevice && !remoteAlarmDismissed && (
+        {(showFallbackAlarmButtons || (alarmPlaying && !activeAlert && !latestPhotoAlert && !viewingPhotoAlert && !photoReceiving)) && selectedDevice && !remoteAlarmDismissed && (
           <div className="flex flex-col items-center gap-2">
             {alarmPlaying && (
               <button

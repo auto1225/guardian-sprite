@@ -381,8 +381,8 @@ export function stop() {
   s.isAlarming = false;
   s.pendingPlayGen = 0;
   s.gen++;
-  // 클럭 스큐(디바이스 간 시계 차이) 대응: 1초 버퍼 추가
-  s.lastStoppedAt = Date.now() + 1000;
+  // 중복 재트리거 방지 (isDismissed로 주로 처리, 여기는 보조)
+  s.lastStoppedAt = Date.now();
   try { localStorage.setItem('meercop_last_stopped_at', String(s.lastStoppedAt)); } catch {}
   stopSound();
 
