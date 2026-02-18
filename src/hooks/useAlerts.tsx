@@ -22,6 +22,7 @@ import {
   markAllLogsAsRead,
   LocalActivityLog,
   LocalAlertType,
+  isAlertIdDeleted,
 } from "@/lib/localActivityLogs";
 import * as Alarm from "@/lib/alarmSound";
 
@@ -81,6 +82,10 @@ export const useAlerts = (deviceId?: string | null) => {
     }
     if (Alarm.isDismissed(alert.id)) {
       console.log("[useAlerts] ⏭ Already dismissed:", alert.id);
+      return;
+    }
+    if (isAlertIdDeleted(alert.id)) {
+      console.log("[useAlerts] ⏭ Previously deleted alert:", alert.id);
       return;
     }
     if (Alarm.isSuppressed()) {
