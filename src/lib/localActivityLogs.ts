@@ -95,7 +95,7 @@ export function addActivityLog(
 }
 
 export function getAlertLogs(deviceId?: string, limit = 50): LocalActivityLog[] {
-  const alertTypes = ["alert_shock", "alert_mouse", "alert_keyboard", "alert_movement", "intrusion"];
+  const alertTypes = ["alert_shock", "alert_mouse", "alert_movement", "intrusion"];
   const allLogs = getActivityLogs(deviceId, MAX_LOGS);
   return allLogs.filter(log => alertTypes.includes(log.event_type)).slice(0, limit);
 }
