@@ -1,16 +1,17 @@
 /**
- * 경보음 모듈 v7 — 전역 AudioContext 레지스트리 기반
+ * 경보음 모듈 v9 — 동기적 오실레이터 추적 & 즉각 정지
  *
- * v7 변경 (버그 수정):
- *   1. play()에 isSuppressed() 체크 추가 — 해제 후 재트리거 차단
- *   2. play()에 lastStoppedAt 쿨다운 추가 — stop 직후 재생 방지
- *   3. stop()에서 suppressFor 자동 적용 — 어떤 경로로든 stop하면 3초간 재생 차단
+ * v9 변경:
+ *   1. 모든 OscillatorNode를 전역 레지스트리에 추가 — stop() 시 즉시 .stop() 호출
+ *   2. 모든 GainNode를 전역 레지스트리에 추가 — stop() 시 즉시 disconnect()
+ *   3. ctx.close()의 비동기 특성에 의존하지 않고 동기적으로 모든 노드를 정지
+ *   4. setVolume()이 모든 등록된 GainNode에 즉시 반영
  *
- * 기존 v6 기능 유지:
- *   - 모든 AudioContext를 전역 배열 __meercop_audio_registry에 등록
- *   - stop() 시 레지스트리의 모든 AudioContext를 강제 종료
- *   - HMR 모듈 교체 시에도 이전 모듈의 오디오를 확실히 종료
+ * 기존 기능 유지:
+ *   - 전역 AudioContext 레지스트리
+ *   - HMR 대응
  *   - 사용자 설정 경보음 지원
+ *   - Pending Play (모바일 자동재생 제한 대응)
  */
 
 // ── 경보음 정의 ──
@@ -29,6 +30,8 @@ const ALARM_SOUND_CONFIGS: Record<string, { freq: number[]; pattern: number[] }>
 const REGISTRY_KEY = '__meercop_audio_registry';
 const INTERVALS_KEY = '__meercop_all_intervals';
 const AUDIOS_KEY = '__meercop_all_audios';
+const OSCILLATORS_KEY = '__meercop_all_oscillators';
+const GAINS_KEY = '__meercop_all_gains';
 
 function getRegistry(): AudioContext[] {
   const w = window as unknown as Record<string, AudioContext[]>;
@@ -48,48 +51,65 @@ function getAllAudios(): HTMLAudioElement[] {
   return w[AUDIOS_KEY];
 }
 
-function registerAudioCtx(ctx: AudioContext) {
-  getRegistry().push(ctx);
+function getAllOscillators(): OscillatorNode[] {
+  const w = window as unknown as Record<string, OscillatorNode[]>;
+  if (!w[OSCILLATORS_KEY]) w[OSCILLATORS_KEY] = [];
+  return w[OSCILLATORS_KEY];
 }
 
-function registerInterval(id: ReturnType<typeof setInterval>) {
-  getAllIntervals().push(id);
+function getAllGains(): GainNode[] {
+  const w = window as unknown as Record<string, GainNode[]>;
+  if (!w[GAINS_KEY]) w[GAINS_KEY] = [];
+  return w[GAINS_KEY];
 }
 
-function registerAudio(audio: HTMLAudioElement) {
-  getAllAudios().push(audio);
-}
+function registerAudioCtx(ctx: AudioContext) { getRegistry().push(ctx); }
+function registerInterval(id: ReturnType<typeof setInterval>) { getAllIntervals().push(id); }
+function registerAudio(audio: HTMLAudioElement) { getAllAudios().push(audio); }
+function registerOscillator(osc: OscillatorNode) { getAllOscillators().push(osc); }
+function registerGain(gain: GainNode) { getAllGains().push(gain); }
 
 /** 전역 레지스트리의 모든 오디오를 강제 종료 */
 function nukeAllAudio() {
-  // AudioContexts — 🔧 FIX v8: suspend 후 close (모바일에서 즉각 무음화)
+  // 1. 오실레이터 — 동기적으로 즉시 정지
+  const oscillators = getAllOscillators();
+  for (const osc of oscillators) {
+    try { osc.stop(); } catch {}
+    try { osc.disconnect(); } catch {}
+  }
+  oscillators.length = 0;
+
+  // 2. GainNode — 즉시 0으로 + disconnect
+  const gains = getAllGains();
+  for (const gain of gains) {
+    try { gain.gain.value = 0; } catch {}
+    try { gain.disconnect(); } catch {}
+  }
+  gains.length = 0;
+
+  // 3. AudioContexts — suspend 후 close
   const registry = getRegistry();
   for (const ctx of registry) {
-    try {
-      if (ctx.state !== 'closed') {
-        // suspend()는 동기적으로 오디오 프로세싱을 중단
-        ctx.suspend().catch(() => {});
-      }
-    } catch {}
+    try { if (ctx.state !== 'closed') ctx.suspend().catch(() => {}); } catch {}
     try { ctx.close(); } catch {}
   }
   registry.length = 0;
 
-  // Intervals
+  // 4. Intervals
   const intervals = getAllIntervals();
   for (const id of intervals) {
     try { clearInterval(id); } catch {}
   }
   intervals.length = 0;
 
-  // HTML Audio elements — 🔧 FIX v8: load() 호출로 버퍼 강제 해제
+  // 5. HTML Audio elements
   const audios = getAllAudios();
   for (const audio of audios) {
     try { audio.pause(); audio.currentTime = 0; audio.src = ''; audio.load(); } catch {}
   }
   audios.length = 0;
 
-  // 레거시 전역 객체도 정리
+  // 6. 레거시 전역 객체 정리
   try {
     const w = window as unknown as Record<string, Record<string, unknown>>;
     for (const key of Object.keys(w)) {
@@ -117,14 +137,13 @@ nukeAllAudio();
 /** 디버그: 현재 살아있는 모든 오디오 소스 상태 보고 */
 export function debugAudioSources(): string[] {
   const report: string[] = [];
-  
-  // 1. 전역 레지스트리
   const registry = getRegistry();
   report.push(`[Registry] AudioContexts: ${registry.length} (states: ${registry.map(c => c.state).join(', ') || 'none'})`);
   report.push(`[Registry] Intervals: ${getAllIntervals().length}`);
   report.push(`[Registry] HTMLAudios: ${getAllAudios().length} (playing: ${getAllAudios().filter(a => !a.paused).length})`);
-  
-  // 2. 레거시 전역 객체
+  report.push(`[Registry] Oscillators: ${getAllOscillators().length}`);
+  report.push(`[Registry] GainNodes: ${getAllGains().length}`);
+
   const w = window as unknown as Record<string, unknown>;
   for (const key of Object.keys(w)) {
     if (key.startsWith('__meercop')) {
@@ -138,13 +157,11 @@ export function debugAudioSources(): string[] {
     }
   }
 
-  // 3. AlarmState
   const s = getState();
   report.push(`[State] isAlarming=${s.isAlarming}, gen=${s.gen}, pendingPlay=${s.pendingPlayGen}, unlocked=${s.unlocked}`);
   report.push(`[State] suppressUntil=${s.suppressUntil > Date.now() ? `${Math.round((s.suppressUntil - Date.now()) / 1000)}s remaining` : 'none'}`);
   report.push(`[State] lastStoppedAt=${s.lastStoppedAt ? `${Math.round((Date.now() - s.lastStoppedAt) / 1000)}s ago` : 'never'}`);
-  
-  // 4. Service Worker 알림 확인
+
   if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
     navigator.serviceWorker.ready.then(reg => {
       reg.getNotifications().then(ns => {
@@ -159,12 +176,9 @@ export function debugAudioSources(): string[] {
 /** 비상 정지: 모든 가능한 오디오 소스를 강제 종료 */
 export function emergencyKillAll(): string[] {
   const report: string[] = [];
-  
-  // 1. 전역 레지스트리 nuke
   nukeAllAudio();
   report.push("✅ nukeAllAudio() executed");
-  
-  // 2. 모든 window 키 중 meercop 관련 삭제
+
   const w = window as unknown as Record<string, unknown>;
   let deleted = 0;
   for (const key of Object.keys(w)) {
@@ -173,8 +187,7 @@ export function emergencyKillAll(): string[] {
     }
   }
   report.push(`✅ Deleted ${deleted} __meercop* globals`);
-  
-  // 3. 서비스 워커 알림 닫기
+
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready.then(reg => {
       reg.getNotifications().then(ns => {
@@ -184,8 +197,7 @@ export function emergencyKillAll(): string[] {
       });
     }).catch(() => {});
   }
-  
-  // 4. 서비스 워커 자체를 unregister (캐시된 old SW 제거)
+
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(regs => {
       regs.forEach(r => {
@@ -195,7 +207,7 @@ export function emergencyKillAll(): string[] {
       });
     }).catch(() => {});
   }
-  
+
   return report;
 }
 
@@ -248,7 +260,6 @@ function getState(): AlarmState {
 // AudioContext 사전 Unlock — 모바일 핵심
 // ══════════════════════════════════════
 
-/** 사용자 제스처 컨텍스트에서 호출 — AudioContext unlock */
 export function unlockAudio() {
   const s = getState();
   if (s.unlocked) {
@@ -373,7 +384,11 @@ export function setVolume(vol: number) {
   for (const audio of getAllAudios()) {
     try { audio.volume = clamped; } catch {}
   }
-  // 재생 중인 내장 사운드(WebAudio) 볼륨 즉시 반영
+  // 재생 중인 모든 GainNode 볼륨 즉시 반영
+  for (const gain of getAllGains()) {
+    try { gain.gain.value = clamped; } catch {}
+  }
+  // activeMasterGain도 업데이트
   const s = getState();
   if (s.activeMasterGain) {
     try { s.activeMasterGain.gain.value = clamped; } catch {}
@@ -401,7 +416,7 @@ function stopSound() {
 }
 
 // ══════════════════════════════════════
-// Core: playSoundCycle
+// Core: playSoundCycle — 오실레이터를 레지스트리에 등록
 // ══════════════════════════════════════
 function playSoundCycle(audioCtx: AudioContext, masterGain: GainNode, soundConfig: { freq: number[]; pattern: number[] }) {
   const beep = (time: number, freq: number, duration: number) => {
@@ -416,6 +431,9 @@ function playSoundCycle(audioCtx: AudioContext, masterGain: GainNode, soundConfi
       gain.gain.value = 1;
       osc.start(audioCtx.currentTime + time);
       osc.stop(audioCtx.currentTime + time + duration);
+      // 🔧 v9: 오실레이터와 게인 노드를 레지스트리에 등록
+      registerOscillator(osc);
+      registerGain(gain);
     } catch {}
   };
 
@@ -478,12 +496,6 @@ export async function play(deviceId?: string) {
   }
   if (isMuted()) return;
 
-  // ══════════════════════════════════════
-  // 🔧 FIX v7: suppress/cooldown 체크 추가
-  // 이전 버전에서는 isSuppressed()와 lastStoppedAt를 play()에서
-  // 체크하지 않아서, usePhotoReceiver 등 외부에서 직접 play()를
-  // 호출하면 해제 후에도 경보음이 다시 재생되는 버그가 있었음
-  // ══════════════════════════════════════
   if (isSuppressed()) {
     console.log("[AlarmSound] play() blocked — suppressed for",
       Math.round((s.suppressUntil - Date.now()) / 1000), "s more");
@@ -496,7 +508,6 @@ export async function play(deviceId?: string) {
       Math.round(timeSinceStop / 1000), "s ago (3s cooldown)");
     return;
   }
-  // ══════════════════════════════════════
 
   // 기존 사운드 완전 정리
   stopSound();
@@ -527,6 +538,7 @@ export async function play(deviceId?: string) {
     masterGain.gain.value = volume;
     masterGain.connect(audioCtx.destination);
     s.activeMasterGain = masterGain;
+    registerGain(masterGain);
 
     if (audioCtx.state === 'suspended') {
       if (!s.unlocked) {
@@ -566,7 +578,6 @@ export async function play(deviceId?: string) {
       return;
     }
 
-    // 🔧 FIX v7: async 대기 후 suppress 재확인
     if (isSuppressed()) {
       console.log("[AlarmSound] play aborted after async — suppressed");
       s.isAlarming = false;
@@ -596,7 +607,6 @@ export async function play(deviceId?: string) {
         return;
       }
 
-      // 🔧 FIX v7: 반복 재생 중에도 suppress 체크
       if (isSuppressed()) {
         console.log("[AlarmSound] interval stopped — suppressed");
         clearInterval(intervalId);
@@ -627,23 +637,23 @@ export function stop() {
   s.lastStoppedAt = Date.now();
   try { localStorage.setItem('meercop_last_stopped_at', String(s.lastStoppedAt)); } catch {}
 
-  // 🔧 FIX v8: masterGain을 즉시 0으로 + disconnect → 비동기 close 전에 즉각 무음화
+  // 🔧 v9: activeMasterGain 즉시 무음화 + disconnect
   if (s.activeMasterGain) {
     try { s.activeMasterGain.gain.value = 0; } catch {}
     try { s.activeMasterGain.disconnect(); } catch {}
   }
   s.activeMasterGain = null;
 
-  // 🔧 FIX v7: stop() 호출 시 최소 3초간 자동 suppress
+  // 🔧 v9: stop() 호출 시 최소 3초간 자동 suppress
   const minSuppressUntil = Date.now() + 3000;
   if (s.suppressUntil < minSuppressUntil) {
     s.suppressUntil = minSuppressUntil;
   }
 
-  // 전역 레지스트리를 통해 모든 오디오 강제 종료
+  // 🔧 v9: 전역 레지스트리를 통해 모든 오실레이터/게인/오디오 즉시 정지
   stopSound();
 
-  // 시스템 푸시 알림도 함께 닫기 (모든 태그)
+  // 시스템 푸시 알림도 함께 닫기
   try {
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
       navigator.serviceWorker.ready.then(reg => {
