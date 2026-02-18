@@ -12,6 +12,7 @@ interface CameraViewerProps {
   isMuted: boolean;
   isRecording: boolean;
   recordingDuration: number;
+  isPaused: boolean;
 }
 
 const CameraViewer = ({
@@ -24,6 +25,7 @@ const CameraViewer = ({
   isMuted,
   isRecording,
   recordingDuration,
+  isPaused,
 }: CameraViewerProps) => {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -31,6 +33,7 @@ const CameraViewer = ({
   const [videoKey, setVideoKey] = useState(0);
   const playRetryTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isMutedRef = useRef(isMuted);
+  const isPausedRef = useRef(isPaused);
   const pendingStreamRef = useRef<MediaStream | null>(null);
 
   // 오디오 레벨 시각화
@@ -99,10 +102,22 @@ const CameraViewer = ({
     };
   }, [remoteStream]);
 
-  // Keep ref in sync
+  // Keep refs in sync
   useEffect(() => {
     isMutedRef.current = isMuted;
   }, [isMuted]);
+
+  useEffect(() => {
+    isPausedRef.current = isPaused;
+    const video = videoRef.current;
+    if (video) {
+      if (isPaused) {
+        video.pause();
+      } else if (video.srcObject && video.paused) {
+        video.play().catch(() => {});
+      }
+    }
+  }, [isPaused]);
 
   // 재생 시도 — fire-and-forget, play() 프로미스를 await하지 않음
   const attemptPlay = useCallback(() => {
@@ -186,7 +201,7 @@ const CameraViewer = ({
         return;
       }
 
-      if (!playing) {
+      if (!playing && !isPausedRef.current) {
         console.log(`[CameraViewer] 🔄 Retry play() — readyState: ${v.readyState}, paused: ${v.paused}, networkState: ${v.networkState}`);
         v.muted = true;
         v.play().catch((err) => {
