@@ -6,6 +6,7 @@ import { useDevices } from "@/hooks/useDevices";
 import { useCommands } from "@/hooks/useCommands";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 import { useAuth } from "@/hooks/useAuth";
 import {
   DropdownMenu,
@@ -88,13 +89,11 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
       for (const d of managedDevices) {
         const m = (d.metadata as Record<string, unknown>) || {};
         if (m.is_main) {
-          await supabase.from("devices").update({ metadata: { ...m, is_main: false } }).eq("id", d.id);
+          await safeMetadataUpdate(d.id, { is_main: false });
         }
       }
       // 새 메인 설정
-      const target = managedDevices.find(d => d.id === deviceId);
-      const targetMeta = (target?.metadata as Record<string, unknown>) || {};
-      await supabase.from("devices").update({ metadata: { ...targetMeta, is_main: true } }).eq("id", deviceId);
+      await safeMetadataUpdate(deviceId, { is_main: true });
 
       setSelectedDeviceId(deviceId);
       onSelectDevice(deviceId);

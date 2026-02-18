@@ -2,6 +2,7 @@ import { ArrowLeft, ChevronRight, Play, Square, Upload, VolumeX, Volume2 } from 
 import { useState, useEffect, useRef } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
+import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 import { isMuted as isAlarmMuted, setMuted as setAlarmMuted, getVolume as getAlarmVolume, setVolume as setAlarmVolume } from "@/lib/alarmSound";
 import { Slider } from "@/components/ui/slider";
 import { useQueryClient } from "@tanstack/react-query";
@@ -237,13 +238,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
   };
 
   const saveMetadata = async (updates: Record<string, unknown>) => {
-    const currentMeta = (device.metadata as Record<string, unknown>) || {};
-    const newMeta = { ...currentMeta, ...updates };
-    const { error } = await supabase
-      .from("devices")
-      .update({ metadata: newMeta as unknown as Database["public"]["Tables"]["devices"]["Update"]["metadata"] })
-      .eq("id", device.id);
-    if (error) throw error;
+    await safeMetadataUpdate(device.id, updates);
     queryClient.invalidateQueries({ queryKey: ["devices"] });
   };
 

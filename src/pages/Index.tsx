@@ -29,6 +29,7 @@ import { useLocationResponder } from "@/hooks/useLocationResponder";
 
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 
 const Index = () => {
   const { devices, selectedDevice, selectedDeviceId, setSelectedDeviceId, isLoading, refreshDeviceStatus } = useDevices();
@@ -251,10 +252,7 @@ const Index = () => {
             const currentMeta = (selectedDevice.metadata as Record<string, unknown>) || {};
             const newVal = !currentMeta.camouflage_mode;
             try {
-              await supabase
-                .from("devices")
-                .update({ metadata: { ...currentMeta, camouflage_mode: newVal } })
-                .eq("id", selectedDevice.id);
+              await safeMetadataUpdate(selectedDevice.id, { camouflage_mode: newVal });
 
               // 브로드캐스트로 즉시 전달 (RLS 우회)
               const channel = supabase.channel(`device-commands-${selectedDevice.id}`);
