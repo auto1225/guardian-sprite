@@ -22,8 +22,12 @@ const Header = ({ onMenuClick, onDeviceManageClick, unreadCount = 0, deviceId, o
       
       <div className="flex items-center gap-1">
         <AlertPanel deviceId={deviceId || null} onViewPhoto={onViewPhoto} />
-        <button className="p-1 text-primary-foreground" onClick={onDeviceManageClick}>
-          <Plus className="w-5 h-5" />
+        <button
+          className="w-8 h-8 rounded-full flex items-center justify-center border border-white/30 bg-white/15 backdrop-blur-sm text-primary-foreground shadow-lg hover:bg-white/25 active:scale-95 transition-all"
+          onClick={onDeviceManageClick}
+          aria-label="기기 관리"
+        >
+          <Plus className="w-4.5 h-4.5" strokeWidth={2.5} />
         </button>
       </div>
     </header>
