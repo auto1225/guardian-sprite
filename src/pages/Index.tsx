@@ -266,18 +266,33 @@ const Index = () => {
             try {
               await safeMetadataUpdate(selectedDevice.id, { camouflage_mode: newVal });
 
-              const channel = supabase.channel(`device-commands-${selectedDevice.id}`);
-              await channel.subscribe((status) => {
-                if (status === "SUBSCRIBED") {
-                  channel.send({
-                    type: "broadcast",
-                    event: "camouflage_toggle",
-                    payload: { device_id: selectedDevice.id, camouflage_mode: newVal },
-                  }).then(() => {
-                    supabase.removeChannel(channel);
+              const broadcastChannelName = `device-commands-${selectedDevice.id}`;
+              const existingCh = supabase.getChannels().find(ch => ch.topic === `realtime:${broadcastChannelName}`);
+              if (existingCh) supabase.removeChannel(existingCh);
+              
+              const channel = supabase.channel(broadcastChannelName);
+              try {
+                await new Promise<void>((resolve) => {
+                  const timeout = setTimeout(() => { supabase.removeChannel(channel); resolve(); }, 5000);
+                  channel.subscribe((status) => {
+                    if (status === "SUBSCRIBED") {
+                      clearTimeout(timeout);
+                      channel.send({
+                        type: "broadcast",
+                        event: "camouflage_toggle",
+                        payload: { device_id: selectedDevice.id, camouflage_mode: newVal },
+                      }).then(() => {
+                        supabase.removeChannel(channel);
+                        resolve();
+                      });
+                    } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+                      clearTimeout(timeout);
+                      supabase.removeChannel(channel);
+                      resolve();
+                    }
                   });
-                }
-              });
+                });
+              } catch { /* best-effort */ }
 
               toast({
                 title: newVal ? t("camouflage.onTitle") : t("camouflage.offTitle"),
