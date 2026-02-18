@@ -460,7 +460,7 @@ export const useWebRTCBroadcaster = ({
             setIsBroadcasting(true);
           } else if (status === "CHANNEL_ERROR") {
             console.error("[WebRTC Broadcaster] ❌ Channel subscription error");
-            onError?.("시그널링 채널 연결 실패");
+            onError?.("Signaling channel connection failed");
           }
         });
 
@@ -470,7 +470,7 @@ export const useWebRTCBroadcaster = ({
     } catch (error) {
       console.error("[WebRTC Broadcaster] Error starting broadcast:", error);
       cleanup();
-      onError?.("카메라 접근에 실패했습니다. 권한을 확인해주세요.");
+      onError?.("Camera access failed. Please check permissions.");
     }
   }, [deviceId, isBroadcasting, cleanup, handleSignalingMessage, onError]);
 

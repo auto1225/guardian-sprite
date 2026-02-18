@@ -58,7 +58,7 @@ export function useSmartphoneRegistration() {
           .from("devices")
           .insert({
             user_id: user.id,
-            name: "내 스마트폰",
+            name: "My Smartphone",
             device_type: "smartphone",
             status: "online",
             is_monitoring: false,
