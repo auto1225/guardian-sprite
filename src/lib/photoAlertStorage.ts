@@ -5,6 +5,7 @@ const DB_NAME = "meercop_photo_alerts";
 const DB_VERSION = 1;
 const STORE_NAME = "alerts";
 const MAX_ALERTS = 20;
+const DELETED_IDS_KEY = "meercop_deleted_photo_ids";
 
 // Legacy localStorage key for migration
 const LEGACY_STORAGE_KEY = "meercop_photo_alerts";
@@ -84,6 +85,25 @@ async function ensureMigration(): Promise<void> {
   await migrateFromLocalStorage();
 }
 
+// ── 삭제된 ID 추적 (새로고침 시 복원 방지) ──
+
+function getDeletedIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DELETED_IDS_KEY);
+    return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+  } catch { return new Set(); }
+}
+
+function addDeletedId(id: string): void {
+  try {
+    const ids = getDeletedIds();
+    ids.add(id);
+    // 최대 200개 유지
+    const arr = Array.from(ids).slice(-200);
+    localStorage.setItem(DELETED_IDS_KEY, JSON.stringify(arr));
+  } catch {}
+}
+
 // ── In-memory 캐시 (동기 API 호환) ──
 
 let cachedAlerts: PhotoAlert[] = [];
@@ -91,6 +111,7 @@ let cacheLoaded = false;
 
 async function loadCache(): Promise<void> {
   await ensureMigration();
+  const deletedIds = getDeletedIds();
   try {
     const db = await openDB();
     const tx = db.transaction(STORE_NAME, "readonly");
@@ -102,17 +123,22 @@ async function loadCache(): Promise<void> {
       request.onerror = () => reject(request.error);
     });
 
-    cachedAlerts = alerts.sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
+    cachedAlerts = alerts
+      .filter(a => !deletedIds.has(a.id))
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     cacheLoaded = true;
     db.close();
+
+    // DB에서도 삭제된 항목 정리
+    if (deletedIds.size > 0) {
+      _deleteFromDB(Array.from(deletedIds));
+    }
   } catch (err) {
     console.error("[PhotoAlertStorage] IndexedDB load failed, falling back:", err);
-    // Fallback to localStorage
     try {
       const stored = localStorage.getItem(LEGACY_STORAGE_KEY);
       cachedAlerts = stored ? JSON.parse(stored) : [];
+      cachedAlerts = cachedAlerts.filter(a => !deletedIds.has(a.id));
     } catch {
       cachedAlerts = [];
     }
@@ -134,6 +160,12 @@ export function getPhotoAlerts(deviceId?: string): PhotoAlert[] {
 }
 
 export function savePhotoAlert(alert: PhotoAlert): void {
+  // 삭제된 ID면 저장하지 않음
+  if (getDeletedIds().has(alert.id)) {
+    console.log("[PhotoAlertStorage] ⏭ Skipping save for deleted alert:", alert.id);
+    return;
+  }
+
   // 캐시 업데이트
   cachedAlerts = cachedAlerts.filter((a) => a.id !== alert.id);
   cachedAlerts.unshift(alert);
@@ -149,6 +181,7 @@ export function savePhotoAlert(alert: PhotoAlert): void {
 
 export function deletePhotoAlert(alertId: string): void {
   cachedAlerts = cachedAlerts.filter((a) => a.id !== alertId);
+  addDeletedId(alertId); // 영구 기록 — 새로고침 후에도 복원 방지
   _deleteFromDB([alertId]);
 }
 
