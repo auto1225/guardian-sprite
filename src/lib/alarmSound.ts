@@ -245,8 +245,31 @@ export function setSelectedSoundId(soundId: string) {
 }
 
 // ══════════════════════════════════════
-// Core: stopSound
+// Core: stopSound — 모든 버전의 오디오를 강제 종료
 // ══════════════════════════════════════
+function nukeAllLegacy() {
+  try {
+    const w = window as unknown as Record<string, Record<string, unknown>>;
+    for (const key of Object.keys(w)) {
+      if (!key.startsWith('__meercop_alarm')) continue;
+      if (key === GLOBAL_KEY) continue; // 현재 버전은 stopSound()에서 별도 처리
+      const old = w[key];
+      if (!old || typeof old !== 'object') continue;
+      old.isAlarming = false;
+      old.pendingPlayGen = 0;
+      if (old.audioCtx) try { (old.audioCtx as AudioContext).close(); } catch {}
+      if (old.ctx) try { (old.ctx as AudioContext).close(); } catch {}
+      if (old.customAudio) try { (old.customAudio as HTMLAudioElement).pause(); } catch {}
+      if (Array.isArray(old.intervals)) (old.intervals as ReturnType<typeof setInterval>[]).forEach(id => { try { clearInterval(id); } catch {} });
+      if (Array.isArray(old.oscillators)) (old.oscillators as OscillatorNode[]).forEach(o => { try { o.stop(); } catch {} });
+      old.intervals = [];
+      old.oscillators = [];
+      old.audioCtx = null;
+      old.masterGain = null;
+    }
+  } catch {}
+}
+
 function stopSound() {
   const s = getState();
 
@@ -254,6 +277,10 @@ function stopSound() {
     try { clearInterval(iid); } catch {}
   }
   s.intervals = [];
+  
+  for (const osc of s.oscillators) {
+    try { osc.stop(); } catch {}
+  }
   s.oscillators = [];
   s.masterGain = null;
 
@@ -267,6 +294,9 @@ function stopSound() {
     try { s.customAudio.pause(); s.customAudio.currentTime = 0; } catch {}
     s.customAudio = null;
   }
+
+  // 모든 레거시 버전 강제 종료
+  nukeAllLegacy();
 }
 
 // ══════════════════════════════════════
@@ -494,22 +524,7 @@ export function stop() {
   s.gen++;
   s.lastStoppedAt = Date.now();
   try { localStorage.setItem('meercop_last_stopped_at', String(s.lastStoppedAt)); } catch {}
-  stopSound();
-
-  // 레거시 버전이 여전히 재생 중일 수 있으므로 강제 정리
-  try {
-    const w = window as unknown as Record<string, Record<string, unknown>>;
-    for (const key of ['__meercop_alarm', '__meercop_alarm2', '__meercop_alarm_v3', '__meercop_alarm_v4']) {
-      const old = w[key];
-      if (!old) continue;
-      old.isAlarming = false;
-      if (old.audioCtx) try { (old.audioCtx as AudioContext).close(); } catch {}
-      if (old.ctx) try { (old.ctx as AudioContext).close(); } catch {}
-      if (old.customAudio) try { (old.customAudio as HTMLAudioElement).pause(); } catch {}
-      if (Array.isArray(old.intervals)) (old.intervals as ReturnType<typeof setInterval>[]).forEach(id => { try { clearInterval(id); } catch {} });
-      delete w[key];
-    }
-  } catch {}
+  stopSound(); // stopSound() 내부에서 nukeAllLegacy()도 호출됨
 
   // 시스템 푸시 알림도 함께 닫기
   try {
