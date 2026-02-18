@@ -93,7 +93,7 @@ export function usePushSubscription(deviceId?: string | null) {
           ...s,
           isLoading: false,
           permission,
-          error: "알림 권한이 거부되었습니다.",
+          error: "Notification permission denied.",
         }));
         return;
       }
@@ -146,7 +146,7 @@ export function usePushSubscription(deviceId?: string | null) {
         }
       );
 
-      if (subErr) throw new Error("구독 저장 실패");
+      if (subErr) throw new Error("Failed to save subscription");
 
       setState((s) => ({
         ...s,
@@ -161,7 +161,7 @@ export function usePushSubscription(deviceId?: string | null) {
       setState((s) => ({
         ...s,
         isLoading: false,
-        error: err?.message || "푸시 구독 실패",
+        error: err?.message || "Push subscription failed",
       }));
     }
   }, [deviceId, state.isLoading]);
