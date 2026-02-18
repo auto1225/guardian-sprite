@@ -34,6 +34,7 @@ const CameraViewer = ({
   const playRetryTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isMutedRef = useRef(isMuted);
   const isPausedRef = useRef(isPaused);
+  const [pausedFrameUrl, setPausedFrameUrl] = useState<string | null>(null);
   const pendingStreamRef = useRef<MediaStream | null>(null);
 
   // 오디오 레벨 시각화
@@ -107,23 +108,33 @@ const CameraViewer = ({
     isMutedRef.current = isMuted;
   }, [isMuted]);
 
+  // ★ 일시정지: 현재 프레임을 캡처하여 오버레이로 표시 (비디오는 계속 재생 — 스트림 유지)
   useEffect(() => {
     isPausedRef.current = isPaused;
     const video = videoRef.current;
-    if (video) {
-      if (isPaused) {
-        video.pause();
-      } else if (video.srcObject && video.paused) {
-        video.play().catch(() => {});
+    if (isPaused && video && video.videoWidth > 0) {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(video, 0, 0);
+          setPausedFrameUrl(canvas.toDataURL("image/jpeg", 0.92));
+        }
+      } catch (e) {
+        console.warn("[CameraViewer] Failed to capture paused frame:", e);
       }
+    } else if (!isPaused) {
+      setPausedFrameUrl(null);
     }
   }, [isPaused]);
 
-  // 재생 시도 — isPaused 상태 확인
+  // 재생 시도
   const attemptPlay = useCallback(() => {
     const video = videoRef.current;
     if (!video || !video.srcObject) return;
-    if (isPausedRef.current) return; // ★ 일시정지 중이면 재생하지 않음
+    video.muted = true;
     video.muted = true;
     video.play().catch((err) => {
       if (err?.name !== "AbortError") {
@@ -152,11 +163,9 @@ const CameraViewer = ({
       node.setAttribute("playsinline", "true");
       node.setAttribute("webkit-playsinline", "true");
       
-      // isPaused가 아닐 때만 play 시도
+      // 항상 play 시도 (일시정지는 오버레이로 처리, 비디오는 계속 재생)
       const tryPlay = () => {
-        if (!isPausedRef.current) {
-          node.play().catch(() => {});
-        }
+        node.play().catch(() => {});
       };
       tryPlay();
       node.addEventListener("loadedmetadata", tryPlay, { once: true });
@@ -202,7 +211,7 @@ const CameraViewer = ({
         return;
       }
 
-      if (!playing && !isPausedRef.current) {
+      if (!playing) {
         console.log(`[CameraViewer] 🔄 Retry play() — readyState: ${v.readyState}, paused: ${v.paused}, networkState: ${v.networkState}`);
         v.muted = true;
         v.play().catch((err) => {
@@ -216,7 +225,7 @@ const CameraViewer = ({
       if (track.muted) {
         const onUnmute = () => {
           const v = videoRef.current;
-          if (v && v.srcObject === remoteStream && !playing && !isPausedRef.current) {
+          if (v && v.srcObject === remoteStream && !playing) {
             v.play().catch(() => {});
           }
         };
@@ -278,7 +287,16 @@ const CameraViewer = ({
         onClick={handlePlayClick}
       />
 
-      {/* Connecting */}
+
+      {/* ★ 일시정지 프레임 오버레이 — 비디오 위에 캡처된 이미지 표시 */}
+      {pausedFrameUrl && isPaused && (
+        <img
+          src={pausedFrameUrl}
+          alt="Paused frame"
+          className="absolute inset-0 w-full h-full object-contain z-10"
+        />
+      )}
+
       {showConnecting && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
           <RefreshCw className="w-8 h-8 text-white/50 animate-spin" />
