@@ -41,11 +41,48 @@ export function useSmartphoneRegistration() {
             .eq("id", existing[0].id);
 
           // 사용자의 모든 노트북/데스크탑 기기도 감시 OFF로 리셋
-          await supabase
+          const { data: laptopDevices } = await supabase
             .from("devices")
-            .update({ is_monitoring: false })
+            .select("id")
             .eq("user_id", user.id)
-            .neq("device_type", "smartphone");
+            .neq("device_type", "smartphone")
+            .eq("is_monitoring", true);
+
+          if (laptopDevices && laptopDevices.length > 0) {
+            await supabase
+              .from("devices")
+              .update({ is_monitoring: false })
+              .eq("user_id", user.id)
+              .neq("device_type", "smartphone");
+
+            // Broadcast monitoring OFF to each laptop
+            for (const laptop of laptopDevices) {
+              const broadcastChannelName = `device-commands-${laptop.id}`;
+              const existingCh = supabase.getChannels().find(ch => ch.topic === `realtime:${broadcastChannelName}`);
+              if (existingCh) supabase.removeChannel(existingCh);
+              
+              const channel = supabase.channel(broadcastChannelName);
+              try {
+                await new Promise<void>((resolve) => {
+                  const timeout = setTimeout(() => { supabase.removeChannel(channel); resolve(); }, 3000);
+                  channel.subscribe((status) => {
+                    if (status === "SUBSCRIBED") {
+                      clearTimeout(timeout);
+                      channel.send({
+                        type: "broadcast",
+                        event: "monitoring_toggle",
+                        payload: { device_id: laptop.id, is_monitoring: false },
+                      }).then(() => { supabase.removeChannel(channel); resolve(); });
+                    } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+                      clearTimeout(timeout);
+                      supabase.removeChannel(channel);
+                      resolve();
+                    }
+                  });
+                });
+              } catch { /* best-effort */ }
+            }
+          }
 
           console.log("[SmartphoneReg] ♻️ Reset ALL devices monitoring to OFF on app start");
           registeredRef.current = true;

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { X, Wifi, Globe, BarChart3, Loader2, Zap, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 
 interface NetworkInfoModalProps {
   isOpen: boolean;
@@ -39,8 +40,7 @@ const NetworkInfoModal = ({ isOpen, onClose, deviceId, deviceName }: NetworkInfo
         if (meta?.network_info) setNetworkInfo(meta.network_info as NetworkInfo);
       }
       setLoading(false);
-      const currentMeta = (data?.metadata as Record<string, unknown>) || {};
-      await supabase.from("devices").update({ metadata: { ...currentMeta, network_info_requested: new Date().toISOString() } }).eq("id", deviceId);
+      await safeMetadataUpdate(deviceId, { network_info_requested: new Date().toISOString() });
       const timeout = setTimeout(() => setRequesting(false), 10000);
       return () => clearTimeout(timeout);
     };
