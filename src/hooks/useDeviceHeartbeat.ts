@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { HEARTBEAT_INTERVAL_MS } from "@/lib/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { useDevices } from "@/hooks/useDevices";
 
@@ -93,7 +94,7 @@ export function useDeviceHeartbeat() {
     setOnline();
 
     // 30초 간격 heartbeat
-    heartbeatRef.current = setInterval(sendHeartbeat, 30000);
+    heartbeatRef.current = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
 
     // visibilitychange 핸들러
     const handleVisibility = async () => {
@@ -101,7 +102,7 @@ export function useDeviceHeartbeat() {
         setOnline();
         // heartbeat 재시작
         if (heartbeatRef.current) clearInterval(heartbeatRef.current);
-        heartbeatRef.current = setInterval(sendHeartbeat, 30000);
+        heartbeatRef.current = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
       } else {
         // 감시 중이면 백그라운드 전환 시 offline으로 바꾸지 않음
         // (다른 앱 사용 중에도 감시 유지)

@@ -1,23 +1,26 @@
-import { ArrowLeft, ChevronRight, Play, Square, Upload, VolumeX, Volume2 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { ArrowLeft, ChevronRight } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
-import { isMuted as isAlarmMuted, setMuted as setAlarmMuted, getVolume as getAlarmVolume, setVolume as setAlarmVolume } from "@/lib/alarmSound";
+import { isMuted as isAlarmMuted, setMuted as setAlarmMuted } from "@/lib/alarmSound";
 import { hashPin } from "@/lib/pinHash";
-import { Slider } from "@/components/ui/slider";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import {
+  SettingItem,
+  SensorSection,
+  SensorToggle,
+  NicknameDialog,
+  PinDialog,
+  SoundDialog,
+  ALARM_SOUNDS,
+  SENSITIVITY_MAP,
+  DEFAULT_SENSOR_SETTINGS,
+  type SensorSettings,
+  type MotionSensitivity,
+} from "@/components/settings/SettingsComponents";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 
@@ -28,100 +31,18 @@ interface SettingsPageProps {
   onClose: () => void;
 }
 
-interface SensorSettings {
-  deviceType: "laptop" | "desktop" | "tablet";
-  lidClosed: boolean;
-  camera: boolean;
-  microphone: boolean;
-  keyboard: boolean;
-  keyboardType: "wired" | "wireless";
-  mouse: boolean;
-  mouseType: "wired" | "wireless";
-  usb: boolean;
-  power: boolean;
-}
-
-type MotionSensitivity = "sensitive" | "normal" | "insensitive";
-
-const SENSITIVITY_MAP: Record<MotionSensitivity, { label: string }> = {
-  sensitive: { label: "민감" },
-  normal: { label: "보통" },
-  insensitive: { label: "둔감" },
-};
-
-// Built-in alarm sounds with AudioContext synthesis
-const ALARM_SOUNDS: { id: string; label: string; freq: number[]; pattern: number[] }[] = [
-  { id: "whistle", label: "호루라기", freq: [2200, 1800], pattern: [0.15, 0.1] },
-  { id: "siren", label: "사이렌", freq: [660, 880], pattern: [0.3, 0.3] },
-  { id: "bird", label: "새소리", freq: [1400, 1800, 2200], pattern: [0.1, 0.08, 0.12] },
-  { id: "police", label: "경찰 사이렌", freq: [600, 1200], pattern: [0.5, 0.5] },
-  { id: "radio", label: "전파음", freq: [440, 520, 600], pattern: [0.2, 0.15, 0.2] },
-  { id: "quiet", label: "조용한 사이렌", freq: [400, 500], pattern: [0.4, 0.4] },
-];
-
-const DEFAULT_SENSOR_SETTINGS: SensorSettings = {
-  deviceType: "laptop",
-  lidClosed: false,
-  camera: false,
-  microphone: false,
-  keyboard: false,
-  keyboardType: "wired",
-  mouse: false,
-  mouseType: "wired",
-  usb: false,
-  power: false,
-};
-
-async function playBuiltinSound(sound: typeof ALARM_SOUNDS[number], duration = 2, volume?: number): Promise<{ stop: () => void }> {
-  const ctx = new AudioContext();
-  await ctx.resume();
-  const vol = volume ?? getAlarmVolume();
-  
-  let t = 0;
-  const nodes: OscillatorNode[] = [];
-  while (t < duration) {
-    for (let i = 0; i < sound.freq.length; i++) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = sound.freq[i];
-      osc.type = "square";
-      gain.gain.value = vol;
-      osc.start(ctx.currentTime + t);
-      osc.stop(ctx.currentTime + t + sound.pattern[i]);
-      nodes.push(osc);
-      t += sound.pattern[i] + 0.05;
-      if (t >= duration) break;
-    }
-  }
-  return {
-    stop: () => {
-      nodes.forEach((n) => { try { n.stop(); } catch {} });
-      ctx.close();
-    },
-  };
-}
-
 const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPageProps) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const synthRef = useRef<{ stop: () => void } | null>(null);
   const [licenses, setLicenses] = useState<{ serial_key: string; device_id: string | null; is_active: boolean }[]>([]);
-
-  // 기기 선택 상태 (설정 페이지 내부)
   const [settingsDeviceId, setSettingsDeviceId] = useState(initialDeviceId);
 
-  // 열릴 때 초기 기기로 리셋
   useEffect(() => {
     if (isOpen) setSettingsDeviceId(initialDeviceId);
   }, [isOpen, initialDeviceId]);
 
   const device = devices.find(d => d.id === settingsDeviceId) || devices[0];
 
-  // 시리얼 넘버 전체 조회 (사용자의 모든 라이선스)
   useEffect(() => {
     if (!isOpen || !device) return;
     const fetchLicenses = async () => {
@@ -139,16 +60,11 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
 
   const [nickname, setNickname] = useState(device?.name || "");
   const [alarmPin, setAlarmPin] = useState((meta.alarm_pin as string) || "1234");
-  const [selectedSoundId, setSelectedSoundId] = useState(
-    (meta.alarm_sound_id as string) || "whistle"
-  );
-  const [customSoundName, setCustomSoundName] = useState(
-    (meta.custom_sound_name as string) || ""
-  );
+  const [selectedSoundId, setSelectedSoundId] = useState((meta.alarm_sound_id as string) || "whistle");
+  const [customSoundName, setCustomSoundName] = useState((meta.custom_sound_name as string) || "");
   const [customSoundDataUrl, setCustomSoundDataUrl] = useState(
     device ? localStorage.getItem(`meercop_custom_sound_${device.id}`) || "" : ""
   );
-  const [playingSoundId, setPlayingSoundId] = useState<string | null>(null);
   const [sensorSettings, setSensorSettings] = useState<SensorSettings>(() => {
     const saved = meta.sensorSettings as SensorSettings | undefined;
     return saved
@@ -162,12 +78,9 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
     (meta.mouseSensitivity as MotionSensitivity) || "sensitive"
   );
 
-  const [volumePercent, setVolumePercent] = useState(() => Math.round(getAlarmVolume() * 100));
   const [showNicknameDialog, setShowNicknameDialog] = useState(false);
   const [showPinDialog, setShowPinDialog] = useState(false);
   const [showSoundDialog, setShowSoundDialog] = useState(false);
-  const [tempNickname, setTempNickname] = useState(nickname);
-  const [tempPin, setTempPin] = useState(alarmPin);
 
   // 기기가 바뀌면 설정값 재초기화
   useEffect(() => {
@@ -186,15 +99,14 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
     setMouseSensitivity((m.mouseSensitivity as MotionSensitivity) || "sensitive");
   }, [device?.id, device?.metadata]);
 
-  // 설정 페이지를 처음 열 때 DB에 기본 설정값이 없으면 자동 저장
+  // 초기 기본값 저장
   useEffect(() => {
     if (!isOpen) return;
     const m = (device.metadata as Record<string, unknown>) || {};
     if (!m.sensorSettings) {
       const pin = (m.alarm_pin as string) || "1234";
-      // §2-1: 초기 설정 시에도 PIN 해시 생성
       hashPin(pin, device.id).then((pinHash) => {
-        const defaults = {
+        saveMetadata({
           sensorSettings: { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device.device_type as "laptop" | "desktop" | "tablet") || "laptop" },
           alarm_pin: pin,
           alarm_pin_hash: pinHash,
@@ -202,59 +114,21 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
           require_pc_pin: m.require_pc_pin ?? true,
           motionSensitivity: (m.motionSensitivity as string) || "insensitive",
           mouseSensitivity: (m.mouseSensitivity as string) || "sensitive",
-        };
-        saveMetadata(defaults);
+        });
       });
     }
   }, [isOpen, device.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Stop any playing sounds on unmount / close
-  useEffect(() => {
-    if (!isOpen) stopAllSounds();
-  }, [isOpen]);
-
-  const stopAllSounds = () => {
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-    if (synthRef.current) { synthRef.current.stop(); synthRef.current = null; }
-    setPlayingSoundId(null);
-  };
-
-  const previewSound = async (soundId: string) => {
-    stopAllSounds();
-    if (playingSoundId === soundId) return; // was playing, just stop
-
-    setPlayingSoundId(soundId);
-
-    if (soundId === "custom" && customSoundDataUrl) {
-      const audio = new Audio();
-      audio.volume = volumePercent / 100;
-      audio.play().catch(() => {});
-      audio.src = customSoundDataUrl;
-      audioRef.current = audio;
-      try { await audio.play(); } catch (e) { console.warn("Custom sound play failed:", e); }
-      setTimeout(() => { audio.pause(); setPlayingSoundId(null); }, 2000);
-    } else {
-      const sound = ALARM_SOUNDS.find((s) => s.id === soundId);
-      if (sound) {
-        synthRef.current = await playBuiltinSound(sound, 2);
-        setTimeout(() => { stopAllSounds(); }, 2000);
-      }
-    }
-  };
 
   const saveMetadata = async (updates: Record<string, unknown>) => {
     await safeMetadataUpdate(device.id, updates);
     queryClient.invalidateQueries({ queryKey: ["devices"] });
   };
 
-  const handleSaveNickname = async () => {
+  const handleSaveNickname = async (name: string) => {
     try {
-      const { error } = await supabase
-        .from("devices")
-        .update({ name: tempNickname })
-        .eq("id", device.id);
+      const { error } = await supabase.from("devices").update({ name }).eq("id", device.id);
       if (error) throw error;
-      setNickname(tempNickname);
+      setNickname(name);
       setShowNicknameDialog(false);
       queryClient.invalidateQueries({ queryKey: ["devices"] });
       toast({ title: "저장됨", description: "닉네임이 변경되었습니다." });
@@ -263,13 +137,12 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
     }
   };
 
-  const handleSavePin = async () => {
-    if (tempPin.length === 4 && /^\d+$/.test(tempPin)) {
+  const handleSavePin = async (pin: string) => {
+    if (pin.length === 4 && /^\d+$/.test(pin)) {
       try {
-        // §2-1: PIN 해시 저장 (alarm_pin도 하위 호환을 위해 병행 저장)
-        const pinHash = await hashPin(tempPin, device.id);
-        await saveMetadata({ alarm_pin: tempPin, alarm_pin_hash: pinHash });
-        setAlarmPin(tempPin);
+        const pinHash = await hashPin(pin, device.id);
+        await saveMetadata({ alarm_pin: pin, alarm_pin_hash: pinHash });
+        setAlarmPin(pin);
         setShowPinDialog(false);
         toast({ title: "저장됨", description: "비밀번호가 변경되었습니다." });
       } catch (err) {
@@ -287,7 +160,6 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
       toast({ title: "오류", description: "저장에 실패했습니다.", variant: "destructive" });
     }
     setShowSoundDialog(false);
-    stopAllSounds();
   };
 
   const handleCustomSoundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -327,20 +199,14 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
 
   const handleSensitivityChange = async (val: MotionSensitivity) => {
     setMotionSensitivity(val);
-    try {
-      await saveMetadata({ motionSensitivity: val });
-    } catch {
-      toast({ title: "오류", description: "설정 저장에 실패했습니다.", variant: "destructive" });
-    }
+    try { await saveMetadata({ motionSensitivity: val }); }
+    catch { toast({ title: "오류", description: "설정 저장에 실패했습니다.", variant: "destructive" }); }
   };
 
   const handleMouseSensitivityChange = async (val: MotionSensitivity) => {
     setMouseSensitivity(val);
-    try {
-      await saveMetadata({ mouseSensitivity: val });
-    } catch {
-      toast({ title: "오류", description: "설정 저장에 실패했습니다.", variant: "destructive" });
-    }
+    try { await saveMetadata({ mouseSensitivity: val }); }
+    catch { toast({ title: "오류", description: "설정 저장에 실패했습니다.", variant: "destructive" }); }
   };
 
   const isLaptop = sensorSettings.deviceType === "laptop";
@@ -349,15 +215,13 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
       ? customSoundName || "사용자 지정"
       : ALARM_SOUNDS.find((s) => s.id === selectedSoundId)?.label || "호루라기";
 
-    return (
+  return (
     <>
       <div
         className={`fixed inset-0 z-50 flex flex-col transition-transform duration-300 ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
-        style={{
-          background: 'linear-gradient(180deg, hsla(200, 70%, 50%, 1) 0%, hsla(200, 65%, 38%, 1) 100%)',
-        }}
+        style={{ background: 'linear-gradient(180deg, hsla(200, 70%, 50%, 1) 0%, hsla(200, 65%, 38%, 1) 100%)' }}
       >
         {/* Header */}
         <div className="flex items-center gap-3 p-4 border-b border-white/20">
@@ -367,8 +231,8 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
           <h1 className="text-white font-bold text-lg">설정</h1>
         </div>
 
-        {/* Device Selector */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3 alert-history-scroll">
+          {/* Device Selector */}
           {devices.length > 1 && (
             <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
               <div className="px-4 pt-3 pb-1">
@@ -380,14 +244,9 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
                     key={d.id}
                     onClick={() => setSettingsDeviceId(d.id)}
                     className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
-                      settingsDeviceId === d.id
-                        ? "text-slate-800 shadow-md"
-                        : "text-white hover:bg-white/15"
+                      settingsDeviceId === d.id ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
                     }`}
-                    style={settingsDeviceId === d.id
-                      ? { background: 'hsla(52, 100%, 60%, 0.9)' }
-                      : { background: 'hsla(0,0%,100%,0.1)' }
-                    }
+                    style={settingsDeviceId === d.id ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
                   >
                     {d.name}
                   </button>
@@ -418,7 +277,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
                       navigator.clipboard.writeText(lic.serial_key);
                       toast({ title: "복사됨", description: "시리얼 넘버가 클립보드에 복사되었습니다." });
                     }}
-                    className={`w-full px-4 py-3 flex items-center justify-between text-left hover:bg-white/5 active:bg-white/10 transition-colors ${idx > 0 ? 'border-t border-white/10' : ''} ${lic.device_id === device.id ? '' : ''}`}
+                    className={`w-full px-4 py-3 flex items-center justify-between text-left hover:bg-white/5 active:bg-white/10 transition-colors ${idx > 0 ? 'border-t border-white/10' : ''}`}
                     style={lic.device_id === device.id ? { background: 'hsla(200, 60%, 30%, 0.5)' } : undefined}
                   >
                     <div className="flex flex-col min-w-0">
@@ -439,16 +298,16 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
             </div>
           </div>
 
-          {/* General Settings Group */}
+          {/* General Settings */}
           <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
-            <SettingItem label="닉네임" value={nickname} onClick={() => { setTempNickname(nickname); setShowNicknameDialog(true); }} />
+            <SettingItem label="닉네임" value={nickname} onClick={() => setShowNicknameDialog(true)} />
             <div className="border-t border-white/10" />
-            <SettingItem label="경보해제 비밀번호" value={alarmPin} onClick={() => { setTempPin(""); setShowPinDialog(true); }} />
+            <SettingItem label="경보해제 비밀번호" value={alarmPin} onClick={() => setShowPinDialog(true)} />
             <div className="border-t border-white/10" />
             <SettingItem label="경보음" value={selectedSoundLabel} onClick={() => setShowSoundDialog(true)} />
           </div>
 
-          {/* Toggle Settings Group */}
+          {/* Toggle Settings */}
           <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
             <div className="px-4 py-4 flex items-center justify-between">
               <div>
@@ -483,7 +342,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
             </div>
           </div>
 
-          {/* Section: Sensor Settings */}
+          {/* Sensor Settings */}
           <div className="pt-2 pb-1">
             <span className="text-white font-bold text-xs uppercase tracking-wider">감지 센서 설정</span>
           </div>
@@ -510,14 +369,9 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
                     }
                   }}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                    sensorSettings.deviceType === type
-                      ? "text-slate-800 shadow-md"
-                      : "text-white hover:bg-white/15"
+                    sensorSettings.deviceType === type ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
                   }`}
-                  style={sensorSettings.deviceType === type
-                    ? { background: 'hsla(52, 100%, 60%, 0.9)' }
-                    : { background: 'hsla(0,0%,100%,0.1)' }
-                  }
+                  style={sensorSettings.deviceType === type ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
                 >
                   {type === "laptop" ? "노트북" : type === "desktop" ? "데스크탑" : "태블릿"}
                 </button>
@@ -542,14 +396,9 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
                         key={key}
                         onClick={() => handleSensitivityChange(key)}
                         className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                          motionSensitivity === key
-                            ? "text-slate-800 shadow-md"
-                            : "text-white hover:bg-white/15"
+                          motionSensitivity === key ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
                         }`}
-                        style={motionSensitivity === key
-                          ? { background: 'hsla(52, 100%, 60%, 0.9)' }
-                          : { background: 'hsla(0,0%,100%,0.1)' }
-                        }
+                        style={motionSensitivity === key ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
                       >
                         {SENSITIVITY_MAP[key].label}
                       </button>
@@ -596,14 +445,9 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
                         key={key}
                         onClick={() => handleMouseSensitivityChange(key)}
                         className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                          mouseSensitivity === key
-                            ? "text-slate-800 shadow-md"
-                            : "text-white hover:bg-white/15"
+                          mouseSensitivity === key ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
                         }`}
-                        style={mouseSensitivity === key
-                          ? { background: 'hsla(52, 100%, 60%, 0.9)' }
-                          : { background: 'hsla(0,0%,100%,0.1)' }
-                        }
+                        style={mouseSensitivity === key ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
                       >
                         {SENSITIVITY_MAP[key].label}
                       </button>
@@ -628,240 +472,30 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
         </div>
       </div>
 
-      {/* Nickname Dialog */}
-      <Dialog open={showNicknameDialog} onOpenChange={setShowNicknameDialog}>
-        <DialogContent className="border border-white/25" style={{ background: 'hsla(200, 60%, 45%, 0.92)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
-          <DialogHeader>
-            <DialogTitle className="text-white">닉네임 변경</DialogTitle>
-            <DialogDescription className="text-white/70">변경할 닉네임을 입력해 주세요.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Input
-              value={tempNickname}
-              onChange={(e) => setTempNickname(e.target.value)}
-              className="bg-white/15 border-white/25 text-white placeholder:text-white/40 focus:border-white/50"
-            />
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowNicknameDialog(false)} className="flex-1 border-white/25 text-white hover:bg-white/15 bg-transparent">취소</Button>
-              <Button onClick={handleSaveNickname} className="flex-1 text-slate-800 font-semibold hover:opacity-90" style={{ background: 'hsla(52, 100%, 60%, 0.9)' }}>변경</Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* PIN Dialog */}
-      <Dialog open={showPinDialog} onOpenChange={setShowPinDialog}>
-        <DialogContent className="border border-white/25" style={{ background: 'hsla(200, 60%, 45%, 0.92)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
-          <DialogHeader>
-            <DialogTitle className="text-white">경보해제 비밀번호 변경</DialogTitle>
-            <DialogDescription className="text-white/70">4자리 숫자를 입력해 주세요.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="flex justify-center gap-3">
-              {[0, 1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="border-2 border-white/30 rounded-xl flex items-center justify-center text-white text-2xl font-bold"
-                  style={{ width: 52, height: 52, background: 'hsla(0,0%,100%,0.1)' }}
-                >
-                  {tempPin[i] ? "•" : ""}
-                </div>
-              ))}
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, null, 0, "del"].map((num, i) => (
-                <button
-                  key={i}
-                  onClick={() => {
-                    if (num === "del") setTempPin(tempPin.slice(0, -1));
-                    else if (num !== null && tempPin.length < 4) setTempPin(tempPin + num);
-                  }}
-                  disabled={num === null}
-                  className={`rounded-xl font-bold text-lg transition-all ${
-                    num === null ? "invisible" : "text-white active:scale-95"
-                  }`}
-                  style={{ height: 52, background: num !== null ? 'hsla(0,0%,100%,0.12)' : undefined }}
-                >
-                  {num === "del" ? "⌫" : num}
-                </button>
-              ))}
-            </div>
-            <Button
-              onClick={handleSavePin}
-              disabled={tempPin.length !== 4}
-              className="w-full text-slate-800 font-semibold hover:opacity-90 disabled:opacity-40"
-              style={{ background: 'hsla(52, 100%, 60%, 0.9)' }}
-            >
-              저장
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Sound Dialog */}
-      <Dialog open={showSoundDialog} onOpenChange={(open) => { setShowSoundDialog(open); if (!open) stopAllSounds(); }}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto border border-white/25 alert-history-scroll" style={{ background: 'hsla(200, 60%, 45%, 0.92)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
-          <DialogHeader>
-            <DialogTitle className="text-white">경보음 설정</DialogTitle>
-            <DialogDescription className="text-white/70">경보음 종류와 크기를 설정하세요.</DialogDescription>
-          </DialogHeader>
-
-          {/* Volume slider */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-white font-semibold text-sm">경보음 크기</span>
-              <span className="text-white/70 text-sm font-medium">{volumePercent}%</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <VolumeX className="w-4 h-4 text-white/60 flex-shrink-0" />
-              <Slider
-                value={[volumePercent]}
-                min={0}
-                max={100}
-                step={5}
-                onValueChange={(vals) => {
-                  setVolumePercent(vals[0]);
-                  setAlarmVolume(vals[0] / 100);
-                }}
-                className="flex-1"
-              />
-              <Volume2 className="w-4 h-4 text-white/60 flex-shrink-0" />
-            </div>
-          </div>
-
-          <div className="mb-2">
-            <span className="text-white font-semibold text-sm">경보음 종류</span>
-          </div>
-
-          <div className="space-y-2">
-            {ALARM_SOUNDS.map((sound) => (
-              <div
-                key={sound.id}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer border ${
-                  selectedSoundId === sound.id
-                    ? "border-white/30 shadow-md"
-                    : "border-transparent hover:bg-white/10"
-                }`}
-                style={{
-                  background: selectedSoundId === sound.id ? 'hsla(52, 100%, 60%, 0.15)' : 'hsla(0,0%,100%,0.08)',
-                }}
-                onClick={() => handleSelectSound(sound.id)}
-              >
-                <button
-                  onClick={(e) => { e.stopPropagation(); previewSound(sound.id); }}
-                  className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 hover:bg-white/20 transition-colors"
-                  style={{ background: 'hsla(0,0%,100%,0.15)' }}
-                >
-                  {playingSoundId === sound.id ? (
-                    <Square className="w-4 h-4 fill-current" style={{ color: 'hsla(52, 100%, 60%, 1)' }} />
-                  ) : (
-                    <Play className="w-4 h-4 text-white/90 ml-0.5" />
-                  )}
-                </button>
-                <span className="text-white font-medium text-sm flex-1">{sound.label}</span>
-                {selectedSoundId === sound.id && (
-                  <span className="font-bold" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>✓</span>
-                )}
-              </div>
-            ))}
-
-            {/* Custom sound */}
-            <div
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer border ${
-                selectedSoundId === "custom"
-                  ? "border-white/30 shadow-md"
-                  : "border-transparent hover:bg-white/10"
-              }`}
-              style={{
-                background: selectedSoundId === "custom" ? 'hsla(52, 100%, 60%, 0.15)' : 'hsla(0,0%,100%,0.08)',
-              }}
-              onClick={() => { if (customSoundDataUrl) handleSelectSound("custom"); else fileInputRef.current?.click(); }}
-            >
-              {customSoundDataUrl ? (
-                <button
-                  onClick={(e) => { e.stopPropagation(); previewSound("custom"); }}
-                  className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 hover:bg-white/20 transition-colors"
-                  style={{ background: 'hsla(0,0%,100%,0.15)' }}
-                >
-                  {playingSoundId === "custom" ? (
-                    <Square className="w-4 h-4 fill-current" style={{ color: 'hsla(52, 100%, 60%, 1)' }} />
-                  ) : (
-                    <Play className="w-4 h-4 text-white/90 ml-0.5" />
-                  )}
-                </button>
-              ) : (
-                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'hsla(0,0%,100%,0.15)' }}>
-                  <Upload className="w-4 h-4 text-white/70" />
-                </div>
-              )}
-              <div className="flex-1">
-                <span className="text-white font-medium text-sm block">
-                  {customSoundName || "내 기기에서 선택"}
-                </span>
-                {customSoundDataUrl && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                    className="text-white/60 text-xs underline mt-0.5"
-                  >
-                    다른 파일 선택
-                  </button>
-                )}
-              </div>
-              {selectedSoundId === "custom" && (
-                <span className="font-bold" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>✓</span>
-              )}
-            </div>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="audio/*"
-              className="hidden"
-              onChange={handleCustomSoundUpload}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Dialogs */}
+      <NicknameDialog
+        open={showNicknameDialog}
+        onOpenChange={setShowNicknameDialog}
+        value={nickname}
+        onSave={handleSaveNickname}
+      />
+      <PinDialog
+        open={showPinDialog}
+        onOpenChange={setShowPinDialog}
+        onSave={handleSavePin}
+      />
+      <SoundDialog
+        open={showSoundDialog}
+        onOpenChange={setShowSoundDialog}
+        selectedSoundId={selectedSoundId}
+        customSoundName={customSoundName}
+        customSoundDataUrl={customSoundDataUrl}
+        onSelectSound={handleSelectSound}
+        onCustomUpload={handleCustomSoundUpload}
+        deviceId={device.id}
+      />
     </>
   );
 };
-
-// Sub-components
-interface SettingItemProps {
-  label: string;
-  value?: string;
-  onClick?: () => void;
-}
-
-const SettingItem = ({ label, value, onClick }: SettingItemProps) => (
-  <button onClick={onClick} className="flex items-center justify-between w-full px-4 py-4 text-left hover:bg-white/8 active:bg-white/12 transition-colors">
-    <span className="text-white font-semibold text-sm">{label}</span>
-    <div className="flex items-center gap-2">
-      {value && <span className="text-white/80 text-sm font-medium">{value}</span>}
-      <ChevronRight className="w-5 h-5 text-white/60" />
-    </div>
-  </button>
-);
-
-const SensorSection = ({ children }: { children: React.ReactNode }) => (
-  <div className="px-4 py-3.5">{children}</div>
-);
-
-interface SensorToggleProps {
-  label: string;
-  description: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}
-
-const SensorToggle = ({ label, description, checked, onChange }: SensorToggleProps) => (
-  <div className="flex items-center justify-between">
-    <div>
-      <span className="text-white font-semibold text-sm block">{label}</span>
-      <span className="text-white/80 text-xs">{description}</span>
-    </div>
-    <Switch checked={checked} onCheckedChange={onChange} />
-  </div>
-);
 
 export default SettingsPage;

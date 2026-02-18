@@ -40,6 +40,9 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
   const offerRetryIntervalRef = useRef<NodeJS.Timeout | null>(null); // Retry interval
   const lastViewerJoinSentRef = useRef<number>(0); // broadcaster-ready 디바운스용
   const isProcessingOfferRef = useRef(false); // ★ offer 중복 처리 방지
+  const reconnectAttemptRef = useRef(0); // S-12: 자동 재연결 시도 횟수
+  const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null); // S-12: 재연결 타이머
+  const connectionSucceededAtRef = useRef<number>(0); // 연결 성공 직후 재연결 차단
 
   const ICE_SERVERS: RTCConfiguration = {
     iceServers: [
@@ -71,6 +74,12 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     if (offerRetryIntervalRef.current) {
       clearInterval(offerRetryIntervalRef.current);
       offerRetryIntervalRef.current = null;
+    }
+
+    // S-12: Clear reconnect timer
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
     }
     
     if (peerConnectionRef.current) {
@@ -192,7 +201,6 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       if (pc.connectionState === "connected") {
         console.log("[WebRTC Viewer] ✅ Peer connection established!");
         
-        // Clear timeout on successful connection
         if (connectionTimeoutRef.current) {
           clearTimeout(connectionTimeoutRef.current);
           connectionTimeoutRef.current = null;
@@ -200,42 +208,37 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         
         isConnectedRef.current = true;
         isConnectingRef.current = false;
+        reconnectAttemptRef.current = 0; // S-12: 성공 시 재연결 카운터 리셋
+        connectionSucceededAtRef.current = Date.now();
         setIsConnected(true);
         setIsConnecting(false);
       } else if (pc.connectionState === "disconnected") {
-        // disconnected → 즉시 UI에 반영 (isConnected=false), 스트림은 유지하여 마지막 프레임 표시
         console.log("[WebRTC Viewer] ⚠️ Connection disconnected, preserving last frame...");
         isConnectedRef.current = false;
         isConnectingRef.current = false;
         setIsConnected(false);
         setIsConnecting(false);
-        // 10초 후에도 복구되지 않으면 에러 콜백
+        // 10초 후에도 복구되지 않으면 자동 재연결 시도
         setTimeout(() => {
           if (peerConnectionRef.current?.connectionState === "disconnected") {
-            console.log("[WebRTC Viewer] Connection did not recover after 10s");
-            cleanup(true); // preserveStream: 마지막 프레임 유지
-            onError?.("연결이 끊어졌습니다");
+            console.log("[WebRTC Viewer] Connection did not recover after 10s, attempting reconnect...");
+            cleanup(true);
+            scheduleReconnect();
           }
         }, 10000);
       } else if (pc.connectionState === "failed") {
-        // failed → 즉시 UI에 반영, 스트림 유지
-        console.log("[WebRTC Viewer] Connection failed");
+        console.log("[WebRTC Viewer] Connection failed, attempting reconnect...");
         isConnectingRef.current = false;
         isConnectedRef.current = false;
-        cleanup(true); // preserveStream: 마지막 프레임 유지
-        onError?.("연결에 실패했습니다");
+        cleanup(true);
+        scheduleReconnect();
       }
     };
 
     pc.oniceconnectionstatechange = () => {
       console.log("[WebRTC Viewer] ICE state:", pc.iceConnectionState);
-      
-      // ICE 연결이 disconnected가 되어도 바로 종료하지 않음
-      // checking -> connected -> completed 흐름이 정상
-      // disconnected는 일시적일 수 있음
       if (pc.iceConnectionState === "failed") {
         console.log("[WebRTC Viewer] ❌ ICE connection failed");
-        // failed만 즉시 처리, disconnected는 connectionState에서 처리
       } else if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
         console.log("[WebRTC Viewer] ✅ ICE connection established");
       }
@@ -243,6 +246,34 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
 
     return pc;
   }, [sendSignalingMessage, cleanup, onError]);
+
+  // S-12: 자동 재연결 (지수 백오프: 즉시→2초→4초, 최대 3회)
+  const scheduleReconnect = useCallback(() => {
+    const MAX_RECONNECT = 3;
+    const attempt = reconnectAttemptRef.current;
+    
+    if (attempt >= MAX_RECONNECT) {
+      console.log("[WebRTC Viewer] Max reconnect attempts reached");
+      onError?.("연결이 끊어졌습니다. 재연결에 실패했습니다.");
+      return;
+    }
+
+    // 연결 성공 직후 5초 이내이면 재연결 차단
+    if (Date.now() - connectionSucceededAtRef.current < 5000) {
+      console.log("[WebRTC Viewer] ⏭️ Skipping reconnect (connected recently)");
+      return;
+    }
+
+    const delay = attempt === 0 ? 0 : Math.pow(2, attempt) * 1000; // 0, 2s, 4s
+    console.log(`[WebRTC Viewer] 🔄 Scheduling reconnect attempt ${attempt + 1}/${MAX_RECONNECT} in ${delay}ms`);
+    
+    reconnectAttemptRef.current = attempt + 1;
+    reconnectTimerRef.current = setTimeout(() => {
+      if (!isConnectedRef.current && !isConnectingRef.current) {
+        connect();
+      }
+    }, delay);
+  }, [onError]);
 
   // Process buffered ICE candidates after remote description is set
   const processPendingIceCandidates = useCallback(async () => {

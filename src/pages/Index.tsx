@@ -63,19 +63,24 @@ const Index = () => {
     removeAlert: removePhotoAlert,
   } = usePhotoReceiver(selectedDeviceId, deviceNameMap);
 
-  const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
-  const [isDeviceListExpanded, setIsDeviceListExpanded] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isLocationOpen, setIsLocationOpen] = useState(false);
-  const [isLocationMapOpen, setIsLocationMapOpen] = useState(false);
-  const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [isNetworkInfoOpen, setIsNetworkInfoOpen] = useState(false);
-  const [isDeviceManageOpen, setIsDeviceManageOpen] = useState(false);
-  
+  // UI 패널 상태 그룹화 (S-8: 리렌더링 최적화)
+  const [panels, setPanels] = useState({
+    sideMenu: false,
+    deviceList: false,
+    settings: false,
+    location: false,
+    locationMap: false,
+    camera: false,
+    networkInfo: false,
+    deviceManage: false,
+    photoHistory: false,
+    help: false,
+  });
+  const openPanel = (key: keyof typeof panels) => setPanels(p => ({ ...p, [key]: true }));
+  const closePanel = (key: keyof typeof panels) => setPanels(p => ({ ...p, [key]: false }));
+
   const [remoteAlarmDismissed, setRemoteAlarmDismissed] = useState(false);
   const [showFallbackAlarmButtons, setShowFallbackAlarmButtons] = useState(false);
-  const [isPhotoHistoryOpen, setIsPhotoHistoryOpen] = useState(false);
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [alarmPlaying, setAlarmPlaying] = useState(false);
 
 
@@ -121,25 +126,25 @@ const Index = () => {
   const handleStatusIconClick = async (type: "laptop" | "meercop" | "network" | "camera" | "settings") => {
     switch (type) {
       case "laptop":
-        setIsLocationMapOpen(true);
+        openPanel("locationMap");
         break;
       case "camera":
         if (selectedDeviceId) {
           await refreshDeviceStatus(selectedDeviceId);
         }
-        setIsCameraOpen(true);
+        openPanel("camera");
         break;
       case "meercop":
         if (selectedDevice) {
-          setIsSettingsOpen(true);
+          openPanel("settings");
         }
         break;
       case "network":
-        setIsNetworkInfoOpen(true);
+        openPanel("networkInfo");
         break;
       case "settings":
         if (selectedDevice) {
-          setIsSettingsOpen(true);
+          openPanel("settings");
         }
         break;
     }
@@ -179,8 +184,8 @@ const Index = () => {
       <div className="absolute inset-0 z-10 flex flex-col pointer-events-none">
         <div className="pointer-events-auto">
           <Header
-            onMenuClick={() => setIsSideMenuOpen(true)}
-            onDeviceManageClick={() => setIsDeviceManageOpen(true)}
+            onMenuClick={() => openPanel("sideMenu")}
+            onDeviceManageClick={() => openPanel("deviceManage")}
             unreadCount={unreadCount}
             deviceId={selectedDeviceId}
             onViewPhoto={(alert) => {
@@ -191,8 +196,8 @@ const Index = () => {
         
         <div className="pointer-events-auto">
           <DeviceList 
-            isExpanded={isDeviceListExpanded}
-            onToggle={() => setIsDeviceListExpanded(!isDeviceListExpanded)}
+            isExpanded={panels.deviceList}
+            onToggle={() => setPanels(p => ({ ...p, deviceList: !p.deviceList }))}
             selectedDeviceId={selectedDeviceId}
             selectedDevice={selectedDevice}
             onSelectDevice={setSelectedDeviceId}
@@ -216,7 +221,6 @@ const Index = () => {
               <button
                 onClick={() => {
                   Alarm.stop();
-                  // 현재 활성 경보 ID를 dismissed에 추가 — Presence 재전송 시 재트리거 방지
                   if (activeAlert?.id) Alarm.addDismissed(activeAlert.id);
                   setAlarmPlaying(false);
                 }}
@@ -254,7 +258,6 @@ const Index = () => {
             try {
               await safeMetadataUpdate(selectedDevice.id, { camouflage_mode: newVal });
 
-              // 브로드캐스트로 즉시 전달 (RLS 우회)
               const channel = supabase.channel(`device-commands-${selectedDevice.id}`);
               await channel.subscribe((status) => {
                 if (status === "SUBSCRIBED") {
@@ -281,10 +284,10 @@ const Index = () => {
 
       {/* Side Menu */}
       <SideMenu 
-        isOpen={isSideMenuOpen}
-        onClose={() => setIsSideMenuOpen(false)}
-        onPhotoHistoryClick={() => setIsPhotoHistoryOpen(true)}
-        onHelpClick={() => setIsHelpOpen(true)}
+        isOpen={panels.sideMenu}
+        onClose={() => closePanel("sideMenu")}
+        onPhotoHistoryClick={() => openPanel("photoHistory")}
+        onHelpClick={() => openPanel("help")}
       />
 
       {/* Settings Page */}
@@ -292,8 +295,8 @@ const Index = () => {
         <SettingsPage
           devices={devices.filter(d => d.device_type !== "smartphone")}
           initialDeviceId={selectedDevice.id}
-          isOpen={isSettingsOpen}
-          onClose={() => setIsSettingsOpen(false)}
+          isOpen={panels.settings}
+          onClose={() => closePanel("settings")}
         />
       )}
 
@@ -301,8 +304,8 @@ const Index = () => {
       {selectedDevice && (
         <LocationPage
           device={selectedDevice}
-          isOpen={isLocationOpen}
-          onClose={() => setIsLocationOpen(false)}
+          isOpen={panels.location}
+          onClose={() => closePanel("location")}
         />
       )}
 
@@ -310,40 +313,40 @@ const Index = () => {
       {selectedDevice && (
         <CameraPage
           device={selectedDevice}
-          isOpen={isCameraOpen}
-          onClose={() => setIsCameraOpen(false)}
+          isOpen={panels.camera}
+          onClose={() => closePanel("camera")}
         />
       )}
 
       {/* Location Map Modal */}
       <LocationMapModal
-        isOpen={isLocationMapOpen}
-        onClose={() => setIsLocationMapOpen(false)}
+        isOpen={panels.locationMap}
+        onClose={() => closePanel("locationMap")}
         deviceId={selectedDeviceId}
         deviceName={selectedDevice?.name ?? ""}
       />
 
       {/* Network Info Modal */}
       <NetworkInfoModal
-        isOpen={isNetworkInfoOpen}
-        onClose={() => setIsNetworkInfoOpen(false)}
+        isOpen={panels.networkInfo}
+        onClose={() => closePanel("networkInfo")}
         deviceId={selectedDeviceId}
         deviceName={selectedDevice?.name ?? ""}
       />
 
       {/* Device Management Page */}
       <DeviceManagePage
-        isOpen={isDeviceManageOpen}
-        onClose={() => setIsDeviceManageOpen(false)}
+        isOpen={panels.deviceManage}
+        onClose={() => closePanel("deviceManage")}
         onSelectDevice={setSelectedDeviceId}
         onViewAlertHistory={(deviceId) => {
           setSelectedDeviceId(deviceId);
-          setIsDeviceManageOpen(false);
-          setIsPhotoHistoryOpen(true);
+          closePanel("deviceManage");
+          openPanel("photoHistory");
         }}
       />
 
-      {/* Alert Mode Overlay - 경보 발생 시 전체 화면 */}
+      {/* Alert Mode Overlay */}
       {activeAlert && !latestPhotoAlert && !viewingPhotoAlert && (
         <AlertMode
           device={selectedDevice!}
@@ -373,7 +376,6 @@ const Index = () => {
             } else {
               dismissPhotoAlert();
             }
-            // activeAlert도 함께 해제 — PhotoAlertOverlay 닫은 후 AlertMode가 다시 뜨는 것 방지
             dismissAll();
           }}
           receiving={photoReceiving}
@@ -393,11 +395,11 @@ const Index = () => {
 
       {/* Photo Alert History */}
       <PhotoAlertHistory
-        isOpen={isPhotoHistoryOpen}
-        onClose={() => setIsPhotoHistoryOpen(false)}
+        isOpen={panels.photoHistory}
+        onClose={() => closePanel("photoHistory")}
         alerts={photoAlerts}
         onViewAlert={(alert) => {
-          setIsPhotoHistoryOpen(false);
+          closePanel("photoHistory");
           viewPhotoAlert(alert);
         }}
         onDeleteAlert={removePhotoAlert}
@@ -405,8 +407,8 @@ const Index = () => {
 
       {/* Help Page */}
       <HelpPage
-        isOpen={isHelpOpen}
-        onClose={() => setIsHelpOpen(false)}
+        isOpen={panels.help}
+        onClose={() => closePanel("help")}
       />
     </div>
   );
