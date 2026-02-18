@@ -48,9 +48,9 @@ export const useAlerts = (deviceId?: string | null) => {
   deviceIdRef.current = deviceId;
   userIdRef.current = user?.id;
 
-  // ── safe setState ──
+  // ── safe setState (unmounted 컴포넌트 업데이트 방지) ──
   const safe = <T,>(setter: React.Dispatch<React.SetStateAction<T>>) =>
-    (v: T) => { if (mountedRef.current) try { setter(v); } catch {} };
+    (v: T) => { if (mountedRef.current) try { setter(v); } catch (err) { console.warn("[useAlerts] setState failed:", err); } };
   const safeSetAlerts = useCallback(safe(setAlerts), []);
   const safeSetActiveAlert = useCallback(safe(setActiveAlert), []);
   const safeSetIsLoading = useCallback(safe(setIsLoading), []);
@@ -117,7 +117,9 @@ export const useAlerts = (deviceId?: string | null) => {
           message: alert.message,
           alertType: alert.type,
         });
-      } catch {}
+      } catch (err) {
+        console.error("[useAlerts] 활동 로그 저장 실패:", err);
+      }
       loadAlerts();
     }
   }, [loadAlerts, safeSetActiveAlert]);

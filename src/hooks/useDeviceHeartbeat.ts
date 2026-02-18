@@ -30,7 +30,9 @@ export function useDeviceHeartbeat() {
           const battery = await (navigator as any).getBattery();
           return Math.round(battery.level * 100);
         }
-      } catch {}
+      } catch (err) {
+        console.warn("[Heartbeat] Battery API 접근 실패:", err);
+      }
       return null;
     };
 

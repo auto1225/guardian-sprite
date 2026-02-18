@@ -4,6 +4,7 @@ import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 import { isMuted as isAlarmMuted, setMuted as setAlarmMuted, getVolume as getAlarmVolume, setVolume as setAlarmVolume } from "@/lib/alarmSound";
+import { hashPin } from "@/lib/pinHash";
 import { Slider } from "@/components/ui/slider";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -190,16 +191,20 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
     if (!isOpen) return;
     const m = (device.metadata as Record<string, unknown>) || {};
     if (!m.sensorSettings) {
-      const defaults = {
-        sensorSettings: { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device.device_type as "laptop" | "desktop" | "tablet") || "laptop" },
-        alarm_pin: (m.alarm_pin as string) || "1234",
-        alarm_sound_id: (m.alarm_sound_id as string) || "whistle",
-        require_pc_pin: m.require_pc_pin ?? true,
-        motionSensitivity: (m.motionSensitivity as string) || "insensitive",
-        mouseSensitivity: (m.mouseSensitivity as string) || "sensitive",
-      };
-      console.log("[Settings] Saving initial defaults to DB:", defaults);
-      saveMetadata(defaults);
+      const pin = (m.alarm_pin as string) || "1234";
+      // §2-1: 초기 설정 시에도 PIN 해시 생성
+      hashPin(pin, device.id).then((pinHash) => {
+        const defaults = {
+          sensorSettings: { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device.device_type as "laptop" | "desktop" | "tablet") || "laptop" },
+          alarm_pin: pin,
+          alarm_pin_hash: pinHash,
+          alarm_sound_id: (m.alarm_sound_id as string) || "whistle",
+          require_pc_pin: m.require_pc_pin ?? true,
+          motionSensitivity: (m.motionSensitivity as string) || "insensitive",
+          mouseSensitivity: (m.mouseSensitivity as string) || "sensitive",
+        };
+        saveMetadata(defaults);
+      });
     }
   }, [isOpen, device.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -261,11 +266,14 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
   const handleSavePin = async () => {
     if (tempPin.length === 4 && /^\d+$/.test(tempPin)) {
       try {
-        await saveMetadata({ alarm_pin: tempPin });
+        // §2-1: PIN 해시 저장 (alarm_pin도 하위 호환을 위해 병행 저장)
+        const pinHash = await hashPin(tempPin, device.id);
+        await saveMetadata({ alarm_pin: tempPin, alarm_pin_hash: pinHash });
         setAlarmPin(tempPin);
         setShowPinDialog(false);
         toast({ title: "저장됨", description: "비밀번호가 변경되었습니다." });
-      } catch {
+      } catch (err) {
+        console.error("[Settings] PIN 저장 실패:", err);
         toast({ title: "오류", description: "저장에 실패했습니다.", variant: "destructive" });
       }
     }
