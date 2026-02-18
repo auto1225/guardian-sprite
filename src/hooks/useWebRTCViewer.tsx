@@ -135,23 +135,29 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       bundlePolicy: "max-bundle",
     });
 
-    // ★ 수신된 트랙을 수집하여 직접 새 MediaStream을 생성 — event.streams[0] 재사용 금지
-    const receivedTracksRef: { current: MediaStreamTrack[] } = { current: [] };
+    // ★ ontrack: 브라우저 네이티브 스트림(event.streams[0])을 우선 사용
     let pendingStreamUpdate: NodeJS.Timeout | null = null;
+    let latestStream: MediaStream | null = null;
 
     pc.ontrack = (event) => {
       console.log("[WebRTC Viewer] ✅ Received remote track:", event.track.kind, "readyState:", event.track.readyState);
       
       const track = event.track;
       
-      // 이미 같은 종류의 트랙이 있으면 교체
-      receivedTracksRef.current = receivedTracksRef.current.filter(t => t.kind !== track.kind);
-      receivedTracksRef.current.push(track);
+      // 브라우저 네이티브 스트림 사용 (PeerConnection과 자동 동기화)
+      if (event.streams && event.streams[0]) {
+        latestStream = event.streams[0];
+      } else {
+        // 폴백: 직접 스트림 생성
+        if (!latestStream) latestStream = new MediaStream();
+        // 기존 같은 종류 트랙 제거 후 추가
+        latestStream.getTracks().filter(t => t.kind === track.kind).forEach(t => latestStream!.removeTrack(t));
+        latestStream.addTrack(track);
+      }
 
       const commitStream = () => {
-        // ★ 핵심: event.streams[0] 대신 항상 새 MediaStream 객체를 직접 생성
-        const newStream = new MediaStream(receivedTracksRef.current);
-        console.log("[WebRTC Viewer] 📹 Creating fresh MediaStream with", receivedTracksRef.current.length, "tracks");
+        if (!latestStream) return;
+        console.log("[WebRTC Viewer] 📹 Committing stream with", latestStream.getTracks().length, "tracks");
         
         if (connectionTimeoutRef.current) {
           clearTimeout(connectionTimeoutRef.current);
@@ -160,7 +166,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         
         isConnectedRef.current = true;
         isConnectingRef.current = false;
-        setRemoteStream(newStream);
+        setRemoteStream(latestStream);
         setIsConnected(true);
         setIsConnecting(false);
       };
@@ -377,10 +383,13 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
           await sendSignalingMessage("answer", { 
             type: "answer", 
             sdp: answer.sdp,
-            target_session: sessionIdRef.current, // 자신의 세션 ID 사용
+            target_session: sessionIdRef.current,
           });
+          // ★ offer 처리 완료 후 플래그 리셋 — 후속 offer 수신 가능
+          isProcessingOfferRef.current = false;
         } else {
           console.log("[WebRTC Viewer] ⏭️ Answer already sent, skipping...");
+          isProcessingOfferRef.current = false;
         }
       } else if (record.type === "ice-candidate" && record.data.candidate) {
         // ICE candidate도 자신의 세션과 일치하는 것만 처리
