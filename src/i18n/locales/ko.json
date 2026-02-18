@@ -444,5 +444,58 @@
       "copyright": "© 2025 MeerCOP. All rights reserved.",
       "contact": "문의: support@meercop.com"
     }
+  },
+  "profile": {
+    "title": "내 정보 수정",
+    "nickname": "닉네임",
+    "nicknamePlaceholder": "닉네임을 입력하세요",
+    "saveNickname": "닉네임 저장",
+    "saving": "저장 중...",
+    "saved": "저장 완료",
+    "profileUpdated": "프로필이 업데이트되었습니다.",
+    "saveFailed": "프로필 저장에 실패했습니다.",
+    "email": "이메일",
+    "emailReadonly": "이메일은 변경할 수 없습니다.",
+    "changePassword": "비밀번호 변경",
+    "newPassword": "새 비밀번호 (6자 이상)",
+    "confirmNewPassword": "새 비밀번호 확인",
+    "passwordTooShort": "새 비밀번호는 6자 이상이어야 합니다.",
+    "passwordMismatch": "새 비밀번호가 일치하지 않습니다.",
+    "passwordChanged": "변경 완료",
+    "passwordChangedDesc": "비밀번호가 변경되었습니다.",
+    "passwordChangeFailed": "비밀번호 변경에 실패했습니다.",
+    "changing": "변경 중..."
+  },
+  "alertPanel": {
+    "title": "경보 이력",
+    "select": "선택",
+    "cancel": "취소",
+    "markAllRead": "모두 읽음",
+    "all": "전체",
+    "photo": "📸 사진",
+    "activity": "🔔 경보",
+    "selectAll": "전체 선택",
+    "deselectAll": "전체 해제",
+    "deleteCount": "{{count}}개 삭제",
+    "noAlerts": "경보 이력이 없습니다",
+    "capturedPhotos": "사진 {{count}}장 캡처됨",
+    "capture": "캡처"
+  },
+  "cameraViewer": {
+    "connecting": "카메라 연결 중...",
+    "waitingForCamera": "노트북에서 카메라가 시작될 때까지 대기 중",
+    "retry": "다시 시도",
+    "waitingForStart": "노트북에서 카메라 시작 대기 중...",
+    "cameraNotDetected": "카메라가 인식되지 않습니다",
+    "tapToPlay": "터치하여 재생",
+    "noAudio": "No Audio",
+    "mute": "소리 끄기",
+    "unmute": "소리 켜기",
+    "startRecording": "녹화 시작",
+    "stopRecording": "녹화 중지",
+    "resume": "스트리밍 재개",
+    "pause": "스트리밍 일시정지",
+    "snapshot": "스냅샷 저장",
+    "download": "다운로드"
   }
 }
