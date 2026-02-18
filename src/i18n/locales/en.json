@@ -497,5 +497,26 @@
     "pause": "Pause streaming",
     "snapshot": "Take snapshot",
     "download": "Download"
+  },
+  "sideMenu": {
+    "normalMember": "Normal Member"
+  },
+  "notFound": {
+    "title": "404",
+    "message": "Oops! Page not found",
+    "backHome": "Return to Home"
+  },
+  "streaming": {
+    "title": "🎥 Live Streaming",
+    "connecting": "Connecting to stream...",
+    "cameraNotDetected": "Camera not detected"
+  },
+  "alertLocation": {
+    "title": "📍 Laptop Location",
+    "alertLocation": "📍 Laptop location at time of alert",
+    "loadingAddress": "Looking up address...",
+    "latitude": "Lat",
+    "longitude": "Lon",
+    "wifiWarning": "⚠️ Wi-Fi/IP based location may differ from actual location by tens of meters to kilometers."
   }
 }

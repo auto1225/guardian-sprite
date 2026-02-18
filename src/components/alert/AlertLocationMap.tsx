@@ -3,6 +3,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { MapPin, Loader2 } from "lucide-react";
 import { useReverseGeocode } from "@/hooks/useReverseGeocode";
+import { useTranslation } from "react-i18next";
 
 // Fix default marker icon
 // @ts-expect-error Leaflet bundler icon fix
@@ -20,6 +21,7 @@ interface AlertLocationMapProps {
 }
 
 export default function AlertLocationMap({ latitude, longitude, locationSource }: AlertLocationMapProps) {
+  const { t } = useTranslation();
   const { address, loading: addressLoading } = useReverseGeocode(latitude, longitude);
   const isApproximate = locationSource && locationSource !== "gps";
 
@@ -28,7 +30,7 @@ export default function AlertLocationMap({ latitude, longitude, locationSource }
       <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10">
           <MapPin size={16} className="text-white/80" />
-          <span className="text-white font-bold text-sm">📍 노트북 위치</span>
+          <span className="text-white font-bold text-sm">{t("alertLocation.title")}</span>
         </div>
         <div className="h-48 relative">
           <MapContainer
@@ -42,7 +44,7 @@ export default function AlertLocationMap({ latitude, longitude, locationSource }
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <Marker position={[latitude, longitude]}>
-              <Popup>📍 경보 발생 시 노트북 위치</Popup>
+              <Popup>{t("alertLocation.alertLocation")}</Popup>
             </Marker>
           </MapContainer>
         </div>
@@ -51,7 +53,7 @@ export default function AlertLocationMap({ latitude, longitude, locationSource }
           {addressLoading ? (
             <div className="flex items-center gap-1.5 text-xs text-white/50">
               <Loader2 size={12} className="animate-spin" />
-              <span>주소 조회 중...</span>
+              <span>{t("alertLocation.loadingAddress")}</span>
             </div>
           ) : address ? (
             <p className="text-xs text-white/80 leading-relaxed">📌 {address}</p>
@@ -59,7 +61,7 @@ export default function AlertLocationMap({ latitude, longitude, locationSource }
 
           {/* 좌표 */}
           <p className="text-xs text-white/60">
-            위도: {latitude.toFixed(6)} | 경도: {longitude.toFixed(6)}
+            {t("alertLocation.latitude")}: {latitude.toFixed(6)} | {t("alertLocation.longitude")}: {longitude.toFixed(6)}
             {locationSource && (
               <span className="ml-2 text-white/40">
                 ({locationSource === "gps" ? "GPS" : "Wi-Fi/IP"})
@@ -67,10 +69,9 @@ export default function AlertLocationMap({ latitude, longitude, locationSource }
             )}
           </p>
 
-          {/* Wi-Fi/IP 오차 경고 */}
           {isApproximate && (
             <p className="text-[10px] text-yellow-300/70 leading-relaxed">
-              ⚠️ Wi-Fi/IP 기반 위치로, 실제 위치와 수십 m ~ 수 km 오차가 있을 수 있습니다.
+              {t("alertLocation.wifiWarning")}
             </p>
           )}
         </div>

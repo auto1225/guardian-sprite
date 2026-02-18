@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useWebRTCViewer } from "@/hooks/useWebRTCViewer";
 import { Video, VideoOff, Loader2, Circle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { saveAlertVideo } from "@/lib/alertVideoStorage";
 
 interface AlertStreamingViewerProps {
@@ -9,6 +10,7 @@ interface AlertStreamingViewerProps {
 }
 
 export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreamingViewerProps) {
+  const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -230,7 +232,7 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
       <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10">
           <Video size={16} className="text-white/80" />
-          <span className="text-white font-bold text-sm">🎥 실시간 스트리밍</span>
+          <span className="text-white font-bold text-sm">{t("streaming.title")}</span>
           {isRecording && (
             <span className="flex items-center gap-1 text-xs text-red-400">
               <Circle size={8} className="fill-red-500 text-red-500 animate-pulse" />
@@ -248,7 +250,7 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
           {isConnecting && !isConnected && !showLastFrame && (
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <Loader2 className="w-8 h-8 text-white/60 animate-spin mb-2" />
-              <span className="text-sm text-white/60">스트리밍 연결 중...</span>
+              <span className="text-sm text-white/60">{t("streaming.connecting")}</span>
             </div>
           )}
           {error && !isConnected && !showLastFrame && (
@@ -265,7 +267,7 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
           {showLastFrame && !isConnected && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60">
               <VideoOff className="w-8 h-8 text-white/40 mb-2" />
-              <span className="text-sm text-white/60">카메라가 인식되지 않습니다</span>
+              <span className="text-sm text-white/60">{t("streaming.cameraNotDetected")}</span>
             </div>
           )}
           {/* Live video */}
