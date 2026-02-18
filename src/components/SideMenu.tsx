@@ -1,4 +1,4 @@
-import { X, User, Laptop, LogOut, HelpCircle, Plus, Pencil, UserCog } from "lucide-react";
+import { X, User, Laptop, LogOut, HelpCircle, Pencil, UserCog } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -78,63 +78,61 @@ const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick }: SideMen
         </div>
 
         {/* Device Section */}
-        <div className="flex-1 p-4 overflow-y-auto">
+        <div className="flex-1 p-4 overflow-hidden flex flex-col">
           <div className="flex items-center gap-1 mb-2">
             <Laptop className="w-4 h-4 text-white/70" />
-            <span className="text-xs font-bold text-white/70">내 디바이스</span>
+            <span className="text-xs font-bold text-white/70">대상 디바이스</span>
           </div>
 
-          {/* Add Device Button */}
-          <button 
-            onClick={() => handleNavigate('/install')}
-            className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-secondary/20 border border-dashed border-white/30 mb-2"
-          >
-            <Plus className="w-4 h-4 text-primary-foreground" />
-            <span className="text-sm font-bold text-primary-foreground">디바이스 추가</span>
-          </button>
-
-          {/* Device Cards */}
-          {devices?.map((device) => (
-            <button
-              key={device.id}
-              onClick={() => handleSelectDevice(device.id)}
-              className={`w-full flex items-center justify-between p-3 rounded-xl mb-2 transition-colors ${
-                device.id === selectedDeviceId 
-                  ? 'bg-secondary' 
-                  : 'bg-white/10'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Laptop className={`w-4 h-4 ${
+          {/* Device Cards - scrollable */}
+          <div className="flex-1 overflow-y-auto space-y-2 pr-1 alert-history-scroll">
+            {devices?.filter(d => d.device_type !== "smartphone").map((device) => (
+              <button
+                key={device.id}
+                onClick={() => handleSelectDevice(device.id)}
+                className={`w-full flex items-center justify-between p-3 rounded-xl transition-colors ${
+                  device.id === selectedDeviceId 
+                    ? 'bg-secondary' 
+                    : 'bg-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Laptop className={`w-4 h-4 ${
+                    device.id === selectedDeviceId 
+                      ? 'text-secondary-foreground' 
+                      : 'text-primary-foreground'
+                  }`} />
+                  <div className="text-left">
+                    <p className={`text-sm font-bold ${
+                      device.id === selectedDeviceId 
+                        ? 'text-secondary-foreground' 
+                        : 'text-primary-foreground'
+                    }`}>
+                      {device.name}
+                    </p>
+                    <p className={`text-xs ${
+                      device.id === selectedDeviceId 
+                        ? 'text-secondary-foreground/70' 
+                        : 'text-white/70'
+                    }`}>
+                      {device.status === 'online' ? '온라인' : '오프라인'}
+                      {device.battery_level && ` · ${device.battery_level}%`}
+                    </p>
+                  </div>
+                </div>
+                <Pencil className={`w-4 h-4 ${
                   device.id === selectedDeviceId 
                     ? 'text-secondary-foreground' 
                     : 'text-primary-foreground'
                 }`} />
-                <div className="text-left">
-                  <p className={`text-sm font-bold ${
-                    device.id === selectedDeviceId 
-                      ? 'text-secondary-foreground' 
-                      : 'text-primary-foreground'
-                  }`}>
-                    {device.name}
-                  </p>
-                  <p className={`text-xs ${
-                    device.id === selectedDeviceId 
-                      ? 'text-secondary-foreground/70' 
-                      : 'text-white/70'
-                  }`}>
-                    {device.status === 'online' ? '온라인' : '오프라인'}
-                    {device.battery_level && ` · ${device.battery_level}%`}
-                  </p>
-                </div>
-              </div>
-              <Pencil className={`w-4 h-4 ${
-                device.id === selectedDeviceId 
-                  ? 'text-secondary-foreground' 
-                  : 'text-primary-foreground'
-              }`} />
-            </button>
-          ))}
+              </button>
+            ))}
+            {devices?.filter(d => d.device_type !== "smartphone").length === 0 && (
+              <p className="text-white/50 text-sm text-center py-4">
+                등록된 대상 기기가 없습니다
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Bottom Menu */}
