@@ -420,9 +420,14 @@ const Index = () => {
           alert={(viewingPhotoAlert || latestPhotoAlert)!}
           isHistoryView={!!viewingPhotoAlert && !latestPhotoAlert}
           onDismiss={() => {
-            // 사진 경보 ID도 dismissed에 등록 — 재트리거 방지
+            // 🔧 FIX v8: 사진 경보 ID + 활성 경보 ID 모두 dismissed에 등록
             const photoId = (viewingPhotoAlert || latestPhotoAlert)?.id;
             if (photoId) Alarm.addDismissed(photoId);
+            if (activeAlert?.id && activeAlert.id !== photoId) {
+              Alarm.addDismissed(activeAlert.id);
+            }
+            Alarm.stop();
+            Alarm.suppressFor(30000);
             if (!remoteAlarmDismissed) {
               setShowFallbackAlarmButtons(true);
             }

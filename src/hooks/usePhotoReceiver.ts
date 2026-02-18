@@ -64,6 +64,8 @@ export function usePhotoReceiver(
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const deviceNameMapRef = useRef(deviceNameMap);
   deviceNameMapRef.current = deviceNameMap;
+  // 🔧 FIX v8: dismiss 후 일정 시간 동안 새 사진 경보 오버레이 표시 억제
+  const overlaySuppressionRef = useRef<number>(0);
 
   const loadAlerts = useCallback(() => {
     setAlerts(getPhotoAlerts());
@@ -148,7 +150,13 @@ export function usePhotoReceiver(
         pendingRef.current = null;
         setReceiving(false);
         setProgress(100);
-        setLatestAlert(completed);
+        
+        // 🔧 FIX v8: suppress 기간 중에는 오버레이를 다시 열지 않음
+        if (Date.now() < overlaySuppressionRef.current) {
+          console.log("[PhotoReceiver] 📸 Overlay suppressed, skipping setLatestAlert:", completed.id);
+        } else {
+          setLatestAlert(completed);
+        }
         loadAlerts();
 
         // 🔧 FIX v7: Alarm.play() 제거 (위와 동일한 이유)
@@ -171,10 +179,9 @@ export function usePhotoReceiver(
       loadAlerts();
     }
     Alarm.stop();
-    // 🔧 FIX v7: suppress 시간 30초로 증가
-    // 사진 청크 전송 완료까지 최대 수십 초 소요될 수 있으므로
-    // 10초로는 photo_alert_end 도착 전에 suppress가 풀릴 수 있었음
     Alarm.suppressFor(30000);
+    // 🔧 FIX v8: 30초간 새 사진 경보 오버레이 표시 억제
+    overlaySuppressionRef.current = Date.now() + 30000;
     setLatestAlert(null);
   }, [latestAlert, loadAlerts]);
 
