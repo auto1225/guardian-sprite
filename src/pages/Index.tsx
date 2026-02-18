@@ -36,6 +36,35 @@ import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 
 const Index = () => {
   const { t } = useTranslation();
+
+  // ── 1회성 경보 데이터 완전 삭제 (배포 후 제거 가능) ──
+  useEffect(() => {
+    const NUKE_KEY = 'meercop_nuke_done_v1';
+    if (localStorage.getItem(NUKE_KEY)) return;
+    console.log("[Index] 🧹 Nuking all alert data...");
+    // localStorage 관련 키 전부 삭제
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (
+        key.startsWith('meercop_activity') ||
+        key.startsWith('meercop_photo') ||
+        key.startsWith('meercop_processed') ||
+        key.startsWith('meercop_deleted') ||
+        key.startsWith('meercop_dismissed') ||
+        key.startsWith('meercop_last_stopped')
+      )) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+    // IndexedDB 삭제
+    try { indexedDB.deleteDatabase('meercop_photo_alerts'); } catch {}
+    try { indexedDB.deleteDatabase('meercop_alert_videos'); } catch {}
+    localStorage.setItem(NUKE_KEY, String(Date.now()));
+    console.log("[Index] ✅ All alert data nuked, removed", keysToRemove.length, "localStorage keys + IndexedDB");
+  }, []);
+
   const { devices, selectedDevice, selectedDeviceId, setSelectedDeviceId, isLoading, refreshDeviceStatus } = useDevices();
   const nonSmartphoneDevices = devices.filter(d => d.device_type !== "smartphone");
   const deviceNameMap = Object.fromEntries(nonSmartphoneDevices.map(d => [d.id, d.name]));
