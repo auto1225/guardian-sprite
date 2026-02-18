@@ -201,6 +201,7 @@ export interface AlarmState {
   unlocked: boolean;
   pendingPlayGen: number;
   lastStoppedAt: number;
+  activeMasterGain: GainNode | null;
 }
 
 const STATE_KEY = '__meercop_alarm_state_v6';
@@ -216,6 +217,7 @@ function getState(): AlarmState {
       unlocked: false,
       pendingPlayGen: 0,
       lastStoppedAt: 0,
+      activeMasterGain: null,
     };
     try {
       const lst = localStorage.getItem('meercop_last_stopped_at');
@@ -361,9 +363,14 @@ export function getVolume(): number {
 export function setVolume(vol: number) {
   const clamped = Math.max(0, Math.min(1, vol));
   try { localStorage.setItem('meercop_alarm_volume', String(clamped)); } catch {}
-  // 재생 중인 오디오 볼륨 즉시 반영
+  // 재생 중인 HTMLAudioElement 볼륨 즉시 반영
   for (const audio of getAllAudios()) {
     try { audio.volume = clamped; } catch {}
+  }
+  // 재생 중인 내장 사운드(WebAudio) 볼륨 즉시 반영
+  const s = getState();
+  if (s.activeMasterGain) {
+    try { s.activeMasterGain.gain.value = clamped; } catch {}
   }
 }
 
@@ -513,6 +520,7 @@ export async function play(deviceId?: string) {
     const masterGain = audioCtx.createGain();
     masterGain.gain.value = volume;
     masterGain.connect(audioCtx.destination);
+    s.activeMasterGain = masterGain;
 
     if (audioCtx.state === 'suspended') {
       if (!s.unlocked) {
@@ -608,6 +616,7 @@ export function stop() {
   const wasAlarming = s.isAlarming;
 
   s.isAlarming = false;
+  s.activeMasterGain = null;
   s.pendingPlayGen = 0;
   s.gen++;
   s.lastStoppedAt = Date.now();
