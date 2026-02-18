@@ -149,19 +149,33 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         // ★ 항상 PC receivers에서 새 MediaStream 생성 — stale event.streams[0] 문제 회피
         const currentPc = peerConnectionRef.current;
         if (!currentPc) return;
-        const freshStream = new MediaStream();
+        const liveTracks: MediaStreamTrack[] = [];
         currentPc.getReceivers().forEach(r => {
           if (r.track && r.track.readyState === "live") {
-            freshStream.addTrack(r.track);
+            liveTracks.push(r.track);
           }
         });
-        if (freshStream.getTracks().length === 0) {
+        if (liveTracks.length === 0) {
           console.warn("[WebRTC Viewer] ⚠️ No live tracks from receivers, skipping commit");
           return;
         }
-        console.log("[WebRTC Viewer] 📹 Committing fresh stream with", freshStream.getTracks().length, "tracks",
-          freshStream.getTracks().map(t => `${t.kind}:${t.readyState}:muted=${t.muted}`).join(", "));
-        
+
+        // ★ 기존 스트림과 트랙이 동일하면 재설정하지 않음 (무한 리마운트 방지)
+        setRemoteStream(prev => {
+          if (prev) {
+            const prevIds = prev.getTracks().map(t => t.id).sort().join(",");
+            const newIds = liveTracks.map(t => t.id).sort().join(",");
+            if (prevIds === newIds) {
+              console.log("[WebRTC Viewer] ⏭️ Same tracks, skipping stream update");
+              return prev;
+            }
+          }
+          const freshStream = new MediaStream(liveTracks);
+          console.log("[WebRTC Viewer] 📹 Committing fresh stream with", freshStream.getTracks().length, "tracks",
+            freshStream.getTracks().map(t => `${t.kind}:${t.readyState}:muted=${t.muted}`).join(", "));
+          return freshStream;
+        });
+
         if (connectionTimeoutRef.current) {
           clearTimeout(connectionTimeoutRef.current);
           connectionTimeoutRef.current = null;
@@ -169,7 +183,6 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         
         isConnectedRef.current = true;
         isConnectingRef.current = false;
-        setRemoteStream(freshStream);
         setIsConnected(true);
         setIsConnecting(false);
       };
