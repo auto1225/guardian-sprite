@@ -245,9 +245,11 @@ export const useAlerts = (deviceId?: string | null) => {
     Alarm.stop();
     const id = activeAlertRef.current?.id;
     if (id) Alarm.addDismissed(id);
+    // Presence sync 재트리거 방지: 5초간 억제
+    Alarm.suppressFor(5000);
     safeSetActiveAlert(null);
     activeAlertRef.current = null;
-    console.log("[useAlerts] ✅ All dismissed");
+    console.log("[useAlerts] ✅ All dismissed (suppress 5s)");
   }, [safeSetActiveAlert]);
 
   return {
