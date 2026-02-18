@@ -1,8 +1,9 @@
-import { X, User, Laptop, LogOut, HelpCircle, Pencil, UserCog } from "lucide-react";
+import { X, User, Laptop, LogOut, HelpCircle, Pencil, UserCog, Globe } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useDevices } from "@/hooks/useDevices";
+import { useTranslation } from "react-i18next";
 import logoImage from "@/assets/meercop-character.png";
 
 interface SideMenuProps {
@@ -13,6 +14,7 @@ interface SideMenuProps {
 }
 
 const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick }: SideMenuProps) => {
+  const { t, i18n } = useTranslation();
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -21,8 +23,8 @@ const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick }: SideMen
   const handleSignOut = async () => {
     await signOut();
     toast({
-      title: "로그아웃",
-      description: "안전하게 로그아웃되었습니다.",
+      title: t("sideMenu.loggedOut"),
+      description: t("sideMenu.loggedOutDesc"),
     });
     onClose();
   };
@@ -58,7 +60,7 @@ const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick }: SideMen
               <p className="text-xs text-white/70">ver 1.0.6</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2">
+          <button onClick={onClose} className="p-2" aria-label={t("common.close")}>
             <X className="w-5 h-5 text-primary-foreground" />
           </button>
         </div>
@@ -70,7 +72,7 @@ const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick }: SideMen
           </div>
           <div className="flex-1">
             <p className="text-sm font-bold text-primary-foreground">
-              {user?.email?.split('@')[0] || '사용자'}
+              {user?.email?.split('@')[0] || t("sideMenu.user")}
             </p>
             <p className="text-xs text-white/70">{user?.email || 'email@example.com'}</p>
             <p className="text-xs text-white/50">Normal Member</p>
@@ -81,7 +83,7 @@ const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick }: SideMen
         <div className="flex-1 p-4 overflow-hidden flex flex-col">
           <div className="flex items-center gap-1 mb-2">
             <Laptop className="w-4 h-4 text-white/70" />
-            <span className="text-xs font-bold text-white/70">대상 디바이스</span>
+            <span className="text-xs font-bold text-white/70">{t("sideMenu.targetDevices")}</span>
           </div>
 
           {/* Device Cards - scrollable */}
@@ -115,7 +117,7 @@ const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick }: SideMen
                         ? 'text-secondary-foreground/70' 
                         : 'text-white/70'
                     }`}>
-                      {device.status === 'online' ? '온라인' : '오프라인'}
+                      {device.status === 'online' ? t("common.online") : t("common.offline")}
                       {device.battery_level && ` · ${device.battery_level}%`}
                     </p>
                   </div>
@@ -129,7 +131,7 @@ const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick }: SideMen
             ))}
             {devices?.filter(d => d.device_type !== "smartphone").length === 0 && (
               <p className="text-white/50 text-sm text-center py-4">
-                등록된 대상 기기가 없습니다
+                {t("sideMenu.noDevices")}
               </p>
             )}
           </div>
@@ -137,11 +139,23 @@ const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick }: SideMen
 
         {/* Bottom Menu */}
         <div className="border-t border-white/20">
-          <MenuItem icon={UserCog} label="내 정보 수정" onClick={() => handleNavigate("/settings")} />
-          <MenuItem icon={HelpCircle} label="Q&A / 도움말" onClick={() => { if (onHelpClick) { onHelpClick(); onClose(); } }} />
+          <MenuItem icon={UserCog} label={t("sideMenu.editProfile")} onClick={() => handleNavigate("/settings")} />
+          <MenuItem icon={HelpCircle} label={t("sideMenu.helpQA")} onClick={() => { if (onHelpClick) { onHelpClick(); onClose(); } }} />
+          <button
+            onClick={() => {
+              const nextLng = i18n.language === "ko" ? "en" : "ko";
+              i18n.changeLanguage(nextLng);
+            }}
+            className="flex items-center gap-3 w-full px-4 py-4 hover:bg-white/10 transition-colors"
+          >
+            <Globe className="w-5 h-5 text-primary-foreground" />
+            <span className="text-sm font-semibold text-primary-foreground">
+              {i18n.language === "ko" ? "English" : "한국어"}
+            </span>
+          </button>
           <MenuItem 
             icon={LogOut} 
-            label="로그아웃" 
+            label={t("sideMenu.logout")} 
             onClick={handleSignOut}
           />
         </div>

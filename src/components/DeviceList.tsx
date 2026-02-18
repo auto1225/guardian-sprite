@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { useDevices } from "@/hooks/useDevices";
+import { useTranslation } from "react-i18next";
 import DeviceCard from "./DeviceCard";
 import { Database } from "@/integrations/supabase/types";
 
@@ -14,6 +15,7 @@ interface DeviceListProps {
 }
 
 const DeviceList = ({ isExpanded, onToggle, selectedDeviceId, selectedDevice, onSelectDevice }: DeviceListProps) => {
+  const { t } = useTranslation();
   const { devices: allDevices } = useDevices();
   const devices = allDevices.filter(d => d.device_type !== "smartphone");
 
@@ -52,7 +54,7 @@ const DeviceList = ({ isExpanded, onToggle, selectedDeviceId, selectedDevice, on
         {isExpanded && devices.length > 1 && (
           <div className="mt-3 animate-in slide-in-from-top-2 duration-200 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-3 shadow-lg">
             <div className="flex items-center justify-between mb-2 px-1">
-              <span className="text-white/70 text-xs font-medium">기기 선택</span>
+              <span className="text-white/70 text-xs font-medium">{t("deviceList.selectDevice")}</span>
               <button onClick={onToggle} className="text-white/60 hover:text-white/90 transition-colors">
                 <X className="w-4 h-4" />
               </button>

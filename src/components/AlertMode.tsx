@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ActiveAlert, stopAlertSound } from "@/hooks/useAlerts";
 import * as Alarm from "@/lib/alarmSound";
 import { Video, VideoOff, MapPin } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import AlertStreamingViewer from "@/components/alert/AlertStreamingViewer";
 import AlertLocationMap from "@/components/alert/AlertLocationMap";
 
@@ -17,6 +18,7 @@ interface AlertModeProps {
 }
 
 const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: AlertModeProps) => {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [phoneDismissed, setPhoneDismissed] = useState(false);
 
@@ -27,11 +29,11 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
       }
       stopAlertSound();
       Alarm.addDismissed(activeAlert.id);
-      toast({ title: "경보 해제", description: "컴퓨터와 스마트폰의 경보가 모두 해제되었습니다." });
+      toast({ title: t("alarm.allDismissed"), description: t("alarm.allDismissedDesc") });
       onDismiss();
     } catch (err) {
       console.error("[AlertMode] remote_alarm_off failed:", err);
-      toast({ title: "오류", description: "컴퓨터 경보 해제에 실패했습니다.", variant: "destructive" });
+      toast({ title: t("common.error"), description: t("alarm.computerAlarmDismissFailed"), variant: "destructive" });
     }
   };
 
@@ -43,7 +45,7 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
       {/* Header */}
       <div className="flex items-center justify-between p-4 shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-white font-black text-xl">🚨 보안 경보</span>
+          <span className="text-white font-black text-xl">{t("alert.securityAlert")}</span>
         </div>
       </div>
 
@@ -70,11 +72,11 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
             <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden">
               <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10">
                 <Video size={16} className="text-white/80" />
-                <span className="text-white font-bold text-sm">🎥 실시간 스트리밍</span>
+                <span className="text-white font-bold text-sm">{t("alert.liveStreaming")}</span>
               </div>
               <div className="relative aspect-video bg-black/40 flex flex-col items-center justify-center">
                 <VideoOff className="w-8 h-8 text-white/40 mb-2" />
-                <span className="text-sm text-white/60">카메라가 인식되지 않습니다</span>
+                <span className="text-sm text-white/60">{t("alert.cameraNotDetected")}</span>
               </div>
             </div>
           </div>
@@ -88,11 +90,11 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
             <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden">
               <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10">
                 <MapPin size={16} className="text-white/80" />
-                <span className="text-white font-bold text-sm">📍 노트북 위치</span>
+                <span className="text-white font-bold text-sm">{t("alert.laptopLocation")}</span>
               </div>
               <div className="h-48 bg-black/40 flex flex-col items-center justify-center">
                 <MapPin className="w-8 h-8 text-white/40 mb-2" />
-                <span className="text-sm text-white/60">위치 정보 없음</span>
+                <span className="text-sm text-white/60">{t("alert.noLocationInfo")}</span>
               </div>
             </div>
           </div>
@@ -103,11 +105,11 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
           <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden">
             <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10">
               <VideoOff size={16} className="text-white/80" />
-              <span className="text-white font-bold text-sm">📷 캡처 사진</span>
+              <span className="text-white font-bold text-sm">{t("alert.capturedPhotos")}</span>
             </div>
             <div className="aspect-[4/3] bg-black/40 flex flex-col items-center justify-center">
               <VideoOff className="w-8 h-8 text-white/40 mb-2" />
-              <span className="text-sm text-white/60">사진 데이터가 수신되지 않았습니다</span>
+              <span className="text-sm text-white/60">{t("alert.noPhotoData")}</span>
             </div>
           </div>
         </div>
@@ -121,18 +123,18 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
               stopAlertSound();
               Alarm.addDismissed(activeAlert.id);
               setPhoneDismissed(true);
-              toast({ title: "스마트폰 경보음 해제", description: "스마트폰의 경보음이 해제되었습니다." });
+              toast({ title: t("alarm.phoneAlarmDismissed"), description: t("alarm.phoneAlarmDismissedDesc") });
             }}
             className="w-full py-3 bg-white/12 backdrop-blur-md text-white border border-white/25 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
           >
-            🔕 스마트폰 경보음 해제
+            {t("alarm.dismissPhoneAlarm")}
           </button>
         )}
         <button
           onClick={handleDismissRemoteAlarm}
           className="w-full py-3 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
         >
-          🔇 컴퓨터 경보음 해제 (경보 해제)
+          {t("alarm.dismissComputerAlarm")}
         </button>
       </div>
     </div>
