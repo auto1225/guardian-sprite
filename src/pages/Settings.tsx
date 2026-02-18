@@ -90,7 +90,10 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
     setNickname(device.name);
     const m = (device.metadata as Record<string, unknown>) || {};
     setAlarmPin((m.alarm_pin as string) || "1234");
-    setSelectedSoundId((m.alarm_sound_id as string) || "whistle");
+    const soundId = (m.alarm_sound_id as string) || "whistle";
+    setSelectedSoundId(soundId);
+    // 로컬 알람 모듈에도 동기화
+    import("@/lib/alarmSound").then(mod => mod.setSelectedSoundId(soundId));
     setCustomSoundName((m.custom_sound_name as string) || "");
     setCustomSoundDataUrl(localStorage.getItem(`meercop_custom_sound_${device.id}`) || "");
     const saved = m.sensorSettings as SensorSettings | undefined;
@@ -191,6 +194,8 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
 
   const handleSelectSound = async (soundId: string) => {
     setSelectedSoundId(soundId);
+    // 로컬 알람 모듈에도 사운드 ID 동기화
+    import("@/lib/alarmSound").then(mod => mod.setSelectedSoundId(soundId));
     try {
       await saveMetadata({ alarm_sound_id: soundId });
     } catch {
