@@ -43,6 +43,12 @@ interface UsePhotoReceiverReturn {
  * usePhotoReceiver — 사진 경보 수신 훅 (사용자 단일 채널)
  *
  * 채널: user-photos-{userId} 하나로 모든 기기의 사진을 수신
+ *
+ * 🔧 FIX v7: 경보음 재생 책임을 useAlerts에 일원화
+ *   - 이전: photo_alert_start, photo_alert_end에서 각각 Alarm.play() 독립 호출
+ *   - 문제: useAlerts의 Presence Alert와 ID가 달라 dismiss 후 재트리거
+ *   - 수정: 이 훅에서는 Alarm.play()를 직접 호출하지 않음
+ *          경보음은 useAlerts의 Presence 채널을 통해서만 트리거됨
  */
 export function usePhotoReceiver(
   selectedDeviceId: string | null | undefined,
@@ -98,11 +104,14 @@ export function usePhotoReceiver(
         setReceiving(true);
         setProgress(0);
 
-        // 🔊 사진 수신 시작 시 즉시 경보음 트리거
-        if (!Alarm.isMuted() && !Alarm.isPlaying() && !Alarm.isDismissed(payload.id)) {
-          console.log("[PhotoReceiver] 🔊 Triggering alarm at photo_alert_start:", payload.id);
-          Alarm.play();
-        }
+        // 🔧 FIX v7: Alarm.play() 제거
+        // 경보음은 useAlerts의 Presence 채널을 통해서만 트리거됩니다.
+        // 여기서 독립적으로 play()를 호출하면:
+        //   1. useAlerts의 Presence Alert ID와 다른 Photo Alert ID를 사용
+        //   2. dismiss 시 Presence ID만 dismissed 처리되고 Photo ID는 남음
+        //   3. suppress 기간 후 Photo ID로 다시 play()가 트리거됨
+        // → 경보음 해제 불가 버그의 직접적 원인이었음
+        console.log("[PhotoReceiver] 📸 Photo alert start (alarm delegated to useAlerts):", payload.id);
       })
       .on("broadcast", { event: "photo_alert_chunk" }, ({ payload }) => {
         const pending = pendingRef.current;
@@ -142,11 +151,8 @@ export function usePhotoReceiver(
         setLatestAlert(completed);
         loadAlerts();
 
-        // 🔊 사진 경보 수신 시 경보음 직접 트리거
-        if (!Alarm.isMuted() && !Alarm.isPlaying() && !Alarm.isDismissed(completed.id)) {
-          console.log("[PhotoReceiver] 🔊 Triggering alarm sound for photo alert:", completed.id);
-          Alarm.play();
-        }
+        // 🔧 FIX v7: Alarm.play() 제거 (위와 동일한 이유)
+        console.log("[PhotoReceiver] 📸 Photo alert complete (alarm delegated to useAlerts):", completed.id);
       })
       .subscribe((status) => {
         console.log("[PhotoReceiver] Channel status:", status);
@@ -165,7 +171,10 @@ export function usePhotoReceiver(
       loadAlerts();
     }
     Alarm.stop();
-    Alarm.suppressFor(10000);
+    // 🔧 FIX v7: suppress 시간 30초로 증가
+    // 사진 청크 전송 완료까지 최대 수십 초 소요될 수 있으므로
+    // 10초로는 photo_alert_end 도착 전에 suppress가 풀릴 수 있었음
+    Alarm.suppressFor(30000);
     setLatestAlert(null);
   }, [latestAlert, loadAlerts]);
 
