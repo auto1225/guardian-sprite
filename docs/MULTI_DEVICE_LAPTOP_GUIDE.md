@@ -4,6 +4,8 @@
 스마트폰 앱이 다중 기기를 지원하도록 업데이트되었습니다.  
 노트북(Broadcaster) 앱에서도 아래 사항을 확인/수정해야 합니다.
 
+> ⚠️ **채널 아키텍처 변경 (2026-02)**: 기기별 채널(`device-*-${deviceId}`)에서 **사용자별 채널(`user-*-${userId}`)** 로 전환되었습니다. 기기 구분은 Presence `key` 또는 페이로드의 `device_id` 필드로 수행합니다.
+
 ---
 
 ## ✅ 필수 작업 목록
@@ -13,26 +15,41 @@
 - **확인 사항**: 노트북 앱이 시작 시 `validate-serial`을 호출하여 자신의 `device_id`와 `user_id`를 받아오는지 확인
 - **중요**: 각 컴퓨터는 **고유한 시리얼 넘버**를 사용해야 함 (1기기 = 1시리얼)
 
-### 2. 경보 채널 구독 (device-alerts-${deviceId})
-- **현재 상태**: 각 노트북은 `device-alerts-${자기device_id}` 채널에서 경보를 broadcast
+### 2. 경보 채널 구독 — `user-alerts-${userId}`
+- **⚠️ 변경됨**: 이전 `device-alerts-${deviceId}` → 현재 `user-alerts-${userId}`
 - **확인 사항**: 
-  - 채널 이름에 자기 `device_id`를 올바르게 사용하는지 확인
-  - Presence `track()`에 `active_alert` 정보를 포함하는지 확인
+  - 채널 이름에 `userId`를 사용하고, 모든 페이로드에 `device_id`를 포함하는지 확인
+  - Presence `track()`에 `key: deviceId`로 기기를 식별하고, `active_alert` 정보를 포함하는지 확인
   - 스마트폰이 `remote_alarm_off` broadcast를 수신하면 경보를 해제하는지 확인
 
-### 3. Presence 채널 (device-presence-${deviceId})
-- **현재 상태**: 각 기기는 고유한 Presence 채널로 온/오프라인 상태를 보고함
+### 3. Presence 채널 — `user-presence-${userId}`
+- **⚠️ 변경됨**: 이전 `device-presence-${deviceId}` → 현재 `user-presence-${userId}`
 - **확인 사항**: 
-  - `status`, `is_network_connected`, `is_camera_connected`, `last_seen_at` 필드를 track하는지 확인
+  - `key: deviceId`로 track하여 기기를 구분
+  - `status`, `is_network_connected`, `is_camera_connected`, `battery_level`, `last_seen_at` 필드를 track하는지 확인
   - 기기 연결/해제 시 즉시 Presence를 업데이트하는지 확인
 
-### 4. 기기 상태 업데이트 (devices 테이블)
+### 4. 명령 채널 — `device-commands-${deviceId}`
+- **유지됨**: 이 채널은 기기별로 유지 (개별 기기에 명령을 보내므로)
+- **수신해야 할 이벤트**:
+  | 이벤트 | 페이로드 | 설명 |
+  |--------|----------|------|
+  | `monitoring_toggle` | `{ device_id, is_monitoring }` | 감시 온/오프 |
+  | `camouflage_toggle` | `{ device_id, camouflage_mode }` | 위장 모드 온/오프 |
+  | `lock_command` | `{ device_id, timestamp }` | 화면 잠금 |
+  | `message_command` | `{ device_id, message, timestamp }` | 팝업 메시지 표시 |
+
+### 5. 기기 상태 업데이트 (devices 테이블)
 - **현재 상태**: `validate-serial` 호출 시 기기의 `name`, `device_type`이 DB에 동기화됨
 - **확인 사항**: 
   - 노트북 앱에서 기기 이름/타입을 `validate-serial`에 전달하는지 확인
-  - 주기적으로 `last_seen_at`을 업데이트하는지 확인 (heartbeat)
+  - 주기적으로 `last_seen_at`을 업데이트하는지 확인 (heartbeat, 60초 주기)
 
-### 5. 센서 설정 수신 (devices.metadata)
+### 6. 배터리 잔량 동기화
+- **신규**: Presence track 시 `battery_level` (0~100 정수)을 포함
+- 스마트폰 앱이 Presence sync에서 `battery_level`을 읽어 UI에 표시
+
+### 7. 센서 설정 수신 (devices.metadata)
 - **현재 상태**: 스마트폰에서 설정한 센서 옵션이 `devices.metadata`에 저장됨
 - **확인 사항**: 
   - Realtime으로 `metadata` 변경을 감지하고 센서 설정을 동적으로 반영하는지 확인
@@ -79,19 +96,35 @@
 validate-serial(serial_key, device_name, device_type)
     ↓ → device_id, user_id 수신
     ↓
-Presence 채널 구독: device-presence-${device_id}
-    ↓ → track({ status: 'online', is_network_connected, is_camera_connected, last_seen_at })
+Presence 채널 구독: user-presence-${user_id}
+    ↓ → track({ status: 'online', is_network_connected, is_camera_connected, battery_level, last_seen_at }, key: device_id)
     ↓
-경보 채널 구독: device-alerts-${device_id}
-    ↓ → 경보 발생 시 broadcast + Presence track({ active_alert: {...} })
+경보 채널 구독: user-alerts-${user_id}
+    ↓ → 경보 발생 시 track({ active_alert: {...} }, key: device_id)
+    ↓
+명령 채널 구독: device-commands-${device_id}
+    ↓ → monitoring_toggle, camouflage_toggle, lock_command, message_command 수신
     ↓
 스마트폰에서 remote_alarm_off 수신 → 경보 해제
 ```
 
 ---
 
+## 📡 채널 구조 요약
+
+| 채널 이름 | 구분 방식 | 용도 |
+|-----------|-----------|------|
+| `user-presence-${userId}` | `key: deviceId` | 기기 온/오프라인, 배터리 등 상태 |
+| `user-alerts-${userId}` | 페이로드 `device_id` | 경보 발생/해제 |
+| `user-photos-${userId}` | 페이로드 `device_id` | 사진 경보 전송 |
+| `device-commands-${deviceId}` | 기기별 채널 | 개별 기기 명령 수신 |
+
+---
+
 ## ⚠️ 주의사항
-1. **채널 이름에 device_id 사용**: 모든 채널 이름은 반드시 `device_id`를 포함해야 함
-2. **시리얼 재사용 금지**: 하나의 시리얼은 하나의 기기에만 연결됨
-3. **RLS 제약**: 노트북 앱은 Supabase Auth 세션이 없으므로, DB 변경은 반드시 Edge Function을 통해 수행
-4. **metadata 실시간 동기화**: 스마트폰에서 설정 변경 시 Realtime으로 즉시 반영되어야 함
+1. **사용자별 채널 사용**: Presence/Alert 채널은 `userId`를 사용하고, `key` 또는 `device_id` 필드로 기기를 구분
+2. **명령 채널만 기기별**: `device-commands-${deviceId}`만 기기별 채널 유지
+3. **시리얼 재사용 금지**: 하나의 시리얼은 하나의 기기에만 연결됨
+4. **RLS 제약**: 노트북 앱은 Supabase Auth 세션이 없으므로, DB 변경은 반드시 Edge Function을 통해 수행
+5. **metadata 실시간 동기화**: 스마트폰에서 설정 변경 시 Realtime으로 즉시 반영되어야 함
+6. **배터리 정보 전송**: Presence track 시 `battery_level` 포함 필수
