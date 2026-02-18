@@ -1,4 +1,5 @@
 import { Menu, Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import AlertPanel from "@/components/AlertPanel";
 import { PhotoAlert } from "@/lib/photoAlertStorage";
 import logo from "@/assets/logo.png";
@@ -12,9 +13,10 @@ interface HeaderProps {
 }
 
 const Header = ({ onMenuClick, onDeviceManageClick, unreadCount = 0, deviceId, onViewPhoto }: HeaderProps) => {
+  const { t } = useTranslation();
   return (
     <header className="flex items-center justify-between px-4 py-4">
-      <button className="p-1 text-primary-foreground" onClick={onMenuClick} aria-label="메뉴 열기">
+      <button className="p-1 text-primary-foreground" onClick={onMenuClick} aria-label={t("header.openMenu")}>
         <Menu className="w-6 h-6" />
       </button>
       
@@ -25,7 +27,7 @@ const Header = ({ onMenuClick, onDeviceManageClick, unreadCount = 0, deviceId, o
         <button
           className="w-8 h-8 rounded-full flex items-center justify-center border border-white/30 bg-white/15 backdrop-blur-sm text-primary-foreground shadow-lg hover:bg-white/25 active:scale-95 transition-all"
           onClick={onDeviceManageClick}
-          aria-label="기기 관리"
+          aria-label={t("header.manageDevices")}
         >
           <Plus className="w-4.5 h-4.5" strokeWidth={2.5} />
         </button>

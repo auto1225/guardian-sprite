@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import AlertMode from "@/components/AlertMode";
 import Header from "@/components/Header";
 import DeviceSelector from "@/components/DeviceSelector";
@@ -32,6 +33,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 
 const Index = () => {
+  const { t } = useTranslation();
   const { devices, selectedDevice, selectedDeviceId, setSelectedDeviceId, isLoading, refreshDeviceStatus } = useDevices();
   const nonSmartphoneDevices = devices.filter(d => d.device_type !== "smartphone");
   const deviceNameMap = Object.fromEntries(nonSmartphoneDevices.map(d => [d.id, d.name]));
@@ -118,8 +120,8 @@ const Index = () => {
       await toggleMonitoring(selectedDevice.id, !isMonitoring);
     } catch (error) {
       toast({
-        title: "오류",
-        description: "상태 변경에 실패했습니다.",
+        title: t("common.error"),
+        description: t("status.statusChangeFailed"),
         variant: "destructive",
       });
     }
@@ -156,7 +158,7 @@ const Index = () => {
   if (isLoading) {
     return (
       <div className="h-screen bg-gradient-to-b from-sky-light to-primary flex items-center justify-center">
-        <div className="text-primary-foreground">로딩 중...</div>
+        <div className="text-primary-foreground">{t("common.loading")}</div>
       </div>
     );
   }
@@ -169,16 +171,16 @@ const Index = () => {
         isAlert={selectedDevice?.status === "alert"}
         statusMessage={
           selectedDevice?.status === "alert" 
-            ? "🚨 노트북에 충격이 감지되었습니다!"
+            ? t("status.alertDetected")
             : selectedDevice?.status === "offline"
               ? selectedDevice?.is_network_connected === false
-                ? "⚠️ 컴퓨터가 네트워크에 연결되어 있지 않습니다. Wi-Fi 또는 LAN 연결을 확인해 주세요. 감시 기능이 작동하지 않습니다."
-                : "⚠️ 컴퓨터와 연결할 수 없습니다. 컴퓨터가 꺼져 있거나 절전 모드일 수 있습니다. 감시 기능이 작동하지 않습니다."
+                ? t("status.networkDisconnected")
+                : t("status.deviceOffline")
               : !selectedDevice?.is_network_connected && selectedDevice
-                ? "⚠️ 컴퓨터의 네트워크 연결이 끊어졌습니다. 일부 원격 기능이 제한될 수 있습니다."
+                ? t("status.networkLost")
                 : isMonitoring 
-                  ? "미어캅이 당신의 노트북을 감시중입니다."
-                  : "미어캅 감시 준비 완료! 언제든지 감시를 시작할 수 있습니다."
+                  ? t("status.monitoring")
+                  : t("status.ready")
         }
       />
       
@@ -228,7 +230,7 @@ const Index = () => {
                 }}
                 className="px-5 py-2.5 bg-white/15 backdrop-blur-md text-white border border-white/25 rounded-full font-bold text-sm shadow-lg active:scale-95 transition-transform flex items-center gap-2"
               >
-                🔕 스마트폰 경보음 해제
+                {t("alarm.dismissPhoneAlarm")}
               </button>
             )}
             <button
@@ -238,15 +240,15 @@ const Index = () => {
                   setRemoteAlarmDismissed(true);
                   Alarm.stop();
                   setAlarmPlaying(false);
-                  toast({ title: "컴퓨터 경보 해제", description: "컴퓨터의 경보음이 해제되었습니다." });
+                  toast({ title: t("alarm.computerAlarmDismissed"), description: t("alarm.computerAlarmDismissedDesc") });
                   setShowFallbackAlarmButtons(false);
                 } catch (err) {
-                  toast({ title: "오류", description: "컴퓨터 경보 해제에 실패했습니다.", variant: "destructive" });
+                  toast({ title: t("common.error"), description: t("alarm.computerAlarmDismissFailed"), variant: "destructive" });
                 }
               }}
               className="px-5 py-2.5 bg-destructive text-destructive-foreground rounded-full font-bold text-sm shadow-lg active:scale-95 transition-transform flex items-center gap-2"
             >
-              🔇 컴퓨터 경보음 해제
+              {t("alarm.dismissComputerAlarm")}
             </button>
           </div>
         )}
@@ -274,11 +276,11 @@ const Index = () => {
               });
 
               toast({
-                title: newVal ? "위장 모드 ON" : "위장 모드 OFF",
-                description: newVal ? "노트북 화면이 꺼진 것처럼 보입니다." : "노트북 화면이 정상으로 복원됩니다.",
+                title: newVal ? t("camouflage.onTitle") : t("camouflage.offTitle"),
+                description: newVal ? t("camouflage.onDesc") : t("camouflage.offDesc"),
               });
             } catch {
-              toast({ title: "오류", description: "위장 모드 변경 실패", variant: "destructive" });
+              toast({ title: t("common.error"), description: t("camouflage.changeFailed"), variant: "destructive" });
             }
           } : undefined}
         />
@@ -387,9 +389,9 @@ const Index = () => {
             try {
               await dismissRemoteAlarm();
               setRemoteAlarmDismissed(true);
-              toast({ title: "컴퓨터 경보 해제", description: "컴퓨터의 경보음이 해제되었습니다." });
+              toast({ title: t("alarm.computerAlarmDismissed"), description: t("alarm.computerAlarmDismissedDesc") });
             } catch {
-              toast({ title: "오류", description: "컴퓨터 경보 해제에 실패했습니다.", variant: "destructive" });
+              toast({ title: t("common.error"), description: t("alarm.computerAlarmDismissFailed"), variant: "destructive" });
             }
           } : undefined}
         />

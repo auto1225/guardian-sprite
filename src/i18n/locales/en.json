@@ -1,0 +1,133 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "close": "Close",
+    "online": "Online",
+    "offline": "Offline",
+    "on": "ON",
+    "off": "OFF"
+  },
+  "header": {
+    "openMenu": "Open menu",
+    "manageDevices": "Manage devices"
+  },
+  "status": {
+    "alertDetected": "🚨 Impact detected on your laptop!",
+    "networkDisconnected": "⚠️ Computer is not connected to the network. Please check Wi-Fi or LAN connection. Monitoring is not available.",
+    "deviceOffline": "⚠️ Cannot connect to computer. It may be turned off or in sleep mode. Monitoring is not available.",
+    "networkLost": "⚠️ Computer's network connection was lost. Some remote features may be limited.",
+    "monitoring": "MeerCOP is monitoring your laptop.",
+    "ready": "MeerCOP is ready! You can start monitoring anytime.",
+    "statusChangeFailed": "Failed to change status."
+  },
+  "toggle": {
+    "startMonitoring": "Start monitoring",
+    "stopMonitoring": "Stop monitoring",
+    "camouflageOn": "Enable camouflage",
+    "camouflageOff": "Disable camouflage"
+  },
+  "alarm": {
+    "dismissPhoneAlarm": "🔕 Dismiss phone alarm",
+    "dismissComputerAlarm": "🔇 Dismiss computer alarm",
+    "computerAlarmDismissed": "Computer alarm dismissed",
+    "computerAlarmDismissedDesc": "Computer alarm has been turned off.",
+    "computerAlarmDismissFailed": "Failed to dismiss computer alarm.",
+    "phoneAlarmDismissed": "Phone alarm dismissed",
+    "phoneAlarmDismissedDesc": "Phone alarm has been turned off.",
+    "allDismissed": "Alarm dismissed",
+    "allDismissedDesc": "All alarms have been dismissed."
+  },
+  "alert": {
+    "securityAlert": "🚨 Security Alert",
+    "liveStreaming": "🎥 Live Streaming",
+    "cameraNotDetected": "Camera not detected",
+    "laptopLocation": "📍 Laptop Location",
+    "noLocationInfo": "No location info",
+    "capturedPhotos": "📷 Captured Photos",
+    "noPhotoData": "No photo data received",
+    "receivingPhotos": "Receiving photos... {{progress}}%",
+    "photosReceived": "{{count}} photos received",
+    "changePercent": "Change rate: {{percent}}%"
+  },
+  "alertEvents": {
+    "camera_motion": "Camera motion detected",
+    "keyboard": "Keyboard input detected",
+    "mouse": "Mouse input detected",
+    "lid": "Lid opened",
+    "power": "Power change detected"
+  },
+  "photos": {
+    "grid": "Grid",
+    "slide": "Slide",
+    "select": "Select",
+    "selectAll": "Select all",
+    "saveSelected": "Save {{count}}",
+    "saveAll": "Save all",
+    "saved": "Saved",
+    "savedDesc": "{{count}} photos saved",
+    "saveFailed": "Save failed",
+    "noSelection": "No photos selected",
+    "noSelectionDesc": "Please select photos to save.",
+    "photoNumber": "#{{number}}"
+  },
+  "sideMenu": {
+    "user": "User",
+    "targetDevices": "Target Devices",
+    "noDevices": "No devices registered",
+    "editProfile": "Edit Profile",
+    "helpQA": "Q&A / Help",
+    "logout": "Log out",
+    "loggedOut": "Logged out",
+    "loggedOutDesc": "You have been safely logged out."
+  },
+  "deviceList": {
+    "selectDevice": "Select device"
+  },
+  "camouflage": {
+    "onTitle": "Camouflage ON",
+    "onDesc": "Laptop screen appears to be off.",
+    "offTitle": "Camouflage OFF",
+    "offDesc": "Laptop screen restored to normal.",
+    "changeFailed": "Failed to toggle camouflage"
+  },
+  "network": {
+    "title": "Network Info",
+    "connectionStatus": "Connection Status",
+    "ipAddress": "IP Address",
+    "connectionType": "Connection Type",
+    "speed": "Speed",
+    "latency": "Latency",
+    "effectiveGrade": "Effective Grade",
+    "requesting": "Requesting latest info from laptop...",
+    "disclaimer": "📡 Based on browser Network Information API. Actual speed may differ.",
+    "types": {
+      "wifi": "Wi-Fi",
+      "ethernet": "Ethernet",
+      "cellular": "Cellular",
+      "bluetooth": "Bluetooth",
+      "none": "No connection",
+      "other": "Other",
+      "unknown": "Unknown"
+    }
+  },
+  "location": {
+    "title": "Laptop Location",
+    "loadingAddress": "Looking up address...",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "lastUpdate": "Last update",
+    "gps": "GPS",
+    "wifiIp": "Wi-Fi/IP",
+    "requestSent": "Location request sent to laptop. Please wait...",
+    "wifiWarning": "⚠️ Wi-Fi/IP based location may have an accuracy of tens of meters to kilometers.",
+    "justNow": "Just now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago"
+  }
+}
