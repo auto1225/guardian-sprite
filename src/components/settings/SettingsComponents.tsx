@@ -1,5 +1,6 @@
 import { ChevronRight, Play, Square, Upload, VolumeX, Volume2 } from "lucide-react";
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -76,7 +77,6 @@ export const SensorSection = ({ children }: { children: React.ReactNode }) => (
 export const SensorToggle = ({ label, description, checked, onChange }: {
   label: string; description: string; checked: boolean; onChange: (checked: boolean) => void;
 }) => {
-  // Import Switch inline to avoid circular deps
   const { Switch } = require("@/components/ui/switch");
   return (
     <div className="flex items-center justify-between">
@@ -127,17 +127,17 @@ export async function playBuiltinSound(sound: typeof ALARM_SOUNDS[number], durat
 export const NicknameDialog = ({ open, onOpenChange, value, onSave }: {
   open: boolean; onOpenChange: (open: boolean) => void; value: string; onSave: (name: string) => void;
 }) => {
+  const { t } = useTranslation();
   const [tempValue, setTempValue] = useState(value);
   
-  // Reset when opened
   if (open && tempValue !== value) setTempValue(value);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="border border-white/25" style={{ background: 'hsla(200, 60%, 45%, 0.92)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
         <DialogHeader>
-          <DialogTitle className="text-white">닉네임 변경</DialogTitle>
-          <DialogDescription className="text-white/70">변경할 닉네임을 입력해 주세요.</DialogDescription>
+          <DialogTitle className="text-white">{t("settings.nicknameDialog.title")}</DialogTitle>
+          <DialogDescription className="text-white/70">{t("settings.nicknameDialog.description")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <Input
@@ -146,8 +146,8 @@ export const NicknameDialog = ({ open, onOpenChange, value, onSave }: {
             className="bg-white/15 border-white/25 text-white placeholder:text-white/40 focus:border-white/50"
           />
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1 border-white/25 text-white hover:bg-white/15 bg-transparent">취소</Button>
-            <Button onClick={() => onSave(tempValue)} className="flex-1 text-slate-800 font-semibold hover:opacity-90" style={{ background: 'hsla(52, 100%, 60%, 0.9)' }}>변경</Button>
+            <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1 border-white/25 text-white hover:bg-white/15 bg-transparent">{t("common.cancel")}</Button>
+            <Button onClick={() => onSave(tempValue)} className="flex-1 text-slate-800 font-semibold hover:opacity-90" style={{ background: 'hsla(52, 100%, 60%, 0.9)' }}>{t("common.change")}</Button>
           </div>
         </div>
       </DialogContent>
@@ -160,14 +160,15 @@ export const NicknameDialog = ({ open, onOpenChange, value, onSave }: {
 export const PinDialog = ({ open, onOpenChange, onSave }: {
   open: boolean; onOpenChange: (open: boolean) => void; onSave: (pin: string) => void;
 }) => {
+  const { t } = useTranslation();
   const [tempPin, setTempPin] = useState("");
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) setTempPin(""); onOpenChange(v); }}>
       <DialogContent className="border border-white/25" style={{ background: 'hsla(200, 60%, 45%, 0.92)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
         <DialogHeader>
-          <DialogTitle className="text-white">경보해제 비밀번호 변경</DialogTitle>
-          <DialogDescription className="text-white/70">4자리 숫자를 입력해 주세요.</DialogDescription>
+          <DialogTitle className="text-white">{t("settings.pinDialog.title")}</DialogTitle>
+          <DialogDescription className="text-white/70">{t("settings.pinDialog.description")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="flex justify-center gap-3">
@@ -205,7 +206,7 @@ export const PinDialog = ({ open, onOpenChange, onSave }: {
             className="w-full text-slate-800 font-semibold hover:opacity-90 disabled:opacity-40"
             style={{ background: 'hsla(52, 100%, 60%, 0.9)' }}
           >
-            저장
+            {t("common.save")}
           </Button>
         </div>
       </DialogContent>
@@ -225,6 +226,7 @@ export const SoundDialog = ({ open, onOpenChange, selectedSoundId, customSoundNa
   onCustomUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   deviceId: string;
 }) => {
+  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const synthRef = useRef<{ stop: () => void } | null>(null);
@@ -258,18 +260,23 @@ export const SoundDialog = ({ open, onOpenChange, selectedSoundId, customSoundNa
     }
   };
 
+  const getSoundLabel = (id: string) => {
+    const key = `settings.sounds.${id}` as const;
+    return t(key);
+  };
+
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) stopAllSounds(); }}>
       <DialogContent className="max-h-[80vh] overflow-y-auto border border-white/25 alert-history-scroll" style={{ background: 'hsla(200, 60%, 45%, 0.92)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
         <DialogHeader>
-          <DialogTitle className="text-white">경보음 설정</DialogTitle>
-          <DialogDescription className="text-white/70">경보음 종류와 크기를 설정하세요.</DialogDescription>
+          <DialogTitle className="text-white">{t("settings.soundDialog.title")}</DialogTitle>
+          <DialogDescription className="text-white/70">{t("settings.soundDialog.description")}</DialogDescription>
         </DialogHeader>
 
         {/* Volume slider */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-white font-semibold text-sm">경보음 크기</span>
+            <span className="text-white font-semibold text-sm">{t("settings.soundDialog.volume")}</span>
             <span className="text-white/70 text-sm font-medium">{volumePercent}%</span>
           </div>
           <div className="flex items-center gap-3">
@@ -290,7 +297,7 @@ export const SoundDialog = ({ open, onOpenChange, selectedSoundId, customSoundNa
         </div>
 
         <div className="mb-2">
-          <span className="text-white font-semibold text-sm">경보음 종류</span>
+          <span className="text-white font-semibold text-sm">{t("settings.soundDialog.soundType")}</span>
         </div>
 
         <div className="space-y-2">
@@ -314,7 +321,7 @@ export const SoundDialog = ({ open, onOpenChange, selectedSoundId, customSoundNa
                   <Play className="w-4 h-4 text-white/90 ml-0.5" />
                 )}
               </button>
-              <span className="text-white font-medium text-sm flex-1">{sound.label}</span>
+              <span className="text-white font-medium text-sm flex-1">{getSoundLabel(sound.id)}</span>
               {selectedSoundId === sound.id && (
                 <span className="font-bold" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>✓</span>
               )}
@@ -348,14 +355,14 @@ export const SoundDialog = ({ open, onOpenChange, selectedSoundId, customSoundNa
             )}
             <div className="flex-1">
               <span className="text-white font-medium text-sm block">
-                {customSoundName || "내 기기에서 선택"}
+                {customSoundName || t("settings.soundDialog.customUpload")}
               </span>
               {customSoundDataUrl && (
                 <button
                   onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
                   className="text-white/60 text-xs underline mt-0.5"
                 >
-                  다른 파일 선택
+                  {t("settings.soundDialog.chooseOther")}
                 </button>
               )}
             </div>

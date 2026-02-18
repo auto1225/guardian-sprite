@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { getAlertVideo } from "@/lib/alertVideoStorage";
 import { Video, VideoOff, Play, Pause, Download, Loader2 } from "lucide-react";
 
@@ -7,6 +8,7 @@ interface AlertVideoPlayerProps {
 }
 
 export default function AlertVideoPlayer({ alertId }: AlertVideoPlayerProps) {
+  const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,19 +68,19 @@ export default function AlertVideoPlayer({ alertId }: AlertVideoPlayerProps) {
       <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10">
           <Video size={16} className="text-white/80" />
-          <span className="text-white font-bold text-sm">🎬 녹화 영상</span>
+          <span className="text-white font-bold text-sm">🎬 {t("cameraViewer.download")}</span>
         </div>
         <div className="relative aspect-video bg-black/40">
           {loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <Loader2 className="w-8 h-8 text-white/60 animate-spin mb-2" />
-              <span className="text-sm text-white/60">영상 로딩 중...</span>
+              <span className="text-sm text-white/60">{t("common.loading")}</span>
             </div>
           )}
           {notFound && !loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <VideoOff className="w-8 h-8 text-white/40 mb-2" />
-              <span className="text-sm text-white/60">저장된 녹화 영상이 없습니다</span>
+              <span className="text-sm text-white/60">{t("camera.noRecordedData")}</span>
             </div>
           )}
           {videoUrl && (
@@ -98,14 +100,14 @@ export default function AlertVideoPlayer({ alertId }: AlertVideoPlayerProps) {
             <button
               onClick={togglePlay}
               className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-white hover:bg-white/25 transition-colors"
-              title={isPlaying ? "일시정지" : "재생"}
+              title={isPlaying ? t("cameraViewer.pause") : t("cameraViewer.resume")}
             >
               {isPlaying ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}
             </button>
             <button
               onClick={handleDownload}
               className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-white hover:bg-white/25 transition-colors"
-              title="다운로드"
+              title={t("cameraViewer.download")}
             >
               <Download size={18} />
             </button>

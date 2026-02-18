@@ -1,7 +1,8 @@
 import { LocalActivityLog, LocalAlertType } from "@/lib/localActivityLogs";
 import { AlertTriangle, MapPin, Wifi, Battery, Usb } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { ko } from "date-fns/locale";
+import { ko, enUS } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
 
 interface AlertItemProps {
   alert: LocalActivityLog;
@@ -31,8 +32,10 @@ const getAlertIconBg = (type: LocalAlertType) => {
 };
 
 const AlertItem = ({ alert, onMarkRead }: AlertItemProps) => {
+  const { i18n } = useTranslation();
   const Icon = getAlertIcon(alert.alert_type);
   const iconBg = getAlertIconBg(alert.alert_type);
+  const locale = i18n.language === "ko" ? ko : enUS;
 
   return (
     <div
@@ -57,7 +60,7 @@ const AlertItem = ({ alert, onMarkRead }: AlertItemProps) => {
             </h4>
             <span className="flex items-center gap-1.5 flex-shrink-0">
               <span className="text-[11px] text-white/70 whitespace-nowrap font-medium">
-                {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true, locale: ko })}
+                {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true, locale })}
               </span>
               {!alert.is_read && <span className="w-2 h-2 rounded-full" style={{ background: 'hsla(52, 100%, 60%, 1)', boxShadow: '0 0 6px hsla(52, 100%, 60%, 0.5)' }} />}
             </span>
