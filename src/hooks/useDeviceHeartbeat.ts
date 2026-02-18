@@ -104,8 +104,16 @@ export function useDeviceHeartbeat() {
         if (heartbeatRef.current) clearInterval(heartbeatRef.current);
         heartbeatRef.current = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
       } else {
+        // 경보음이 재생 중이면 백그라운드 전환 시 offline으로 바꾸지 않음
+        try {
+          const AlarmMod = await import("@/lib/alarmSound");
+          if (AlarmMod.isPlaying()) {
+            console.log("[Heartbeat] 🟡 Background but alarm playing — staying online");
+            return;
+          }
+        } catch {}
+
         // 감시 중이면 백그라운드 전환 시 offline으로 바꾸지 않음
-        // (다른 앱 사용 중에도 감시 유지)
         const { data } = await supabase
           .from("devices")
           .select("is_monitoring")
@@ -118,7 +126,6 @@ export function useDeviceHeartbeat() {
         
         if (anyMonitoring) {
           console.log("[Heartbeat] 🟡 Background but monitoring active — staying online");
-          // heartbeat는 유지하여 last_seen_at 갱신 계속
         } else {
           setOffline();
           if (heartbeatRef.current) {

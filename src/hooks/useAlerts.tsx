@@ -90,6 +90,13 @@ export const useAlerts = (deviceId?: string | null) => {
       return;
     }
 
+    // 최근 stop 후 10초 이내면 무시 (Presence 재트리거 방지)
+    const timeSinceStop = Date.now() - Alarm.getLastStoppedAt();
+    if (timeSinceStop < 10000 && Alarm.getLastStoppedAt() > 0) {
+      console.log("[useAlerts] ⏭ Recently stopped (", Math.round(timeSinceStop / 1000), "s ago), ignoring:", alert.id);
+      return;
+    }
+
     if (activeAlertRef.current?.id === alert.id) return;
 
     console.log("[useAlerts] 🚨 New alert:", alert.id, "from device:", fromDeviceId?.slice(0, 8), "age:", Math.round(age / 1000), "s");
@@ -255,8 +262,8 @@ export const useAlerts = (deviceId?: string | null) => {
     Alarm.stop();
     const id = activeAlertRef.current?.id;
     if (id) Alarm.addDismissed(id);
-    // Presence sync 재트리거 방지: 5초간 억제
-    Alarm.suppressFor(5000);
+    // Presence sync 재트리거 방지: 10초간 억제 (5초로는 부족했음)
+    Alarm.suppressFor(10000);
     safeSetActiveAlert(null);
     activeAlertRef.current = null;
     console.log("[useAlerts] ✅ All dismissed (suppress 5s)");

@@ -229,7 +229,7 @@ const Index = () => {
               <button
               onClick={() => {
                   Alarm.stop();
-                  Alarm.suppressFor(5000);
+                  Alarm.suppressFor(10000);
                   if (activeAlert?.id) Alarm.addDismissed(activeAlert.id);
                   if (latestPhotoAlert?.id) Alarm.addDismissed(latestPhotoAlert.id);
                   setAlarmPlaying(false);
