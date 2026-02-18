@@ -1,5 +1,5 @@
 import { ChevronRight, Play, Square, Upload, VolumeX, Volume2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -130,8 +130,15 @@ export const NicknameDialog = ({ open, onOpenChange, value, onSave }: {
 }) => {
   const { t } = useTranslation();
   const [tempValue, setTempValue] = useState(value);
+  const prevOpenRef = useRef(open);
   
-  if (open && tempValue !== value) setTempValue(value);
+  // 다이얼로그가 열릴 때만 외부 값으로 동기화 (렌더 중 setState 방지)
+  useEffect(() => {
+    if (open && !prevOpenRef.current) {
+      setTempValue(value);
+    }
+    prevOpenRef.current = open;
+  }, [open, value]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
