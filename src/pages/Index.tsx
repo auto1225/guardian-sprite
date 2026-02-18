@@ -230,7 +230,7 @@ const Index = () => {
               <button
               onClick={() => {
                   Alarm.stop();
-                  Alarm.suppressFor(10000);
+                  Alarm.suppressFor(30000);
                   if (activeAlert?.id) Alarm.addDismissed(activeAlert.id);
                   if (latestPhotoAlert?.id) Alarm.addDismissed(latestPhotoAlert.id);
                   setAlarmPlaying(false);
@@ -246,6 +246,7 @@ const Index = () => {
                   await dismissRemoteAlarm();
                   setRemoteAlarmDismissed(true);
                   Alarm.stop();
+                  Alarm.suppressFor(30000);
                   setAlarmPlaying(false);
                   toast({ title: t("alarm.computerAlarmDismissed"), description: t("alarm.computerAlarmDismissedDesc") });
                   setShowFallbackAlarmButtons(false);
