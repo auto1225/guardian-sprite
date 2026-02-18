@@ -1,7 +1,7 @@
 const STORAGE_KEY = "meercop_activity_logs";
-const DELETED_ALERT_IDS_KEY = "meercop_deleted_alert_ids";
-const MAX_LOGS = 50; // localStorage 용량 초과 방지
-const MAX_DELETED_IDS = 200;
+const PROCESSED_ALERT_IDS_KEY = "meercop_processed_alert_ids";
+const MAX_LOGS = 50;
+const MAX_PROCESSED_IDS = 200;
 
 export type LocalAlertType = "intrusion" | "unauthorized_peripheral" | "location_change" | "offline" | "low_battery";
 
@@ -148,7 +148,7 @@ export function deleteActivityLog(logId: string): void {
     const target = logs.find(l => l.id === logId);
     if (target?.event_data) {
       const alertId = (target.event_data as Record<string, unknown>).alertId as string | undefined;
-      if (alertId) addDeletedAlertId(alertId);
+      if (alertId) addProcessedAlertId(alertId);
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(logs.filter(l => l.id !== logId)));
   } catch (error) {
@@ -162,11 +162,10 @@ export function deleteActivityLogs(logIds: string[]): void {
     if (!stored) return;
     const idSet = new Set(logIds);
     const logs: LocalActivityLog[] = JSON.parse(stored);
-    // 삭제 대상의 alertId를 영구 삭제 목록에 추가
     logs.forEach(l => {
       if (idSet.has(l.id) && l.event_data) {
         const alertId = (l.event_data as Record<string, unknown>).alertId as string | undefined;
-        if (alertId) addDeletedAlertId(alertId);
+        if (alertId) addProcessedAlertId(alertId);
       }
     });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(logs.filter(l => !idSet.has(l.id))));
@@ -189,22 +188,22 @@ export function markLogsAsReadByIds(logIds: string[]): void {
   }
 }
 
-// ── 삭제된 alertId 영구 추적 ──
+// ── 처리 완료된 alertId 추적 (Presence 재생성 방지) ──
 
-function addDeletedAlertId(alertId: string): void {
+export function addProcessedAlertId(alertId: string): void {
   try {
-    const raw = localStorage.getItem(DELETED_ALERT_IDS_KEY);
+    const raw = localStorage.getItem(PROCESSED_ALERT_IDS_KEY);
     let ids: string[] = raw ? JSON.parse(raw) : [];
     if (ids.includes(alertId)) return;
     ids.push(alertId);
-    if (ids.length > MAX_DELETED_IDS) ids = ids.slice(-MAX_DELETED_IDS);
-    localStorage.setItem(DELETED_ALERT_IDS_KEY, JSON.stringify(ids));
+    if (ids.length > MAX_PROCESSED_IDS) ids = ids.slice(-MAX_PROCESSED_IDS);
+    localStorage.setItem(PROCESSED_ALERT_IDS_KEY, JSON.stringify(ids));
   } catch {}
 }
 
-export function isAlertIdDeleted(alertId: string): boolean {
+export function isAlertIdProcessed(alertId: string): boolean {
   try {
-    const raw = localStorage.getItem(DELETED_ALERT_IDS_KEY);
+    const raw = localStorage.getItem(PROCESSED_ALERT_IDS_KEY);
     if (!raw) return false;
     return (JSON.parse(raw) as string[]).includes(alertId);
   } catch { return false; }
