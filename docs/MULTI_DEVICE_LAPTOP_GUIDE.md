@@ -36,8 +36,9 @@
   |--------|----------|------|
   | `monitoring_toggle` | `{ device_id, is_monitoring }` | 감시 온/오프 |
   | `camouflage_toggle` | `{ device_id, camouflage_mode }` | 위장 모드 온/오프 |
-  | `lock_command` | `{ device_id, timestamp }` | 화면 잠금 |
-  | `message_command` | `{ device_id, message, timestamp }` | 팝업 메시지 표시 |
+  | `lock_command` | `{ device_id }` | 화면 잠금 |
+  | `message_command` | `{ device_id, message, title? }` | 팝업 메시지 표시 |
+  | `settings_updated` | `{ device_id, settings: {...} }` | 센서 설정/민감도/PIN 등 변경 |
 
 ### 5. 기기 상태 업데이트 (devices 테이블)
 - **현재 상태**: `validate-serial` 호출 시 기기의 `name`, `device_type`이 DB에 동기화됨

@@ -121,9 +121,44 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
     }
   }, [isOpen, device.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const broadcastSettingsUpdate = async (deviceId: string, updates: Record<string, unknown>) => {
+    const broadcastChannelName = `device-commands-${deviceId}`;
+    const existingCh = supabase.getChannels().find(ch => ch.topic === `realtime:${broadcastChannelName}`);
+    if (existingCh) supabase.removeChannel(existingCh);
+    
+    const channel = supabase.channel(broadcastChannelName);
+    try {
+      await new Promise<void>((resolve) => {
+        const timeout = setTimeout(() => { supabase.removeChannel(channel); resolve(); }, 5000);
+        channel.subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            clearTimeout(timeout);
+            channel.send({
+              type: "broadcast",
+              event: "settings_updated",
+              payload: { device_id: deviceId, settings: updates },
+            }).then(() => {
+              console.log("[Settings] Broadcast settings_updated sent:", Object.keys(updates));
+              supabase.removeChannel(channel);
+              resolve();
+            });
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            clearTimeout(timeout);
+            supabase.removeChannel(channel);
+            resolve();
+          }
+        });
+      });
+    } catch (err) {
+      console.warn("[Settings] Settings broadcast failed (DB update succeeded):", err);
+    }
+  };
+
   const saveMetadata = async (updates: Record<string, unknown>) => {
     await safeMetadataUpdate(device.id, updates);
     queryClient.invalidateQueries({ queryKey: ["devices"] });
+    // Broadcast to laptop so it can apply changes immediately (no RLS access to postgres_changes)
+    broadcastSettingsUpdate(device.id, updates);
   };
 
   const handleSaveNickname = async (name: string) => {

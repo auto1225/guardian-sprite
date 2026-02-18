@@ -54,7 +54,13 @@ export const useCommands = () => {
     console.log("[useCommands] toggleMonitoring success, is_monitoring set to:", enable);
     
     // Broadcast to laptop via Realtime channel (laptop can't use postgres_changes due to RLS)
-    const channel = supabase.channel(`device-commands-${deviceId}-${Date.now()}`);
+    // CRITICAL: Channel name must match what the laptop subscribes to: device-commands-${deviceId}
+    const broadcastChannelName = `device-commands-${deviceId}`;
+    // Remove any existing local channel with same name to avoid conflicts
+    const existingCh = supabase.getChannels().find(ch => ch.topic === `realtime:${broadcastChannelName}`);
+    if (existingCh) supabase.removeChannel(existingCh);
+    
+    const channel = supabase.channel(broadcastChannelName);
     try {
       await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => { supabase.removeChannel(channel); reject(new Error("Channel timeout")); }, 5000);
