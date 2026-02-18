@@ -13,6 +13,8 @@ const ToggleButton = ({ isOn, onToggle, isCamouflage, onCamouflageToggle }: Togg
       {/* MeerCOP Toggle - wide glassmorphism pill */}
       <button 
         onClick={onToggle}
+        aria-label={isOn ? "감시 중지" : "감시 시작"}
+        aria-pressed={isOn}
         className="flex-1 flex items-center justify-center gap-3 px-6 py-3.5 rounded-full font-bold text-lg transition-all border"
         style={{
           background: isOn
@@ -52,6 +54,8 @@ const ToggleButton = ({ isOn, onToggle, isCamouflage, onCamouflageToggle }: Togg
       {onCamouflageToggle && (
         <button
           onClick={onCamouflageToggle}
+          aria-label={isCamouflage ? "위장 모드 끄기" : "위장 모드 켜기"}
+          aria-pressed={!!isCamouflage}
           className="w-14 h-14 rounded-full flex items-center justify-center transition-all border"
           style={{
             background: isCamouflage

@@ -3,11 +3,11 @@ import App from "./App.tsx";
 import "./index.css";
 
 // 앱이 포그라운드로 돌아올 때 배지 카운트 초기화
-if ("clearAppBadge" in navigator) {
-  (navigator as any).clearAppBadge?.();
+if (navigator.clearAppBadge) {
+  navigator.clearAppBadge();
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
-      (navigator as any).clearAppBadge?.();
+      navigator.clearAppBadge?.();
     }
   });
 }

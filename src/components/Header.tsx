@@ -14,7 +14,7 @@ interface HeaderProps {
 const Header = ({ onMenuClick, onDeviceManageClick, unreadCount = 0, deviceId, onViewPhoto }: HeaderProps) => {
   return (
     <header className="flex items-center justify-between px-4 py-4">
-      <button className="p-1 text-primary-foreground" onClick={onMenuClick}>
+      <button className="p-1 text-primary-foreground" onClick={onMenuClick} aria-label="메뉴 열기">
         <Menu className="w-6 h-6" />
       </button>
       

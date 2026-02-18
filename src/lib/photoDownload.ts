@@ -48,7 +48,7 @@ export async function savePhotos(
   // 데스크톱: File System Access API로 폴더 한 번 선택 후 일괄 저장
   if ("showDirectoryPicker" in window) {
     try {
-      const dirHandle = await (window as any).showDirectoryPicker({ mode: "readwrite" });
+      const dirHandle = await window.showDirectoryPicker!({ mode: "readwrite" });
       for (const file of files) {
         const fileHandle = await dirHandle.getFileHandle(file.name, { create: true });
         const writable = await fileHandle.createWritable();
@@ -56,8 +56,8 @@ export async function savePhotos(
         await writable.close();
       }
       return;
-    } catch (e: any) {
-      if (e.name === "AbortError") return;
+    } catch (e: unknown) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
       // API 미지원 또는 실패 시 아래 폴백
     }
   }

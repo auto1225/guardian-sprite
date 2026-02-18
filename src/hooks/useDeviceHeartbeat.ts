@@ -27,8 +27,8 @@ export function useDeviceHeartbeat() {
 
     const getBatteryLevel = async (): Promise<number | null> => {
       try {
-        if ('getBattery' in navigator) {
-          const battery = await (navigator as any).getBattery();
+        if (navigator.getBattery) {
+          const battery = await navigator.getBattery();
           return Math.round(battery.level * 100);
         }
       } catch (err) {

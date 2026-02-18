@@ -8,7 +8,7 @@
  *   4. 모든 상태를 window 전역에 저장 — 다중 번들 안전
  */
 
-interface AlarmState {
+export interface AlarmState {
   isAlarming: boolean;
   gen: number;
   oscillators: OscillatorNode[];
@@ -24,7 +24,7 @@ interface AlarmState {
 const GLOBAL_KEY = '__meercop_alarm_v3';
 
 function getState(): AlarmState {
-  const w = window as any;
+  const w = window as unknown as Record<string, AlarmState>;
   if (!w[GLOBAL_KEY]) {
     w[GLOBAL_KEY] = {
       isAlarming: false,
@@ -47,7 +47,7 @@ function getState(): AlarmState {
       if (raw) w[GLOBAL_KEY].dismissed = new Set(JSON.parse(raw) as string[]);
     } catch {}
   }
-  const s = w[GLOBAL_KEY] as AlarmState;
+  const s = w[GLOBAL_KEY];
   if (!s.dismissed || !(s.dismissed instanceof Set)) {
     try {
       const raw = localStorage.getItem('meercop_dismissed_ids');
@@ -62,18 +62,18 @@ function getState(): AlarmState {
 // ── 레거시 전역 정리 ──
 (function cleanupLegacy() {
   try {
-    const w = window as any;
+    const w = window as unknown as Record<string, Record<string, unknown>>;
     for (const key of ['__meercop_alarm', '__meercop_alarm2']) {
       const old = w[key];
       if (!old) continue;
-      if (old.iid) try { clearInterval(old.iid); } catch {}
-      if (old.ctx) try { old.ctx.close(); } catch {}
-      if (Array.isArray(old.iids)) old.iids.forEach((id: any) => { try { clearInterval(id); } catch {} });
-      if (Array.isArray(old.ctxs)) old.ctxs.forEach((c: any) => { try { c.close(); } catch {} });
+      if (old.iid) try { clearInterval(old.iid as ReturnType<typeof setInterval>); } catch {}
+      if (old.ctx) try { (old.ctx as AudioContext).close(); } catch {}
+      if (Array.isArray(old.iids)) old.iids.forEach((id) => { try { clearInterval(id as ReturnType<typeof setInterval>); } catch {} });
+      if (Array.isArray(old.ctxs)) old.ctxs.forEach((c) => { try { (c as AudioContext).close(); } catch {} });
       delete w[key];
     }
-    if (w.__meercop_ivals) { w.__meercop_ivals.forEach((id: any) => clearInterval(id)); delete w.__meercop_ivals; }
-    if (w.__meercop_ctxs) { w.__meercop_ctxs.forEach((c: any) => { try { c.close(); } catch {} }); delete w.__meercop_ctxs; }
+    if (w.__meercop_ivals) { (w.__meercop_ivals as unknown as ReturnType<typeof setInterval>[]).forEach((id) => clearInterval(id)); delete w.__meercop_ivals; }
+    if (w.__meercop_ctxs) { (w.__meercop_ctxs as unknown as AudioContext[]).forEach((c) => { try { c.close(); } catch {} }); delete w.__meercop_ctxs; }
   } catch {}
 })();
 
