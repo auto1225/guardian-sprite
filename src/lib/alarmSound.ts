@@ -1,11 +1,10 @@
 /**
- * 경보음 모듈 v3 — 랩탑 useAlarmSystem.ts 패턴 기반
+ * 경보음 모듈 v4 — 안정적인 stop/volume 제어
  *
- * 핵심 원칙:
- *   1. AudioContext를 사용자 제스처 시 미리 unlock (모바일 필수)
- *   2. stopSound()를 항상 play 전에 호출 — 고아 리소스 차단
- *   3. isAlarming 플래그로 중복 오실레이터 방지
- *   4. 모든 상태를 window 전역에 저장 — 다중 번들 안전
+ * v3 대비 변경:
+ *   1. stopSound()에서 AudioContext를 close하여 스케줄된 모든 오디오 즉시 중단
+ *   2. masterGain 노드로 볼륨 변경 즉시 반영
+ *   3. play() 시 항상 새 AudioContext 생성 — suspend/resume 불안정성 제거
  */
 
 export interface AlarmState {
@@ -14,14 +13,15 @@ export interface AlarmState {
   oscillators: OscillatorNode[];
   intervals: ReturnType<typeof setInterval>[];
   audioCtx: AudioContext | null;
+  masterGain: GainNode | null;
   dismissed: Set<string>;
   suppressUntil: number;
   unlocked: boolean;
-  pendingPlayGen: number; // 0=없음, >0=play 실패 시 해당 gen에서 대기
-  lastStoppedAt: number; // stop() 호출 시각 — 이전 경보 재트리거 차단
+  pendingPlayGen: number;
+  lastStoppedAt: number;
 }
 
-const GLOBAL_KEY = '__meercop_alarm_v3';
+const GLOBAL_KEY = '__meercop_alarm_v4';
 
 function getState(): AlarmState {
   const w = window as unknown as Record<string, AlarmState>;
@@ -32,6 +32,7 @@ function getState(): AlarmState {
       oscillators: [],
       intervals: [],
       audioCtx: null,
+      masterGain: null,
       dismissed: new Set<string>(),
       suppressUntil: 0,
       unlocked: false,
@@ -63,12 +64,14 @@ function getState(): AlarmState {
 (function cleanupLegacy() {
   try {
     const w = window as unknown as Record<string, Record<string, unknown>>;
-    for (const key of ['__meercop_alarm', '__meercop_alarm2']) {
+    for (const key of ['__meercop_alarm', '__meercop_alarm2', '__meercop_alarm_v3']) {
       const old = w[key];
       if (!old) continue;
       if (old.iid) try { clearInterval(old.iid as ReturnType<typeof setInterval>); } catch {}
       if (old.ctx) try { (old.ctx as AudioContext).close(); } catch {}
+      if (old.audioCtx) try { (old.audioCtx as AudioContext).close(); } catch {}
       if (Array.isArray(old.iids)) old.iids.forEach((id) => { try { clearInterval(id as ReturnType<typeof setInterval>); } catch {} });
+      if (Array.isArray(old.intervals)) (old.intervals as ReturnType<typeof setInterval>[]).forEach((id) => { try { clearInterval(id); } catch {} });
       if (Array.isArray(old.ctxs)) old.ctxs.forEach((c) => { try { (c as AudioContext).close(); } catch {} });
       delete w[key];
     }
@@ -79,25 +82,12 @@ function getState(): AlarmState {
 
 // ══════════════════════════════════════
 // AudioContext 사전 Unlock — 모바일 핵심
-// 사용자의 첫 터치/클릭 시 AudioContext를 생성하고
-// 무음 버퍼를 재생하여 브라우저의 오디오 정책을 unlock합니다.
-// 이후 경보 시 이 AudioContext를 재사용합니다.
 // ══════════════════════════════════════
-
-function ensureAudioContext(): AudioContext {
-  const s = getState();
-  if (s.audioCtx && s.audioCtx.state !== 'closed') {
-    return s.audioCtx;
-  }
-  const ctx = new AudioContext();
-  s.audioCtx = ctx;
-  return ctx;
-}
 
 /** 사용자 제스처 컨텍스트에서 호출 — AudioContext unlock */
 export function unlockAudio() {
   const s = getState();
-  if (s.unlocked && s.audioCtx && s.audioCtx.state === 'running') {
+  if (s.unlocked) {
     // 이미 unlock 됐지만 대기 중인 play가 있으면 가드 체크 후 실행
     if (s.pendingPlayGen > 0 && s.pendingPlayGen === s.gen) {
       s.pendingPlayGen = 0;
@@ -112,20 +102,21 @@ export function unlockAudio() {
   }
 
   try {
-    const ctx = ensureAudioContext();
-    // 무음 버퍼 재생으로 unlock
+    // 무음 AudioContext 생성 후 즉시 닫기 — unlock 플래그만 설정
+    const ctx = new AudioContext();
     const buffer = ctx.createBuffer(1, 1, 22050);
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.connect(ctx.destination);
     source.start(0);
-
     if (ctx.state === 'suspended') {
       ctx.resume().catch(() => {});
     }
+    // unlock 확인 후 닫기 — play()에서 새 AudioContext를 생성
+    ctx.close().catch(() => {});
 
     s.unlocked = true;
-    console.log("[AlarmSound] 🔓 AudioContext unlocked (state:", ctx.state, ")");
+    console.log("[AlarmSound] 🔓 AudioContext unlocked");
 
     // unlock 성공 후 대기 중인 play가 있으면 가드 체크 후 실행
     if (s.pendingPlayGen > 0 && s.pendingPlayGen === s.gen) {
@@ -142,8 +133,7 @@ export function unlockAudio() {
   }
 }
 
-// 모든 사용자 상호작용에서 unlock 시도 — 리스너를 제거하지 않음
-// pendingPlay가 나중에 설정될 수 있으므로 항상 활성 상태 유지
+// 모든 사용자 상호작용에서 unlock 시도
 function setupAutoUnlock() {
   const events = ['touchstart', 'touchend', 'click', 'keydown'];
   const handler = () => { unlockAudio(); };
@@ -163,7 +153,6 @@ export function setMuted(muted: boolean) {
   if (muted) {
     stop();
   } else {
-    // 음소거 해제 시 lastStoppedAt 리셋 — 기존 경보가 다시 울릴 수 있도록
     const s = getState();
     s.lastStoppedAt = 0;
     try { localStorage.setItem('meercop_last_stopped_at', '0'); } catch {}
@@ -202,7 +191,7 @@ export function suppressFor(ms: number) {
 }
 
 // ══════════════════════════════════════
-// Last Stopped At — 이전 경보 재트리거 차단
+// Last Stopped At
 // ══════════════════════════════════════
 export function getLastStoppedAt(): number {
   return getState().lastStoppedAt || 0;
@@ -219,11 +208,17 @@ export function getVolume(): number {
 }
 
 export function setVolume(vol: number) {
-  try { localStorage.setItem('meercop_alarm_volume', String(Math.max(0, Math.min(1, vol)))); } catch {}
+  const clamped = Math.max(0, Math.min(1, vol));
+  try { localStorage.setItem('meercop_alarm_volume', String(clamped)); } catch {}
+  // 재생 중이면 masterGain으로 즉시 반영
+  const s = getState();
+  if (s.masterGain && s.audioCtx && s.audioCtx.state !== 'closed') {
+    try { s.masterGain.gain.value = clamped; } catch {}
+  }
 }
 
 // ══════════════════════════════════════
-// Core: stopSound
+// Core: stopSound — AudioContext를 닫아 모든 오디오 즉시 중단
 // ══════════════════════════════════════
 function stopSound() {
   const s = getState();
@@ -232,23 +227,20 @@ function stopSound() {
     try { clearInterval(iid); } catch {}
   }
   s.intervals = [];
-
-  for (const osc of s.oscillators) {
-    try { osc.stop(0); } catch {}
-    try { osc.disconnect(); } catch {}
-  }
   s.oscillators = [];
+  s.masterGain = null;
 
-  // AudioContext 자체를 suspend하여 스케줄된 모든 오디오 즉시 중단
-  if (s.audioCtx && s.audioCtx.state === 'running') {
-    s.audioCtx.suspend().catch(() => {});
+  // AudioContext를 닫아 스케줄된 모든 오디오를 즉시 중단
+  if (s.audioCtx) {
+    try { s.audioCtx.close(); } catch {}
+    s.audioCtx = null;
   }
 }
 
 // ══════════════════════════════════════
 // Core: playBeepCycle
 // ══════════════════════════════════════
-function playBeepCycle(audioCtx: AudioContext, volume: number): OscillatorNode[] {
+function playBeepCycle(audioCtx: AudioContext, masterGain: GainNode): OscillatorNode[] {
   const oscs: OscillatorNode[] = [];
   const beep = (time: number, freq: number) => {
     try {
@@ -256,10 +248,10 @@ function playBeepCycle(audioCtx: AudioContext, volume: number): OscillatorNode[]
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.connect(gain);
-      gain.connect(audioCtx.destination);
+      gain.connect(masterGain); // masterGain을 통해 destination으로
       osc.frequency.value = freq;
       osc.type = "square";
-      gain.gain.value = volume;
+      gain.gain.value = 1; // 개별 gain은 1, 볼륨은 masterGain이 제어
       osc.start(audioCtx.currentTime + time);
       osc.stop(audioCtx.currentTime + time + 0.2);
       oscs.push(osc);
@@ -294,33 +286,52 @@ export async function play() {
   console.log("[AlarmSound] ▶ play (gen:", myGen, ")");
 
   try {
-    const audioCtx = ensureAudioContext();
+    // 항상 새 AudioContext 생성 — 이전 close()와 충돌 없음
+    const audioCtx = new AudioContext();
+    s.audioCtx = audioCtx;
 
-    // suspended 상태면 강제 unlock (무음 버퍼 재생 + resume)
-    if (audioCtx.state === 'suspended' || !s.unlocked) {
+    // masterGain 생성 — 볼륨 제어 중앙화
+    const masterGain = audioCtx.createGain();
+    masterGain.gain.value = getVolume();
+    masterGain.connect(audioCtx.destination);
+    s.masterGain = masterGain;
+
+    // suspended 상태면 unlock 시도
+    if (audioCtx.state === 'suspended') {
+      if (!s.unlocked) {
+        // 사용자 제스처 없이 호출됨 — 다음 터치까지 대기
+        console.warn("[AlarmSound] AudioContext suspended, no unlock — queuing for next touch");
+        s.isAlarming = false;
+        s.pendingPlayGen = myGen;
+        try { audioCtx.close(); } catch {}
+        s.audioCtx = null;
+        s.masterGain = null;
+        return;
+      }
       try {
-        // 무음 버퍼로 브라우저 오디오 정책 우회
         const buffer = audioCtx.createBuffer(1, 1, 22050);
         const source = audioCtx.createBufferSource();
         source.buffer = buffer;
         source.connect(audioCtx.destination);
         source.start(0);
         await audioCtx.resume();
-        
-        // resume()이 throw하지 않아도 여전히 suspended일 수 있음 (사용자 제스처 없이 호출된 경우)
+
         if (audioCtx.state === 'suspended') {
-          console.warn("[AlarmSound] AudioContext still suspended after resume — queuing for next touch");
+          console.warn("[AlarmSound] Still suspended after resume — queuing for next touch");
           s.isAlarming = false;
           s.pendingPlayGen = myGen;
+          try { audioCtx.close(); } catch {}
+          s.audioCtx = null;
+          s.masterGain = null;
           return;
         }
-        
-        s.unlocked = true;
-        console.log("[AlarmSound] 🔓 Force-unlocked in play() (state:", audioCtx.state, ")");
       } catch {
-        console.warn("[AlarmSound] AudioContext resume failed — queuing for next touch");
+        console.warn("[AlarmSound] Resume failed — queuing for next touch");
         s.isAlarming = false;
         s.pendingPlayGen = myGen;
+        try { audioCtx.close(); } catch {}
+        s.audioCtx = null;
+        s.masterGain = null;
         return;
       }
     }
@@ -328,15 +339,14 @@ export async function play() {
     // gen이 바뀌었으면 stop()이 호출된 것 — 즉시 중단
     if (s.gen !== myGen) {
       console.log("[AlarmSound] play aborted (gen changed)");
+      try { audioCtx.close(); } catch {}
       return;
     }
 
-    const vol = getVolume();
-    const newOscs = playBeepCycle(audioCtx, vol);
+    const newOscs = playBeepCycle(audioCtx, masterGain);
     s.oscillators.push(...newOscs);
 
     const intervalId = setInterval(() => {
-      // gen 불일치 또는 isAlarming false → 즉시 중단
       if (!s.isAlarming || s.gen !== myGen) {
         clearInterval(intervalId);
         return;
@@ -354,12 +364,14 @@ export async function play() {
         return;
       }
 
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
+      // masterGain이 없으면 중단
+      if (!s.masterGain) {
+        clearInterval(intervalId);
+        s.isAlarming = false;
+        return;
       }
 
-      const v = getVolume();
-      const oscs = playBeepCycle(ctx, v);
+      const oscs = playBeepCycle(ctx, s.masterGain);
       s.oscillators.push(...oscs);
 
       if (s.oscillators.length > 30) {
@@ -383,7 +395,6 @@ export function stop() {
   s.isAlarming = false;
   s.pendingPlayGen = 0;
   s.gen++;
-  // 중복 재트리거 방지 (isDismissed로 주로 처리, 여기는 보조)
   s.lastStoppedAt = Date.now();
   try { localStorage.setItem('meercop_last_stopped_at', String(s.lastStoppedAt)); } catch {}
   stopSound();
