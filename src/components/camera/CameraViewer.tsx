@@ -130,9 +130,10 @@ const CameraViewer = ({
       const video = videoRef.current;
       if (video) {
         video.pause();
-        video.src = "";
         video.srcObject = null;
-        video.load();
+        // video.src = "" 와 video.load()를 호출하지 않음
+        // src="" 속성이 남으면 브라우저가 srcObject보다 src를 우선시하여
+        // 재연결 시 readyState가 0에서 변하지 않는 버그 발생
       }
       setIsVideoPlaying(false);
       setVideoKey(k => k + 1);
