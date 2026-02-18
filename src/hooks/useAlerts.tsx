@@ -80,6 +80,7 @@ export const useAlerts = (deviceId?: string | null) => {
     }
     if (Alarm.isSuppressed()) {
       console.log("[useAlerts] ⏭ Suppressed, ignoring alert:", alert.id);
+      Alarm.addDismissed(alert.id); // suppress 중 도착한 alert도 dismissed에 추가
       return;
     }
 
@@ -90,10 +91,11 @@ export const useAlerts = (deviceId?: string | null) => {
       return;
     }
 
-    // 최근 stop 후 10초 이내면 무시 (Presence 재트리거 방지)
+    // 최근 stop 후 30초 이내면 무시 (Presence 재트리거 방지)
     const timeSinceStop = Date.now() - Alarm.getLastStoppedAt();
-    if (timeSinceStop < 10000 && Alarm.getLastStoppedAt() > 0) {
+    if (timeSinceStop < 30000 && Alarm.getLastStoppedAt() > 0) {
       console.log("[useAlerts] ⏭ Recently stopped (", Math.round(timeSinceStop / 1000), "s ago), ignoring:", alert.id);
+      Alarm.addDismissed(alert.id); // 무시된 alert도 dismissed에 추가
       return;
     }
 
@@ -262,11 +264,11 @@ export const useAlerts = (deviceId?: string | null) => {
     Alarm.stop();
     const id = activeAlertRef.current?.id;
     if (id) Alarm.addDismissed(id);
-    // Presence sync 재트리거 방지: 10초간 억제 (5초로는 부족했음)
-    Alarm.suppressFor(10000);
+    // Presence sync 재트리거 방지: 30초간 억제
+    Alarm.suppressFor(30000);
     safeSetActiveAlert(null);
     activeAlertRef.current = null;
-    console.log("[useAlerts] ✅ All dismissed (suppress 5s)");
+    console.log("[useAlerts] ✅ All dismissed (suppress 30s)");
   }, [safeSetActiveAlert]);
 
   return {
