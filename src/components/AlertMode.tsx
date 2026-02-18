@@ -23,18 +23,29 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
   const [phoneDismissed, setPhoneDismissed] = useState(false);
 
   const handleDismissRemoteAlarm = async () => {
+    // 항상 로컬 해제를 먼저 수행 (원격 실패해도 오버레이는 닫힘)
+    stopAlertSound();
+    Alarm.addDismissed(activeAlert.id);
+    
     try {
       if (onSendRemoteAlarmOff) {
         await onSendRemoteAlarmOff();
       }
-      stopAlertSound();
-      Alarm.addDismissed(activeAlert.id);
       toast({ title: t("alarm.allDismissed"), description: t("alarm.allDismissedDesc") });
-      onDismiss();
     } catch (err) {
       console.error("[AlertMode] remote_alarm_off failed:", err);
       toast({ title: t("common.error"), description: t("alarm.computerAlarmDismissFailed"), variant: "destructive" });
     }
+    
+    // 항상 onDismiss 호출 — 오버레이 닫기 보장
+    onDismiss();
+  };
+
+  const handleForceClose = () => {
+    stopAlertSound();
+    Alarm.addDismissed(activeAlert.id);
+    Alarm.suppressFor(10000);
+    onDismiss();
   };
 
   const hasCamera = device?.is_camera_connected;
@@ -47,6 +58,12 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
         <div className="flex items-center gap-2">
           <span className="text-white font-black text-xl">{t("alert.securityAlert")}</span>
         </div>
+        <button
+          onClick={handleForceClose}
+          className="text-white/70 text-sm font-bold px-3 py-1.5 rounded-full bg-white/10 active:bg-white/20"
+        >
+          ✕
+        </button>
       </div>
 
       {/* Scrollable content area */}
