@@ -13,6 +13,7 @@ let activeDbChannel: ReturnType<typeof supabase.channel> | null = null;
 let activePresenceChannel: ReturnType<typeof supabase.channel> | null = null;
 const activeLeaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const realtimeConfirmedOnline = new Set<string>();
+const deviceChargingMap = new Map<string, boolean>(); // Presence-only: is_charging per deviceId
 let subscriberCount = 0;
 
 // ── 모듈 레벨 싱글톤: 기기 선택 상태 (모든 컴포넌트가 공유) ──
@@ -250,6 +251,7 @@ export const useDevices = () => {
               is_network_connected?: boolean;
               is_camera_connected?: boolean;
               battery_level?: number;
+              is_charging?: boolean;
               last_seen_at?: string;
             }> | undefined;
             if (!entries || entries.length === 0) return d;
@@ -263,6 +265,11 @@ export const useDevices = () => {
             const newStatus = latest.status === 'online' ? 'online' : 'offline';
             if (newStatus === 'online') realtimeConfirmedOnline.add(d.id);
             else realtimeConfirmedOnline.delete(d.id);
+
+            // Track is_charging in module-level map (not in DB)
+            if (latest.is_charging !== undefined) {
+              deviceChargingMap.set(d.id, latest.is_charging);
+            }
 
             const hasChanges = d.is_network_connected !== latest.is_network_connected || d.status !== newStatus || (latest.battery_level !== undefined && d.battery_level !== latest.battery_level);
             if (!hasChanges) return d;
@@ -330,6 +337,10 @@ export const useDevices = () => {
     };
   }, [user, queryClient]);
 
+  const getDeviceCharging = useCallback((deviceId: string): boolean => {
+    return deviceChargingMap.get(deviceId) ?? false;
+  }, []);
+
   return {
     devices,
     isLoading,
@@ -341,5 +352,6 @@ export const useDevices = () => {
     updateDevice,
     deleteDevice,
     refreshDeviceStatus,
+    getDeviceCharging,
   };
 };

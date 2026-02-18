@@ -16,7 +16,7 @@ interface DeviceListProps {
 
 const DeviceList = ({ isExpanded, onToggle, selectedDeviceId, selectedDevice, onSelectDevice }: DeviceListProps) => {
   const { t } = useTranslation();
-  const { devices: allDevices } = useDevices();
+  const { devices: allDevices, getDeviceCharging } = useDevices();
   const devices = allDevices.filter(d => d.device_type !== "smartphone");
 
   if (!selectedDevice || selectedDevice.device_type === "smartphone") {
@@ -66,6 +66,7 @@ const DeviceList = ({ isExpanded, onToggle, selectedDeviceId, selectedDevice, on
                   device={device}
                   isSelected={device.id === selectedDeviceId}
                   isMain={!!((device.metadata as Record<string, unknown>)?.is_main)}
+                  isCharging={getDeviceCharging(device.id)}
                   onSelect={() => {
                     onSelectDevice(device.id);
                     onToggle();
