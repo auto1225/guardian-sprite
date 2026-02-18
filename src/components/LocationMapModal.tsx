@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { X, MapPin, Navigation, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -92,16 +93,7 @@ const LocationMapModal = ({ isOpen, onClose, deviceId, deviceName }: LocationMap
         }
       }
 
-      const { data: devMeta } = await supabase
-        .from("devices")
-        .select("metadata")
-        .eq("id", deviceId)
-        .maybeSingle();
-      const existingMeta = (devMeta?.metadata as Record<string, unknown>) || {};
-      await supabase
-        .from("devices")
-        .update({ metadata: { ...existingMeta, locate_requested: new Date().toISOString() } })
-        .eq("id", deviceId);
+      await safeMetadataUpdate(deviceId, { locate_requested: new Date().toISOString() });
 
       setCommandSent(true);
 
