@@ -227,9 +227,11 @@ const Index = () => {
           <div className="flex flex-col items-center gap-2">
             {alarmPlaying && (
               <button
-                onClick={() => {
+              onClick={() => {
                   Alarm.stop();
+                  Alarm.suppressFor(5000);
                   if (activeAlert?.id) Alarm.addDismissed(activeAlert.id);
+                  if (latestPhotoAlert?.id) Alarm.addDismissed(latestPhotoAlert.id);
                   setAlarmPlaying(false);
                 }}
                 className="px-5 py-2.5 bg-white/15 backdrop-blur-md text-white border border-white/25 rounded-full font-bold text-sm shadow-lg active:scale-95 transition-transform flex items-center gap-2"
@@ -393,6 +395,9 @@ const Index = () => {
           alert={(viewingPhotoAlert || latestPhotoAlert)!}
           isHistoryView={!!viewingPhotoAlert && !latestPhotoAlert}
           onDismiss={() => {
+            // 사진 경보 ID도 dismissed에 등록 — 재트리거 방지
+            const photoId = (viewingPhotoAlert || latestPhotoAlert)?.id;
+            if (photoId) Alarm.addDismissed(photoId);
             if (!remoteAlarmDismissed) {
               setShowFallbackAlarmButtons(true);
             }

@@ -160,9 +160,12 @@ export function usePhotoReceiver(
 
   const dismissLatest = useCallback(() => {
     if (latestAlert) {
+      Alarm.addDismissed(latestAlert.id);
       markPhotoAlertRead(latestAlert.id);
       loadAlerts();
     }
+    Alarm.stop();
+    Alarm.suppressFor(5000);
     setLatestAlert(null);
   }, [latestAlert, loadAlerts]);
 
