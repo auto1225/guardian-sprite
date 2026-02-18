@@ -17,6 +17,7 @@ import CameraPage from "@/pages/Camera";
 import DeviceManagePage from "@/pages/DeviceManage";
 import PhotoAlertOverlay from "@/components/PhotoAlertOverlay";
 import PhotoAlertHistory from "@/components/PhotoAlertHistory";
+import HelpPage from "@/pages/Help";
 import { useDevices } from "@/hooks/useDevices";
 import * as Alarm from "@/lib/alarmSound";
 import { useAlerts } from "@/hooks/useAlerts";
@@ -73,6 +74,7 @@ const Index = () => {
   const [remoteAlarmDismissed, setRemoteAlarmDismissed] = useState(false);
   const [showFallbackAlarmButtons, setShowFallbackAlarmButtons] = useState(false);
   const [isPhotoHistoryOpen, setIsPhotoHistoryOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [alarmPlaying, setAlarmPlaying] = useState(false);
 
 
@@ -284,6 +286,7 @@ const Index = () => {
         isOpen={isSideMenuOpen}
         onClose={() => setIsSideMenuOpen(false)}
         onPhotoHistoryClick={() => setIsPhotoHistoryOpen(true)}
+        onHelpClick={() => setIsHelpOpen(true)}
       />
 
       {/* Settings Page */}
@@ -400,6 +403,12 @@ const Index = () => {
           viewPhotoAlert(alert);
         }}
         onDeleteAlert={removePhotoAlert}
+      />
+
+      {/* Help Page */}
+      <HelpPage
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
       />
     </div>
   );
