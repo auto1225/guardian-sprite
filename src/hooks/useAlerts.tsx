@@ -192,10 +192,56 @@ export const useAlerts = (deviceId?: string | null) => {
         }
       });
 
+    // ── 네트워크 복구 시 채널 재연결 ──
+    const handleReconnect = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.name === channelName && mountedRef.current) {
+        console.log("[useAlerts] ♻️ Reconnecting alert channel after network recovery");
+        // 기존 ref 정리
+        channelRef.current = null;
+        isSubscribedRef.current = false;
+        // 새 채널 가져오기 (ChannelManager가 이미 교체)
+        const newCh = channelManager.getOrCreate(channelName);
+        channelRef.current = newCh;
+        newCh
+          .on('presence', { event: 'sync' }, () => {
+            if (!mountedRef.current) return;
+            const state = newCh.presenceState();
+            const keys = Object.keys(state);
+            for (const key of keys) {
+              if (key === 'phone') continue;
+              const entries = state[key] as Array<{ active_alert?: ActiveAlert | null; status?: string }>;
+              for (const entry of entries) {
+                if (entry.status === 'listening') continue;
+                if (entry.active_alert) {
+                  handleAlertRef.current(entry.active_alert, key);
+                  return;
+                }
+              }
+            }
+          })
+          .on('broadcast', { event: 'active_alert' }, (payload) => {
+            if (!mountedRef.current) return;
+            const alert = payload?.payload?.active_alert as ActiveAlert | undefined;
+            const fromDevice = payload?.payload?.device_id as string | undefined;
+            if (alert) handleAlertRef.current(alert, fromDevice);
+          })
+          .on('broadcast', { event: 'remote_alarm_off' }, () => {})
+          .subscribe(async (status) => {
+            if (status === 'SUBSCRIBED' && mountedRef.current) {
+              isSubscribedRef.current = true;
+              await newCh.track({ role: 'phone', joined_at: new Date().toISOString() });
+            }
+          });
+      }
+    };
+    window.addEventListener('channelmanager:reconnect', handleReconnect);
+
     return () => {
       isSubscribedRef.current = false;
       channelRef.current = null;
       channelManager.remove(channelName);
+      window.removeEventListener('channelmanager:reconnect', handleReconnect);
     };
   }, [user?.id]);
 

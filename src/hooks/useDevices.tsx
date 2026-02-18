@@ -331,9 +331,24 @@ export const useDevices = () => {
         if (status === "CHANNEL_ERROR") console.error("[Presence] Channel error");
       });
 
+    // ── 네트워크 복구 시 채널 재연결 ──
+    const handleReconnect = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      const name = detail?.name;
+      if (name === dbChannelName || name === presenceChannelName) {
+        console.log("[useDevices] ♻️ Reconnecting channel:", name);
+        // 전체 채널 재설정을 위해 cleanup 후 재구독 트리거
+        cleanupAllChannels();
+        activeUserId = null; // 다음 렌더에서 재구독하도록 리셋
+        queryClient.invalidateQueries({ queryKey: ["devices", user?.id] });
+      }
+    };
+    window.addEventListener('channelmanager:reconnect', handleReconnect);
+
     return () => {
       subscriberCount--;
       if (subscriberCount <= 0) cleanupAllChannels();
+      window.removeEventListener('channelmanager:reconnect', handleReconnect);
     };
   }, [user, queryClient]);
 
