@@ -1,11 +1,17 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { Bell, Image, Trash2, CheckCheck, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Square, CheckSquare, MinusSquare } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useAlerts } from "@/hooks/useAlerts";
 import AlertItem from "./AlertItem";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { getPhotoAlerts, PhotoAlert, deletePhotoAlert, markPhotoAlertRead } from "@/lib/photoAlertStorage";
-import { deleteActivityLogs, markLogsAsReadByIds } from "@/lib/localActivityLogs";
+import {
+  getAlertLogs,
+  deleteActivityLogs,
+  markLogsAsReadByIds,
+  markLogAsRead,
+  markAllLogsAsRead,
+  LocalActivityLog,
+} from "@/lib/localActivityLogs";
 import { useDevices } from "@/hooks/useDevices";
 
 interface AlertPanelProps {
@@ -22,7 +28,7 @@ interface UnifiedAlert {
   is_read: boolean;
   device_name?: string;
   photoAlert?: PhotoAlert;
-  activityLog?: ReturnType<typeof useAlerts>["alerts"][0];
+  activityLog?: LocalActivityLog;
 }
 
 type FilterType = "all" | "photo" | "activity";
@@ -30,11 +36,20 @@ type FilterType = "all" | "photo" | "activity";
 const ITEMS_PER_PAGE = 10;
 
 const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
-  const { alerts: activityAlerts, unreadCount: activityUnread, markAsRead, markAllAsRead, refreshAlerts } = useAlerts(deviceId);
   const { devices } = useDevices();
   const { t } = useTranslation();
   const [refreshKey, setRefreshKey] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
+
+  // Read activity logs directly from localStorage (no Presence subscription)
+  const activityAlerts = useMemo(() => {
+    void refreshKey;
+    void isOpen;
+    return getAlertLogs(undefined, 50);
+  }, [refreshKey, isOpen]);
+  const activityUnread = activityAlerts.filter(a => !a.is_read).length;
+
+  const refreshAlerts = useCallback(() => setRefreshKey(k => k + 1), []);
   const [filter, setFilter] = useState<FilterType>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -124,7 +139,8 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
   }, [isOpen, currentPage, pageAlerts.length]);
 
   const handleMarkAllRead = () => {
-    markAllAsRead.mutate();
+    markAllLogsAsRead();
+    refreshAlerts();
     photoAlerts.forEach(a => {
       if (!a.is_read) markPhotoAlertRead(a.id);
     });
@@ -300,7 +316,7 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
                   ) : alert.activityLog ? (
                     <AlertItem
                       alert={alert.activityLog}
-                      onMarkRead={(id) => markAsRead.mutate(id)}
+                      onMarkRead={(id) => { markLogAsRead(id); refreshAlerts(); }}
                     />
                   ) : null}
                 </div>

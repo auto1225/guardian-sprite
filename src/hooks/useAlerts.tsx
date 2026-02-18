@@ -84,7 +84,7 @@ export const useAlerts = (deviceId?: string | null) => {
     }
 
     const age = Date.now() - new Date(alert.created_at).getTime();
-    if (age > 300_000) {
+    if (age > 120_000) {
       console.log("[useAlerts] ⏭ Stale alert (age:", Math.round(age / 1000), "s), dismissing:", alert.id);
       Alarm.addDismissed(alert.id);
       return;
