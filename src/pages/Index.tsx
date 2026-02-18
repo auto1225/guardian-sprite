@@ -23,7 +23,6 @@ import LocationHistoryModal from "@/components/LocationHistoryModal";
 import HelpPage from "@/pages/Help";
 import { useDevices } from "@/hooks/useDevices";
 import * as Alarm from "@/lib/alarmSound";
-import { debugAudioSources, emergencyKillAll } from "@/lib/alarmSound";
 import { useAlerts } from "@/hooks/useAlerts";
 import { useCommands } from "@/hooks/useCommands";
 import { usePhotoReceiver } from "@/hooks/usePhotoReceiver";
@@ -260,29 +259,6 @@ const Index = () => {
             </button>
           </div>
         )}
-        {/* 🔧 디버그: 오디오 소스 진단 */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              const report = debugAudioSources();
-              report.forEach(r => console.log("[AudioDebug]", r));
-              alert(report.join('\n'));
-            }}
-            className="px-3 py-1.5 bg-yellow-500/80 text-black rounded-full text-xs font-bold"
-          >
-            🔍 Audio Debug
-          </button>
-          <button
-            onClick={() => {
-              const report = emergencyKillAll();
-              report.forEach(r => console.log("[EmergencyKill]", r));
-              alert("Emergency Kill!\n" + report.join('\n'));
-            }}
-            className="px-3 py-1.5 bg-red-500/80 text-white rounded-full text-xs font-bold"
-          >
-            🚨 Emergency Kill
-          </button>
-        </div>
         <ToggleButton 
           isOn={isMonitoring}
           onToggle={handleToggleMonitoring}
