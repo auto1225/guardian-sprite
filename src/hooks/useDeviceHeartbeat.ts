@@ -25,30 +25,30 @@ export function useDeviceHeartbeat() {
 
     const deviceId = smartphoneDevice.id;
 
-    const getBatteryLevel = async (): Promise<number | null> => {
+    const getBatteryInfo = async (): Promise<{ level: number | null; charging: boolean | null }> => {
       try {
         if (navigator.getBattery) {
           const battery = await navigator.getBattery();
-          return Math.round(battery.level * 100);
+          return { level: Math.round(battery.level * 100), charging: battery.charging };
         }
       } catch (err) {
         console.warn("[Heartbeat] Battery API 접근 실패:", err);
       }
-      return null;
+      return { level: null, charging: null };
     };
 
     const setOnline = async () => {
       try {
-        const battery = await getBatteryLevel();
+        const { level } = await getBatteryInfo();
         await supabase
           .from("devices")
           .update({
             status: "online",
             last_seen_at: new Date().toISOString(),
-            ...(battery !== null ? { battery_level: battery } : {}),
+            ...(level !== null ? { battery_level: level } : {}),
           })
           .eq("id", deviceId);
-        console.log("[Heartbeat] ✅ Status set to online:", deviceId.slice(0, 8), "battery:", battery);
+        console.log("[Heartbeat] ✅ Status set to online:", deviceId.slice(0, 8), "battery:", level);
       } catch (err) {
         console.error("[Heartbeat] Failed to set online:", err);
       }
@@ -77,12 +77,12 @@ export function useDeviceHeartbeat() {
 
     const sendHeartbeat = async () => {
       try {
-        const battery = await getBatteryLevel();
+        const { level } = await getBatteryInfo();
         await supabase
           .from("devices")
           .update({
             last_seen_at: new Date().toISOString(),
-            ...(battery !== null ? { battery_level: battery } : {}),
+            ...(level !== null ? { battery_level: level } : {}),
           })
           .eq("id", deviceId);
       } catch (err) {

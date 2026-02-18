@@ -1,4 +1,4 @@
-import { Settings, ChevronDown, Battery, Laptop, Monitor, Smartphone } from "lucide-react";
+import { Settings, ChevronDown, Battery, BatteryCharging, Laptop, Monitor, Smartphone } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
@@ -7,6 +7,7 @@ interface DeviceCardProps {
   device: Device;
   isSelected: boolean;
   isMain?: boolean;
+  isCharging?: boolean;
   onSelect: () => void;
 }
 
@@ -23,7 +24,7 @@ const getDeviceIcon = (deviceType: Device["device_type"]) => {
   }
 };
 
-const DeviceCard = ({ device, isSelected, isMain, onSelect }: DeviceCardProps) => {
+const DeviceCard = ({ device, isSelected, isMain, isCharging, onSelect }: DeviceCardProps) => {
   const DeviceIcon = getDeviceIcon(device.device_type);
   const batteryLevel = device.battery_level ?? 100;
   
@@ -78,7 +79,11 @@ const DeviceCard = ({ device, isSelected, isMain, onSelect }: DeviceCardProps) =
         </div>
         <div className="flex items-center gap-0.5">
           <span className="text-white/90 text-xs drop-shadow-sm">{batteryLevel}%</span>
-          <Battery className={`w-4 h-4 ${batteryLevel < 20 ? "text-red-400" : "text-white/80"}`} />
+          {isCharging ? (
+            <BatteryCharging className="w-4 h-4 text-status-active" />
+          ) : (
+            <Battery className={`w-4 h-4 ${batteryLevel < 20 ? "text-red-400" : "text-white/80"}`} />
+          )}
         </div>
       </div>
     </div>
