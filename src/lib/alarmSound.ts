@@ -1,13 +1,14 @@
 /**
- * 경보음 모듈 v5 — 사용자 설정 경보음 + 안정적 stop/volume 제어
+ * 경보음 모듈 v6 — 전역 AudioContext 레지스트리 기반
  *
- * v4 대비 변경:
- *   1. 사용자가 설정에서 선택한 alarm_sound_id에 따라 경보음 패턴 변경
- *   2. 커스텀 사운드 지원 (localStorage에 저장된 오디오 파일 재생)
- *   3. 억제 시간 10초로 증가 (Presence 재트리거 방지)
+ * 핵심 변경:
+ *   1. 모든 AudioContext를 전역 배열 __meercop_audio_registry에 등록
+ *   2. stop() 시 레지스트리의 모든 AudioContext를 강제 종료
+ *   3. HMR 모듈 교체 시에도 이전 모듈의 오디오를 확실히 종료
+ *   4. 사용자 설정 경보음 지원
  */
 
-// ── 경보음 정의 (SettingsComponents.tsx의 ALARM_SOUNDS와 동일) ──
+// ── 경보음 정의 ──
 const ALARM_SOUND_CONFIGS: Record<string, { freq: number[]; pattern: number[] }> = {
   whistle: { freq: [2200, 1800], pattern: [0.15, 0.1] },
   siren: { freq: [660, 880], pattern: [0.3, 0.3] },
@@ -17,14 +18,94 @@ const ALARM_SOUND_CONFIGS: Record<string, { freq: number[]; pattern: number[] }>
   quiet: { freq: [400, 500], pattern: [0.4, 0.4] },
 };
 
+// ══════════════════════════════════════
+// 전역 오디오 레지스트리 — 모든 버전 공유
+// ══════════════════════════════════════
+const REGISTRY_KEY = '__meercop_audio_registry';
+const INTERVALS_KEY = '__meercop_all_intervals';
+const AUDIOS_KEY = '__meercop_all_audios';
+
+function getRegistry(): AudioContext[] {
+  const w = window as unknown as Record<string, AudioContext[]>;
+  if (!w[REGISTRY_KEY]) w[REGISTRY_KEY] = [];
+  return w[REGISTRY_KEY];
+}
+
+function getAllIntervals(): ReturnType<typeof setInterval>[] {
+  const w = window as unknown as Record<string, ReturnType<typeof setInterval>[]>;
+  if (!w[INTERVALS_KEY]) w[INTERVALS_KEY] = [];
+  return w[INTERVALS_KEY];
+}
+
+function getAllAudios(): HTMLAudioElement[] {
+  const w = window as unknown as Record<string, HTMLAudioElement[]>;
+  if (!w[AUDIOS_KEY]) w[AUDIOS_KEY] = [];
+  return w[AUDIOS_KEY];
+}
+
+function registerAudioCtx(ctx: AudioContext) {
+  getRegistry().push(ctx);
+}
+
+function registerInterval(id: ReturnType<typeof setInterval>) {
+  getAllIntervals().push(id);
+}
+
+function registerAudio(audio: HTMLAudioElement) {
+  getAllAudios().push(audio);
+}
+
+/** 전역 레지스트리의 모든 오디오를 강제 종료 */
+function nukeAllAudio() {
+  // AudioContexts
+  const registry = getRegistry();
+  for (const ctx of registry) {
+    try { ctx.close(); } catch {}
+  }
+  registry.length = 0;
+
+  // Intervals
+  const intervals = getAllIntervals();
+  for (const id of intervals) {
+    try { clearInterval(id); } catch {}
+  }
+  intervals.length = 0;
+
+  // HTML Audio elements
+  const audios = getAllAudios();
+  for (const audio of audios) {
+    try { audio.pause(); audio.currentTime = 0; audio.src = ''; } catch {}
+  }
+  audios.length = 0;
+
+  // 레거시 전역 객체도 정리
+  try {
+    const w = window as unknown as Record<string, Record<string, unknown>>;
+    for (const key of Object.keys(w)) {
+      if (!key.startsWith('__meercop_alarm')) continue;
+      const old = w[key];
+      if (!old || typeof old !== 'object') continue;
+      old.isAlarming = false;
+      old.pendingPlayGen = 0;
+      if (old.audioCtx) try { (old.audioCtx as AudioContext).close(); } catch {}
+      if (old.ctx) try { (old.ctx as AudioContext).close(); } catch {}
+      if (old.customAudio) try { (old.customAudio as HTMLAudioElement).pause(); } catch {}
+      if (Array.isArray(old.intervals)) (old.intervals as ReturnType<typeof setInterval>[]).forEach(id => { try { clearInterval(id as ReturnType<typeof setInterval>); } catch {} });
+      if (Array.isArray(old.oscillators)) (old.oscillators as OscillatorNode[]).forEach(o => { try { o.stop(); } catch {} });
+      old.intervals = [];
+      old.oscillators = [];
+      old.audioCtx = null;
+      old.masterGain = null;
+    }
+  } catch {}
+}
+
+// 모듈 로드 시 즉시 레거시 정리
+nukeAllAudio();
+
 export interface AlarmState {
   isAlarming: boolean;
   gen: number;
-  oscillators: OscillatorNode[];
-  intervals: ReturnType<typeof setInterval>[];
-  audioCtx: AudioContext | null;
-  masterGain: GainNode | null;
-  customAudio: HTMLAudioElement | null;
   dismissed: Set<string>;
   suppressUntil: number;
   unlocked: boolean;
@@ -32,19 +113,14 @@ export interface AlarmState {
   lastStoppedAt: number;
 }
 
-const GLOBAL_KEY = '__meercop_alarm_v5';
+const STATE_KEY = '__meercop_alarm_state_v6';
 
 function getState(): AlarmState {
   const w = window as unknown as Record<string, AlarmState>;
-  if (!w[GLOBAL_KEY]) {
-    w[GLOBAL_KEY] = {
+  if (!w[STATE_KEY]) {
+    w[STATE_KEY] = {
       isAlarming: false,
       gen: 0,
-      oscillators: [],
-      intervals: [],
-      audioCtx: null,
-      masterGain: null,
-      customAudio: null,
       dismissed: new Set<string>(),
       suppressUntil: 0,
       unlocked: false,
@@ -53,48 +129,22 @@ function getState(): AlarmState {
     };
     try {
       const lst = localStorage.getItem('meercop_last_stopped_at');
-      if (lst) w[GLOBAL_KEY].lastStoppedAt = parseInt(lst, 10) || 0;
+      if (lst) w[STATE_KEY].lastStoppedAt = parseInt(lst, 10) || 0;
     } catch {}
     try {
       const raw = localStorage.getItem('meercop_dismissed_ids');
-      if (raw) w[GLOBAL_KEY].dismissed = new Set(JSON.parse(raw) as string[]);
+      if (raw) w[STATE_KEY].dismissed = new Set(JSON.parse(raw) as string[]);
     } catch {}
   }
-  const s = w[GLOBAL_KEY];
+  const s = w[STATE_KEY];
   if (!s.dismissed || !(s.dismissed instanceof Set)) {
     try {
       const raw = localStorage.getItem('meercop_dismissed_ids');
       s.dismissed = raw ? new Set(JSON.parse(raw) as string[]) : new Set();
     } catch { s.dismissed = new Set(); }
   }
-  if (!Array.isArray(s.oscillators)) s.oscillators = [];
-  if (!Array.isArray(s.intervals)) s.intervals = [];
   return s;
 }
-
-// ── 레거시 전역 정리 ──
-(function cleanupLegacy() {
-  try {
-    const w = window as unknown as Record<string, Record<string, unknown>>;
-    for (const key of ['__meercop_alarm', '__meercop_alarm2', '__meercop_alarm_v3', '__meercop_alarm_v4']) {
-      const old = w[key];
-      if (!old) continue;
-      // isAlarming 강제 해제
-      old.isAlarming = false;
-      if (old.iid) try { clearInterval(old.iid as ReturnType<typeof setInterval>); } catch {}
-      if (old.ctx) try { (old.ctx as AudioContext).close(); } catch {}
-      if (old.audioCtx) try { (old.audioCtx as AudioContext).close(); } catch {}
-      // customAudio 정지
-      if (old.customAudio) try { (old.customAudio as HTMLAudioElement).pause(); } catch {}
-      if (Array.isArray(old.iids)) old.iids.forEach((id) => { try { clearInterval(id as ReturnType<typeof setInterval>); } catch {} });
-      if (Array.isArray(old.intervals)) (old.intervals as ReturnType<typeof setInterval>[]).forEach((id) => { try { clearInterval(id); } catch {} });
-      if (Array.isArray(old.ctxs)) old.ctxs.forEach((c) => { try { (c as AudioContext).close(); } catch {} });
-      delete w[key];
-    }
-    if (w.__meercop_ivals) { (w.__meercop_ivals as unknown as ReturnType<typeof setInterval>[]).forEach((id) => clearInterval(id)); delete w.__meercop_ivals; }
-    if (w.__meercop_ctxs) { (w.__meercop_ctxs as unknown as AudioContext[]).forEach((c) => { try { c.close(); } catch {} }); delete w.__meercop_ctxs; }
-  } catch {}
-})();
 
 // ══════════════════════════════════════
 // AudioContext 사전 Unlock — 모바일 핵심
@@ -221,13 +271,9 @@ export function getVolume(): number {
 export function setVolume(vol: number) {
   const clamped = Math.max(0, Math.min(1, vol));
   try { localStorage.setItem('meercop_alarm_volume', String(clamped)); } catch {}
-  const s = getState();
-  if (s.masterGain && s.audioCtx && s.audioCtx.state !== 'closed') {
-    try { s.masterGain.gain.value = clamped; } catch {}
-  }
-  // 커스텀 오디오 볼륨도 업데이트
-  if (s.customAudio) {
-    try { s.customAudio.volume = clamped; } catch {}
+  // 재생 중인 오디오 볼륨 즉시 반영
+  for (const audio of getAllAudios()) {
+    try { audio.volume = clamped; } catch {}
   }
 }
 
@@ -245,65 +291,16 @@ export function setSelectedSoundId(soundId: string) {
 }
 
 // ══════════════════════════════════════
-// Core: stopSound — 모든 버전의 오디오를 강제 종료
+// Core: stopSound — 전역 레지스트리 기반 완전 정지
 // ══════════════════════════════════════
-function nukeAllLegacy() {
-  try {
-    const w = window as unknown as Record<string, Record<string, unknown>>;
-    for (const key of Object.keys(w)) {
-      if (!key.startsWith('__meercop_alarm')) continue;
-      if (key === GLOBAL_KEY) continue; // 현재 버전은 stopSound()에서 별도 처리
-      const old = w[key];
-      if (!old || typeof old !== 'object') continue;
-      old.isAlarming = false;
-      old.pendingPlayGen = 0;
-      if (old.audioCtx) try { (old.audioCtx as AudioContext).close(); } catch {}
-      if (old.ctx) try { (old.ctx as AudioContext).close(); } catch {}
-      if (old.customAudio) try { (old.customAudio as HTMLAudioElement).pause(); } catch {}
-      if (Array.isArray(old.intervals)) (old.intervals as ReturnType<typeof setInterval>[]).forEach(id => { try { clearInterval(id); } catch {} });
-      if (Array.isArray(old.oscillators)) (old.oscillators as OscillatorNode[]).forEach(o => { try { o.stop(); } catch {} });
-      old.intervals = [];
-      old.oscillators = [];
-      old.audioCtx = null;
-      old.masterGain = null;
-    }
-  } catch {}
-}
-
 function stopSound() {
-  const s = getState();
-
-  for (const iid of s.intervals) {
-    try { clearInterval(iid); } catch {}
-  }
-  s.intervals = [];
-  
-  for (const osc of s.oscillators) {
-    try { osc.stop(); } catch {}
-  }
-  s.oscillators = [];
-  s.masterGain = null;
-
-  if (s.audioCtx) {
-    try { s.audioCtx.close(); } catch {}
-    s.audioCtx = null;
-  }
-
-  // 커스텀 오디오 정지
-  if (s.customAudio) {
-    try { s.customAudio.pause(); s.customAudio.currentTime = 0; } catch {}
-    s.customAudio = null;
-  }
-
-  // 모든 레거시 버전 강제 종료
-  nukeAllLegacy();
+  nukeAllAudio();
 }
 
 // ══════════════════════════════════════
-// Core: playSoundCycle — 선택된 경보음 패턴으로 재생
+// Core: playSoundCycle
 // ══════════════════════════════════════
-function playSoundCycle(audioCtx: AudioContext, masterGain: GainNode, soundConfig: { freq: number[]; pattern: number[] }): OscillatorNode[] {
-  const oscs: OscillatorNode[] = [];
+function playSoundCycle(audioCtx: AudioContext, masterGain: GainNode, soundConfig: { freq: number[]; pattern: number[] }) {
   const beep = (time: number, freq: number, duration: number) => {
     try {
       if (audioCtx.state === 'closed') return;
@@ -316,61 +313,46 @@ function playSoundCycle(audioCtx: AudioContext, masterGain: GainNode, soundConfi
       gain.gain.value = 1;
       osc.start(audioCtx.currentTime + time);
       osc.stop(audioCtx.currentTime + time + duration);
-      oscs.push(osc);
     } catch {}
   };
 
   let t = 0;
-  // 한 사이클: 패턴을 2번 반복하여 충분한 길이 확보
   for (let repeat = 0; repeat < 2; repeat++) {
     for (let i = 0; i < soundConfig.freq.length; i++) {
       beep(t, soundConfig.freq[i], soundConfig.pattern[i]);
       t += soundConfig.pattern[i] + 0.05;
     }
-    t += 0.1; // 반복 간 간격
+    t += 0.1;
   }
-
-  return oscs;
 }
 
 // ══════════════════════════════════════
 // Custom Sound Playback
 // ══════════════════════════════════════
-function playCustomSound(deviceId: string | null, volume: number, gen: number): boolean {
-  const s = getState();
-  
-  // deviceId가 없으면 모든 기기의 커스텀 사운드 키를 검색
+function playCustomSound(volume: number): boolean {
   let dataUrl: string | null = null;
-  if (deviceId) {
-    dataUrl = localStorage.getItem(`meercop_custom_sound_${deviceId}`);
-  }
-  if (!dataUrl) {
-    // 현재 선택된 기기의 커스텀 사운드를 찾기 위해 모든 키 검색
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key?.startsWith('meercop_custom_sound_')) {
-          dataUrl = localStorage.getItem(key);
-          if (dataUrl) break;
-        }
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith('meercop_custom_sound_')) {
+        dataUrl = localStorage.getItem(key);
+        if (dataUrl) break;
       }
-    } catch {}
-  }
-  
+    }
+  } catch {}
+
   if (!dataUrl) return false;
 
   try {
     const audio = new Audio(dataUrl);
     audio.volume = volume;
     audio.loop = true;
-    s.customAudio = audio;
-    
+    registerAudio(audio);
+
     audio.play().catch((err) => {
       console.warn("[AlarmSound] Custom audio play failed:", err);
-      // 커스텀 실패 시 기본 비프음으로 폴백
-      s.customAudio = null;
     });
-    
+
     return true;
   } catch {
     return false;
@@ -393,6 +375,7 @@ export async function play(deviceId?: string) {
   }
   if (isMuted()) return;
 
+  // 기존 사운드 완전 정리
   stopSound();
 
   s.isAlarming = true;
@@ -403,8 +386,7 @@ export async function play(deviceId?: string) {
 
   // 커스텀 사운드 처리
   if (soundId === 'custom') {
-    const played = playCustomSound(deviceId || null, volume, myGen);
-    if (played) {
+    if (playCustomSound(volume)) {
       console.log("[AlarmSound] 🎵 Playing custom sound");
       return;
     }
@@ -416,12 +398,11 @@ export async function play(deviceId?: string) {
 
   try {
     const audioCtx = new AudioContext();
-    s.audioCtx = audioCtx;
+    registerAudioCtx(audioCtx);
 
     const masterGain = audioCtx.createGain();
     masterGain.gain.value = volume;
     masterGain.connect(audioCtx.destination);
-    s.masterGain = masterGain;
 
     if (audioCtx.state === 'suspended') {
       if (!s.unlocked) {
@@ -429,8 +410,6 @@ export async function play(deviceId?: string) {
         s.isAlarming = false;
         s.pendingPlayGen = myGen;
         try { audioCtx.close(); } catch {}
-        s.audioCtx = null;
-        s.masterGain = null;
         return;
       }
       try {
@@ -446,8 +425,6 @@ export async function play(deviceId?: string) {
           s.isAlarming = false;
           s.pendingPlayGen = myGen;
           try { audioCtx.close(); } catch {}
-          s.audioCtx = null;
-          s.masterGain = null;
           return;
         }
       } catch {
@@ -455,8 +432,6 @@ export async function play(deviceId?: string) {
         s.isAlarming = false;
         s.pendingPlayGen = myGen;
         try { audioCtx.close(); } catch {}
-        s.audioCtx = null;
-        s.masterGain = null;
         return;
       }
     }
@@ -467,10 +442,8 @@ export async function play(deviceId?: string) {
       return;
     }
 
-    const newOscs = playSoundCycle(audioCtx, masterGain, soundConfig);
-    s.oscillators.push(...newOscs);
+    playSoundCycle(audioCtx, masterGain, soundConfig);
 
-    // 사이클 간격 계산: 패턴 총 길이 * 2 + 여유
     const cycleLength = soundConfig.pattern.reduce((a, b) => a + b + 0.05, 0) * 2 + 0.3;
     const intervalMs = Math.max(2000, cycleLength * 1000 + 500);
 
@@ -480,8 +453,7 @@ export async function play(deviceId?: string) {
         return;
       }
 
-      const ctx = s.audioCtx;
-      if (!ctx || ctx.state === 'closed') {
+      if (audioCtx.state === 'closed') {
         clearInterval(intervalId);
         s.isAlarming = false;
         return;
@@ -492,21 +464,10 @@ export async function play(deviceId?: string) {
         return;
       }
 
-      if (!s.masterGain) {
-        clearInterval(intervalId);
-        s.isAlarming = false;
-        return;
-      }
-
-      const oscs = playSoundCycle(ctx, s.masterGain, soundConfig);
-      s.oscillators.push(...oscs);
-
-      if (s.oscillators.length > 30) {
-        s.oscillators = s.oscillators.slice(-12);
-      }
+      playSoundCycle(audioCtx, masterGain, soundConfig);
     }, intervalMs);
 
-    s.intervals.push(intervalId);
+    registerInterval(intervalId);
 
   } catch (err) {
     console.error("[AlarmSound] play error:", err);
@@ -524,7 +485,9 @@ export function stop() {
   s.gen++;
   s.lastStoppedAt = Date.now();
   try { localStorage.setItem('meercop_last_stopped_at', String(s.lastStoppedAt)); } catch {}
-  stopSound(); // stopSound() 내부에서 nukeAllLegacy()도 호출됨
+
+  // 전역 레지스트리를 통해 모든 오디오 강제 종료
+  stopSound();
 
   // 시스템 푸시 알림도 함께 닫기
   try {
