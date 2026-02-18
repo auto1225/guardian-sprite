@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useDevices } from "@/hooks/useDevices";
-import { Json } from "@/integrations/supabase/types";
+import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 
 /**
  * 스마트폰의 위치 응답 훅
@@ -62,43 +62,26 @@ export function useLocationResponder() {
 
             console.log(`[LocationResponder] Location acquired (${source}):`, { latitude, longitude });
 
-            const existingMeta = metadata as Record<string, unknown>;
-            const updatedMeta: Record<string, unknown> = {
-              ...existingMeta,
-              locate_requested: null,
-              location_source: source,
-            };
+            try {
+              await safeMetadataUpdate(
+                deviceId,
+                { locate_requested: null, location_source: source },
+                { latitude, longitude, location_updated_at: new Date().toISOString() }
+              );
+            } catch (error) {
 
-            const { error } = await supabase
-              .from("devices")
-              .update({
-                latitude,
-                longitude,
-                location_updated_at: new Date().toISOString(),
-                metadata: updatedMeta as unknown as Json,
-              })
-              .eq("id", deviceId);
-
-            if (error) {
               console.error("[LocationResponder] DB update failed:", error);
-            } else {
-              console.log("[LocationResponder] ✅ Location updated successfully (source:", source, ")");
+              throw error;
             }
+            console.log("[LocationResponder] ✅ Location updated successfully (source:", source, ")");
           } catch (err) {
             console.error("[LocationResponder] All location methods failed:", err);
 
-            const existingMeta = (metadata as Record<string, unknown>) || {};
-            await supabase
-              .from("devices")
-              .update({
-                metadata: {
-                  ...existingMeta,
-                  locate_requested: null,
-                  locate_error: "All location methods failed",
-                  location_source: null,
-                } as unknown as Json,
-              })
-              .eq("id", deviceId);
+            await safeMetadataUpdate(deviceId, {
+              locate_requested: null,
+              locate_error: "All location methods failed",
+              location_source: null,
+            });
           } finally {
             processingRef.current = false;
           }
