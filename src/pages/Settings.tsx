@@ -215,7 +215,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
   const selectedSoundLabel =
     selectedSoundId === "custom"
       ? customSoundName || t("settings.soundDialog.customLabel")
-      : ALARM_SOUNDS.find((s) => s.id === selectedSoundId)?.label || t("settings.sounds.whistle");
+      : t(ALARM_SOUNDS.find((s) => s.id === selectedSoundId)?.labelKey || "settings.sounds.whistle");
 
   return (
     <>
@@ -403,7 +403,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
                         }`}
                         style={motionSensitivity === key ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
                       >
-                        {SENSITIVITY_MAP[key].label}
+                        {t(SENSITIVITY_MAP[key].labelKey)}
                       </button>
                     ))}
                   </div>
@@ -452,7 +452,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
                         }`}
                         style={mouseSensitivity === key ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
                       >
-                        {SENSITIVITY_MAP[key].label}
+                        {t(SENSITIVITY_MAP[key].labelKey)}
                       </button>
                     ))}
                   </div>
