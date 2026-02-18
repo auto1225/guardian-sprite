@@ -489,12 +489,17 @@ export function stop() {
   // 전역 레지스트리를 통해 모든 오디오 강제 종료
   stopSound();
 
-  // 시스템 푸시 알림도 함께 닫기
+  // 시스템 푸시 알림도 함께 닫기 (모든 태그)
   try {
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
       navigator.serviceWorker.ready.then(reg => {
-        reg.getNotifications({ tag: 'meercop-alert' }).then(notifications => {
-          notifications.forEach(n => n.close());
+        // tag 필터 없이 모든 알림을 가져와서 meercop 관련 알림을 모두 닫음
+        reg.getNotifications().then(notifications => {
+          notifications.forEach(n => {
+            if (!n.tag || n.tag.startsWith('meercop')) {
+              n.close();
+            }
+          });
         });
       }).catch(() => {});
     }
