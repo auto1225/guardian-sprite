@@ -1,6 +1,7 @@
 import { ChevronRight, Play, Square, Upload, VolumeX, Volume2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -77,7 +78,7 @@ export const SensorSection = ({ children }: { children: React.ReactNode }) => (
 export const SensorToggle = ({ label, description, checked, onChange }: {
   label: string; description: string; checked: boolean; onChange: (checked: boolean) => void;
 }) => {
-  const { Switch } = require("@/components/ui/switch");
+  // Switch is now imported at the top level
   return (
     <div className="flex items-center justify-between">
       <div>
