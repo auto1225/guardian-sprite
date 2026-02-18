@@ -8,6 +8,7 @@ import { hashPin } from "@/lib/pinHash";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
+import { useTranslation } from "react-i18next";
 import {
   SettingItem,
   SensorSection,
@@ -34,6 +35,7 @@ interface SettingsPageProps {
 const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPageProps) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [licenses, setLicenses] = useState<{ serial_key: string; device_id: string | null; is_active: boolean }[]>([]);
   const [settingsDeviceId, setSettingsDeviceId] = useState(initialDeviceId);
 
@@ -131,9 +133,9 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
       setNickname(name);
       setShowNicknameDialog(false);
       queryClient.invalidateQueries({ queryKey: ["devices"] });
-      toast({ title: "저장됨", description: "닉네임이 변경되었습니다." });
+      toast({ title: t("common.saved"), description: t("settings.nicknameChanged") });
     } catch {
-      toast({ title: "오류", description: "저장에 실패했습니다.", variant: "destructive" });
+      toast({ title: t("common.error"), description: t("common.saveFailed"), variant: "destructive" });
     }
   };
 
@@ -144,10 +146,10 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
         await saveMetadata({ alarm_pin: pin, alarm_pin_hash: pinHash });
         setAlarmPin(pin);
         setShowPinDialog(false);
-        toast({ title: "저장됨", description: "비밀번호가 변경되었습니다." });
+        toast({ title: t("common.saved"), description: t("settings.pinChanged") });
       } catch (err) {
         console.error("[Settings] PIN 저장 실패:", err);
-        toast({ title: "오류", description: "저장에 실패했습니다.", variant: "destructive" });
+        toast({ title: t("common.error"), description: t("common.saveFailed"), variant: "destructive" });
       }
     }
   };
@@ -157,7 +159,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
     try {
       await saveMetadata({ alarm_sound_id: soundId });
     } catch {
-      toast({ title: "오류", description: "저장에 실패했습니다.", variant: "destructive" });
+      toast({ title: t("common.error"), description: t("common.saveFailed"), variant: "destructive" });
     }
     setShowSoundDialog(false);
   };
@@ -166,7 +168,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "오류", description: "파일 크기는 5MB 이하여야 합니다.", variant: "destructive" });
+      toast({ title: t("common.error"), description: t("settings.soundDialog.fileTooLarge"), variant: "destructive" });
       return;
     }
     const reader = new FileReader();
@@ -178,9 +180,9 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
       setSelectedSoundId("custom");
       try {
         await saveMetadata({ alarm_sound_id: "custom", custom_sound_name: file.name });
-        toast({ title: "저장됨", description: `"${file.name}" 경보음으로 설정되었습니다.` });
+        toast({ title: t("common.saved"), description: t("settings.soundDialog.customSet", { name: file.name }) });
       } catch {
-        toast({ title: "오류", description: "저장에 실패했습니다.", variant: "destructive" });
+        toast({ title: t("common.error"), description: t("common.saveFailed"), variant: "destructive" });
       }
     };
     reader.readAsDataURL(file);
@@ -192,7 +194,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
     try {
       await saveMetadata({ sensorSettings: updated });
     } catch {
-      toast({ title: "오류", description: "설정 저장에 실패했습니다.", variant: "destructive" });
+      toast({ title: t("common.error"), description: t("common.settingSaveFailed"), variant: "destructive" });
       setSensorSettings(sensorSettings);
     }
   };
@@ -200,20 +202,20 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
   const handleSensitivityChange = async (val: MotionSensitivity) => {
     setMotionSensitivity(val);
     try { await saveMetadata({ motionSensitivity: val }); }
-    catch { toast({ title: "오류", description: "설정 저장에 실패했습니다.", variant: "destructive" }); }
+    catch { toast({ title: t("common.error"), description: t("common.settingSaveFailed"), variant: "destructive" }); }
   };
 
   const handleMouseSensitivityChange = async (val: MotionSensitivity) => {
     setMouseSensitivity(val);
     try { await saveMetadata({ mouseSensitivity: val }); }
-    catch { toast({ title: "오류", description: "설정 저장에 실패했습니다.", variant: "destructive" }); }
+    catch { toast({ title: t("common.error"), description: t("common.settingSaveFailed"), variant: "destructive" }); }
   };
 
   const isLaptop = sensorSettings.deviceType === "laptop";
   const selectedSoundLabel =
     selectedSoundId === "custom"
-      ? customSoundName || "사용자 지정"
-      : ALARM_SOUNDS.find((s) => s.id === selectedSoundId)?.label || "호루라기";
+      ? customSoundName || t("settings.soundDialog.customLabel")
+      : ALARM_SOUNDS.find((s) => s.id === selectedSoundId)?.label || t("settings.sounds.whistle");
 
   return (
     <>
@@ -228,7 +230,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
           <button onClick={onClose} className="text-white hover:text-white/80 transition-colors">
             <ArrowLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-white font-bold text-lg">설정</h1>
+          <h1 className="text-white font-bold text-lg">{t("settings.title")}</h1>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3 alert-history-scroll">
@@ -236,7 +238,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
           {devices.length > 1 && (
             <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
               <div className="px-4 pt-3 pb-1">
-                <span className="text-white font-semibold text-sm">설정 대상 기기</span>
+                <span className="text-white font-semibold text-sm">{t("settings.targetDevice")}</span>
               </div>
               <div className="px-4 pb-3 flex gap-2 flex-wrap">
                 {devices.map((d) => (
@@ -259,15 +261,15 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
           <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
             <div className="px-4 pt-4 pb-2 flex items-center justify-between">
               <div>
-                <span className="text-white font-semibold text-sm block">시리얼 넘버</span>
-                <span className="text-white/80 text-xs">등록된 시리얼 {licenses.length}개</span>
+                <span className="text-white font-semibold text-sm block">{t("settings.serialNumbers")}</span>
+                <span className="text-white/80 text-xs">{t("settings.registeredSerials", { count: licenses.length })}</span>
               </div>
-              <span className="text-white/40 text-xs">탭하여 복사</span>
+              <span className="text-white/40 text-xs">{t("settings.tapToCopy")}</span>
             </div>
             <div className="max-h-[180px] overflow-y-auto alert-history-scroll">
               {licenses.length === 0 ? (
                 <div className="px-4 pb-4">
-                  <span className="text-white/60 text-sm">등록된 시리얼이 없습니다</span>
+                  <span className="text-white/60 text-sm">{t("settings.noSerials")}</span>
                 </div>
               ) : (
                 licenses.map((lic, idx) => (
@@ -275,7 +277,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
                     key={lic.serial_key}
                     onClick={() => {
                       navigator.clipboard.writeText(lic.serial_key);
-                      toast({ title: "복사됨", description: "시리얼 넘버가 클립보드에 복사되었습니다." });
+                      toast({ title: t("common.copied"), description: t("settings.serialCopied") });
                     }}
                     className={`w-full px-4 py-3 flex items-center justify-between text-left hover:bg-white/5 active:bg-white/10 transition-colors ${idx > 0 ? 'border-t border-white/10' : ''}`}
                     style={lic.device_id === device.id ? { background: 'hsla(200, 60%, 30%, 0.5)' } : undefined}
@@ -287,8 +289,8 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
                       <span className={`text-xs mt-0.5 font-semibold ${lic.device_id === device.id ? '' : 'text-white/50'}`}
                         style={lic.device_id === device.id ? { color: 'hsla(52, 100%, 60%, 0.9)' } : undefined}
                       >
-                        {lic.device_id === device.id ? '📌 현재 기기' : lic.device_id ? '🔗 다른 기기 연결됨' : '⏳ 미연결'}
-                        {!lic.is_active && ' · 비활성'}
+                        {lic.device_id === device.id ? t("settings.currentDevice") : lic.device_id ? t("settings.otherDeviceLinked") : t("settings.unlinked")}
+                        {!lic.is_active && ` · ${t("settings.inactive")}`}
                       </span>
                     </div>
                     <ChevronRight className="w-4 h-4 text-white/40 shrink-0 ml-2" />
@@ -300,42 +302,42 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
 
           {/* General Settings */}
           <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
-            <SettingItem label="닉네임" value={nickname} onClick={() => setShowNicknameDialog(true)} />
+            <SettingItem label={t("settings.nickname")} value={nickname} onClick={() => setShowNicknameDialog(true)} />
             <div className="border-t border-white/10" />
-            <SettingItem label="경보해제 비밀번호" value={alarmPin} onClick={() => setShowPinDialog(true)} />
+            <SettingItem label={t("settings.alarmPin")} value={alarmPin} onClick={() => setShowPinDialog(true)} />
             <div className="border-t border-white/10" />
-            <SettingItem label="경보음" value={selectedSoundLabel} onClick={() => setShowSoundDialog(true)} />
+            <SettingItem label={t("settings.alarmSound")} value={selectedSoundLabel} onClick={() => setShowSoundDialog(true)} />
           </div>
 
           {/* Toggle Settings */}
           <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
             <div className="px-4 py-4 flex items-center justify-between">
               <div>
-                <span className="text-white font-semibold text-sm block">스마트폰 경보음</span>
-                <span className="text-white/80 text-xs">경보 발생 시 스마트폰에서 경보음 재생</span>
+                <span className="text-white font-semibold text-sm block">{t("settings.phoneAlarmSound")}</span>
+                <span className="text-white/80 text-xs">{t("settings.phoneAlarmSoundDesc")}</span>
               </div>
               <Switch
                 checked={!isAlarmMuted()}
                 onCheckedChange={(v) => {
                   setAlarmMuted(!v);
-                  toast({ title: v ? "경보음 활성화" : "경보음 비활성화", description: v ? "경보 시 경보음이 울립니다." : "경보음이 꺼졌습니다. 알림은 계속 수신됩니다." });
+                  toast({ title: v ? t("settings.alarmEnabled") : t("settings.alarmDisabled"), description: v ? t("settings.alarmEnabledDesc") : t("settings.alarmDisabledDesc") });
                 }}
               />
             </div>
             <div className="border-t border-white/10" />
             <div className="px-4 py-4 flex items-center justify-between">
               <div>
-                <span className="text-white font-semibold text-sm block">컴퓨터 경보 해제 시 비밀번호</span>
-                <span className="text-white/80 text-xs">컴퓨터에서 경보 해제 시 비밀번호 입력 필요</span>
+                <span className="text-white font-semibold text-sm block">{t("settings.pcPinRequired")}</span>
+                <span className="text-white/80 text-xs">{t("settings.pcPinRequiredDesc")}</span>
               </div>
               <Switch
                 checked={!!(meta.require_pc_pin as boolean)}
                 onCheckedChange={async (v) => {
                   try {
                     await saveMetadata({ require_pc_pin: v });
-                    toast({ title: v ? "활성화" : "비활성화", description: v ? "컴퓨터에서 비밀번호 입력이 필요합니다." : "컴퓨터에서 비밀번호 없이 해제할 수 있습니다." });
+                    toast({ title: v ? t("settings.pcPinEnabled") : t("settings.pcPinDisabled"), description: v ? t("settings.pcPinEnabledDesc") : t("settings.pcPinDisabledDesc") });
                   } catch {
-                    toast({ title: "오류", description: "설정 저장에 실패했습니다.", variant: "destructive" });
+                    toast({ title: t("common.error"), description: t("common.settingSaveFailed"), variant: "destructive" });
                   }
                 }}
               />
@@ -344,14 +346,14 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
 
           {/* Sensor Settings */}
           <div className="pt-2 pb-1">
-            <span className="text-white font-bold text-xs uppercase tracking-wider">감지 센서 설정</span>
+            <span className="text-white font-bold text-xs uppercase tracking-wider">{t("settings.sensorSettings")}</span>
           </div>
 
           {/* Device Type */}
           <div className="rounded-2xl p-4 border border-white/25" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
             <div className="mb-3">
-              <span className="text-white font-semibold text-sm block">기기 타입</span>
-              <span className="text-white/80 text-xs">기기 타입에 따라 사용 가능한 센서가 달라집니다</span>
+              <span className="text-white font-semibold text-sm block">{t("settings.deviceType")}</span>
+              <span className="text-white/80 text-xs">{t("settings.deviceTypeDesc")}</span>
             </div>
             <div className="flex gap-2">
               {(["laptop", "desktop", "tablet"] as const).map((type) => (
@@ -365,6 +367,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
                       await supabase.from("devices").update({ device_type: type }).eq("id", device.id);
                       queryClient.invalidateQueries({ queryKey: ["devices"] });
                     } catch {
+                      toast({ title: t("common.error"), description: t("common.settingSaveFailed"), variant: "destructive" });
                       toast({ title: "오류", description: "설정 저장에 실패했습니다.", variant: "destructive" });
                     }
                   }}
@@ -372,8 +375,8 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
                     sensorSettings.deviceType === type ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
                   }`}
                   style={sensorSettings.deviceType === type ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
-                >
-                  {type === "laptop" ? "노트북" : type === "desktop" ? "데스크탑" : "태블릿"}
+                  >
+                    {type === "laptop" ? t("settings.laptop") : type === "desktop" ? t("settings.desktop") : t("settings.tablet")}
                 </button>
               ))}
             </div>
@@ -382,14 +385,14 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
           {/* Sensor toggles */}
           <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
             <SensorSection>
-              <SensorToggle label="카메라 모션 감지" description="카메라로 움직임을 감지합니다" checked={sensorSettings.camera} onChange={(v) => handleSensorToggle("camera", v)} />
+              <SensorToggle label={t("settings.cameraMotion")} description={t("settings.cameraMotionDesc")} checked={sensorSettings.camera} onChange={(v) => handleSensorToggle("camera", v)} />
             </SensorSection>
 
             {sensorSettings.camera && (
               <>
                 <div className="border-t border-white/10" />
                 <div className="px-4 py-4">
-                  <span className="text-white font-semibold text-sm block mb-3">카메라 모션 민감도</span>
+                  <span className="text-white font-semibold text-sm block mb-3">{t("settings.cameraMotionSensitivity")}</span>
                   <div className="flex gap-2">
                     {(Object.keys(SENSITIVITY_MAP) as MotionSensitivity[]).map((key) => (
                       <button
@@ -412,8 +415,8 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
             <SensorSection>
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-white font-semibold text-sm block">덮개 (리드) 감지</span>
-                  <span className="text-white/80 text-xs">{isLaptop ? "노트북 덮개 열림/닫힘을 감지합니다" : "노트북 기기에서만 사용할 수 있습니다"}</span>
+                  <span className="text-white font-semibold text-sm block">{t("settings.lidDetection")}</span>
+                  <span className="text-white/80 text-xs">{isLaptop ? t("settings.lidDetectionDescLaptop") : t("settings.lidDetectionDescOther")}</span>
                 </div>
                 <Switch checked={sensorSettings.lidClosed} onCheckedChange={(v) => handleSensorToggle("lidClosed", v)} disabled={!isLaptop} />
               </div>
@@ -421,24 +424,24 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
 
             <div className="border-t border-white/10" />
             <SensorSection>
-              <SensorToggle label="마이크 감지" description="주변 소리를 감지합니다" checked={sensorSettings.microphone} onChange={(v) => handleSensorToggle("microphone", v)} />
+              <SensorToggle label={t("settings.micDetection")} description={t("settings.micDetectionDesc")} checked={sensorSettings.microphone} onChange={(v) => handleSensorToggle("microphone", v)} />
             </SensorSection>
 
             <div className="border-t border-white/10" />
             <SensorSection>
-              <SensorToggle label="키보드 감지" description="키보드 입력을 감지합니다" checked={sensorSettings.keyboard} onChange={(v) => handleSensorToggle("keyboard", v)} />
+              <SensorToggle label={t("settings.keyboardDetection")} description={t("settings.keyboardDetectionDesc")} checked={sensorSettings.keyboard} onChange={(v) => handleSensorToggle("keyboard", v)} />
             </SensorSection>
 
             <div className="border-t border-white/10" />
             <SensorSection>
-              <SensorToggle label="마우스 감지" description="마우스 움직임을 감지합니다" checked={sensorSettings.mouse} onChange={(v) => handleSensorToggle("mouse", v)} />
+              <SensorToggle label={t("settings.mouseDetection")} description={t("settings.mouseDetectionDesc")} checked={sensorSettings.mouse} onChange={(v) => handleSensorToggle("mouse", v)} />
             </SensorSection>
 
             {sensorSettings.mouse && (
               <>
                 <div className="border-t border-white/10" />
                 <div className="px-4 py-4">
-                  <span className="text-white font-semibold text-sm block mb-3">마우스 감지 민감도</span>
+                  <span className="text-white font-semibold text-sm block mb-3">{t("settings.mouseSensitivity")}</span>
                   <div className="flex gap-2">
                     {(Object.keys(SENSITIVITY_MAP) as MotionSensitivity[]).map((key) => (
                       <button
@@ -459,12 +462,12 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
 
             <div className="border-t border-white/10" />
             <SensorSection>
-              <SensorToggle label="USB 연결 감지" description="USB 장치 연결을 감지합니다" checked={sensorSettings.usb} onChange={(v) => handleSensorToggle("usb", v)} />
+              <SensorToggle label={t("settings.usbDetection")} description={t("settings.usbDetectionDesc")} checked={sensorSettings.usb} onChange={(v) => handleSensorToggle("usb", v)} />
             </SensorSection>
 
             <div className="border-t border-white/10" />
             <SensorSection>
-              <SensorToggle label="전원 케이블 감지" description="전원 연결 해제를 감지합니다" checked={sensorSettings.power} onChange={(v) => handleSensorToggle("power", v)} />
+              <SensorToggle label={t("settings.powerDetection")} description={t("settings.powerDetectionDesc")} checked={sensorSettings.power} onChange={(v) => handleSensorToggle("power", v)} />
             </SensorSection>
           </div>
 

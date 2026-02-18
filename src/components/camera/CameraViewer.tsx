@@ -1,5 +1,6 @@
 import { RefreshCw, Play, Mic, MicOff, VideoOff } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 interface CameraViewerProps {
   isStreaming: boolean;
@@ -24,9 +25,10 @@ const CameraViewer = ({
   isRecording,
   recordingDuration,
 }: CameraViewerProps) => {
+  const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [videoKey, setVideoKey] = useState(0); // ★ key 변경 시 <video> DOM 완전 재생성
+  const [videoKey, setVideoKey] = useState(0);
   const playRetryTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isMutedRef = useRef(isMuted);
 
@@ -271,8 +273,8 @@ const CameraViewer = ({
       {showConnecting && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
           <RefreshCw className="w-8 h-8 text-white/50 animate-spin" />
-          <p className="text-white/70 text-sm mt-4">카메라 연결 중...</p>
-          <p className="text-white/50 text-xs mt-1">노트북에서 카메라가 시작될 때까지 대기 중</p>
+          <p className="text-white/70 text-sm mt-4">{t("cameraViewer.connecting")}</p>
+          <p className="text-white/50 text-xs mt-1">{t("cameraViewer.waitingForCamera")}</p>
         </div>
       )}
 
@@ -285,7 +287,7 @@ const CameraViewer = ({
             className="mt-4 px-4 py-2 bg-white/10 border border-white/20 rounded-lg flex items-center gap-2 text-white/70 text-sm hover:bg-white/20 transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
-            다시 시도
+            {t("cameraViewer.retry")}
           </button>
         </div>
       )}
@@ -294,7 +296,7 @@ const CameraViewer = ({
       {showWaiting && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
           <RefreshCw className="w-6 h-6 text-white/50 animate-spin" />
-          <p className="text-white/70 text-sm mt-4">노트북에서 카메라 시작 대기 중...</p>
+          <p className="text-white/70 text-sm mt-4">{t("cameraViewer.waitingForStart")}</p>
         </div>
       )}
 
@@ -302,13 +304,13 @@ const CameraViewer = ({
       {showDisconnectOverlay && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60">
           <VideoOff className="w-10 h-10 text-white/50 mb-2" />
-          <p className="text-white/70 text-sm">카메라가 인식되지 않습니다</p>
+          <p className="text-white/70 text-sm">{t("cameraViewer.cameraNotDetected")}</p>
           <button
             onClick={onRetry}
             className="mt-3 px-4 py-2 bg-white/10 border border-white/20 rounded-lg flex items-center gap-2 text-white/70 text-sm hover:bg-white/20 transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
-            다시 시도
+            {t("cameraViewer.retry")}
           </button>
         </div>
       )}
@@ -322,7 +324,7 @@ const CameraViewer = ({
           <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mb-2">
             <Play className="w-8 h-8 text-white ml-1" fill="white" />
           </div>
-          <p className="text-white text-sm">터치하여 재생</p>
+          <p className="text-white text-sm">{t("cameraViewer.tapToPlay")}</p>
         </div>
       )}
 
@@ -367,7 +369,7 @@ const CameraViewer = ({
           ) : (
             <>
               <MicOff className="w-3 h-3 text-white/40" />
-              <span className="text-white/40 text-[10px]">No Audio</span>
+              <span className="text-white/40 text-[10px]">{t("cameraViewer.noAudio")}</span>
             </>
           )}
         </div>

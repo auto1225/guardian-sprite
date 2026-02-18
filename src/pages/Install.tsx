@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Download, Smartphone, Monitor, CheckCircle, ArrowLeft } from "lucide-react";
 import meercopCharacter from "@/assets/meercop-character.png";
+import { useTranslation } from "react-i18next";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -11,28 +12,22 @@ interface BeforeInstallPromptEvent extends Event {
 
 const Install = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
-    // Check if already installed
     if (window.matchMedia("(display-mode: standalone)").matches) {
       setIsInstalled(true);
     }
-
-    // Check if iOS
     const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent);
     setIsIOS(isIOSDevice);
-
-    // Listen for install prompt
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
-
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     };
@@ -40,10 +35,8 @@ const Install = () => {
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;
-
     await deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-
     if (outcome === "accepted") {
       setIsInstalled(true);
     }
@@ -52,7 +45,6 @@ const Install = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-light to-primary flex flex-col items-center justify-center p-6 relative">
-      {/* Back button */}
       <button
         onClick={() => navigate(-1)}
         className="absolute top-4 left-4 bg-white/15 backdrop-blur-md border border-white/25 rounded-full p-2.5 text-white active:scale-95 transition-transform shadow-lg"
@@ -60,93 +52,65 @@ const Install = () => {
         <ArrowLeft size={20} />
       </button>
       <div className="max-w-md w-full bg-white/12 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-xl">
-        {/* Logo */}
         <div className="flex justify-center mb-6">
-          <img 
-            src={meercopCharacter} 
-            alt="MeerCOP" 
-            className="w-32 h-32 object-contain"
-          />
+          <img src={meercopCharacter} alt="MeerCOP" className="w-32 h-32 object-contain" />
         </div>
-
-        {/* Title */}
-        <h1 className="text-2xl font-bold text-center text-white mb-2 drop-shadow-sm">
-          MeerCOP 설치하기
-        </h1>
-        <p className="text-center text-white/70 mb-8">
-          노트북 도난 방지 앱을 설치하세요
-        </p>
+        <h1 className="text-2xl font-bold text-center text-white mb-2 drop-shadow-sm">{t("install.title")}</h1>
+        <p className="text-center text-white/70 mb-8">{t("install.subtitle")}</p>
 
         {isInstalled ? (
           <div className="text-center">
             <CheckCircle className="w-16 h-16 text-status-active mx-auto mb-4" />
-            <p className="text-lg font-medium text-white">
-              이미 설치되어 있습니다!
-            </p>
-            <p className="text-white/70 mt-2">
-              홈 화면에서 MeerCOP을 실행하세요.
-            </p>
+            <p className="text-lg font-medium text-white">{t("install.alreadyInstalled")}</p>
+            <p className="text-white/70 mt-2">{t("install.launchFromHome")}</p>
           </div>
         ) : isIOS ? (
           <div className="space-y-4">
             <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-xl p-4">
-              <h3 className="font-medium text-white mb-3">
-                iOS에서 설치하기
-              </h3>
+              <h3 className="font-medium text-white mb-3">{t("install.iosTitle")}</h3>
               <ol className="space-y-3 text-sm text-white/80">
                 <li className="flex items-start gap-3">
-                  <span className="bg-white/20 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0 border border-white/25">
-                    1
-                  </span>
-                  <span>Safari 브라우저 하단의 <strong className="text-white">공유</strong> 버튼을 탭하세요</span>
+                  <span className="bg-white/20 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0 border border-white/25">1</span>
+                  <span dangerouslySetInnerHTML={{ __html: t("install.iosStep1") }} />
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="bg-white/20 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0 border border-white/25">
-                    2
-                  </span>
-                  <span>스크롤하여 <strong className="text-white">"홈 화면에 추가"</strong>를 탭하세요</span>
+                  <span className="bg-white/20 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0 border border-white/25">2</span>
+                  <span dangerouslySetInnerHTML={{ __html: t("install.iosStep2") }} />
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="bg-white/20 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0 border border-white/25">
-                    3
-                  </span>
-                  <span>오른쪽 상단의 <strong className="text-white">"추가"</strong>를 탭하세요</span>
+                  <span className="bg-white/20 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0 border border-white/25">3</span>
+                  <span dangerouslySetInnerHTML={{ __html: t("install.iosStep3") }} />
                 </li>
               </ol>
             </div>
           </div>
         ) : deferredPrompt ? (
-          <Button 
+          <Button
             onClick={handleInstall}
             className="w-full h-14 text-lg bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30 text-white rounded-full font-bold shadow-lg"
           >
             <Download className="w-5 h-5 mr-2" />
-            앱 설치하기
+            {t("install.installButton")}
           </Button>
         ) : (
           <div className="text-center text-white/70">
-            <p className="mb-4">
-              브라우저 메뉴에서 "앱 설치" 또는 "홈 화면에 추가"를 선택하세요.
-            </p>
+            <p className="mb-4">{t("install.browserInstall")}</p>
           </div>
         )}
 
-        {/* Features */}
         <div className="mt-8 space-y-3">
-          <h3 className="font-medium text-white text-center mb-4">
-            주요 기능
-          </h3>
+          <h3 className="font-medium text-white text-center mb-4">{t("install.features")}</h3>
           <div className="flex items-center gap-3 text-sm text-white/80">
             <Monitor className="w-5 h-5 text-white/60 flex-shrink-0" />
-            <span>노트북 실시간 모니터링</span>
+            <span>{t("install.feature1")}</span>
           </div>
           <div className="flex items-center gap-3 text-sm text-white/80">
             <Smartphone className="w-5 h-5 text-white/60 flex-shrink-0" />
-            <span>스마트폰으로 원격 제어</span>
+            <span>{t("install.feature2")}</span>
           </div>
           <div className="flex items-center gap-3 text-sm text-white/80">
             <CheckCircle className="w-5 h-5 text-white/60 flex-shrink-0" />
-            <span>오프라인에서도 작동</span>
+            <span>{t("install.feature3")}</span>
           </div>
         </div>
       </div>

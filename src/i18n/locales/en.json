@@ -444,5 +444,58 @@
       "copyright": "© 2025 MeerCOP. All rights reserved.",
       "contact": "Contact: support@meercop.com"
     }
+  },
+  "profile": {
+    "title": "Edit Profile",
+    "nickname": "Nickname",
+    "nicknamePlaceholder": "Enter nickname",
+    "saveNickname": "Save Nickname",
+    "saving": "Saving...",
+    "saved": "Saved",
+    "profileUpdated": "Profile has been updated.",
+    "saveFailed": "Failed to save profile.",
+    "email": "Email",
+    "emailReadonly": "Email cannot be changed.",
+    "changePassword": "Change Password",
+    "newPassword": "New password (6+ chars)",
+    "confirmNewPassword": "Confirm new password",
+    "passwordTooShort": "New password must be at least 6 characters.",
+    "passwordMismatch": "New passwords do not match.",
+    "passwordChanged": "Changed",
+    "passwordChangedDesc": "Password has been changed.",
+    "passwordChangeFailed": "Failed to change password.",
+    "changing": "Changing..."
+  },
+  "alertPanel": {
+    "title": "Alert History",
+    "select": "Select",
+    "cancel": "Cancel",
+    "markAllRead": "Mark all read",
+    "all": "All",
+    "photo": "📸 Photo",
+    "activity": "🔔 Alert",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "deleteCount": "Delete {{count}}",
+    "noAlerts": "No alert history",
+    "capturedPhotos": "{{count}} photos captured",
+    "capture": "Capture"
+  },
+  "cameraViewer": {
+    "connecting": "Connecting camera...",
+    "waitingForCamera": "Waiting for laptop camera to start",
+    "retry": "Retry",
+    "waitingForStart": "Waiting for camera to start...",
+    "cameraNotDetected": "Camera not detected",
+    "tapToPlay": "Tap to play",
+    "noAudio": "No Audio",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "startRecording": "Start recording",
+    "stopRecording": "Stop recording",
+    "resume": "Resume streaming",
+    "pause": "Pause streaming",
+    "snapshot": "Take snapshot",
+    "download": "Download"
   }
 }

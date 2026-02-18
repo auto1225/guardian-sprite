@@ -1,4 +1,5 @@
 import { Volume2, VolumeX, Circle, Square, Camera, Play, Pause } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface CameraControlsProps {
   isStreaming: boolean;
@@ -21,6 +22,7 @@ const CameraControls = ({
   onToggleRecording,
   onCapture,
 }: CameraControlsProps) => {
+  const { t } = useTranslation();
   if (!isStreaming) return null;
 
   return (
@@ -30,7 +32,7 @@ const CameraControls = ({
         className={`w-11 h-11 rounded-full flex items-center justify-center text-white transition-colors ${
           isMuted ? "bg-white/15 hover:bg-white/25" : "bg-white/25 hover:bg-white/35"
         }`}
-        title={isMuted ? "소리 켜기" : "소리 끄기"}
+        title={isMuted ? t("cameraViewer.unmute") : t("cameraViewer.mute")}
       >
         {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
       </button>
@@ -40,7 +42,7 @@ const CameraControls = ({
         className={`w-11 h-11 rounded-full flex items-center justify-center text-white transition-colors ${
           isRecording ? "bg-red-600 hover:bg-red-700" : "bg-white/15 hover:bg-white/25"
         }`}
-        title={isRecording ? "녹화 중지" : "녹화 시작"}
+        title={isRecording ? t("cameraViewer.stopRecording") : t("cameraViewer.startRecording")}
       >
         {isRecording ? <Square className="w-4 h-4" fill="white" /> : <Circle className="w-5 h-5 text-red-400" />}
       </button>
@@ -48,7 +50,7 @@ const CameraControls = ({
       <button
         onClick={onTogglePause}
         className="w-11 h-11 rounded-full flex items-center justify-center text-white bg-white/20 border border-white/30 hover:bg-white/30 transition-colors"
-        title={isPaused ? "스트리밍 재개" : "스트리밍 일시정지"}
+        title={isPaused ? t("cameraViewer.resume") : t("cameraViewer.pause")}
       >
         {isPaused ? <Play className="w-5 h-5 ml-0.5" /> : <Pause className="w-5 h-5" />}
       </button>
@@ -56,7 +58,7 @@ const CameraControls = ({
       <button
         onClick={onCapture}
         className="w-11 h-11 bg-white/15 rounded-full flex items-center justify-center text-white hover:bg-white/25 transition-colors"
-        title="스냅샷 저장"
+        title={t("cameraViewer.snapshot")}
       >
         <Camera className="w-5 h-5" />
       </button>

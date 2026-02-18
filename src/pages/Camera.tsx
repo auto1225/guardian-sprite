@@ -7,6 +7,7 @@ import CameraHeader from "@/components/camera/CameraHeader";
 import CameraViewer from "@/components/camera/CameraViewer";
 import CameraControls from "@/components/camera/CameraControls";
 import SnapshotPreview from "@/components/camera/SnapshotPreview";
+import { useTranslation } from "react-i18next";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 
@@ -18,6 +19,7 @@ interface CameraPageProps {
 
 const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen, onClose }, ref) => {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [isStreaming, setIsStreaming] = useState(false);
   const [isWaitingForCamera, setIsWaitingForCamera] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +50,7 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
     setError(err);
     setIsStreaming(false);
     isConnectingRef.current = false;
-    toast({ title: "연결 오류", description: err, variant: "destructive" });
+    toast({ title: t("camera.connectionError"), description: err, variant: "destructive" });
   }, [toast]);
 
   const {
@@ -129,7 +131,7 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
       .single();
     
     if (!latestDevice?.is_camera_connected) {
-      setError(`${device.name} 카메라가 인식되지 않습니다.`);
+      setError(t("camera.cameraNotRecognized", { name: device.name }));
       return;
     }
 
@@ -146,7 +148,7 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
       isConnectingRef.current = false;
       setIsWaitingForCamera(false);
       setIsStreaming(false);
-      setError("노트북 카메라 응답 시간 초과. 노트북 앱이 실행 중인지 확인하세요.");
+      setError(t("camera.responseTimeout"));
       return;
     }
 
@@ -162,7 +164,7 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
         isConnectingRef.current = false;
         cleanupSubscription();
         setIsStreaming(false);
-        setError("WebRTC 연결 시간 초과. 다시 시도해주세요.");
+        setError(t("camera.webrtcTimeout"));
       }
     }, 30000);
   }, [device.id, device.name, requestStreamingStart, waitForBroadcaster, connect, cleanupSubscription]);
@@ -239,7 +241,7 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
             disconnect();
             // 스트리밍 요청 플래그 리셋 — 재연결 시 false→true 변경을 브로드캐스터가 감지하도록
             supabase.from("devices").update({ is_streaming_requested: false }).eq("id", device.id);
-            setError(`${device.name} 카메라가 인식되지 않습니다.`);
+            setError(t("camera.cameraNotRecognized", { name: device.name }));
           }
           
           // 카메라가 재연결됨: 이전에 해제 상태였거나 null이었는데 true가 된 경우
@@ -290,12 +292,12 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
       }, 2000);
-      toast({ title: "저장 완료", description: filename });
+      toast({ title: t("camera.saved"), description: filename });
     } catch (err) {
       console.error("[Camera] Download failed:", err);
-      toast({ title: "저장 실패", description: "파일을 저장할 수 없습니다.", variant: "destructive" });
+      toast({ title: t("camera.saveFailed"), description: t("camera.cannotSave"), variant: "destructive" });
     }
-  }, [toast]);
+  }, [toast, t]);
 
   // 녹화 시작/중지
   const toggleRecording = useCallback(() => {
@@ -332,7 +334,7 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
         console.log("[Camera] Recording stopped, chunks:", recordedChunksRef.current.length);
         if (recordedChunksRef.current.length === 0) {
           console.warn("[Camera] No recorded chunks available");
-          toast({ title: "녹화 실패", description: "녹화된 데이터가 없습니다.", variant: "destructive" });
+          toast({ title: t("camera.recordingFailed"), description: t("camera.noRecordedData"), variant: "destructive" });
           mediaRecorderRef.current = null;
           return;
         }
