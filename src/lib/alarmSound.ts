@@ -79,9 +79,13 @@ function getState(): AlarmState {
     for (const key of ['__meercop_alarm', '__meercop_alarm2', '__meercop_alarm_v3', '__meercop_alarm_v4']) {
       const old = w[key];
       if (!old) continue;
+      // isAlarming 강제 해제
+      old.isAlarming = false;
       if (old.iid) try { clearInterval(old.iid as ReturnType<typeof setInterval>); } catch {}
       if (old.ctx) try { (old.ctx as AudioContext).close(); } catch {}
       if (old.audioCtx) try { (old.audioCtx as AudioContext).close(); } catch {}
+      // customAudio 정지
+      if (old.customAudio) try { (old.customAudio as HTMLAudioElement).pause(); } catch {}
       if (Array.isArray(old.iids)) old.iids.forEach((id) => { try { clearInterval(id as ReturnType<typeof setInterval>); } catch {} });
       if (Array.isArray(old.intervals)) (old.intervals as ReturnType<typeof setInterval>[]).forEach((id) => { try { clearInterval(id); } catch {} });
       if (Array.isArray(old.ctxs)) old.ctxs.forEach((c) => { try { (c as AudioContext).close(); } catch {} });
@@ -491,6 +495,21 @@ export function stop() {
   s.lastStoppedAt = Date.now();
   try { localStorage.setItem('meercop_last_stopped_at', String(s.lastStoppedAt)); } catch {}
   stopSound();
+
+  // 레거시 버전이 여전히 재생 중일 수 있으므로 강제 정리
+  try {
+    const w = window as unknown as Record<string, Record<string, unknown>>;
+    for (const key of ['__meercop_alarm', '__meercop_alarm2', '__meercop_alarm_v3', '__meercop_alarm_v4']) {
+      const old = w[key];
+      if (!old) continue;
+      old.isAlarming = false;
+      if (old.audioCtx) try { (old.audioCtx as AudioContext).close(); } catch {}
+      if (old.ctx) try { (old.ctx as AudioContext).close(); } catch {}
+      if (old.customAudio) try { (old.customAudio as HTMLAudioElement).pause(); } catch {}
+      if (Array.isArray(old.intervals)) (old.intervals as ReturnType<typeof setInterval>[]).forEach(id => { try { clearInterval(id); } catch {} });
+      delete w[key];
+    }
+  } catch {}
 
   // 시스템 푸시 알림도 함께 닫기
   try {
