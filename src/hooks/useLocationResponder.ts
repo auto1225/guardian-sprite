@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useDevices } from "@/hooks/useDevices";
 import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
+import { channelManager } from "@/lib/channelManager";
 
 /**
  * 스마트폰의 위치 응답 훅
@@ -34,8 +35,10 @@ export function useLocationResponder() {
 
     console.log("[LocationResponder] Subscribing to:", channelName);
 
-    const channel = supabase
-      .channel(channelName)
+    channelManager.remove(channelName);
+    const channel = channelManager.getOrCreate(channelName);
+
+    channel
       .on(
         "postgres_changes",
         {
@@ -62,17 +65,11 @@ export function useLocationResponder() {
 
             console.log(`[LocationResponder] Location acquired (${source}):`, { latitude, longitude });
 
-            try {
-              await safeMetadataUpdate(
-                deviceId,
-                { locate_requested: null, location_source: source },
-                { latitude, longitude, location_updated_at: new Date().toISOString() }
-              );
-            } catch (error) {
-
-              console.error("[LocationResponder] DB update failed:", error);
-              throw error;
-            }
+            await safeMetadataUpdate(
+              deviceId,
+              { locate_requested: null, location_source: source },
+              { latitude, longitude, location_updated_at: new Date().toISOString() }
+            );
             console.log("[LocationResponder] ✅ Location updated successfully (source:", source, ")");
           } catch (err) {
             console.error("[LocationResponder] All location methods failed:", err);
@@ -92,7 +89,7 @@ export function useLocationResponder() {
       });
 
     return () => {
-      supabase.removeChannel(channel);
+      channelManager.remove(channelName);
     };
   }, [smartphoneDevice?.id]);
 }

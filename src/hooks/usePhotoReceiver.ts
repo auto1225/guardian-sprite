@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { channelManager } from "@/lib/channelManager";
 import {
   PhotoAlert,
   PhotoEventType,
@@ -73,13 +74,9 @@ export function usePhotoReceiver(
     const channelName = `user-photos-${userId}`;
     console.log("[PhotoReceiver] Subscribing to:", channelName);
 
-    // 기존 동일 토픽 채널 정리
-    const existing = supabase.getChannels().find(
-      ch => ch.topic === `realtime:${channelName}`
-    );
-    if (existing) supabase.removeChannel(existing);
-
-    const channel = supabase.channel(channelName);
+    // ChannelManager로 중복 방지
+    channelManager.remove(channelName);
+    const channel = channelManager.getOrCreate(channelName);
     channelRef.current = channel;
 
     channel
@@ -156,7 +153,7 @@ export function usePhotoReceiver(
       });
 
     return () => {
-      supabase.removeChannel(channel);
+      channelManager.remove(channelName);
       channelRef.current = null;
     };
   }, [user?.id, loadAlerts]);

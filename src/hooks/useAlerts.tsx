@@ -9,6 +9,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { channelManager } from "@/lib/channelManager";
 import {
   addActivityLog,
   getAlertLogs,
@@ -133,13 +134,9 @@ export const useAlerts = (deviceId?: string | null) => {
 
     const channelName = `user-alerts-${userId}`;
 
-    // 기존 동일 토픽 채널 정리
-    const existing = supabase.getChannels().find(
-      ch => ch.topic === `realtime:${channelName}`
-    );
-    if (existing) supabase.removeChannel(existing);
-
-    const channel = supabase.channel(channelName);
+    // 기존 채널 정리 후 ChannelManager로 생성
+    channelManager.remove(channelName);
+    const channel = channelManager.getOrCreate(channelName);
     channelRef.current = channel;
     isSubscribedRef.current = false;
 
@@ -186,7 +183,7 @@ export const useAlerts = (deviceId?: string | null) => {
     return () => {
       isSubscribedRef.current = false;
       channelRef.current = null;
-      supabase.removeChannel(channel);
+      channelManager.remove(channelName);
     };
   }, [user?.id]);
 
