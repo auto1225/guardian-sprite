@@ -249,6 +249,9 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
   }, [sendSignalingMessage, cleanup, onError]);
 
   // S-12: 자동 재연결 (지수 백오프: 즉시→2초→4초, 최대 3회)
+  // connect는 아래에서 정의되므로 connectRef를 사용하여 stale closure 방지
+  const connectRef = useRef<() => void>(() => {});
+
   const scheduleReconnect = useCallback(() => {
     const MAX_RECONNECT = 3;
     const attempt = reconnectAttemptRef.current;
@@ -271,7 +274,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     reconnectAttemptRef.current = attempt + 1;
     reconnectTimerRef.current = setTimeout(() => {
       if (!isConnectedRef.current && !isConnectingRef.current) {
-        connect();
+        connectRef.current();
       }
     }, delay);
   }, [onError]);
@@ -635,6 +638,9 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       onError?.(i18n.t("camera.connectionError2"));
     }
   }, [deviceId, cleanup, createPeerConnection, sendSignalingMessage, handleSignalingMessage, onError]);
+
+  // connectRef를 최신 connect로 동기화 (scheduleReconnect에서 사용)
+  connectRef.current = connect;
 
   const disconnect = useCallback(async () => {
     console.log("[WebRTC Viewer] Disconnecting..., wasConnecting:", isConnectingRef.current);

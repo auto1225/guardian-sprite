@@ -54,19 +54,32 @@ export const useCommands = () => {
     console.log("[useCommands] toggleMonitoring success, is_monitoring set to:", enable);
     
     // Broadcast to laptop via Realtime channel (laptop can't use postgres_changes due to RLS)
-    const channel = supabase.channel(`device-commands-${deviceId}`);
-    await channel.subscribe((status) => {
-      if (status === "SUBSCRIBED") {
-        channel.send({
-          type: "broadcast",
-          event: "monitoring_toggle",
-          payload: { device_id: deviceId, is_monitoring: enable },
-        }).then(() => {
-          console.log("[useCommands] Broadcast monitoring_toggle sent:", { deviceId, enable });
-          supabase.removeChannel(channel);
+    const channel = supabase.channel(`device-commands-${deviceId}-${Date.now()}`);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => { supabase.removeChannel(channel); reject(new Error("Channel timeout")); }, 5000);
+        channel.subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            clearTimeout(timeout);
+            channel.send({
+              type: "broadcast",
+              event: "monitoring_toggle",
+              payload: { device_id: deviceId, is_monitoring: enable },
+            }).then(() => {
+              console.log("[useCommands] Broadcast monitoring_toggle sent:", { deviceId, enable });
+              supabase.removeChannel(channel);
+              resolve();
+            });
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            clearTimeout(timeout);
+            supabase.removeChannel(channel);
+            reject(new Error(status));
+          }
         });
-      }
-    });
+      });
+    } catch (err) {
+      console.warn("[useCommands] Broadcast failed (DB update succeeded):", err);
+    }
     
     queryClient.invalidateQueries({ queryKey: ["devices"] });
   };

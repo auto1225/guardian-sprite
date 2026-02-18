@@ -29,16 +29,26 @@ const RemoteCommandsPanel = ({ isOpen, onClose, device }: RemoteCommandsPanelPro
     try {
       await lockDevice(device.id);
       // Also broadcast for RLS-free laptop reception
-      const channel = supabase.channel(`device-commands-${device.id}`);
-      await channel.subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          channel.send({
-            type: "broadcast",
-            event: "lock_command",
-            payload: { device_id: device.id },
-          }).then(() => supabase.removeChannel(channel));
-        }
-      });
+      const channel = supabase.channel(`device-commands-${device.id}-lock-${Date.now()}`);
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => { supabase.removeChannel(channel); resolve(); }, 5000);
+          channel.subscribe((status) => {
+            if (status === "SUBSCRIBED") {
+              clearTimeout(timeout);
+              channel.send({
+                type: "broadcast",
+                event: "lock_command",
+                payload: { device_id: device.id },
+              }).then(() => { supabase.removeChannel(channel); resolve(); });
+            } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+              clearTimeout(timeout);
+              supabase.removeChannel(channel);
+              resolve(); // DB command already sent, broadcast is best-effort
+            }
+          });
+        });
+      } catch { /* broadcast is best-effort */ }
       toast({ title: t("commands.lockSent"), description: t("commands.lockSentDesc") });
     } catch {
       toast({ title: t("common.error"), description: t("commands.lockFailed"), variant: "destructive" });
@@ -53,16 +63,26 @@ const RemoteCommandsPanel = ({ isOpen, onClose, device }: RemoteCommandsPanelPro
     try {
       await sendMessage(device.id, message.trim());
       // Also broadcast for RLS-free laptop reception
-      const channel = supabase.channel(`device-commands-${device.id}`);
-      await channel.subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          channel.send({
-            type: "broadcast",
-            event: "message_command",
-            payload: { device_id: device.id, message: message.trim() },
-          }).then(() => supabase.removeChannel(channel));
-        }
-      });
+      const channel = supabase.channel(`device-commands-${device.id}-msg-${Date.now()}`);
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => { supabase.removeChannel(channel); resolve(); }, 5000);
+          channel.subscribe((status) => {
+            if (status === "SUBSCRIBED") {
+              clearTimeout(timeout);
+              channel.send({
+                type: "broadcast",
+                event: "message_command",
+                payload: { device_id: device.id, message: message.trim() },
+              }).then(() => { supabase.removeChannel(channel); resolve(); });
+            } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+              clearTimeout(timeout);
+              supabase.removeChannel(channel);
+              resolve();
+            }
+          });
+        });
+      } catch { /* broadcast is best-effort */ }
       toast({ title: t("commands.messageSent"), description: t("commands.messageSentDesc") });
       setMessage("");
     } catch {
