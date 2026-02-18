@@ -5,6 +5,11 @@
  *   - user-alerts-{userId} 단일 채널로 모든 기기의 경보를 수신
  *   - 각 노트북은 key=deviceId로 Presence track
  *   - 브로드캐스트 payload에 device_id 포함
+ *
+ * 🔧 FIX v7: 경보음 재생의 유일한 권한자 (single authority)
+ *   - usePhotoReceiver에서 독립 Alarm.play() 제거됨
+ *   - 이 훅의 handleAlert()만이 경보음을 트리거함
+ *   - suppress 시간 30초로 증가 (사진 전송 완료 대기)
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -80,7 +85,6 @@ export const useAlerts = (deviceId?: string | null) => {
     }
     if (Alarm.isSuppressed()) {
       console.log("[useAlerts] ⏭ Suppressed, ignoring alert:", alert.id);
-      Alarm.addDismissed(alert.id); // suppress 중 도착한 alert도 dismissed에 추가
       return;
     }
 
@@ -91,11 +95,10 @@ export const useAlerts = (deviceId?: string | null) => {
       return;
     }
 
-    // 최근 stop 후 30초 이내면 무시 (Presence 재트리거 방지)
+    // 최근 stop 후 10초 이내면 무시 (Presence 재트리거 방지)
     const timeSinceStop = Date.now() - Alarm.getLastStoppedAt();
-    if (timeSinceStop < 30000 && Alarm.getLastStoppedAt() > 0) {
+    if (timeSinceStop < 10000 && Alarm.getLastStoppedAt() > 0) {
       console.log("[useAlerts] ⏭ Recently stopped (", Math.round(timeSinceStop / 1000), "s ago), ignoring:", alert.id);
-      Alarm.addDismissed(alert.id); // 무시된 alert도 dismissed에 추가
       return;
     }
 
@@ -192,56 +195,10 @@ export const useAlerts = (deviceId?: string | null) => {
         }
       });
 
-    // ── 네트워크 복구 시 채널 재연결 ──
-    const handleReconnect = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail?.name === channelName && mountedRef.current) {
-        console.log("[useAlerts] ♻️ Reconnecting alert channel after network recovery");
-        // 기존 ref 정리
-        channelRef.current = null;
-        isSubscribedRef.current = false;
-        // 새 채널 가져오기 (ChannelManager가 이미 교체)
-        const newCh = channelManager.getOrCreate(channelName);
-        channelRef.current = newCh;
-        newCh
-          .on('presence', { event: 'sync' }, () => {
-            if (!mountedRef.current) return;
-            const state = newCh.presenceState();
-            const keys = Object.keys(state);
-            for (const key of keys) {
-              if (key === 'phone') continue;
-              const entries = state[key] as Array<{ active_alert?: ActiveAlert | null; status?: string }>;
-              for (const entry of entries) {
-                if (entry.status === 'listening') continue;
-                if (entry.active_alert) {
-                  handleAlertRef.current(entry.active_alert, key);
-                  return;
-                }
-              }
-            }
-          })
-          .on('broadcast', { event: 'active_alert' }, (payload) => {
-            if (!mountedRef.current) return;
-            const alert = payload?.payload?.active_alert as ActiveAlert | undefined;
-            const fromDevice = payload?.payload?.device_id as string | undefined;
-            if (alert) handleAlertRef.current(alert, fromDevice);
-          })
-          .on('broadcast', { event: 'remote_alarm_off' }, () => {})
-          .subscribe(async (status) => {
-            if (status === 'SUBSCRIBED' && mountedRef.current) {
-              isSubscribedRef.current = true;
-              await newCh.track({ role: 'phone', joined_at: new Date().toISOString() });
-            }
-          });
-      }
-    };
-    window.addEventListener('channelmanager:reconnect', handleReconnect);
-
     return () => {
       isSubscribedRef.current = false;
       channelRef.current = null;
       channelManager.remove(channelName);
-      window.removeEventListener('channelmanager:reconnect', handleReconnect);
     };
   }, [user?.id]);
 
@@ -310,7 +267,11 @@ export const useAlerts = (deviceId?: string | null) => {
     Alarm.stop();
     const id = activeAlertRef.current?.id;
     if (id) Alarm.addDismissed(id);
-    // Presence sync 재트리거 방지: 30초간 억제
+    // 🔧 FIX v7: suppress 30초로 증가
+    // 이전: 10초 (주석에는 "5초"라고 잘못 기재)
+    // 문제: 사진 청크 전송이 10초 이상 걸리면 photo_alert_end 도착 시
+    //       suppress가 이미 풀려있어 재트리거 가능했음
+    // 수정: 30초간 억제 → 사진 전송 완료 + 네트워크 지연 충분히 커버
     Alarm.suppressFor(30000);
     safeSetActiveAlert(null);
     activeAlertRef.current = null;
