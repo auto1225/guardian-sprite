@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { Bell, Image, Trash2, CheckCheck, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Square, CheckSquare, MinusSquare } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAlerts } from "@/hooks/useAlerts";
 import AlertItem from "./AlertItem";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -31,6 +32,7 @@ const ITEMS_PER_PAGE = 10;
 const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
   const { alerts: activityAlerts, unreadCount: activityUnread, markAsRead, markAllAsRead, refreshAlerts } = useAlerts(deviceId);
   const { devices } = useDevices();
+  const { t } = useTranslation();
   const [refreshKey, setRefreshKey] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [filter, setFilter] = useState<FilterType>("all");
@@ -62,12 +64,12 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
 
     const eventLabel = (type: string) => {
       switch (type) {
-        case "camera_motion": return "카메라 움직임 감지";
-        case "keyboard": return "키보드 입력 감지";
-        case "mouse": return "마우스 입력 감지";
-        case "lid": return "노트북 덮개 열림";
-        case "power": return "전원 변경 감지";
-        default: return "보안 이벤트";
+        case "camera_motion": return t("alertEvents.camera_motion");
+        case "keyboard": return t("alertEvents.keyboard");
+        case "mouse": return t("alertEvents.mouse");
+        case "lid": return t("alertEvents.lid");
+        case "power": return t("alertEvents.power");
+        default: return t("alertEvents.camera_motion");
       }
     };
 
@@ -75,7 +77,7 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
       id: `photo-${a.id}`,
       type: "photo" as const,
       title: `📸 ${eventLabel(a.event_type)}`,
-      message: `사진 ${a.total_photos}장 캡처됨`,
+      message: t("alertPanel.capturedPhotos", { count: a.total_photos }),
       created_at: a.created_at,
       is_read: a.is_read,
       device_name: getDeviceName(a.device_id),
@@ -89,14 +91,12 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
     return merged.sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
-  }, [activityAlerts, photoAlerts, devices, filter]);
+  }, [activityAlerts, photoAlerts, devices, filter, t]);
 
   const totalPages = Math.max(1, Math.ceil(unifiedAlerts.length / ITEMS_PER_PAGE));
 
-  // Reset page when filter changes
   useEffect(() => { setCurrentPage(1); setSelectedIds(new Set()); }, [filter]);
 
-  // Clamp page
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [totalPages, currentPage]);
@@ -106,7 +106,6 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
     return unifiedAlerts.slice(start, start + ITEMS_PER_PAGE);
   }, [unifiedAlerts, currentPage]);
 
-  // Auto-mark page items as read when page is viewed
   useEffect(() => {
     if (!isOpen || pageAlerts.length === 0) return;
     const unreadActivity = pageAlerts.filter(a => !a.is_read && a.type === "activity");
@@ -137,7 +136,6 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
     setRefreshKey(k => k + 1);
   };
 
-  // Selection helpers
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
@@ -175,12 +173,11 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
   };
 
   const filterButtons: { key: FilterType; label: string }[] = [
-    { key: "all", label: "전체" },
-    { key: "photo", label: "📸 사진" },
-    { key: "activity", label: "🔔 경보" },
+    { key: "all", label: t("alertPanel.all") },
+    { key: "photo", label: t("alertPanel.photo") },
+    { key: "activity", label: t("alertPanel.activity") },
   ];
 
-  // Pagination helpers
   const goToPage = (p: number) => {
     setCurrentPage(Math.max(1, Math.min(totalPages, p)));
     setSelectedIds(new Set());
@@ -205,17 +202,16 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
         </button>
       </SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col border-none" style={{ background: 'linear-gradient(180deg, hsla(200, 70%, 55%, 0.85) 0%, hsla(200, 60%, 45%, 0.9) 100%)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
-        {/* Header */}
         <SheetHeader className="p-4 pb-3 pr-12 border-b border-white/20">
           <div className="flex items-center justify-between">
-            <SheetTitle className="text-lg font-bold text-white">경보 이력</SheetTitle>
+            <SheetTitle className="text-lg font-bold text-white">{t("alertPanel.title")}</SheetTitle>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => { setIsSelectMode(!isSelectMode); setSelectedIds(new Set()); }}
                 className="text-xs font-medium px-2 py-1 rounded-lg transition-all"
                 style={{ background: isSelectMode ? 'hsla(52, 100%, 60%, 0.9)' : 'hsla(0,0%,100%,0.15)', color: isSelectMode ? '#333' : 'white' }}
               >
-                {isSelectMode ? "취소" : "선택"}
+                {isSelectMode ? t("alertPanel.cancel") : t("alertPanel.select")}
               </button>
               {totalUnread > 0 && !isSelectMode && (
                 <button
@@ -224,14 +220,13 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
                   style={{ color: 'hsla(52, 100%, 60%, 1)' }}
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
-                  모두 읽음
+                  {t("alertPanel.markAllRead")}
                 </button>
               )}
             </div>
           </div>
         </SheetHeader>
 
-        {/* Filter tabs */}
         <div className="flex gap-2 px-4 py-3 border-b border-white/15">
           {filterButtons.map(fb => (
             <button
@@ -249,7 +244,6 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
           ))}
         </div>
 
-        {/* Select mode toolbar */}
         {isSelectMode && unifiedAlerts.length > 0 && (
           <div className="flex items-center justify-between px-4 py-2 border-b border-white/15" style={{ background: 'hsla(0,0%,0%,0.15)' }}>
             <button
@@ -257,7 +251,7 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
               className="flex items-center gap-1.5 text-xs font-medium text-white/90"
             >
               {allSelected ? <CheckSquare className="w-4 h-4" /> : someSelected ? <MinusSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-              {allSelected ? "전체 해제" : "전체 선택"}
+              {allSelected ? t("alertPanel.deselectAll") : t("alertPanel.selectAll")}
             </button>
             {selectedIds.size > 0 && (
               <button
@@ -266,18 +260,17 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
                 style={{ background: 'hsla(0, 70%, 55%, 0.8)', color: 'white' }}
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                {selectedIds.size}개 삭제
+                {t("alertPanel.deleteCount", { count: selectedIds.size })}
               </button>
             )}
           </div>
         )}
 
-        {/* List */}
         <div className="flex-1 overflow-y-auto p-4 space-y-2 alert-history-scroll">
           {unifiedAlerts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-white/50">
               <Bell className="w-12 h-12 mb-3 opacity-30" />
-              <p className="text-sm font-semibold text-white/70">경보 이력이 없습니다</p>
+              <p className="text-sm font-semibold text-white/70">{t("alertPanel.noAlerts")}</p>
             </div>
           ) : (
             pageAlerts.map((alert) => (
@@ -316,26 +309,21 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
           )}
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-1 px-4 py-3 border-t border-white/20" style={{ background: 'hsla(0,0%,0%,0.1)' }}>
-            {/* First */}
             <button onClick={() => goToPage(1)} disabled={currentPage === 1}
               className="p-1.5 rounded-lg text-white/80 disabled:text-white/30 hover:bg-white/15 disabled:hover:bg-transparent transition-colors">
               <ChevronsLeft className="w-4 h-4" />
             </button>
-            {/* Prev 10 */}
             <button onClick={() => goToPage(pageGroupStart - 10)} disabled={pageGroupStart <= 1}
               className="p-1.5 rounded-lg text-white/80 disabled:text-white/30 hover:bg-white/15 disabled:hover:bg-transparent transition-colors">
               <ChevronLeft className="w-4 h-4" /><ChevronLeft className="w-4 h-4 -ml-3" />
             </button>
-            {/* Prev */}
             <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}
               className="p-1.5 rounded-lg text-white/80 disabled:text-white/30 hover:bg-white/15 disabled:hover:bg-transparent transition-colors">
               <ChevronLeft className="w-4 h-4" />
             </button>
 
-            {/* Page numbers */}
             {pageNumbers.map(p => (
               <button key={p} onClick={() => goToPage(p)}
                 className={`w-7 h-7 rounded-lg text-xs font-bold transition-all ${
@@ -347,17 +335,14 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
               </button>
             ))}
 
-            {/* Next */}
             <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}
               className="p-1.5 rounded-lg text-white/80 disabled:text-white/30 hover:bg-white/15 disabled:hover:bg-transparent transition-colors">
               <ChevronRight className="w-4 h-4" />
             </button>
-            {/* Next 10 */}
             <button onClick={() => goToPage(pageGroupEnd + 1)} disabled={pageGroupEnd >= totalPages}
               className="p-1.5 rounded-lg text-white/80 disabled:text-white/30 hover:bg-white/15 disabled:hover:bg-transparent transition-colors">
               <ChevronRight className="w-4 h-4" /><ChevronRight className="w-4 h-4 -ml-3" />
             </button>
-            {/* Last */}
             <button onClick={() => goToPage(totalPages)} disabled={currentPage === totalPages}
               className="p-1.5 rounded-lg text-white/80 disabled:text-white/30 hover:bg-white/15 disabled:hover:bg-transparent transition-colors">
               <ChevronsRight className="w-4 h-4" />
@@ -370,6 +355,7 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
 };
 
 function PhotoAlertItem({ alert, onView, onDelete, hideDelete }: { alert: UnifiedAlert; onView: () => void; onDelete: () => void; hideDelete?: boolean }) {
+  const { t } = useTranslation();
   const photo = alert.photoAlert;
   const thumbnail = photo?.photos?.[0];
 
@@ -388,7 +374,7 @@ function PhotoAlertItem({ alert, onView, onDelete, hideDelete }: { alert: Unifie
         style={{ background: 'hsla(0,0%,100%,0.15)' }}
       >
         {thumbnail ? (
-          <img src={thumbnail} alt="캡처" className="w-full h-full object-cover" />
+          <img src={thumbnail} alt={t("alertPanel.capture")} className="w-full h-full object-cover" />
         ) : (
           <Image className="w-5 h-5 text-white/50" />
         )}
@@ -417,7 +403,7 @@ function PhotoAlertItem({ alert, onView, onDelete, hideDelete }: { alert: Unifie
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
           className="p-1 text-white/50 hover:text-red-300 transition-colors flex-shrink-0"
         >
-          <Trash2 className="w-3.5 h-3.5" />
+          <Trash2 className="w-4 h-4" />
         </button>
       )}
     </div>
