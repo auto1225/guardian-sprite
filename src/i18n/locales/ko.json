@@ -523,5 +523,33 @@
     "latitude": "위도",
     "longitude": "경도",
     "wifiWarning": "⚠️ Wi-Fi/IP 기반 위치로, 실제 위치와 수십 m ~ 수 km 오차가 있을 수 있습니다."
+  },
+  "commands": {
+    "title": "원격 명령",
+    "lockTitle": "화면 잠금",
+    "lockDesc": "노트북 화면을 원격으로 잠급니다",
+    "lockButton": "화면 잠금 실행",
+    "lockSent": "잠금 명령 전송됨",
+    "lockSentDesc": "노트북에 화면 잠금 명령을 전송했습니다.",
+    "lockFailed": "잠금 명령 전송에 실패했습니다.",
+    "messageTitle": "메시지 전송",
+    "messageDesc": "노트북 화면에 메시지를 표시합니다",
+    "messagePlaceholder": "표시할 메시지를 입력하세요...",
+    "sendButton": "전송",
+    "messageSent": "메시지 전송됨",
+    "messageSentDesc": "노트북에 메시지를 전송했습니다.",
+    "messageFailed": "메시지 전송에 실패했습니다.",
+    "deviceOffline": "⚠️ 기기가 오프라인 상태입니다. 명령을 전송할 수 없습니다."
+  },
+  "locationHistory": {
+    "title": "위치 이력",
+    "noHistory": "위치 이력이 없습니다",
+    "latest": "최신",
+    "records": "{{count}}건의 위치 기록"
+  },
+  "sideMenu2": {
+    "remoteCommands": "원격 명령",
+    "locationHistory": "위치 이력",
+    "photoAlertHistory": "사진 경보 이력"
   }
 }

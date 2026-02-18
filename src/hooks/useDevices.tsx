@@ -249,6 +249,7 @@ export const useDevices = () => {
               status?: string;
               is_network_connected?: boolean;
               is_camera_connected?: boolean;
+              battery_level?: number;
               last_seen_at?: string;
             }> | undefined;
             if (!entries || entries.length === 0) return d;
@@ -263,7 +264,7 @@ export const useDevices = () => {
             if (newStatus === 'online') realtimeConfirmedOnline.add(d.id);
             else realtimeConfirmedOnline.delete(d.id);
 
-            const hasChanges = d.is_network_connected !== latest.is_network_connected || d.status !== newStatus;
+            const hasChanges = d.is_network_connected !== latest.is_network_connected || d.status !== newStatus || (latest.battery_level !== undefined && d.battery_level !== latest.battery_level);
             if (!hasChanges) return d;
 
             console.log("[Presence] ✅ Updating:", d.id.slice(0, 8), { status: `${d.status}→${newStatus}` });
@@ -271,6 +272,7 @@ export const useDevices = () => {
               ...d,
               status: newStatus as Device["status"],
               is_network_connected: latest.is_network_connected ?? d.is_network_connected,
+              battery_level: latest.battery_level ?? d.battery_level,
             };
           });
         });

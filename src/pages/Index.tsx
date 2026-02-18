@@ -18,6 +18,8 @@ import CameraPage from "@/pages/Camera";
 import DeviceManagePage from "@/pages/DeviceManage";
 import PhotoAlertOverlay from "@/components/PhotoAlertOverlay";
 import PhotoAlertHistory from "@/components/PhotoAlertHistory";
+import RemoteCommandsPanel from "@/components/RemoteCommandsPanel";
+import LocationHistoryModal from "@/components/LocationHistoryModal";
 import HelpPage from "@/pages/Help";
 import { useDevices } from "@/hooks/useDevices";
 import * as Alarm from "@/lib/alarmSound";
@@ -79,6 +81,8 @@ const Index = () => {
     deviceManage: false,
     photoHistory: false,
     help: false,
+    remoteCommands: false,
+    locationHistory: false,
   });
   const openPanel = (key: keyof typeof panels) => setPanels(p => ({ ...p, [key]: true }));
   const closePanel = (key: keyof typeof panels) => setPanels(p => ({ ...p, [key]: false }));
@@ -292,6 +296,8 @@ const Index = () => {
         onClose={() => closePanel("sideMenu")}
         onPhotoHistoryClick={() => openPanel("photoHistory")}
         onHelpClick={() => openPanel("help")}
+        onRemoteCommandsClick={() => openPanel("remoteCommands")}
+        onLocationHistoryClick={() => openPanel("locationHistory")}
       />
 
       {/* Settings Page */}
@@ -413,6 +419,21 @@ const Index = () => {
       <HelpPage
         isOpen={panels.help}
         onClose={() => closePanel("help")}
+      />
+
+      {/* Remote Commands Panel */}
+      <RemoteCommandsPanel
+        isOpen={panels.remoteCommands}
+        onClose={() => closePanel("remoteCommands")}
+        device={selectedDevice}
+      />
+
+      {/* Location History Modal */}
+      <LocationHistoryModal
+        isOpen={panels.locationHistory}
+        onClose={() => closePanel("locationHistory")}
+        deviceId={selectedDeviceId}
+        deviceName={selectedDevice?.name ?? ""}
       />
     </div>
   );
