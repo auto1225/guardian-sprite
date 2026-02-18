@@ -135,29 +135,32 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       bundlePolicy: "max-bundle",
     });
 
-    // ★ ontrack: 브라우저 네이티브 스트림(event.streams[0])을 우선 사용
+    // ★ ontrack: 항상 PC receivers에서 새 MediaStream 생성 (stale stream 방지)
     let pendingStreamUpdate: NodeJS.Timeout | null = null;
-    let latestStream: MediaStream | null = null;
+    let receivedTrackKinds = new Set<string>();
 
     pc.ontrack = (event) => {
       console.log("[WebRTC Viewer] ✅ Received remote track:", event.track.kind, "readyState:", event.track.readyState);
       
       const track = event.track;
-      
-      // 브라우저 네이티브 스트림 사용 (PeerConnection과 자동 동기화)
-      if (event.streams && event.streams[0]) {
-        latestStream = event.streams[0];
-      } else {
-        // 폴백: 직접 스트림 생성
-        if (!latestStream) latestStream = new MediaStream();
-        // 기존 같은 종류 트랙 제거 후 추가
-        latestStream.getTracks().filter(t => t.kind === track.kind).forEach(t => latestStream!.removeTrack(t));
-        latestStream.addTrack(track);
-      }
+      receivedTrackKinds.add(track.kind);
 
       const commitStream = () => {
-        if (!latestStream) return;
-        console.log("[WebRTC Viewer] 📹 Committing stream with", latestStream.getTracks().length, "tracks");
+        // ★ 항상 PC receivers에서 새 MediaStream 생성 — stale event.streams[0] 문제 회피
+        const currentPc = peerConnectionRef.current;
+        if (!currentPc) return;
+        const freshStream = new MediaStream();
+        currentPc.getReceivers().forEach(r => {
+          if (r.track && r.track.readyState === "live") {
+            freshStream.addTrack(r.track);
+          }
+        });
+        if (freshStream.getTracks().length === 0) {
+          console.warn("[WebRTC Viewer] ⚠️ No live tracks from receivers, skipping commit");
+          return;
+        }
+        console.log("[WebRTC Viewer] 📹 Committing fresh stream with", freshStream.getTracks().length, "tracks",
+          freshStream.getTracks().map(t => `${t.kind}:${t.readyState}:muted=${t.muted}`).join(", "));
         
         if (connectionTimeoutRef.current) {
           clearTimeout(connectionTimeoutRef.current);
@@ -166,7 +169,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         
         isConnectedRef.current = true;
         isConnectingRef.current = false;
-        setRemoteStream(latestStream);
+        setRemoteStream(freshStream);
         setIsConnected(true);
         setIsConnecting(false);
       };

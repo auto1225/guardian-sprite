@@ -129,13 +129,23 @@ const CameraViewer = ({
   const videoRefCallback = useCallback((node: HTMLVideoElement | null) => {
     (videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = node;
     if (node && pendingStreamRef.current) {
-      console.log("[CameraViewer] 📹 Ref callback: attaching stream to fresh video element");
+      const stream = pendingStreamRef.current;
+      console.log("[CameraViewer] 📹 Ref callback: attaching stream to fresh video element, tracks:",
+        stream.getTracks().map(t => `${t.kind}:${t.readyState}:muted=${t.muted}`).join(", "));
       node.removeAttribute("src");
-      node.srcObject = pendingStreamRef.current;
+      node.srcObject = stream;
       node.muted = true;
       node.setAttribute("playsinline", "true");
       node.setAttribute("webkit-playsinline", "true");
-      node.play().catch(() => {});
+      
+      // 여러 이벤트에서 play 시도
+      const tryPlay = () => {
+        node.play().catch(() => {});
+      };
+      tryPlay();
+      node.addEventListener("loadedmetadata", tryPlay, { once: true });
+      node.addEventListener("loadeddata", tryPlay, { once: true });
+      node.addEventListener("canplay", tryPlay, { once: true });
     }
   }, []);
 
