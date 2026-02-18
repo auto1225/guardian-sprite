@@ -50,6 +50,14 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
     connect();
     return () => {
       stopRecording();
+      // 🔧 FIX: 언마운트 시 비디오 소스 완전 해제 — 오디오 잔류 방지
+      const video = videoRef.current;
+      if (video) {
+        video.pause();
+        video.srcObject = null;
+        video.removeAttribute('src');
+        video.load(); // 브라우저 미디어 파이프라인 강제 해제
+      }
       disconnect();
     };
   }, []);
