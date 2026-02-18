@@ -119,13 +119,12 @@ const CameraViewer = ({
     }
   }, [isPaused]);
 
-  // 재생 시도 — fire-and-forget, play() 프로미스를 await하지 않음
+  // 재생 시도 — isPaused 상태 확인
   const attemptPlay = useCallback(() => {
     const video = videoRef.current;
     if (!video || !video.srcObject) return;
+    if (isPausedRef.current) return; // ★ 일시정지 중이면 재생하지 않음
     video.muted = true;
-    // play()는 모바일에서 hang될 수 있으므로 await하지 않음
-    // 재생 성공은 'playing' 이벤트로 감지
     video.play().catch((err) => {
       if (err?.name !== "AbortError") {
         console.warn("[CameraViewer] ⚠️ Play rejected:", err?.message);
@@ -153,9 +152,11 @@ const CameraViewer = ({
       node.setAttribute("playsinline", "true");
       node.setAttribute("webkit-playsinline", "true");
       
-      // 여러 이벤트에서 play 시도
+      // isPaused가 아닐 때만 play 시도
       const tryPlay = () => {
-        node.play().catch(() => {});
+        if (!isPausedRef.current) {
+          node.play().catch(() => {});
+        }
       };
       tryPlay();
       node.addEventListener("loadedmetadata", tryPlay, { once: true });
@@ -215,7 +216,7 @@ const CameraViewer = ({
       if (track.muted) {
         const onUnmute = () => {
           const v = videoRef.current;
-          if (v && v.srcObject === remoteStream && !playing) {
+          if (v && v.srcObject === remoteStream && !playing && !isPausedRef.current) {
             v.play().catch(() => {});
           }
         };
@@ -270,7 +271,6 @@ const CameraViewer = ({
       <video
         key={videoKey}
         ref={videoRefCallback}
-        autoPlay
         playsInline
         muted
         preload="auto"
