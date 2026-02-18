@@ -62,9 +62,15 @@ function registerAudio(audio: HTMLAudioElement) {
 
 /** 전역 레지스트리의 모든 오디오를 강제 종료 */
 function nukeAllAudio() {
-  // AudioContexts
+  // AudioContexts — 🔧 FIX v8: suspend 후 close (모바일에서 즉각 무음화)
   const registry = getRegistry();
   for (const ctx of registry) {
+    try {
+      if (ctx.state !== 'closed') {
+        // suspend()는 동기적으로 오디오 프로세싱을 중단
+        ctx.suspend().catch(() => {});
+      }
+    } catch {}
     try { ctx.close(); } catch {}
   }
   registry.length = 0;
@@ -76,10 +82,10 @@ function nukeAllAudio() {
   }
   intervals.length = 0;
 
-  // HTML Audio elements
+  // HTML Audio elements — 🔧 FIX v8: load() 호출로 버퍼 강제 해제
   const audios = getAllAudios();
   for (const audio of audios) {
-    try { audio.pause(); audio.currentTime = 0; audio.src = ''; } catch {}
+    try { audio.pause(); audio.currentTime = 0; audio.src = ''; audio.load(); } catch {}
   }
   audios.length = 0;
 
@@ -616,15 +622,19 @@ export function stop() {
   const wasAlarming = s.isAlarming;
 
   s.isAlarming = false;
-  s.activeMasterGain = null;
   s.pendingPlayGen = 0;
   s.gen++;
   s.lastStoppedAt = Date.now();
   try { localStorage.setItem('meercop_last_stopped_at', String(s.lastStoppedAt)); } catch {}
 
+  // 🔧 FIX v8: masterGain을 즉시 0으로 + disconnect → 비동기 close 전에 즉각 무음화
+  if (s.activeMasterGain) {
+    try { s.activeMasterGain.gain.value = 0; } catch {}
+    try { s.activeMasterGain.disconnect(); } catch {}
+  }
+  s.activeMasterGain = null;
+
   // 🔧 FIX v7: stop() 호출 시 최소 3초간 자동 suppress
-  // 이전에는 stop() 직후 다른 소스에서 play()가 즉시 가능했음
-  // suppressUntil이 이미 더 긴 값이면 덮어쓰지 않음
   const minSuppressUntil = Date.now() + 3000;
   if (s.suppressUntil < minSuppressUntil) {
     s.suppressUntil = minSuppressUntil;
@@ -637,7 +647,6 @@ export function stop() {
   try {
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
       navigator.serviceWorker.ready.then(reg => {
-        // tag 필터 없이 모든 알림을 가져와서 meercop 관련 알림을 모두 닫음
         reg.getNotifications().then(notifications => {
           notifications.forEach(n => {
             if (!n.tag || n.tag.startsWith('meercop')) {
