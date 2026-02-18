@@ -1,5 +1,7 @@
 const STORAGE_KEY = "meercop_activity_logs";
+const DELETED_ALERT_IDS_KEY = "meercop_deleted_alert_ids";
 const MAX_LOGS = 50; // localStorage 용량 초과 방지
+const MAX_DELETED_IDS = 200;
 
 export type LocalAlertType = "intrusion" | "unauthorized_peripheral" | "location_change" | "offline" | "low_battery";
 
@@ -143,6 +145,11 @@ export function deleteActivityLog(logId: string): void {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return;
     const logs: LocalActivityLog[] = JSON.parse(stored);
+    const target = logs.find(l => l.id === logId);
+    if (target?.event_data) {
+      const alertId = (target.event_data as Record<string, unknown>).alertId as string | undefined;
+      if (alertId) addDeletedAlertId(alertId);
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(logs.filter(l => l.id !== logId)));
   } catch (error) {
     console.error("Error deleting activity log:", error);
@@ -155,6 +162,13 @@ export function deleteActivityLogs(logIds: string[]): void {
     if (!stored) return;
     const idSet = new Set(logIds);
     const logs: LocalActivityLog[] = JSON.parse(stored);
+    // 삭제 대상의 alertId를 영구 삭제 목록에 추가
+    logs.forEach(l => {
+      if (idSet.has(l.id) && l.event_data) {
+        const alertId = (l.event_data as Record<string, unknown>).alertId as string | undefined;
+        if (alertId) addDeletedAlertId(alertId);
+      }
+    });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(logs.filter(l => !idSet.has(l.id))));
   } catch (error) {
     console.error("Error deleting activity logs:", error);
@@ -173,4 +187,25 @@ export function markLogsAsReadByIds(logIds: string[]): void {
   } catch (error) {
     console.error("Error marking logs as read:", error);
   }
+}
+
+// ── 삭제된 alertId 영구 추적 ──
+
+function addDeletedAlertId(alertId: string): void {
+  try {
+    const raw = localStorage.getItem(DELETED_ALERT_IDS_KEY);
+    let ids: string[] = raw ? JSON.parse(raw) : [];
+    if (ids.includes(alertId)) return;
+    ids.push(alertId);
+    if (ids.length > MAX_DELETED_IDS) ids = ids.slice(-MAX_DELETED_IDS);
+    localStorage.setItem(DELETED_ALERT_IDS_KEY, JSON.stringify(ids));
+  } catch {}
+}
+
+export function isAlertIdDeleted(alertId: string): boolean {
+  try {
+    const raw = localStorage.getItem(DELETED_ALERT_IDS_KEY);
+    if (!raw) return false;
+    return (JSON.parse(raw) as string[]).includes(alertId);
+  } catch { return false; }
 }
