@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -8,6 +9,7 @@ import { lovable } from "@/integrations/lovable/index";
 import meercopCharacter from "@/assets/meercop-character.png";
 
 const Auth = () => {
+  const { t } = useTranslation();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,20 +29,20 @@ const Auth = () => {
 
   const validateForm = () => {
     if (!email || !password) {
-      toast({ title: "입력 오류", description: "이메일과 비밀번호를 입력해주세요.", variant: "destructive" });
+      toast({ title: t("auth.inputError"), description: t("auth.enterEmailPassword"), variant: "destructive" });
       return false;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      toast({ title: "이메일 오류", description: "올바른 이메일 형식을 입력해주세요.", variant: "destructive" });
+      toast({ title: t("auth.emailError"), description: t("auth.invalidEmail"), variant: "destructive" });
       return false;
     }
     if (password.length < 6) {
-      toast({ title: "비밀번호 오류", description: "비밀번호는 최소 6자 이상이어야 합니다.", variant: "destructive" });
+      toast({ title: t("auth.passwordError"), description: t("auth.passwordTooShort"), variant: "destructive" });
       return false;
     }
     if (!isLogin && password !== confirmPassword) {
-      toast({ title: "비밀번호 불일치", description: "비밀번호가 일치하지 않습니다.", variant: "destructive" });
+      toast({ title: t("auth.passwordMismatch"), description: t("auth.passwordsDoNotMatch"), variant: "destructive" });
       return false;
     }
     return true;
@@ -55,29 +57,29 @@ const Auth = () => {
         const { error } = await signIn(email, password);
         if (error) {
           if (error.message.includes("Invalid login credentials")) {
-            toast({ title: "로그인 실패", description: "이메일 또는 비밀번호가 올바르지 않습니다.", variant: "destructive" });
+            toast({ title: t("auth.loginFailed"), description: t("auth.invalidCredentials"), variant: "destructive" });
           } else if (error.message.includes("Email not confirmed")) {
-            toast({ title: "이메일 미인증", description: "이메일 인증을 완료해주세요.", variant: "destructive" });
+            toast({ title: t("auth.emailNotConfirmed"), description: t("auth.emailNotConfirmedDesc"), variant: "destructive" });
           } else {
-            toast({ title: "로그인 실패", description: error.message, variant: "destructive" });
+            toast({ title: t("auth.loginFailed"), description: error.message, variant: "destructive" });
           }
         } else {
-          toast({ title: "로그인 성공", description: "MeerCOP에 오신 것을 환영합니다!" });
+          toast({ title: t("auth.loginSuccess"), description: t("auth.loginSuccessDesc") });
         }
       } else {
         const { error } = await signUp(email, password);
         if (error) {
           if (error.message.includes("User already registered")) {
-            toast({ title: "회원가입 실패", description: "이미 등록된 이메일입니다.", variant: "destructive" });
+            toast({ title: t("auth.signupFailed"), description: t("auth.alreadyRegistered"), variant: "destructive" });
           } else {
-            toast({ title: "회원가입 실패", description: error.message, variant: "destructive" });
+            toast({ title: t("auth.signupFailed"), description: error.message, variant: "destructive" });
           }
         } else {
-          toast({ title: "회원가입 성공", description: "이메일 인증 링크를 확인해주세요." });
+          toast({ title: t("auth.signupSuccess"), description: t("auth.checkEmail") });
         }
       }
     } catch {
-      toast({ title: "오류", description: "예기치 않은 오류가 발생했습니다.", variant: "destructive" });
+      toast({ title: t("common.error"), description: t("auth.unexpectedError"), variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -88,7 +90,7 @@ const Auth = () => {
       redirect_uri: window.location.origin,
     });
     if (error) {
-      toast({ title: "Google 로그인 실패", description: String(error), variant: "destructive" });
+      toast({ title: t("auth.googleLoginFailed"), description: String(error), variant: "destructive" });
     }
   };
 
@@ -106,19 +108,19 @@ const Auth = () => {
       <div className="flex flex-col items-center pt-10 pb-2">
         <img src={meercopCharacter} alt="MeerCOP" className="w-28 h-auto object-contain mb-2" />
         <p className="text-white font-black text-2xl tracking-wide drop-shadow-md">MeerCOP</p>
-        <p className="text-white/70 text-sm mt-1">노트북 도난 방지 서비스</p>
+        <p className="text-white/70 text-sm mt-1">{t("auth.subtitle")}</p>
       </div>
 
       {/* Auth Form */}
       <div className="flex-1 px-6 pb-8 pt-4">
         <div className="bg-white/15 backdrop-blur-xl border border-white/25 rounded-3xl p-6 shadow-xl">
           <h2 className="text-xl font-bold text-white text-center mb-6 drop-shadow-sm">
-            {isLogin ? "로그인" : "회원가입"}
+            {isLogin ? t("auth.login") : t("auth.signup")}
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-white/80 text-sm font-medium">이메일</label>
+              <label className="text-white/80 text-sm font-medium">{t("auth.email")}</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" />
                 <Input
@@ -132,7 +134,7 @@ const Auth = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-white/80 text-sm font-medium">비밀번호</label>
+              <label className="text-white/80 text-sm font-medium">{t("auth.password")}</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" />
                 <Input
@@ -154,7 +156,7 @@ const Auth = () => {
 
             {!isLogin && (
               <div className="space-y-1.5">
-                <label className="text-white/80 text-sm font-medium">비밀번호 확인</label>
+                <label className="text-white/80 text-sm font-medium">{t("auth.confirmPassword")}</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" />
                   <Input
@@ -175,14 +177,14 @@ const Auth = () => {
             >
               {isSubmitting ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mx-auto" />
-              ) : isLogin ? "로그인" : "회원가입"}
+              ) : isLogin ? t("auth.login") : t("auth.signup")}
             </button>
           </form>
 
           {/* Divider */}
           <div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px bg-white/20" />
-            <span className="text-white/50 text-xs">또는</span>
+            <span className="text-white/50 text-xs">{t("common.or")}</span>
             <div className="flex-1 h-px bg-white/20" />
           </div>
 
@@ -197,7 +199,7 @@ const Auth = () => {
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
             </svg>
-            Google로 계속하기
+            {t("auth.googleLogin")}
           </button>
 
           {/* Toggle */}
@@ -211,7 +213,7 @@ const Auth = () => {
               }}
               className="text-white/70 hover:text-white text-sm transition-colors"
             >
-              {isLogin ? "계정이 없으신가요? 회원가입" : "이미 계정이 있으신가요? 로그인"}
+              {isLogin ? t("auth.noAccount") : t("auth.hasAccount")}
             </button>
           </div>
         </div>

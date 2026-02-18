@@ -1,5 +1,6 @@
 import { Settings } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
+import { useTranslation } from "react-i18next";
 import laptopOn from "@/assets/laptop-on.png";
 import laptopOff from "@/assets/laptop-off.png";
 import wifiOn from "@/assets/wifi-on.png";
@@ -44,6 +45,7 @@ const StatusItem = ({ iconOn, iconOff, label, isActive, batteryLevel, onClick }:
 };
 
 const StatusIcons = ({ device, onIconClick }: StatusIconsProps) => {
+  const { t } = useTranslation();
   const isOnline = device?.status !== "offline";
   const batteryLevel = device?.battery_level ?? 100;
   const isNetworkConnected = device?.is_network_connected ?? false;
@@ -61,7 +63,7 @@ const StatusIcons = ({ device, onIconClick }: StatusIconsProps) => {
       <StatusItem 
         iconOn={laptopOn}
         iconOff={laptopOff}
-        label="Laptop" 
+        label={t("statusIcons.laptop")} 
         isActive={isOnline}
         batteryLevel={batteryLevel}
         onClick={() => onIconClick?.("laptop")}
@@ -69,14 +71,14 @@ const StatusIcons = ({ device, onIconClick }: StatusIconsProps) => {
       <StatusItem 
         iconOn={wifiOn}
         iconOff={wifiOff}
-        label="Network" 
+        label={t("statusIcons.network")} 
         isActive={isOnline && isNetworkConnected}
         onClick={() => onIconClick?.("network")}
       />
       <StatusItem 
         iconOn={cameraOn}
         iconOff={cameraOff}
-        label="Camera" 
+        label={t("statusIcons.camera")} 
         isActive={isOnline && isCameraConnected}
         onClick={() => onIconClick?.("camera")}
       />
@@ -87,7 +89,7 @@ const StatusIcons = ({ device, onIconClick }: StatusIconsProps) => {
         <div className="w-12 h-12 flex items-center justify-center rounded-full bg-primary-foreground/10">
           <Settings className="w-7 h-7 text-primary-foreground/80" />
         </div>
-        <span className="text-primary-foreground text-xs font-medium">Settings</span>
+        <span className="text-primary-foreground text-xs font-medium">{t("statusIcons.settings")}</span>
       </button>
     </div>
   );

@@ -1,4 +1,5 @@
 import { Database } from "@/integrations/supabase/types";
+import { useTranslation } from "react-i18next";
 
 type DeviceStatus = Database["public"]["Enums"]["device_status"];
 
@@ -9,27 +10,21 @@ interface StatusMessageProps {
 }
 
 const StatusMessage = ({ deviceName, isMonitoring, status }: StatusMessageProps) => {
+  const { t } = useTranslation();
+
   const getMessage = () => {
-    if (status === "alert") {
-      return "노트북에 충격이 감지되었습니다!";
-    }
-    if (!isMonitoring) {
-      return "미어캅 감시 준비 완료! 언제든지 감시를 시작할 수 있습니다.";
-    }
-    return `미어캅이 당신의 노트북을 감시중입니다.`;
+    if (status === "alert") return t("status.alertMessage");
+    if (!isMonitoring) return t("status.readyMessage");
+    return t("status.monitoringMessage");
   };
 
   return (
     <div className="mx-4 mt-1">
       <div className={`rounded-xl px-4 py-2 shadow-lg ${
-        status === "alert" 
-          ? "bg-destructive" 
-          : "bg-card/95"
+        status === "alert" ? "bg-destructive" : "bg-card/95"
       }`}>
         <p className={`text-center font-medium text-sm ${
-          status === "alert" 
-            ? "text-destructive-foreground" 
-            : "text-card-foreground"
+          status === "alert" ? "text-destructive-foreground" : "text-card-foreground"
         }`}>
           {getMessage()}
         </p>
