@@ -75,7 +75,7 @@ const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick }: SideMen
               {user?.email?.split('@')[0] || t("sideMenu.user")}
             </p>
             <p className="text-xs text-white/70">{user?.email || 'email@example.com'}</p>
-            <p className="text-xs text-white/50">Normal Member</p>
+            <p className="text-xs text-white/50">{t("sideMenu.normalMember")}</p>
           </div>
         </div>
 

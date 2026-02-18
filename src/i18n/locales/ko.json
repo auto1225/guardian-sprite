@@ -497,5 +497,26 @@
     "pause": "스트리밍 일시정지",
     "snapshot": "스냅샷 저장",
     "download": "다운로드"
+  },
+  "sideMenu": {
+    "normalMember": "일반 회원"
+  },
+  "notFound": {
+    "title": "404",
+    "message": "페이지를 찾을 수 없습니다",
+    "backHome": "홈으로 돌아가기"
+  },
+  "streaming": {
+    "title": "🎥 실시간 스트리밍",
+    "connecting": "스트리밍 연결 중...",
+    "cameraNotDetected": "카메라가 인식되지 않습니다"
+  },
+  "alertLocation": {
+    "title": "📍 노트북 위치",
+    "alertLocation": "📍 경보 발생 시 노트북 위치",
+    "loadingAddress": "주소 조회 중...",
+    "latitude": "위도",
+    "longitude": "경도",
+    "wifiWarning": "⚠️ Wi-Fi/IP 기반 위치로, 실제 위치와 수십 m ~ 수 km 오차가 있을 수 있습니다."
   }
 }
