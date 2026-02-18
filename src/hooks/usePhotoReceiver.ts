@@ -13,17 +13,29 @@ import {
 import { deleteAlertVideo } from "@/lib/alertVideoStorage";
 import * as Alarm from "@/lib/alarmSound";
 
-interface PendingAlert {
+interface PendingSequence {
   id: string;
   device_id: string;
   device_name?: string;
   event_type: PhotoEventType;
-  total_photos: number;
   change_percent?: number;
   created_at: string;
   total_chunks: number;
   received_chunks: number;
   photos: string[];
+  // photo_alert_end payload extras
+  latitude?: number | null;
+  longitude?: number | null;
+  location_source?: string | null;
+  auto_streaming?: boolean;
+  completed: boolean;
+}
+
+interface PendingBatch {
+  batch_id: string;
+  batch_total: number; // 이 배치에서 기대하는 총 시퀀스 수
+  sequences: Map<string, PendingSequence>; // sequence id → data
+  completed_count: number;
 }
 
 interface UsePhotoReceiverReturn {
@@ -40,15 +52,15 @@ interface UsePhotoReceiverReturn {
 }
 
 /**
- * usePhotoReceiver — 사진 경보 수신 훅 (사용자 단일 채널)
+ * usePhotoReceiver — 사진 경보 수신 훅 (배치 프로토콜)
  *
- * 채널: user-photos-{userId} 하나로 모든 기기의 사진을 수신
+ * 프로토콜 v9:
+ *   - photo_alert_start에 batch_id, batch_total 포함
+ *   - 같은 batch_id의 모든 시퀀스가 완료될 때까지 오버레이 표시 대기
+ *   - 30초 시간 기반 억제 제거 → 배치 완료 기반으로 전환
  *
- * 🔧 FIX v7: 경보음 재생 책임을 useAlerts에 일원화
- *   - 이전: photo_alert_start, photo_alert_end에서 각각 Alarm.play() 독립 호출
- *   - 문제: useAlerts의 Presence Alert와 ID가 달라 dismiss 후 재트리거
- *   - 수정: 이 훅에서는 Alarm.play()를 직접 호출하지 않음
- *          경보음은 useAlerts의 Presence 채널을 통해서만 트리거됨
+ * 하위 호환성:
+ *   - batch_id/batch_total이 없는 레거시 전송은 단일 배치(batch_total=1)로 처리
  */
 export function usePhotoReceiver(
   selectedDeviceId: string | null | undefined,
@@ -60,12 +72,10 @@ export function usePhotoReceiver(
   const [latestAlert, setLatestAlert] = useState<PhotoAlert | null>(null);
   const [viewingAlert, setViewingAlert] = useState<PhotoAlert | null>(null);
   const [alerts, setAlerts] = useState<PhotoAlert[]>([]);
-  const pendingRef = useRef<PendingAlert | null>(null);
+  const batchRef = useRef<Map<string, PendingBatch>>(new Map());
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const deviceNameMapRef = useRef(deviceNameMap);
   deviceNameMapRef.current = deviceNameMap;
-  // 🔧 FIX v8: dismiss 후 일정 시간 동안 새 사진 경보 오버레이 표시 억제
-  const overlaySuppressionRef = useRef<number>(0);
 
   const loadAlerts = useCallback(() => {
     setAlerts(getPhotoAlerts());
@@ -75,6 +85,57 @@ export function usePhotoReceiver(
     loadAlerts();
   }, [loadAlerts]);
 
+  /** 배치 완료 시 호출 — 모든 사진을 하나의 PhotoAlert로 병합 후 오버레이 표시 */
+  const finalizeBatch = useCallback((batch: PendingBatch) => {
+    const allPhotos: string[] = [];
+    let firstSeq: PendingSequence | null = null;
+    let lastLatitude: number | null = null;
+    let lastLongitude: number | null = null;
+    let lastLocationSource: string | null = null;
+    let lastAutoStreaming = false;
+
+    // 시퀀스를 생성 시간순으로 정렬하여 사진 순서 보장
+    const sequences = Array.from(batch.sequences.values())
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+    for (const seq of sequences) {
+      if (!firstSeq) firstSeq = seq;
+      allPhotos.push(...seq.photos);
+      if (seq.latitude != null) lastLatitude = seq.latitude;
+      if (seq.longitude != null) lastLongitude = seq.longitude;
+      if (seq.location_source) lastLocationSource = seq.location_source;
+      if (seq.auto_streaming) lastAutoStreaming = true;
+    }
+
+    if (!firstSeq) return;
+
+    const completed: PhotoAlert = {
+      id: batch.batch_id, // 배치 ID를 경보 ID로 사용
+      device_id: firstSeq.device_id,
+      device_name: firstSeq.device_name,
+      event_type: firstSeq.event_type,
+      total_photos: allPhotos.length,
+      change_percent: firstSeq.change_percent,
+      photos: allPhotos,
+      created_at: firstSeq.created_at,
+      is_read: false,
+      latitude: lastLatitude,
+      longitude: lastLongitude,
+      location_source: lastLocationSource,
+      auto_streaming: lastAutoStreaming,
+    };
+
+    savePhotoAlert(completed);
+    setLatestAlert(completed);
+    loadAlerts();
+    setReceiving(false);
+    setProgress(100);
+
+    // 배치 정리
+    batchRef.current.delete(batch.batch_id);
+    console.log("[PhotoReceiver] ✅ Batch complete:", batch.batch_id, "total photos:", allPhotos.length);
+  }, [loadAlerts]);
+
   useEffect(() => {
     const userId = user?.id;
     if (!userId) return;
@@ -82,7 +143,6 @@ export function usePhotoReceiver(
     const channelName = `user-photos-${userId}`;
     console.log("[PhotoReceiver] Subscribing to:", channelName);
 
-    // ChannelManager로 중복 방지
     channelManager.remove(channelName);
     const channel = channelManager.getOrCreate(channelName);
     channelRef.current = channel;
@@ -90,77 +150,90 @@ export function usePhotoReceiver(
     channel
       .on("broadcast", { event: "photo_alert_start" }, ({ payload }) => {
         const deviceId = payload.device_id;
-        console.log("[PhotoReceiver] Start from device:", deviceId?.slice(0, 8), payload);
-        pendingRef.current = {
+        // 하위 호환: batch_id가 없으면 sequence id를 batch_id로 사용
+        const batchId = payload.batch_id || payload.id;
+        const batchTotal = payload.batch_total || 1;
+
+        console.log("[PhotoReceiver] Start — batch:", batchId, "seq:", payload.id,
+          "batch_total:", batchTotal, "device:", deviceId?.slice(0, 8));
+
+        // 배치가 없으면 생성
+        if (!batchRef.current.has(batchId)) {
+          batchRef.current.set(batchId, {
+            batch_id: batchId,
+            batch_total: batchTotal,
+            sequences: new Map(),
+            completed_count: 0,
+          });
+        }
+
+        const batch = batchRef.current.get(batchId)!;
+        // batch_total 갱신 (이후 시퀀스에서 더 정확한 값이 올 수 있음)
+        if (batchTotal > batch.batch_total) {
+          batch.batch_total = batchTotal;
+        }
+
+        batch.sequences.set(payload.id, {
           id: payload.id,
           device_id: deviceId,
           device_name: deviceNameMapRef.current?.[deviceId] || payload.device_name,
           event_type: payload.event_type,
-          total_photos: payload.total_photos,
           change_percent: payload.change_percent,
           created_at: payload.created_at,
           total_chunks: Math.ceil(payload.total_photos / 2),
           received_chunks: 0,
           photos: [],
-        };
+          completed: false,
+        });
+
         setReceiving(true);
         setProgress(0);
-
-        // 🔧 FIX v7: Alarm.play() 제거
-        // 경보음은 useAlerts의 Presence 채널을 통해서만 트리거됩니다.
-        // 여기서 독립적으로 play()를 호출하면:
-        //   1. useAlerts의 Presence Alert ID와 다른 Photo Alert ID를 사용
-        //   2. dismiss 시 Presence ID만 dismissed 처리되고 Photo ID는 남음
-        //   3. suppress 기간 후 Photo ID로 다시 play()가 트리거됨
-        // → 경보음 해제 불가 버그의 직접적 원인이었음
-        console.log("[PhotoReceiver] 📸 Photo alert start (alarm delegated to useAlerts):", payload.id);
       })
       .on("broadcast", { event: "photo_alert_chunk" }, ({ payload }) => {
-        const pending = pendingRef.current;
-        if (!pending || pending.id !== payload.id) return;
+        // 모든 배치에서 해당 시퀀스 찾기
+        for (const batch of batchRef.current.values()) {
+          const seq = batch.sequences.get(payload.id);
+          if (seq) {
+            seq.photos.push(...payload.photos);
+            seq.received_chunks++;
 
-        console.log(`[PhotoReceiver] Chunk ${payload.chunk_index + 1}/${payload.total_chunks}`);
-        pending.photos.push(...payload.photos);
-        pending.received_chunks++;
-        setProgress(Math.round((pending.received_chunks / pending.total_chunks) * 100));
+            // 전체 배치 진행률 계산
+            let totalChunks = 0;
+            let receivedChunks = 0;
+            for (const s of batch.sequences.values()) {
+              totalChunks += s.total_chunks;
+              receivedChunks += s.received_chunks;
+            }
+            // 아직 도착 안 한 시퀀스 분량 추정
+            const remainingSeqs = batch.batch_total - batch.sequences.size;
+            totalChunks += remainingSeqs * (seq.total_chunks || 1);
+
+            setProgress(Math.round((receivedChunks / Math.max(totalChunks, 1)) * 100));
+            break;
+          }
+        }
       })
       .on("broadcast", { event: "photo_alert_end" }, ({ payload }) => {
-        const pending = pendingRef.current;
-        if (!pending || pending.id !== payload.id) return;
+        for (const batch of batchRef.current.values()) {
+          const seq = batch.sequences.get(payload.id);
+          if (seq && !seq.completed) {
+            seq.completed = true;
+            seq.latitude = payload.latitude ?? null;
+            seq.longitude = payload.longitude ?? null;
+            seq.location_source = payload.location_source ?? null;
+            seq.auto_streaming = payload.auto_streaming ?? false;
+            batch.completed_count++;
 
-        console.log("[PhotoReceiver] Complete:", payload.total_photos, "photos");
+            console.log("[PhotoReceiver] Seq complete:", payload.id,
+              `(${batch.completed_count}/${batch.batch_total})`);
 
-        const completed: PhotoAlert = {
-          id: pending.id,
-          device_id: pending.device_id,
-          device_name: pending.device_name,
-          event_type: pending.event_type,
-          total_photos: pending.photos.length,
-          change_percent: pending.change_percent,
-          photos: pending.photos,
-          created_at: pending.created_at,
-          is_read: false,
-          latitude: payload.latitude ?? null,
-          longitude: payload.longitude ?? null,
-          location_source: payload.location_source ?? null,
-          auto_streaming: payload.auto_streaming ?? false,
-        };
-
-        savePhotoAlert(completed);
-        pendingRef.current = null;
-        setReceiving(false);
-        setProgress(100);
-        
-        // 🔧 FIX v8: suppress 기간 중에는 오버레이를 다시 열지 않음
-        if (Date.now() < overlaySuppressionRef.current) {
-          console.log("[PhotoReceiver] 📸 Overlay suppressed, skipping setLatestAlert:", completed.id);
-        } else {
-          setLatestAlert(completed);
+            // 모든 시퀀스 완료 → 배치 확정, 오버레이 1회 표시
+            if (batch.completed_count >= batch.batch_total) {
+              finalizeBatch(batch);
+            }
+            break;
+          }
         }
-        loadAlerts();
-
-        // 🔧 FIX v7: Alarm.play() 제거 (위와 동일한 이유)
-        console.log("[PhotoReceiver] 📸 Photo alert complete (alarm delegated to useAlerts):", completed.id);
       })
       .subscribe((status) => {
         console.log("[PhotoReceiver] Channel status:", status);
@@ -170,7 +243,7 @@ export function usePhotoReceiver(
       channelManager.remove(channelName);
       channelRef.current = null;
     };
-  }, [user?.id, loadAlerts]);
+  }, [user?.id, loadAlerts, finalizeBatch]);
 
   const dismissLatest = useCallback(() => {
     if (latestAlert) {
@@ -180,8 +253,6 @@ export function usePhotoReceiver(
     }
     Alarm.stop();
     Alarm.suppressFor(30000);
-    // 🔧 FIX v8: 30초간 새 사진 경보 오버레이 표시 억제
-    overlaySuppressionRef.current = Date.now() + 30000;
     setLatestAlert(null);
   }, [latestAlert, loadAlerts]);
 
