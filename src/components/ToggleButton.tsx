@@ -1,4 +1,5 @@
 import { Shield, ShieldCheck, Monitor } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface ToggleButtonProps {
   isOn: boolean;
@@ -8,12 +9,13 @@ interface ToggleButtonProps {
 }
 
 const ToggleButton = ({ isOn, onToggle, isCamouflage, onCamouflageToggle }: ToggleButtonProps) => {
+  const { t } = useTranslation();
+
   return (
     <div className="pb-4 pt-2 flex justify-center items-center z-20 px-6 gap-3 w-full">
-      {/* MeerCOP Toggle - wide glassmorphism pill */}
       <button 
         onClick={onToggle}
-        aria-label={isOn ? "감시 중지" : "감시 시작"}
+        aria-label={isOn ? t("toggle.stopMonitoring") : t("toggle.startMonitoring")}
         aria-pressed={isOn}
         className="flex-1 flex items-center justify-center gap-3 px-6 py-3.5 rounded-full font-bold text-lg transition-all border"
         style={{
@@ -29,11 +31,7 @@ const ToggleButton = ({ isOn, onToggle, isCamouflage, onCamouflageToggle }: Togg
       >
         <div
           className="w-9 h-9 rounded-full flex items-center justify-center"
-          style={{
-            background: isOn
-              ? 'hsla(80, 60%, 50%, 0.3)'
-              : 'hsla(0, 0%, 60%, 0.25)',
-          }}
+          style={{ background: isOn ? 'hsla(80, 60%, 50%, 0.3)' : 'hsla(0, 0%, 60%, 0.25)' }}
         >
           {isOn ? (
             <ShieldCheck className="w-5 h-5" style={{ color: 'hsl(80, 70%, 55%)' }} />
@@ -41,20 +39,15 @@ const ToggleButton = ({ isOn, onToggle, isCamouflage, onCamouflageToggle }: Togg
             <Shield className="w-5 h-5" style={{ color: 'hsla(0, 0%, 80%, 0.7)' }} />
           )}
         </div>
-        <span
-          style={{
-            color: isOn ? 'hsl(55, 80%, 60%)' : 'hsla(0, 0%, 75%, 0.8)',
-          }}
-        >
-          MeerCOP {isOn ? 'ON' : 'OFF'}
+        <span style={{ color: isOn ? 'hsl(55, 80%, 60%)' : 'hsla(0, 0%, 75%, 0.8)' }}>
+          MeerCOP {isOn ? t("common.on") : t("common.off")}
         </span>
       </button>
 
-      {/* Camouflage Toggle - matching pill style */}
       {onCamouflageToggle && (
         <button
           onClick={onCamouflageToggle}
-          aria-label={isCamouflage ? "위장 모드 끄기" : "위장 모드 켜기"}
+          aria-label={isCamouflage ? t("toggle.camouflageOff") : t("toggle.camouflageOn")}
           aria-pressed={!!isCamouflage}
           className="w-14 h-14 rounded-full flex items-center justify-center transition-all border"
           style={{
@@ -68,12 +61,7 @@ const ToggleButton = ({ isOn, onToggle, isCamouflage, onCamouflageToggle }: Togg
               : '0 4px 15px hsla(0, 0%, 0%, 0.15), inset 0 1px 0 hsla(0, 0%, 100%, 0.1)',
           }}
         >
-          <Monitor
-            className="w-5 h-5"
-            style={{
-              color: isCamouflage ? 'hsl(210, 60%, 70%)' : 'hsla(0, 0%, 75%, 0.7)',
-            }}
-          />
+          <Monitor className="w-5 h-5" style={{ color: isCamouflage ? 'hsl(210, 60%, 70%)' : 'hsla(0, 0%, 75%, 0.7)' }} />
         </button>
       )}
     </div>
