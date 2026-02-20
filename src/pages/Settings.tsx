@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
+import { SUPPORTED_LANGUAGES, loadLanguage } from "@/lib/dynamicTranslation";
 import {
   SettingItem,
   SensorSection,
@@ -357,27 +358,32 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
                 <span className="text-white font-semibold text-sm block">{t("settings.language")}</span>
                 <span className="text-white/80 text-xs">{t("settings.languageDesc")}</span>
               </div>
-              <div className="flex gap-2">
-                {(["ko", "en"] as const).map((lang) => (
+              <div className="grid grid-cols-3 gap-2 max-h-[240px] overflow-y-auto alert-history-scroll">
+                {SUPPORTED_LANGUAGES.map((lang) => (
                   <button
-                    key={lang}
+                    key={lang.code}
                     onClick={async () => {
-                      i18n.changeLanguage(lang);
-                      localStorage.setItem("meercop_language", lang);
-                      // Save to device metadata so laptop program can read it
-                      try {
-                        await saveMetadata({ language: lang });
-                        toast({ title: t("common.saved"), description: t("settings.languageChanged") });
-                      } catch {
-                        toast({ title: t("common.error"), description: t("common.saveFailed"), variant: "destructive" });
+                      toast({ title: "⏳", description: lang.label });
+                      const success = await loadLanguage(lang.code);
+                      if (success) {
+                        localStorage.setItem("meercop_language", lang.code);
+                        try {
+                          await saveMetadata({ language: lang.code });
+                          toast({ title: t("common.saved"), description: t("settings.languageChanged") });
+                        } catch {
+                          toast({ title: t("common.error"), description: t("common.saveFailed"), variant: "destructive" });
+                        }
+                      } else {
+                        toast({ title: t("common.error"), description: "Translation failed", variant: "destructive" });
                       }
                     }}
-                    className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                      i18n.language === lang ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
+                    className={`py-2 px-1 rounded-xl text-xs font-semibold transition-all text-center ${
+                      i18n.language === lang.code ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
                     }`}
-                    style={i18n.language === lang ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
+                    style={i18n.language === lang.code ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
                   >
-                    {t(`settings.language${lang === "ko" ? "Ko" : "En"}`)}
+                    <span className="block text-base">{lang.flag}</span>
+                    <span className="block mt-0.5">{lang.label}</span>
                   </button>
                 ))}
               </div>
