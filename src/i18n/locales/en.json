@@ -554,5 +554,5 @@
     "noHistory": "No location history",
     "latest": "Latest",
     "records": "{{count}} location records"
-  },
+  }
 }

@@ -554,5 +554,5 @@
     "noHistory": "위치 이력이 없습니다",
     "latest": "최신",
     "records": "{{count}}건의 위치 기록"
-  },
+  }
 }
