@@ -706,3 +706,14 @@ export function emergencyKillAll(): string[] {
 // re-export for compatibility
 // ══════════════════════════════════════
 export type { AlarmState };
+
+// ══════════════════════════════════════
+// ★ HMR 클린업 — 모듈 교체 시 이전 인스턴스 자원 완전 해제
+// ══════════════════════════════════════
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    console.log("[AlarmSound] 🔥 HMR dispose — cleaning up all audio resources");
+    stop();
+    killAllSources();
+  });
+}
