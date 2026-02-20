@@ -52,6 +52,9 @@ export const useAlerts = (deviceId?: string | null) => {
   const activeAlertRef = useRef<ActiveAlert | null>(null);
   const handleAlertRef = useRef<(alert: ActiveAlert, fromDeviceId?: string) => void>(() => {});
   const userIdRef = useRef(user?.id);
+  const lastAlertDeviceRef = useRef<string | null>(null);
+  // ★ Per-device suppression — 해제 후 같은 기기의 모든 경보 차단
+  const deviceSuppressRef = useRef<Map<string, number>>(new Map());
 
   deviceIdRef.current = deviceId;
   userIdRef.current = user?.id;
@@ -93,6 +96,16 @@ export const useAlerts = (deviceId?: string | null) => {
       console.log("[useAlerts] ⏭ Suppressed, ignoring alert:", alert.id);
       return;
     }
+    // ★ Per-device suppression — 해제된 기기에서 오는 모든 경보 차단
+    if (fromDeviceId) {
+      const deviceSuppressUntil = deviceSuppressRef.current.get(fromDeviceId);
+      if (deviceSuppressUntil && Date.now() < deviceSuppressUntil) {
+        console.log("[useAlerts] ⏭ Device suppressed:", fromDeviceId.slice(0, 8),
+          "for", Math.round((deviceSuppressUntil - Date.now()) / 1000), "s more");
+        Alarm.addDismissed(alert.id);
+        return;
+      }
+    }
 
     const age = Date.now() - new Date(alert.created_at).getTime();
     if (age > 120_000) {
@@ -101,15 +114,11 @@ export const useAlerts = (deviceId?: string | null) => {
       return;
     }
 
-    // ★ FIX: lastStoppedAt 기반 차단을 제거
-    // suppressFor(30000)이 이미 동일 역할을 수행하며,
-    // 10초 차단은 진짜 새 알림도 차단하는 부작용이 있었음
-    // isSuppressed() 체크(line 92)가 이 역할을 대체함
-
     if (activeAlertRef.current?.id === alert.id) return;
 
     console.log("[useAlerts] 🚨 New alert:", alert.id, "from device:", fromDeviceId?.slice(0, 8), "age:", Math.round(age / 1000), "s");
     activeAlertRef.current = alert;
+    lastAlertDeviceRef.current = fromDeviceId || null;
     safeSetActiveAlert(alert);
 
     if (!Alarm.isPlaying() && !Alarm.isMuted()) {
@@ -161,14 +170,15 @@ export const useAlerts = (deviceId?: string | null) => {
 
         // 모든 key 순회 — key=deviceId (phone 제외)
         for (const key of keys) {
-          if (key === 'phone') continue;
           const entries = state[key] as Array<{
             active_alert?: ActiveAlert | null;
             status?: string;
+            role?: string;
           }>;
           console.log("[useAlerts] 🔍 Key:", key.slice(0, 8), "entries:", entries.length, "data:", JSON.stringify(entries).slice(0, 300));
           for (const entry of entries) {
-            if (entry.status === 'listening') continue;
+            // ★ phone 엔트리 및 listening 상태 스킵
+            if (entry.role === 'phone' || entry.status === 'listening') continue;
             if (entry.active_alert) {
               console.log("[useAlerts] ✅ Found active_alert from device:", key.slice(0, 8));
               handleAlertRef.current(entry.active_alert, key);
@@ -269,10 +279,16 @@ export const useAlerts = (deviceId?: string | null) => {
     // 문제: 사진 청크 전송이 10초 이상 걸리면 photo_alert_end 도착 시
     //       suppress가 이미 풀려있어 재트리거 가능했음
     // 수정: 30초간 억제 → 사진 전송 완료 + 네트워크 지연 충분히 커버
-    Alarm.suppressFor(30000);
+    Alarm.suppressFor(60000);
+    // ★ Per-device suppression — 해당 기기의 모든 경보를 60초간 차단
+    if (lastAlertDeviceRef.current) {
+      deviceSuppressRef.current.set(lastAlertDeviceRef.current, Date.now() + 60000);
+      console.log("[useAlerts] 🛡️ Device suppressed:", lastAlertDeviceRef.current.slice(0, 8), "for 60s");
+    }
     safeSetActiveAlert(null);
     activeAlertRef.current = null;
-    console.log("[useAlerts] ✅ All dismissed (suppress 30s)");
+    lastAlertDeviceRef.current = null;
+    console.log("[useAlerts] ✅ All dismissed (suppress 60s)");
   }, [safeSetActiveAlert]);
 
   return {

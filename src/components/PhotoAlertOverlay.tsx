@@ -313,7 +313,7 @@ export default function PhotoAlertOverlay({
         <div className="p-4 shrink-0 space-y-3">
           {!phoneDismissed && (
             <button
-              onClick={() => { stopAlertSound(); Alarm.addDismissed(alert.id); Alarm.suppressFor(30000); setPhoneDismissed(true); }}
+              onClick={() => { stopAlertSound(); Alarm.addDismissed(alert.id); Alarm.suppressFor(60000); setPhoneDismissed(true); }}
               className="w-full py-3 bg-white/12 backdrop-blur-md text-white border border-white/25 rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
             >
               {t("alarm.dismissPhoneAlarm")}
@@ -321,7 +321,7 @@ export default function PhotoAlertOverlay({
           )}
           {onDismissRemoteAlarm && (
             <button
-              onClick={() => { stopAlertSound(); Alarm.addDismissed(alert.id); Alarm.suppressFor(30000); onDismissRemoteAlarm(); onDismiss(); }}
+              onClick={() => { stopAlertSound(); Alarm.addDismissed(alert.id); Alarm.suppressFor(60000); onDismissRemoteAlarm(); onDismiss(); }}
               className="w-full py-4 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-full font-bold text-lg shadow-lg active:scale-95 transition-transform"
             >
               {t("alarm.dismissComputerAlarmFull")}
