@@ -23,6 +23,40 @@ const ALARM_SOUND_CONFIGS: Record<string, { freq: number[]; pattern: number[] }>
 };
 
 // ══════════════════════════════════════
+// ★ AudioContext 전역 추적 (monkey-patch)
+// 모든 AudioContext 인스턴스를 추적하여 stop() 시 전부 파기
+// ══════════════════════════════════════
+const TRACKED_CONTEXTS_KEY = '__meercop_all_audio_contexts';
+
+function getTrackedContexts(): AudioContext[] {
+  const w = window as unknown as Record<string, AudioContext[]>;
+  if (!w[TRACKED_CONTEXTS_KEY]) w[TRACKED_CONTEXTS_KEY] = [];
+  return w[TRACKED_CONTEXTS_KEY];
+}
+
+function installAudioContextTracker() {
+  const w = window as unknown as Record<string, unknown>;
+  if (w.__meercop_ac_patched) return;
+  w.__meercop_ac_patched = true;
+
+  const OriginalAudioContext = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+  if (!OriginalAudioContext) return;
+
+  const PatchedAudioContext = function (this: AudioContext, ...args: ConstructorParameters<typeof AudioContext>) {
+    const instance = new OriginalAudioContext(...args);
+    getTrackedContexts().push(instance);
+    return instance;
+  } as unknown as typeof AudioContext;
+
+  PatchedAudioContext.prototype = OriginalAudioContext.prototype;
+  Object.defineProperty(PatchedAudioContext, 'name', { value: 'AudioContext' });
+
+  (window as unknown as { AudioContext: typeof AudioContext }).AudioContext = PatchedAudioContext;
+  console.log("[AlarmSound] ✅ AudioContext tracker installed");
+}
+installAudioContextTracker();
+
+// ══════════════════════════════════════
 // Window-Global 오디오 참조 (싱글톤 보장)
 // ══════════════════════════════════════
 const AUDIO_KEY = '__meercop_audio_v11';
@@ -369,7 +403,18 @@ function killAllSources() {
   }
   refs.ctx = null;
   refs.gain = null;
-  console.log("[AlarmSound] 🔇 killAllSources: AudioContext destroyed");
+
+  // 6. ★ 추적된 모든 AudioContext 파기 (클로저에 갇힌 것 포함)
+  const tracked = getTrackedContexts();
+  let killed = 0;
+  for (const ctx of tracked) {
+    if (ctx && ctx.state !== 'closed') {
+      try { ctx.close().catch(() => {}); killed++; } catch {}
+    }
+  }
+  tracked.length = 0; // 배열 비우기
+  if (killed > 0) console.log(`[AlarmSound] 🔇 killAllSources: closed ${killed} tracked AudioContexts`);
+  else console.log("[AlarmSound] 🔇 killAllSources: AudioContext destroyed");
 }
 
 // ══════════════════════════════════════
@@ -578,6 +623,15 @@ export function stop() {
     v10State.isAlarming = false;
     v10State.pendingPlayGen = 0;
   }
+
+  // ★ 추적된 모든 AudioContext도 파기 (클로저에 갇힌 이전 모듈 인스턴스 대응)
+  const tracked = getTrackedContexts();
+  for (const ctx of tracked) {
+    if (ctx && ctx.state !== 'closed') {
+      try { ctx.close().catch(() => {}); } catch {}
+    }
+  }
+  tracked.length = 0;
 
   // 시스템 푸시 알림도 닫기
   try {
