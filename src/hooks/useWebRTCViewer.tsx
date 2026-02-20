@@ -31,19 +31,21 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const processedMessagesRef = useRef<Set<string>>(new Set());
   const isConnectingRef = useRef(false);
-  const isConnectedRef = useRef(false); // Track connection status with ref
-  const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]); // Buffer for ICE candidates
-  const hasRemoteDescriptionRef = useRef(false); // Track if remote description is set
-  const hasSentAnswerRef = useRef(false); // Track if answer has been sent
-  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Timeout reference
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null); // ontrack debounce
-  const offerRetryCountRef = useRef(0); // Track offer retry count
-  const offerRetryIntervalRef = useRef<NodeJS.Timeout | null>(null); // Retry interval
-  const lastViewerJoinSentRef = useRef<number>(0); // broadcaster-ready 디바운스용
-  const isProcessingOfferRef = useRef(false); // ★ offer 중복 처리 방지
-  const reconnectAttemptRef = useRef(0); // S-12: 자동 재연결 시도 횟수
-  const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null); // S-12: 재연결 타이머
-  const connectionSucceededAtRef = useRef<number>(0); // 연결 성공 직후 재연결 차단
+  const isConnectedRef = useRef(false);
+  const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+  const hasRemoteDescriptionRef = useRef(false);
+  const hasSentAnswerRef = useRef(false);
+  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const offerRetryCountRef = useRef(0);
+  const offerRetryIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastViewerJoinSentRef = useRef<number>(0);
+  const isProcessingOfferRef = useRef(false);
+  const reconnectAttemptRef = useRef(0);
+  const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const connectionSucceededAtRef = useRef<number>(0);
+  // ★ NEW: 지속적 offer 폴링 (브로드캐스터 벤치마킹)
+  const offerPollingRef = useRef<NodeJS.Timeout | null>(null);
 
   const ICE_SERVERS: RTCConfiguration = {
     iceServers: [
@@ -56,31 +58,29 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     iceCandidatePoolSize: 10,
   };
 
-  // preserveStream=true: 연결 해제 시 마지막 프레임 유지 (disconnect overlay 표시용)
   const cleanup = useCallback((preserveStream = false) => {
-    console.log("[WebRTC Viewer] Cleaning up... isConnecting:", isConnectingRef.current, "preserveStream:", preserveStream);
+    console.log("[WebRTC Viewer] Cleaning up... preserveStream:", preserveStream);
     
-    // Clear timeouts
     if (connectionTimeoutRef.current) {
       clearTimeout(connectionTimeoutRef.current);
       connectionTimeoutRef.current = null;
     }
-    
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;
     }
-    
-    // Clear retry interval
     if (offerRetryIntervalRef.current) {
       clearInterval(offerRetryIntervalRef.current);
       offerRetryIntervalRef.current = null;
     }
-
-    // S-12: Clear reconnect timer
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = null;
+    }
+    // ★ NEW: offer 폴링 정리
+    if (offerPollingRef.current) {
+      clearInterval(offerPollingRef.current);
+      offerPollingRef.current = null;
     }
     
     if (peerConnectionRef.current) {
@@ -106,7 +106,6 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     setIsConnecting(false);
   }, []);
 
-  // 시그널링 메시지를 테이블에 저장
   const sendSignalingMessage = useCallback(async (type: string, data: object) => {
     try {
       console.log("[WebRTC Viewer] Sending signaling:", type);
@@ -135,12 +134,12 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       bundlePolicy: "max-bundle",
     });
 
-    // ★ 오디오 수신을 위한 트랜시버 명시적 추가 — SDP에 audio line 보장
+    // ★ 오디오/비디오 수신용 트랜시버 명시적 추가
     pc.addTransceiver("audio", { direction: "recvonly" });
     pc.addTransceiver("video", { direction: "recvonly" });
     console.log("[WebRTC Viewer] ✅ Added audio+video transceivers (recvonly)");
 
-    // ★ ontrack: 항상 PC receivers에서 새 MediaStream 생성 (stale stream 방지)
+    // ★ ontrack: PC receivers에서 새 MediaStream 생성
     let pendingStreamUpdate: NodeJS.Timeout | null = null;
     let receivedTrackKinds = new Set<string>();
 
@@ -151,12 +150,10 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       receivedTrackKinds.add(track.kind);
 
       const commitStream = () => {
-        // ★ 항상 PC receivers에서 새 MediaStream 생성 — stale event.streams[0] 문제 회피
         const currentPc = peerConnectionRef.current;
         if (!currentPc) return;
         const allTracks: MediaStreamTrack[] = [];
         currentPc.getReceivers().forEach(r => {
-          // ★ readyState 필터 완화: "ended"가 아니면 모두 포함 (오디오 트랙이 muted 상태에서도 포함되도록)
           if (r.track && r.track.readyState !== "ended") {
             allTracks.push(r.track);
           }
@@ -166,7 +163,6 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
           return;
         }
 
-        // ★ 기존 스트림과 트랙이 동일하면 재설정하지 않음 (무한 리마운트 방지)
         setRemoteStream(prev => {
           if (prev) {
             const prevIds = prev.getTracks().map(t => t.id).sort().join(",");
@@ -187,6 +183,12 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
           connectionTimeoutRef.current = null;
         }
         
+        // ★ offer 폴링 중지 — 연결 성공
+        if (offerPollingRef.current) {
+          clearInterval(offerPollingRef.current);
+          offerPollingRef.current = null;
+        }
+        
         isConnectedRef.current = true;
         isConnectingRef.current = false;
         setIsConnected(true);
@@ -195,7 +197,6 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
 
       const scheduleUpdate = () => {
         if (pendingStreamUpdate) clearTimeout(pendingStreamUpdate);
-        // ★ 디바운스를 500ms로 늘려 오디오+비디오 트랙이 모두 도착할 시간 확보
         pendingStreamUpdate = setTimeout(() => {
           commitStream();
         }, 500);
@@ -204,15 +205,14 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       if (track.muted) {
         console.log(`[WebRTC Viewer] ⏳ ${track.kind} track is muted, waiting for unmute...`);
         const onUnmute = () => {
-          console.log(`[WebRTC Viewer] ✅ ${track.kind} track unmuted, triggering stream update`);
+          console.log(`[WebRTC Viewer] ✅ ${track.kind} track unmuted`);
           track.removeEventListener("unmute", onUnmute);
           scheduleUpdate();
         };
         track.addEventListener("unmute", onUnmute);
-        // ★ muted 트랙도 일정 시간 후 강제 커밋 (unmute 이벤트가 오지 않는 경우 대비)
         setTimeout(() => {
           if (track.readyState !== "ended") {
-            console.log(`[WebRTC Viewer] ⏰ Force commit after timeout for ${track.kind} track (muted=${track.muted})`);
+            console.log(`[WebRTC Viewer] ⏰ Force commit for ${track.kind} (muted=${track.muted})`);
             track.removeEventListener("unmute", onUnmute);
             scheduleUpdate();
           }
@@ -224,8 +224,6 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       track.onended = () => console.log("[WebRTC Viewer] ⚠️ Track ended:", track.kind);
       track.onmute = () => console.log("[WebRTC Viewer] ⚠️ Track muted:", track.kind);
     };
-
-
 
     pc.onicecandidate = (event) => {
       if (event.candidate) {
@@ -243,29 +241,34 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
           clearTimeout(connectionTimeoutRef.current);
           connectionTimeoutRef.current = null;
         }
+        // ★ offer 폴링 중지
+        if (offerPollingRef.current) {
+          clearInterval(offerPollingRef.current);
+          offerPollingRef.current = null;
+        }
         
         isConnectedRef.current = true;
         isConnectingRef.current = false;
-        reconnectAttemptRef.current = 0; // S-12: 성공 시 재연결 카운터 리셋
+        reconnectAttemptRef.current = 0;
         connectionSucceededAtRef.current = Date.now();
         setIsConnected(true);
         setIsConnecting(false);
       } else if (pc.connectionState === "disconnected") {
-        console.log("[WebRTC Viewer] ⚠️ Connection disconnected, preserving last frame...");
+        console.log("[WebRTC Viewer] ⚠️ Connection disconnected, waiting 10s for recovery...");
         isConnectedRef.current = false;
         isConnectingRef.current = false;
         setIsConnected(false);
         setIsConnecting(false);
-        // 10초 후에도 복구되지 않으면 자동 재연결 시도
+        // ★ 브로드캐스터와 동일: 10초 grace period 후 재연결
         setTimeout(() => {
           if (peerConnectionRef.current?.connectionState === "disconnected") {
-            console.log("[WebRTC Viewer] Connection did not recover after 10s, attempting reconnect...");
+            console.log("[WebRTC Viewer] Connection did not recover after 10s, reconnecting...");
             cleanup(true);
             scheduleReconnect();
           }
         }, 10000);
       } else if (pc.connectionState === "failed") {
-        console.log("[WebRTC Viewer] Connection failed, attempting reconnect...");
+        console.log("[WebRTC Viewer] ❌ Connection failed, reconnecting...");
         isConnectingRef.current = false;
         isConnectedRef.current = false;
         cleanup(true);
@@ -285,8 +288,6 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     return pc;
   }, [sendSignalingMessage, cleanup, onError]);
 
-  // S-12: 자동 재연결 (지수 백오프: 즉시→2초→4초, 최대 3회)
-  // connect는 아래에서 정의되므로 connectRef를 사용하여 stale closure 방지
   const connectRef = useRef<() => void>(() => {});
 
   const scheduleReconnect = useCallback(() => {
@@ -299,14 +300,13 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       return;
     }
 
-    // 연결 성공 직후 5초 이내이면 재연결 차단
     if (Date.now() - connectionSucceededAtRef.current < 5000) {
       console.log("[WebRTC Viewer] ⏭️ Skipping reconnect (connected recently)");
       return;
     }
 
-    const delay = attempt === 0 ? 0 : Math.pow(2, attempt) * 1000; // 0, 2s, 4s
-    console.log(`[WebRTC Viewer] 🔄 Scheduling reconnect attempt ${attempt + 1}/${MAX_RECONNECT} in ${delay}ms`);
+    const delay = attempt === 0 ? 0 : Math.pow(2, attempt) * 1000;
+    console.log(`[WebRTC Viewer] 🔄 Reconnect attempt ${attempt + 1}/${MAX_RECONNECT} in ${delay}ms`);
     
     reconnectAttemptRef.current = attempt + 1;
     reconnectTimerRef.current = setTimeout(() => {
@@ -316,7 +316,6 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     }, delay);
   }, [onError]);
 
-  // Process buffered ICE candidates after remote description is set
   const processPendingIceCandidates = useCallback(async () => {
     const pc = peerConnectionRef.current;
     if (!pc || !hasRemoteDescriptionRef.current) return;
@@ -333,9 +332,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     pendingIceCandidatesRef.current = [];
   }, []);
 
-  // broadcaster의 시그널링 메시지 처리
   const handleSignalingMessage = useCallback(async (record: SignalingRecord) => {
-    // 이미 처리한 메시지 스킵
     if (processedMessagesRef.current.has(record.id)) return;
     processedMessagesRef.current.add(record.id);
 
@@ -347,15 +344,12 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
 
     try {
       if (record.type === "offer") {
-        // ★ FIX: broadcaster의 session_id가 아닌 data.target_session으로 매칭
         const targetSession = (record.data as Record<string, unknown>).target_session as string | undefined;
         if (targetSession && targetSession !== sessionIdRef.current) {
-          console.log("[WebRTC Viewer] ⏭️ Ignoring offer for different session:", targetSession, "my session:", sessionIdRef.current);
+          console.log("[WebRTC Viewer] ⏭️ Ignoring offer for different session:", targetSession, "my:", sessionIdRef.current);
           return;
         }
-        // target_session이 없는 경우 (단일 뷰어 시나리오) — 통과 허용
         
-        // ★ 이미 offer를 처리 중이거나 완료된 경우 스킵
         if (isProcessingOfferRef.current) {
           console.log("[WebRTC Viewer] ⏭️ Skipping offer (already processing)");
           return;
@@ -369,72 +363,69 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
           return;
         }
         
-        // ★ 즉시 플래그 설정 — 비동기 작업 전에 잠금
         isProcessingOfferRef.current = true;
-        // Debug: log the data structure
-        console.log("[WebRTC Viewer] ✅ Received offer for my session:", record.session_id);
+        console.log("[WebRTC Viewer] ✅ Processing offer, SDP extraction...");
         
-        // Extract SDP - handle both formats:
-        // Format 1: { type: "offer", sdp: "v=0..." }
-        // Format 2: { sdp: { type: "offer", sdp: "v=0..." } } (nested)
         let sdp: string | undefined;
-        
         if (typeof record.data.sdp === 'string') {
-          // Format 1: sdp is a string
           sdp = record.data.sdp;
         } else if (record.data.sdp && typeof record.data.sdp === 'object' && 'sdp' in record.data.sdp) {
-          // Format 2: sdp is nested object
           sdp = (record.data.sdp as { sdp: string }).sdp;
-          console.log("[WebRTC Viewer] Using nested SDP format");
         }
         
         if (!sdp || typeof sdp !== 'string') {
-          console.error("[WebRTC Viewer] Invalid SDP format:", typeof record.data.sdp, record.data.sdp);
+          console.error("[WebRTC Viewer] ❌ Invalid SDP format:", typeof record.data.sdp);
+          isProcessingOfferRef.current = false;
           onError?.(i18n.t("camera.invalidSdp"));
           return;
         }
 
-        console.log("[WebRTC Viewer] Setting remote description with SDP length:", sdp.length);
-        await pc.setRemoteDescription(new RTCSessionDescription({
-          type: "offer",
-          sdp: sdp,
-        }));
+        console.log("[WebRTC Viewer] Setting remote description, SDP length:", sdp.length);
+        await pc.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp }));
         
         hasRemoteDescriptionRef.current = true;
-        console.log("[WebRTC Viewer] ✅ Remote description set successfully");
+        console.log("[WebRTC Viewer] ✅ Remote description set");
         
-        // Process any buffered ICE candidates
         await processPendingIceCandidates();
         
-        // Only create and send answer if we haven't already
         if (!hasSentAnswerRef.current) {
           hasSentAnswerRef.current = true;
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
           
-          console.log("[WebRTC Viewer] Sending answer for session:", sessionIdRef.current);
+          console.log("[WebRTC Viewer] Sending answer...");
           await sendSignalingMessage("answer", { 
             type: "answer", 
             sdp: answer.sdp,
             target_session: sessionIdRef.current,
           });
-          // ★ offer 처리 완료 후 플래그 리셋 — 후속 offer 수신 가능
+          console.log("[WebRTC Viewer] ✅ Answer sent");
+          
+          // ★ NEW: offer 폴링 중지 — SDP 교환 완료
+          if (offerPollingRef.current) {
+            clearInterval(offerPollingRef.current);
+            offerPollingRef.current = null;
+          }
+          // ★ offer 재시도도 중지
+          if (offerRetryIntervalRef.current) {
+            clearInterval(offerRetryIntervalRef.current);
+            offerRetryIntervalRef.current = null;
+          }
+          
           isProcessingOfferRef.current = false;
         } else {
-          console.log("[WebRTC Viewer] ⏭️ Answer already sent, skipping...");
+          console.log("[WebRTC Viewer] ⏭️ Answer already sent");
           isProcessingOfferRef.current = false;
         }
       } else if (record.type === "ice-candidate" && record.data.candidate) {
-        // ★ FIX: broadcaster의 session_id가 아닌 data.target_session으로 매칭
         const iceTargetSession = (record.data as Record<string, unknown>).target_session as string | undefined;
         if (iceTargetSession && iceTargetSession !== sessionIdRef.current) {
-          console.log("[WebRTC Viewer] ⏭️ Ignoring ICE candidate for different session");
+          console.log("[WebRTC Viewer] ⏭️ Ignoring ICE for different session");
           return;
         }
         
         if (!hasRemoteDescriptionRef.current) {
-          // Buffer the ICE candidate for later
-          console.log("[WebRTC Viewer] Buffering ICE candidate (remote description not set yet)");
+          console.log("[WebRTC Viewer] Buffering ICE candidate");
           pendingIceCandidatesRef.current.push(record.data.candidate);
         } else {
           console.log("[WebRTC Viewer] Adding ICE candidate");
@@ -443,12 +434,52 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       }
     } catch (error) {
       console.error("[WebRTC Viewer] Error handling signaling:", error);
+      isProcessingOfferRef.current = false;
       onError?.(i18n.t("camera.signalingError"));
     }
   }, [sendSignalingMessage, onError, processPendingIceCandidates]);
 
+  // ★ NEW: PC를 리셋하고 viewer-join을 재전송하는 헬퍼 (broadcaster-ready 대응)
+  const resetAndRejoin = useCallback((reason: string) => {
+    console.log(`[WebRTC Viewer] 🔄 resetAndRejoin (${reason})`);
+    
+    // 기존 PC 완전 정리
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    
+    // 상태 초기화
+    processedMessagesRef.current.clear();
+    pendingIceCandidatesRef.current = [];
+    hasRemoteDescriptionRef.current = false;
+    hasSentAnswerRef.current = false;
+    isProcessingOfferRef.current = false;
+    
+    // ★ 새 세션 ID 생성 — stale 시그널링 충돌 방지 (브로드캐스터 벤치마킹)
+    sessionIdRef.current = `viewer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log("[WebRTC Viewer] 🆕 New session ID:", sessionIdRef.current);
+    
+    isConnectedRef.current = false;
+    isConnectingRef.current = true;
+    setIsConnected(false);
+    setIsConnecting(true);
+    setRemoteStream(null);
+    
+    // 새 PC 생성 + viewer-join 재전송
+    peerConnectionRef.current = createPeerConnection();
+    
+    // ★ 1초 딜레이 후 viewer-join (브로드캐스터의 이전 세션 정리 시간 확보)
+    setTimeout(() => {
+      sendSignalingMessage("viewer-join", { 
+        viewerId: sessionIdRef.current,
+        reason,
+      });
+      lastViewerJoinSentRef.current = Date.now();
+    }, 1000);
+  }, [createPeerConnection, sendSignalingMessage]);
+
   const connect = useCallback(async () => {
-    // Use ref for synchronous check to prevent race conditions
     if (isConnectingRef.current || isConnectedRef.current) {
       console.log("[WebRTC Viewer] Already connecting or connected, skipping...");
       return;
@@ -458,9 +489,8 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     console.log("[WebRTC Viewer] Starting connection...");
     setIsConnecting(true);
     
-    // ★ 기존 PeerConnection을 동기적으로 완전히 정리 (좀비 세션 방지)
+    // 기존 PeerConnection 정리
     if (peerConnectionRef.current) {
-      console.log("[WebRTC Viewer] Closing previous PeerConnection before new connect");
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
     }
@@ -480,6 +510,10 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       clearInterval(offerRetryIntervalRef.current);
       offerRetryIntervalRef.current = null;
     }
+    if (offerPollingRef.current) {
+      clearInterval(offerPollingRef.current);
+      offerPollingRef.current = null;
+    }
     if (connectionTimeoutRef.current) {
       clearTimeout(connectionTimeoutRef.current);
       connectionTimeoutRef.current = null;
@@ -493,8 +527,11 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     // 새 세션 ID 생성
     sessionIdRef.current = `viewer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // 기존 offer 확인 함수 - 먼저 정의
+    // 기존 offer 확인 함수
     const checkForExistingOffer = async (): Promise<boolean> => {
+      // ★ 이미 offer를 받았으면 불필요
+      if (hasRemoteDescriptionRef.current || hasSentAnswerRef.current) return true;
+      
       const { data: existingOffers, error: fetchError } = await supabase
         .from("webrtc_signaling")
         .select("*")
@@ -513,17 +550,55 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         console.log("[WebRTC Viewer] ✅ Found existing offer, processing...");
         handleSignalingMessage(existingOffers[0] as SignalingRecord);
         return true;
-      } else {
-        console.log("[WebRTC Viewer] No existing offer found, waiting for broadcaster...");
-        return false;
       }
+      return false;
+    };
+
+    // ★ NEW: 지속적 offer 폴링 (브로드캐스터의 3초 폴링 벤치마킹)
+    // Realtime이 누락할 수 있으므로 3초 간격으로 offer + ICE candidate 폴링
+    const startOfferPolling = () => {
+      offerPollingRef.current = setInterval(async () => {
+        // 연결 완료 시 중지
+        if (isConnectedRef.current || !isConnectingRef.current) {
+          if (offerPollingRef.current) {
+            clearInterval(offerPollingRef.current);
+            offerPollingRef.current = null;
+          }
+          return;
+        }
+        
+        console.log("[WebRTC Viewer] 🔄 Polling for signaling messages...");
+        
+        // offer가 아직 없으면 체크
+        if (!hasRemoteDescriptionRef.current) {
+          await checkForExistingOffer();
+        }
+        
+        // ★ ICE candidate도 폴링 (Realtime 누락 대비)
+        if (hasRemoteDescriptionRef.current && peerConnectionRef.current) {
+          const { data: iceCandidates } = await supabase
+            .from("webrtc_signaling")
+            .select("*")
+            .eq("device_id", deviceId)
+            .eq("sender_type", "broadcaster")
+            .eq("type", "ice-candidate")
+            .order("created_at", { ascending: true });
+          
+          if (iceCandidates) {
+            for (const record of iceCandidates) {
+              if (!processedMessagesRef.current.has(record.id)) {
+                handleSignalingMessage(record as SignalingRecord);
+              }
+            }
+          }
+        }
+      }, 3000);
     };
 
     // Offer 재요청 로직 - 2초마다 최대 5회 viewer-join 재전송
     const startOfferRetry = () => {
       offerRetryCountRef.current = 0;
       offerRetryIntervalRef.current = setInterval(async () => {
-        // 이미 offer를 받았거나 연결됐으면 중지
         if (hasRemoteDescriptionRef.current || isConnectedRef.current || !isConnectingRef.current) {
           if (offerRetryIntervalRef.current) {
             clearInterval(offerRetryIntervalRef.current);
@@ -533,33 +608,29 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         }
         
         offerRetryCountRef.current++;
-        console.log(`[WebRTC Viewer] 🔄 Retry ${offerRetryCountRef.current}/5: Checking for offer or re-sending viewer-join...`);
+        console.log(`[WebRTC Viewer] 🔄 Retry ${offerRetryCountRef.current}/5: viewer-join...`);
         
-        // 먼저 기존 offer 확인
         const foundOffer = await checkForExistingOffer();
         
         if (!foundOffer && offerRetryCountRef.current <= 5) {
-          // offer가 없으면 viewer-join 재전송
-          console.log("[WebRTC Viewer] Re-sending viewer-join...");
           await sendSignalingMessage("viewer-join", { 
             viewerId: sessionIdRef.current,
             retry: offerRetryCountRef.current,
           });
         }
         
-        // 5회 초과하면 중지
         if (offerRetryCountRef.current >= 5) {
           if (offerRetryIntervalRef.current) {
             clearInterval(offerRetryIntervalRef.current);
             offerRetryIntervalRef.current = null;
           }
-          console.log("[WebRTC Viewer] ⚠️ Max retries reached, waiting for realtime subscription...");
+          console.log("[WebRTC Viewer] ⚠️ Max retries, relying on polling + realtime...");
         }
       }, 2000);
     };
 
     try {
-      // 이전 시그널링 메시지 정리 — await 필수! viewer-join이 삭제되는 레이스 컨디션 방지
+      // 이전 시그널링 메시지 정리
       await supabase
         .from("webrtc_signaling")
         .delete()
@@ -570,26 +641,21 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       // PeerConnection 생성
       peerConnectionRef.current = createPeerConnection();
 
-      // viewer-join 메시지 전송 (broadcaster에게 알림)
+      // viewer-join 전송
       lastViewerJoinSentRef.current = Date.now();
       await sendSignalingMessage("viewer-join", { 
         viewerId: sessionIdRef.current,
       });
 
-      // Realtime으로 broadcaster의 응답 구독
-      // 항상 새 채널 생성 - 기존 채널 재사용 시 stale handler 문제 방지
+      // Realtime 구독
       const channelName = `webrtc-signaling-viewer-${deviceId}-${Date.now()}`;
       
-      // 기존 동일 디바이스 채널 제거
       const existingChannels = supabase.getChannels();
       existingChannels.forEach(ch => {
         if (ch.topic.includes(`webrtc-signaling-viewer-${deviceId}`)) {
-          console.log("[WebRTC Viewer] Removing stale channel:", ch.topic);
           supabase.removeChannel(ch);
         }
       });
-      
-      console.log("[WebRTC Viewer] Creating new signaling channel:", channelName);
       
       const channel = supabase
         .channel(channelName)
@@ -604,41 +670,28 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
           (payload) => {
             const record = payload.new as SignalingRecord;
             if (record.sender_type === "broadcaster") {
-              // broadcaster-ready 시그널 감지 → 자동 재연결
+              // ★ FIX: broadcaster-ready 처리 — 초기 연결 중에도 처리
               if (record.type === "broadcaster-ready") {
-                // 초기 연결 시도 중(isConnecting)에는 완전히 무시
-                if (isConnectingRef.current && !isConnectedRef.current) {
-                  console.log("[WebRTC Viewer] ⏭️ Ignoring broadcaster-ready (initial connection in progress)");
+                console.log("[WebRTC Viewer] 📡 broadcaster-ready received!",
+                  "connecting:", isConnectingRef.current,
+                  "connected:", isConnectedRef.current);
+                
+                // ★ 디바운스: 마지막 viewer-join 전송 후 2초 이내이면 무시
+                // (viewer-join → broadcaster가 offer 생성 중인데 또 viewer-join을 보내면 중복)
+                const sinceLastJoin = Date.now() - lastViewerJoinSentRef.current;
+                if (sinceLastJoin < 2000) {
+                  console.log("[WebRTC Viewer] ⏭️ Ignoring broadcaster-ready (viewer-join sent recently:", sinceLastJoin, "ms ago)");
                   return;
                 }
                 
-                // 이미 연결된 상태에서 broadcaster-ready가 오면 연결이 끊겼음을 의미하므로 재연결
-                console.log("[WebRTC Viewer] 📡 Broadcaster ready signal received! Resetting PC and re-joining...");
-                
-                // Clean up previous PC
-                if (peerConnectionRef.current) {
-                  peerConnectionRef.current.close();
-                  peerConnectionRef.current = null;
+                // ★ 이미 offer를 처리했으면 무시 (정상 핸드셰이크 진행 중)
+                if (hasRemoteDescriptionRef.current || hasSentAnswerRef.current) {
+                  console.log("[WebRTC Viewer] ⏭️ Ignoring broadcaster-ready (SDP exchange already done)");
+                  return;
                 }
                 
-                // Reset states for re-connection
-                processedMessagesRef.current.clear();
-                pendingIceCandidatesRef.current = [];
-                hasRemoteDescriptionRef.current = false;
-                hasSentAnswerRef.current = false;
-                
-                isConnectedRef.current = false;
-                isConnectingRef.current = true;
-                setIsConnected(false);
-                setIsConnecting(true);
-                setRemoteStream(null);
-                
-                // Create new PC and send join message to trigger new offer
-                peerConnectionRef.current = createPeerConnection();
-                sendSignalingMessage("viewer-join", { 
-                  viewerId: sessionIdRef.current,
-                  reason: "broadcaster-ready"
-                });
+                // ★ broadcaster가 (재)시작됨 → PC 리셋 + 새 세션으로 viewer-join 재전송
+                resetAndRejoin("broadcaster-ready");
                 return;
               }
               
@@ -649,25 +702,33 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         )
         .subscribe((status) => {
           if (status === "CHANNEL_ERROR") {
-            console.error("[WebRTC Viewer] Channel error");
+            console.error("[WebRTC Viewer] ❌ Channel error");
           } else if (status === "SUBSCRIBED") {
-            console.log("[WebRTC Viewer] Channel subscribed, checking for existing offer...");
+            console.log("[WebRTC Viewer] ✅ Channel subscribed");
             checkForExistingOffer();
           }
         });
 
       channelRef.current = channel;
 
-      // 초기 offer 체크 후 없으면 재시도 시작
+      // 초기 offer 체크 + 재시도 시작
       const initialOfferFound = await checkForExistingOffer();
       if (!initialOfferFound) {
         startOfferRetry();
       }
 
-      // 30초 타임아웃 - ref를 사용하여 올바른 상태 확인
+      // ★ NEW: 지속적 폴링 시작 (4초 유예 후 — 브로드캐스터 벤치마킹)
+      setTimeout(() => {
+        if (isConnectingRef.current && !isConnectedRef.current && !hasRemoteDescriptionRef.current) {
+          console.log("[WebRTC Viewer] Starting continuous offer polling...");
+          startOfferPolling();
+        }
+      }, 4000);
+
+      // 30초 타임아웃
       connectionTimeoutRef.current = setTimeout(() => {
         if (isConnectingRef.current && !isConnectedRef.current) {
-          console.log("[WebRTC Viewer] Connection timeout - isConnecting:", isConnectingRef.current, "isConnected:", isConnectedRef.current);
+          console.log("[WebRTC Viewer] ⏰ Connection timeout");
           isConnectingRef.current = false;
           cleanup();
           onError?.(i18n.t("camera.connectionTimeout"));
@@ -680,19 +741,15 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       cleanup();
       onError?.(i18n.t("camera.connectionError2"));
     }
-  }, [deviceId, cleanup, createPeerConnection, sendSignalingMessage, handleSignalingMessage, onError]);
+  }, [deviceId, cleanup, createPeerConnection, sendSignalingMessage, handleSignalingMessage, onError, resetAndRejoin]);
 
-  // connectRef를 최신 connect로 동기화 (scheduleReconnect에서 사용)
   connectRef.current = connect;
 
   const disconnect = useCallback(async () => {
-    console.log("[WebRTC Viewer] Disconnecting..., wasConnecting:", isConnectingRef.current);
+    console.log("[WebRTC Viewer] Disconnecting...");
     isConnectingRef.current = false;
-    
-    // 완전 정리 (스트림 포함)
     cleanup(false);
     
-    // 시그널링 테이블에서 viewer 메시지 정리 (연결 종료 후)
     try {
       await supabase
         .from("webrtc_signaling")
@@ -704,7 +761,6 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     }
   }, [deviceId, cleanup]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       cleanup();
