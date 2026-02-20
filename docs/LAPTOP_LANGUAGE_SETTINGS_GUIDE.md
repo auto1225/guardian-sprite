@@ -79,58 +79,107 @@ applyLanguage(lang);
 
 ## 3. 번역 시스템 구현
 
-### 3-1. 정적 번역 (ko, en)
+### 3-1. 정적 번역 (17개 언어 전체)
 
-한국어와 영어는 JSON 파일을 직접 번들합니다.
+**모든 17개 언어가 JSON 파일로 정적 번들됩니다.** Edge Function 호출이 필요 없습니다.
 
 ```
-src/i18n/locales/ko.json  ← 스마트폰 앱과 동일한 공통 키 + 노트북 전용 키
-src/i18n/locales/en.json  ← 스마트폰 앱과 동일한 공통 키 + 노트북 전용 키
+src/i18n/locales/ko.json     ← 한국어 (기준 파일)
+src/i18n/locales/en.json     ← English
+src/i18n/locales/ja.json     ← 日本語
+src/i18n/locales/zh-CN.json  ← 简体中文
+src/i18n/locales/zh-TW.json  ← 繁體中文
+src/i18n/locales/es.json     ← Español
+src/i18n/locales/fr.json     ← Français
+src/i18n/locales/de.json     ← Deutsch
+src/i18n/locales/pt.json     ← Português
+src/i18n/locales/ru.json     ← Русский
+src/i18n/locales/ar.json     ← العربية
+src/i18n/locales/hi.json     ← हिन्दी
+src/i18n/locales/th.json     ← ไทย
+src/i18n/locales/vi.json     ← Tiếng Việt
+src/i18n/locales/id.json     ← Bahasa Indonesia
+src/i18n/locales/tr.json     ← Türkçe
+src/i18n/locales/it.json     ← Italiano
 ```
 
-### 3-2. 동적 번역 (나머지 15개 언어)
+### 3-2. i18next 설정
 
-스마트폰 앱과 동일한 방식으로 AI 번역 Edge Function을 호출합니다.
+모든 언어를 `import`로 불러와서 `resources`에 등록합니다.
 
 ```typescript
-const { data, error } = await supabase.functions.invoke("translate-i18n", {
-  body: {
-    sourceJson: koJson,     // 한국어 원본 JSON
-    targetLang: "ja"         // 대상 언어 코드
-  }
-});
+import i18n from "i18next";
+import { initReactI18next } from "react-i18next";
+import LanguageDetector from "i18next-browser-languagedetector";
 
-if (data?.translation) {
-  i18n.addResourceBundle("ja", "translation", data.translation, true, true);
-  i18n.changeLanguage("ja");
-  // localStorage에 캐시
-  localStorage.setItem("meercop_i18n_ja", JSON.stringify(data.translation));
+import ko from "./locales/ko.json";
+import en from "./locales/en.json";
+import ja from "./locales/ja.json";
+import zhCN from "./locales/zh-CN.json";
+import zhTW from "./locales/zh-TW.json";
+import es from "./locales/es.json";
+import fr from "./locales/fr.json";
+import de from "./locales/de.json";
+import pt from "./locales/pt.json";
+import ru from "./locales/ru.json";
+import ar from "./locales/ar.json";
+import hi from "./locales/hi.json";
+import th from "./locales/th.json";
+import vi from "./locales/vi.json";
+import id from "./locales/id.json";
+import tr from "./locales/tr.json";
+import it from "./locales/it.json";
+
+i18n
+  .use(LanguageDetector)
+  .use(initReactI18next)
+  .init({
+    resources: {
+      ko: { translation: ko },
+      en: { translation: en },
+      ja: { translation: ja },
+      "zh-CN": { translation: zhCN },
+      "zh-TW": { translation: zhTW },
+      es: { translation: es },
+      fr: { translation: fr },
+      de: { translation: de },
+      pt: { translation: pt },
+      ru: { translation: ru },
+      ar: { translation: ar },
+      hi: { translation: hi },
+      th: { translation: th },
+      vi: { translation: vi },
+      id: { translation: id },
+      tr: { translation: tr },
+      it: { translation: it },
+    },
+    fallbackLng: "ko",
+    interpolation: { escapeValue: false },
+    detection: {
+      order: ["localStorage", "navigator"],
+      caches: ["localStorage"],
+      lookupLocalStorage: "meercop_language",
+    },
+  });
+```
+
+### 3-3. 언어 변경 함수
+
+동적 번역이 불필요하므로 `i18n.changeLanguage()`만 호출하면 됩니다.
+
+```typescript
+async function applyLanguage(lang: string) {
+  await i18n.changeLanguage(lang);
+  
+  // RTL 처리
+  const isRTL = lang === "ar";
+  document.documentElement.dir = isRTL ? "rtl" : "ltr";
+  document.documentElement.lang = lang;
 }
 ```
 
-### 3-3. 캐시 관리
-
-```typescript
-const CACHE_PREFIX = "meercop_i18n_";
-const CACHE_VERSION_KEY = "meercop_i18n_version";
-const CURRENT_VERSION = "3"; // 스마트폰 앱과 동일하게 유지
-
-// 캐시 읽기
-function getCachedTranslation(lang: string) {
-  const version = localStorage.getItem(CACHE_VERSION_KEY);
-  if (version !== CURRENT_VERSION) {
-    // 버전 불일치 → 모든 캐시 삭제
-    clearAllCaches();
-    localStorage.setItem(CACHE_VERSION_KEY, CURRENT_VERSION);
-    return null;
-  }
-  const cached = localStorage.getItem(`${CACHE_PREFIX}${lang}`);
-  return cached ? JSON.parse(cached) : null;
-}
-```
-
-> ⚠️ `CURRENT_VERSION`은 스마트폰 앱의 `src/lib/dynamicTranslation.ts`와 반드시 동일하게 유지하세요.  
-> 스마트폰 앱에서 ko.json에 새 문장을 추가하면 버전이 올라가며, 노트북 앱도 같은 버전으로 올려야 재번역됩니다.
+> ⚠️ **더 이상 `translate-i18n` Edge Function 호출이나 localStorage 캐시가 필요 없습니다.**  
+> 새 번역 키를 추가할 경우 `ko.json`을 수정한 후 나머지 16개 JSON 파일도 함께 업데이트하세요.
 
 ---
 
@@ -336,13 +385,11 @@ body {
 
 - [ ] `settings_updated` 브로드캐스트에서 `language` 키 수신 처리
 - [ ] 앱 시작 시 `devices.metadata.language` 읽어서 초기 언어 설정
-- [ ] 정적 번역 파일 (ko.json, en.json) 에 노트북 전용 키 추가
-- [ ] `translate-i18n` Edge Function 호출로 동적 번역 구현
-- [ ] localStorage 캐시 + 버전 관리 (`CURRENT_VERSION = "3"`)
+- [ ] 17개 정적 번역 JSON 파일 전체 import 및 i18next 등록
+- [ ] `i18n.changeLanguage(lang)` 호출로 즉시 언어 전환 (Edge Function 불필요)
 - [ ] 아랍어 RTL 레이아웃 대응
 - [ ] 경보 화면 다국어 적용
 - [ ] 잠금 화면 다국어 적용
 - [ ] 메시지 팝업 다국어 적용
 - [ ] 시리얼 입력 화면 다국어 적용
-- [ ] 언어 변경 중 로딩 피드백 표시
 - [ ] 필요 시 특수 언어 폰트 로드
