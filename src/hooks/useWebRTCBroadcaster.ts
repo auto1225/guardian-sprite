@@ -446,6 +446,15 @@ export const useWebRTCBroadcaster = ({
 
       channelRef.current = channel;
 
+      // ★ FIX: broadcaster-ready 시그널 전송 — 대기 중인 viewer에게 알림
+      // 3초 유예 후 전송 (이전 세션의 잔여 viewer-join 방지)
+      setTimeout(async () => {
+        await sendSignalingMessage("broadcaster-ready", { 
+          broadcasterId: sessionIdRef.current,
+        });
+        console.log("[WebRTC Broadcaster] ✅ broadcaster-ready signal sent");
+      }, 3000);
+
       console.log("[WebRTC Broadcaster] Waiting for subscription to complete...");
     } catch (error) {
       console.error("[WebRTC Broadcaster] Error starting broadcast:", error);
