@@ -274,12 +274,19 @@ export const useAlerts = (deviceId?: string | null) => {
     Alarm.stop();
     const id = activeAlertRef.current?.id;
     if (id) Alarm.addDismissed(id);
-    // 🔧 FIX v7: suppress 30초로 증가
-    // 이전: 10초 (주석에는 "5초"라고 잘못 기재)
-    // 문제: 사진 청크 전송이 10초 이상 걸리면 photo_alert_end 도착 시
-    // 글로벌 suppress 10초 (다른 기기의 새 경보는 10초 후 수신 가능)
+
+    // ★ 직접 해제한 경보는 '읽음' 처리 — unreadCount에 포함되지 않도록
+    if (id) {
+      const currentAlerts = getAlertLogs(undefined, 50);
+      for (const log of currentAlerts) {
+        const alertId = (log.event_data as Record<string, unknown> | undefined)?.alertId as string | undefined;
+        if (alertId === id && !log.is_read) {
+          markLogAsRead(log.id);
+        }
+      }
+    }
+
     Alarm.suppressFor(10000);
-    // ★ Per-device suppression — 같은 기기의 경보를 120초간 차단 (Presence 잔류 대응)
     if (lastAlertDeviceRef.current) {
       deviceSuppressRef.current.set(lastAlertDeviceRef.current, Date.now() + 120000);
       console.log("[useAlerts] 🛡️ Device suppressed:", lastAlertDeviceRef.current.slice(0, 8), "for 120s");
@@ -287,8 +294,9 @@ export const useAlerts = (deviceId?: string | null) => {
     safeSetActiveAlert(null);
     activeAlertRef.current = null;
     lastAlertDeviceRef.current = null;
-    console.log("[useAlerts] ✅ All dismissed (suppress 60s)");
-  }, [safeSetActiveAlert]);
+    loadAlerts(); // 읽음 처리 반영
+    console.log("[useAlerts] ✅ All dismissed (suppress 10s, device 120s)");
+  }, [safeSetActiveAlert, loadAlerts]);
 
   return {
     alerts,
