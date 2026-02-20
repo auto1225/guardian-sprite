@@ -95,9 +95,11 @@ export function addActivityLog(
 }
 
 export function getAlertLogs(deviceId?: string, limit = 50): LocalActivityLog[] {
-  const alertTypes = ["alert_shock", "alert_mouse", "alert_movement", "intrusion"];
+  // 개별 감지 이벤트(alert_mouse, alert_shock, alert_keyboard 등)는
+  // 사진 알림에 이미 포함되므로 제외 — 사진 알림만 통합 이력에 표시
+  const excludeTypes = ["alert_mouse", "alert_shock", "alert_movement", "alert_keyboard", "intrusion"];
   const allLogs = getActivityLogs(deviceId, MAX_LOGS);
-  return allLogs.filter(log => alertTypes.includes(log.event_type)).slice(0, limit);
+  return allLogs.filter(log => !excludeTypes.includes(log.event_type)).slice(0, limit);
 }
 
 export function clearActivityLogs(): void {
