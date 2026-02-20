@@ -140,7 +140,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     let receivedTrackKinds = new Set<string>();
 
     pc.ontrack = (event) => {
-      console.log("[WebRTC Viewer] ✅ Received remote track:", event.track.kind, "readyState:", event.track.readyState);
+      console.log("[WebRTC Viewer] ✅ Received remote track:", event.track.kind, "readyState:", event.track.readyState, "muted:", event.track.muted);
       
       const track = event.track;
       receivedTrackKinds.add(track.kind);
@@ -149,14 +149,15 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         // ★ 항상 PC receivers에서 새 MediaStream 생성 — stale event.streams[0] 문제 회피
         const currentPc = peerConnectionRef.current;
         if (!currentPc) return;
-        const liveTracks: MediaStreamTrack[] = [];
+        const allTracks: MediaStreamTrack[] = [];
         currentPc.getReceivers().forEach(r => {
-          if (r.track && r.track.readyState === "live") {
-            liveTracks.push(r.track);
+          // ★ readyState 필터 완화: "ended"가 아니면 모두 포함 (오디오 트랙이 muted 상태에서도 포함되도록)
+          if (r.track && r.track.readyState !== "ended") {
+            allTracks.push(r.track);
           }
         });
-        if (liveTracks.length === 0) {
-          console.warn("[WebRTC Viewer] ⚠️ No live tracks from receivers, skipping commit");
+        if (allTracks.length === 0) {
+          console.warn("[WebRTC Viewer] ⚠️ No tracks from receivers, skipping commit");
           return;
         }
 
@@ -164,13 +165,13 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         setRemoteStream(prev => {
           if (prev) {
             const prevIds = prev.getTracks().map(t => t.id).sort().join(",");
-            const newIds = liveTracks.map(t => t.id).sort().join(",");
+            const newIds = allTracks.map(t => t.id).sort().join(",");
             if (prevIds === newIds) {
               console.log("[WebRTC Viewer] ⏭️ Same tracks, skipping stream update");
               return prev;
             }
           }
-          const freshStream = new MediaStream(liveTracks);
+          const freshStream = new MediaStream(allTracks);
           console.log("[WebRTC Viewer] 📹 Committing fresh stream with", freshStream.getTracks().length, "tracks",
             freshStream.getTracks().map(t => `${t.kind}:${t.readyState}:muted=${t.muted}`).join(", "));
           return freshStream;
@@ -189,9 +190,10 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
 
       const scheduleUpdate = () => {
         if (pendingStreamUpdate) clearTimeout(pendingStreamUpdate);
+        // ★ 디바운스를 500ms로 늘려 오디오+비디오 트랙이 모두 도착할 시간 확보
         pendingStreamUpdate = setTimeout(() => {
           commitStream();
-        }, 150);
+        }, 500);
       };
 
       if (track.muted) {
@@ -202,6 +204,14 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
           scheduleUpdate();
         };
         track.addEventListener("unmute", onUnmute);
+        // ★ muted 트랙도 일정 시간 후 강제 커밋 (unmute 이벤트가 오지 않는 경우 대비)
+        setTimeout(() => {
+          if (track.readyState !== "ended") {
+            console.log(`[WebRTC Viewer] ⏰ Force commit after timeout for ${track.kind} track (muted=${track.muted})`);
+            track.removeEventListener("unmute", onUnmute);
+            scheduleUpdate();
+          }
+        }, 2000);
       } else {
         scheduleUpdate();
       }
