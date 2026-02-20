@@ -1,8 +1,9 @@
-import { ArrowLeft, ChevronRight, Globe } from "lucide-react";
+import { ArrowLeft, ChevronRight, Globe, ArrowUp, ArrowDown } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
+import { sortDevicesByOrder, reorderDevices } from "@/lib/deviceSortOrder";
 import { isMuted as isAlarmMuted, setMuted as setAlarmMuted } from "@/lib/alarmSound";
 import { hashPin } from "@/lib/pinHash";
 import { useQueryClient } from "@tanstack/react-query";
@@ -290,18 +291,35 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
               <div className="px-4 pt-3 pb-1">
                 <span className="text-white font-semibold text-sm">{t("settings.targetDevice")}</span>
               </div>
-              <div className="px-4 pb-3 flex gap-2 flex-wrap">
-                {devices.map((d) => (
-                  <button
-                    key={d.id}
-                    onClick={() => { setSettingsDeviceId(d.id); onDeviceChange?.(d.id); }}
-                    className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
-                      settingsDeviceId === d.id ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
-                    }`}
-                    style={settingsDeviceId === d.id ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
-                  >
-                    {d.name}
-                  </button>
+              <div className="px-4 pb-3 flex gap-2 flex-wrap items-center">
+                {sortDevicesByOrder(devices).map((d, idx, arr) => (
+                  <div key={d.id} className="flex items-center gap-0.5">
+                    <button
+                      onClick={() => { setSettingsDeviceId(d.id); onDeviceChange?.(d.id); }}
+                      className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
+                        settingsDeviceId === d.id ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
+                      }`}
+                      style={settingsDeviceId === d.id ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
+                    >
+                      {d.name}
+                    </button>
+                    <div className="flex flex-col gap-0.5">
+                      <button
+                        disabled={idx === 0}
+                        onClick={async () => { await reorderDevices(arr, d.id, "up"); queryClient.invalidateQueries({ queryKey: ["devices"] }); }}
+                        className="p-0.5 rounded text-white/50 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"
+                      >
+                        <ArrowUp className="w-3 h-3" />
+                      </button>
+                      <button
+                        disabled={idx === arr.length - 1}
+                        onClick={async () => { await reorderDevices(arr, d.id, "down"); queryClient.invalidateQueries({ queryKey: ["devices"] }); }}
+                        className="p-0.5 rounded text-white/50 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"
+                      >
+                        <ArrowDown className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>

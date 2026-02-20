@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, MoreVertical, Plus, Copy } from "lucide-react";
+import { ArrowLeft, MoreVertical, Plus, Copy, ArrowUp, ArrowDown } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { useDevices } from "@/hooks/useDevices";
 import { useCommands } from "@/hooks/useCommands";
@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 import { useAuth } from "@/hooks/useAuth";
+import { sortDevicesByOrder, reorderDevices } from "@/lib/deviceSortOrder";
 import { useTranslation } from "react-i18next";
 import {
   DropdownMenu,
@@ -157,7 +158,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {managedDevices.map((device) => (
+        {sortDevicesByOrder(managedDevices).map((device, idx, arr) => (
           <DeviceCardItem
             key={device.id}
             device={device}
@@ -167,6 +168,10 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
             onToggleMonitoring={() => handleToggleMonitoring(device)}
             onDelete={() => handleDeleteDevice(device.id)}
             onViewAlertHistory={() => onViewAlertHistory?.(device.id)}
+            canMoveUp={idx > 0}
+            canMoveDown={idx < arr.length - 1}
+            onMoveUp={async () => { await reorderDevices(arr, device.id, "up"); queryClient.invalidateQueries({ queryKey: ["devices"] }); }}
+            onMoveDown={async () => { await reorderDevices(arr, device.id, "down"); queryClient.invalidateQueries({ queryKey: ["devices"] }); }}
           />
         ))}
 
@@ -226,9 +231,13 @@ interface DeviceCardItemProps {
   onToggleMonitoring: () => void;
   onDelete: () => void;
   onViewAlertHistory: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
 }
 
-const DeviceCardItem = ({ device, isMain, serialKey, onSetAsMain, onToggleMonitoring, onDelete, onViewAlertHistory }: DeviceCardItemProps) => {
+const DeviceCardItem = ({ device, isMain, serialKey, onSetAsMain, onToggleMonitoring, onDelete, onViewAlertHistory, canMoveUp, canMoveDown, onMoveUp, onMoveDown }: DeviceCardItemProps) => {
   const { t } = useTranslation();
   const isOnline = device.status !== "offline";
   const isMonitoring = device.is_monitoring;
@@ -237,6 +246,14 @@ const DeviceCardItem = ({ device, isMain, serialKey, onSetAsMain, onToggleMonito
     <div className="rounded-2xl p-4 bg-white/15 backdrop-blur-xl border border-white/25 shadow-lg">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2 min-w-0">
+          <div className="flex flex-col gap-0.5 shrink-0">
+            <button onClick={onMoveUp} disabled={!canMoveUp} className="p-0.5 rounded text-white/50 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed">
+              <ArrowUp className="w-3.5 h-3.5" />
+            </button>
+            <button onClick={onMoveDown} disabled={!canMoveDown} className="p-0.5 rounded text-white/50 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed">
+              <ArrowDown className="w-3.5 h-3.5" />
+            </button>
+          </div>
           {isMain && (
             <span className="bg-status-active text-accent-foreground px-2.5 py-1 rounded text-xs font-bold shrink-0">
               MAIN
