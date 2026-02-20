@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useDevices } from "@/hooks/useDevices";
 import { useTranslation } from "react-i18next";
 import { SUPPORTED_LANGUAGES } from "@/lib/dynamicTranslation";
+import { sortDevicesByOrder } from "@/lib/deviceSortOrder";
 import logoImage from "@/assets/meercop-character.png";
 
 interface SideMenuProps {
@@ -91,7 +92,7 @@ const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick, onRemoteC
 
           {/* Device Cards - scrollable */}
           <div className="flex-1 overflow-y-auto space-y-2 pr-1 alert-history-scroll">
-            {devices?.filter(d => d.device_type !== "smartphone").map((device) => (
+            {sortDevicesByOrder(devices?.filter(d => d.device_type !== "smartphone") || []).map((device) => (
               <button
                 key={device.id}
                 onClick={() => handleSelectDevice(device.id)}
