@@ -192,6 +192,26 @@ function nukeLegacy() {
     v10State.isAlarming = false;
     v10State.pendingPlayGen = 0;
   }
+
+  // ★★ HMR 핵심 수정: v11 상태의 gen을 증가시켜 이전 모듈의 setInterval 콜백이
+  // gen 체크(s.gen !== myGen)에서 실패하여 자동 종료되도록 함
+  const v11State = w['__meercop_alarm_state_v11'] as Record<string, unknown> | undefined;
+  if (v11State && typeof v11State === 'object') {
+    v11State.gen = ((v11State.gen as number) || 0) + 100;
+    v11State.isAlarming = false;
+    v11State.pendingPlayGen = 0;
+    console.log("[AlarmSound] 🔄 HMR: state gen bumped to", v11State.gen, "— all old intervals will self-terminate");
+  }
+
+  // ★ 추적된 모든 인터벌/AudioContext도 정리
+  clearAllTrackedIntervals();
+  const tracked = getTrackedContexts();
+  for (const ctx of tracked) {
+    if (ctx && ctx.state !== 'closed') {
+      try { ctx.close().catch(() => {}); } catch {}
+    }
+  }
+  tracked.length = 0;
 }
 nukeLegacy();
 
