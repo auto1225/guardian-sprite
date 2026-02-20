@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 interface CameraControlsProps {
   isStreaming: boolean;
+  isConnected: boolean;
   isPaused: boolean;
   onTogglePause: () => void;
   isMuted: boolean;
@@ -14,6 +15,7 @@ interface CameraControlsProps {
 
 const CameraControls = ({
   isStreaming,
+  isConnected,
   isPaused,
   onTogglePause,
   isMuted,
@@ -23,7 +25,7 @@ const CameraControls = ({
   onCapture,
 }: CameraControlsProps) => {
   const { t } = useTranslation();
-  if (!isStreaming) return null;
+  if (!isStreaming && !isConnected) return null;
 
   return (
     <div className="px-4 pb-4 flex items-center justify-center gap-3">
