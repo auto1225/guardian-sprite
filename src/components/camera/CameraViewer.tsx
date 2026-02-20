@@ -174,9 +174,10 @@ const CameraViewer = ({
       const v = videoRef.current;
       if (!v || v.srcObject !== remoteStream) return;
       v.muted = true;
+      console.log("[CameraViewer] 🎬 Attempting play(), readyState:", v.readyState, "paused:", v.paused, "videoWidth:", v.videoWidth);
       v.play().then(markPlaying).catch((err) => {
         if (err?.name !== "AbortError") {
-          console.warn("[CameraViewer] ⚠️ play():", err?.message);
+          console.warn("[CameraViewer] ⚠️ play():", err?.name, err?.message);
         }
       });
     };
