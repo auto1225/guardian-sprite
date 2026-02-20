@@ -130,17 +130,33 @@ const CameraViewer = ({
     }
   }, [isPaused]);
 
-  // 재생 시도
-  const attemptPlay = useCallback(() => {
+  // 재생 시도 (userGesture=true면 unmute 허용)
+  const attemptPlay = useCallback((userGesture = false) => {
     const video = videoRef.current;
     if (!video || !video.srcObject) return;
-    video.muted = true;
-    video.muted = true;
-    video.play().catch((err) => {
-      if (err?.name !== "AbortError") {
-        console.warn("[CameraViewer] ⚠️ Play rejected:", err?.message);
-      }
-    });
+    
+    if (userGesture) {
+      // 사용자 제스처 컨텍스트: 바로 unmute 가능
+      video.muted = isMutedRef.current;
+      video.play().then(() => {
+        console.log("[CameraViewer] ✅ Play with audio succeeded (user gesture)");
+        setIsVideoPlaying(true);
+      }).catch((err) => {
+        if (err?.name !== "AbortError") {
+          console.warn("[CameraViewer] ⚠️ Play with audio rejected, falling back to muted:", err?.message);
+          video.muted = true;
+          video.play().catch(() => {});
+        }
+      });
+    } else {
+      // 자동 재생: muted 필수
+      video.muted = true;
+      video.play().catch((err) => {
+        if (err?.name !== "AbortError") {
+          console.warn("[CameraViewer] ⚠️ Auto play rejected:", err?.message);
+        }
+      });
+    }
   }, []);
 
   // isMuted prop 변경 시 비디오에 반영
@@ -204,9 +220,9 @@ const CameraViewer = ({
       
       if (!v.paused && v.readyState >= 2 && !playing) {
         playing = true;
-        console.log("[CameraViewer] ✅ Video is playing!");
+        console.log("[CameraViewer] ✅ Video is playing (muted auto-play)");
         setIsVideoPlaying(true);
-        v.muted = isMutedRef.current;
+        // ★ 자동 재생 시에는 muted 유지 — 사용자가 탭하여 재생 오버레이를 클릭하면 unmute됨
         clearInterval(checkPlaying);
         return;
       }
@@ -265,7 +281,7 @@ const CameraViewer = ({
     return `${m}:${s}`;
   };
 
-  const handlePlayClick = () => attemptPlay();
+  const handlePlayClick = () => attemptPlay(true);
 
   // 현재 표시할 상태 결정
   const showConnecting = isConnecting && !isConnected && !remoteStream;
