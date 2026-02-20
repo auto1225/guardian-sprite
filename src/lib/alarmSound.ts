@@ -84,6 +84,35 @@ function nukeLegacy() {
     w[key] = [];
   }
 
+  // ★ 이전 버전 오디오 참조 정리 (__meercop_audio_v* 중 v11 제외)
+  for (const key of Object.keys(w)) {
+    if (key.startsWith('__meercop_audio_') && key !== AUDIO_KEY) {
+      const oldRefs = w[key] as Record<string, unknown> | undefined;
+      if (!oldRefs || typeof oldRefs !== 'object') continue;
+      console.log("[AlarmSound] 🧹 Cleaning legacy audio refs:", key);
+      // interval 정리
+      if (oldRefs.interval != null) { try { clearInterval(oldRefs.interval as ReturnType<typeof setInterval>); } catch {} oldRefs.interval = null; }
+      // oscillators 정리
+      if (Array.isArray(oldRefs.oscillators)) {
+        for (const osc of oldRefs.oscillators as OscillatorNode[]) {
+          try { osc.stop(); } catch {} try { osc.disconnect(); } catch {}
+        }
+        oldRefs.oscillators = [];
+      }
+      // customAudio 정리
+      if (oldRefs.customAudio) { try { (oldRefs.customAudio as HTMLAudioElement).pause(); (oldRefs.customAudio as HTMLAudioElement).src = ''; } catch {} oldRefs.customAudio = null; }
+      // gain 무음 + 정리
+      if (oldRefs.gain) { try { (oldRefs.gain as GainNode).gain.value = 0; } catch {} oldRefs.gain = null; }
+      // AudioContext 닫기
+      if (oldRefs.ctx) {
+        try { const ctx = oldRefs.ctx as AudioContext; if (ctx.state !== 'closed') { ctx.close().catch(() => {}); } } catch {}
+        oldRefs.ctx = null;
+      }
+      // 전역에서 완전 삭제
+      try { delete w[key]; } catch {}
+    }
+  }
+
   // 레거시 __meercop_alarm* 전역 객체 (v9 이하)
   for (const key of Object.keys(w)) {
     if (!key.startsWith('__meercop_alarm')) continue;
@@ -105,7 +134,6 @@ function nukeLegacy() {
   }
 
   // ★ v10 → v11 마이그레이션: v10의 모듈 레벨 AudioContext도 정리
-  // v10 state 객체가 있으면 isAlarming을 false로 설정
   const v10State = w['__meercop_alarm_state_v10'] as Record<string, unknown> | undefined;
   if (v10State && typeof v10State === 'object') {
     v10State.isAlarming = false;
@@ -530,8 +558,21 @@ export function stop() {
   // 모든 소스를 동기적으로 즉시 정지
   killAllSources();
 
-  // ★ v10 state도 정리 (이전 모듈 인스턴스 대응)
+  // ★ 이전 버전 오디오 참조도 모두 정리 (v10 등)
   const w = window as unknown as Record<string, unknown>;
+  for (const key of Object.keys(w)) {
+    if (key.startsWith('__meercop_audio_') && key !== AUDIO_KEY) {
+      const oldRefs = w[key] as Record<string, unknown> | undefined;
+      if (!oldRefs || typeof oldRefs !== 'object') continue;
+      if (oldRefs.interval != null) { try { clearInterval(oldRefs.interval as ReturnType<typeof setInterval>); } catch {} oldRefs.interval = null; }
+      if (Array.isArray(oldRefs.oscillators)) { for (const osc of oldRefs.oscillators as OscillatorNode[]) { try { osc.stop(); } catch {} try { osc.disconnect(); } catch {} } oldRefs.oscillators = []; }
+      if (oldRefs.customAudio) { try { (oldRefs.customAudio as HTMLAudioElement).pause(); (oldRefs.customAudio as HTMLAudioElement).src = ''; } catch {} oldRefs.customAudio = null; }
+      if (oldRefs.gain) { try { (oldRefs.gain as GainNode).gain.value = 0; } catch {} oldRefs.gain = null; }
+      if (oldRefs.ctx) { try { const ctx = oldRefs.ctx as AudioContext; if (ctx.state !== 'closed') { ctx.close().catch(() => {}); } } catch {} oldRefs.ctx = null; }
+      try { delete w[key]; } catch {}
+    }
+  }
+  // v10 state도 정리
   const v10State = w['__meercop_alarm_state_v10'] as Record<string, unknown> | undefined;
   if (v10State && typeof v10State === 'object') {
     v10State.isAlarming = false;
