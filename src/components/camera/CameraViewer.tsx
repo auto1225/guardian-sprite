@@ -191,8 +191,11 @@ const CameraViewer = ({
   }, []);
 
   // ★ 핵심: remoteStream 변경 시 비디오 연결
+  const prevStreamIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!remoteStream) {
+      prevStreamIdRef.current = null;
       pendingStreamRef.current = null;
       const video = videoRef.current;
       if (video) {
@@ -202,6 +205,14 @@ const CameraViewer = ({
       setIsVideoPlaying(false);
       return;
     }
+
+    // ★ 스트림 ID가 같으면 리마운트하지 않음 (불필요한 비디오 재생성 방지)
+    const streamId = remoteStream.getTracks().map(t => t.id).sort().join(",");
+    if (streamId === prevStreamIdRef.current) {
+      console.log("[CameraViewer] ⏭️ Same stream tracks, skipping remount");
+      return;
+    }
+    prevStreamIdRef.current = streamId;
 
     // pendingStreamRef에 저장 후 videoKey 변경 → ref callback에서 즉시 attach
     pendingStreamRef.current = remoteStream;
