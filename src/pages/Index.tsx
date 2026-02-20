@@ -357,6 +357,7 @@ const Index = () => {
           initialDeviceId={selectedDevice.id}
           isOpen={panels.settings}
           onClose={() => closePanel("settings")}
+          onDeviceChange={(id) => setSelectedDeviceId(id)}
         />
       )}
 

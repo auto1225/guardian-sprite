@@ -32,9 +32,10 @@ interface SettingsPageProps {
   initialDeviceId: string;
   isOpen: boolean;
   onClose: () => void;
+  onDeviceChange?: (deviceId: string) => void;
 }
 
-const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPageProps) => {
+const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChange }: SettingsPageProps) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -293,7 +294,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
                 {devices.map((d) => (
                   <button
                     key={d.id}
-                    onClick={() => setSettingsDeviceId(d.id)}
+                    onClick={() => { setSettingsDeviceId(d.id); onDeviceChange?.(d.id); }}
                     className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
                       settingsDeviceId === d.id ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
                     }`}
