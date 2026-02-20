@@ -252,7 +252,7 @@ export function usePhotoReceiver(
       loadAlerts();
     }
     Alarm.stop();
-    Alarm.suppressFor(30000);
+    Alarm.suppressFor(60000);
     setLatestAlert(null);
   }, [latestAlert, loadAlerts]);
 
