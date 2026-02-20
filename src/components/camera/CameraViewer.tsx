@@ -111,22 +111,49 @@ const CameraViewer = ({
   // ★ 일시정지: 현재 프레임을 캡처하여 오버레이로 표시 (비디오는 계속 재생 — 스트림 유지)
   useEffect(() => {
     isPausedRef.current = isPaused;
+    if (!isPaused) {
+      setPausedFrameUrl(null);
+      return;
+    }
+
     const video = videoRef.current;
-    if (isPaused && video && video.videoWidth > 0) {
+    if (!video) {
+      console.warn("[CameraViewer] No video ref for pause capture");
+      return;
+    }
+
+    // 비디오가 아직 로드되지 않았으면 잠시 대기 후 재시도
+    const captureFrame = () => {
+      const v = videoRef.current;
+      if (!v || v.videoWidth === 0 || v.videoHeight === 0) return false;
       try {
         const canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        canvas.width = v.videoWidth;
+        canvas.height = v.videoHeight;
         const ctx = canvas.getContext("2d");
         if (ctx) {
-          ctx.drawImage(video, 0, 0);
+          ctx.drawImage(v, 0, 0);
           setPausedFrameUrl(canvas.toDataURL("image/jpeg", 0.92));
+          console.log("[CameraViewer] ✅ Paused frame captured");
+          return true;
         }
       } catch (e) {
         console.warn("[CameraViewer] Failed to capture paused frame:", e);
       }
-    } else if (!isPaused) {
-      setPausedFrameUrl(null);
+      return false;
+    };
+
+    if (!captureFrame()) {
+      // 비디오가 아직 준비되지 않은 경우 100ms 간격으로 최대 10회 재시도
+      let retries = 0;
+      const retryInterval = setInterval(() => {
+        retries++;
+        if (captureFrame() || retries >= 10) {
+          clearInterval(retryInterval);
+          if (retries >= 10) console.warn("[CameraViewer] ⚠️ Could not capture paused frame after retries");
+        }
+      }, 100);
+      return () => clearInterval(retryInterval);
     }
   }, [isPaused]);
 
