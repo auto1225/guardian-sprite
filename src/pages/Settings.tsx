@@ -353,12 +353,15 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
 
           {/* Language Setting */}
           <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
-            <div className="px-4 py-4">
-              <div className="mb-3">
-                <span className="text-white font-semibold text-sm block">{t("settings.language")}</span>
-                <span className="text-white/80 text-xs">{t("settings.languageDesc")}</span>
+            <div className="px-4 py-3">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <span className="text-white font-semibold text-sm block">{t("settings.language")}</span>
+                  <span className="text-white/80 text-xs">{t("settings.languageDesc")}</span>
+                </div>
+                <Globe className="w-4 h-4 text-white/50" />
               </div>
-              <div className="grid grid-cols-3 gap-2 max-h-[240px] overflow-y-auto alert-history-scroll">
+              <div className="grid grid-cols-4 gap-1.5 max-h-[160px] overflow-y-auto alert-history-scroll">
                 {SUPPORTED_LANGUAGES.map((lang) => (
                   <button
                     key={lang.code}
@@ -377,13 +380,13 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
                         toast({ title: t("common.error"), description: "Translation failed", variant: "destructive" });
                       }
                     }}
-                    className={`py-2 px-1 rounded-xl text-xs font-semibold transition-all text-center ${
+                    className={`py-1.5 px-1 rounded-lg text-[10px] font-semibold transition-all text-center leading-tight ${
                       i18n.language === lang.code ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
                     }`}
                     style={i18n.language === lang.code ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
                   >
-                    <span className="block text-base">{lang.flag}</span>
-                    <span className="block mt-0.5">{lang.label}</span>
+                    <span className="block text-sm">{lang.flag}</span>
+                    <span className="block mt-0.5 truncate">{lang.label}</span>
                   </button>
                 ))}
               </div>
