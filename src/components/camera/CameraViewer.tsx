@@ -30,12 +30,9 @@ const CameraViewer = ({
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [videoKey, setVideoKey] = useState(0);
-  const playRetryTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isMutedRef = useRef(isMuted);
   const isPausedRef = useRef(isPaused);
   const [pausedFrameUrl, setPausedFrameUrl] = useState<string | null>(null);
-  const pendingStreamRef = useRef<MediaStream | null>(null);
 
   // 오디오 레벨 시각화
   const [audioLevel, setAudioLevel] = useState(0);
@@ -58,9 +55,7 @@ const CameraViewer = ({
 
     try {
       const ctx = new AudioContext();
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
-      }
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
 
       const source = ctx.createMediaStreamSource(remoteStream);
       const analyser = ctx.createAnalyser();
@@ -103,12 +98,11 @@ const CameraViewer = ({
     };
   }, [remoteStream]);
 
-  // Keep refs in sync
   useEffect(() => {
     isMutedRef.current = isMuted;
   }, [isMuted]);
 
-  // ★ 일시정지: 현재 프레임을 캡처하여 오버레이로 표시 (비디오는 계속 재생 — 스트림 유지)
+  // ★ 일시정지: 현재 프레임 캡처
   useEffect(() => {
     isPausedRef.current = isPaused;
     if (!isPaused) {
@@ -116,13 +110,6 @@ const CameraViewer = ({
       return;
     }
 
-    const video = videoRef.current;
-    if (!video) {
-      console.warn("[CameraViewer] No video ref for pause capture");
-      return;
-    }
-
-    // 비디오가 아직 로드되지 않았으면 잠시 대기 후 재시도
     const captureFrame = () => {
       const v = videoRef.current;
       if (!v || v.videoWidth === 0 || v.videoHeight === 0) return false;
@@ -134,51 +121,46 @@ const CameraViewer = ({
         if (ctx) {
           ctx.drawImage(v, 0, 0);
           setPausedFrameUrl(canvas.toDataURL("image/jpeg", 0.92));
-          console.log("[CameraViewer] ✅ Paused frame captured");
           return true;
         }
       } catch (e) {
-        console.warn("[CameraViewer] Failed to capture paused frame:", e);
+        console.warn("[CameraViewer] Pause capture failed:", e);
       }
       return false;
     };
 
     if (!captureFrame()) {
-      // 비디오가 아직 준비되지 않은 경우 100ms 간격으로 최대 10회 재시도
       let retries = 0;
       const retryInterval = setInterval(() => {
         retries++;
-        if (captureFrame() || retries >= 10) {
-          clearInterval(retryInterval);
-          if (retries >= 10) console.warn("[CameraViewer] ⚠️ Could not capture paused frame after retries");
-        }
+        if (captureFrame() || retries >= 10) clearInterval(retryInterval);
       }, 100);
       return () => clearInterval(retryInterval);
     }
   }, [isPaused]);
 
-  // 재생 시도 (userGesture=true면 unmute 허용)
+  // 재생 시도
   const attemptPlay = useCallback((userGesture = false) => {
     const video = videoRef.current;
     if (!video || !video.srcObject) return;
     
     if (userGesture) {
-      // 사용자 제스처 컨텍스트: 바로 unmute 가능
       video.muted = isMutedRef.current;
       video.play().then(() => {
-        console.log("[CameraViewer] ✅ Play with audio succeeded (user gesture)");
+        console.log("[CameraViewer] ✅ Play with user gesture");
         setIsVideoPlaying(true);
       }).catch((err) => {
         if (err?.name !== "AbortError") {
-          console.warn("[CameraViewer] ⚠️ Play with audio rejected, falling back to muted:", err?.message);
           video.muted = true;
-          video.play().catch(() => {});
+          video.play().then(() => setIsVideoPlaying(true)).catch(() => {});
         }
       });
     } else {
-      // 자동 재생: muted 필수
       video.muted = true;
-      video.play().catch((err) => {
+      video.play().then(() => {
+        console.log("[CameraViewer] ✅ Auto-play succeeded");
+        setIsVideoPlaying(true);
+      }).catch((err) => {
         if (err?.name !== "AbortError") {
           console.warn("[CameraViewer] ⚠️ Auto play rejected:", err?.message);
         }
@@ -193,127 +175,115 @@ const CameraViewer = ({
     }
   }, [isMuted, isVideoPlaying]);
 
-  // ★ ref callback: videoKey 변경으로 새 video 엘리먼트가 마운트되면 즉시 srcObject 설정
-  const videoRefCallback = useCallback((node: HTMLVideoElement | null) => {
-    (videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = node;
-    if (node && pendingStreamRef.current) {
-      const stream = pendingStreamRef.current;
-      console.log("[CameraViewer] 📹 Ref callback: attaching stream to fresh video element, tracks:",
-        stream.getTracks().map(t => `${t.kind}:${t.readyState}:muted=${t.muted}`).join(", "));
-      node.removeAttribute("src");
-      node.srcObject = stream;
-      node.muted = true;
-      node.setAttribute("playsinline", "true");
-      node.setAttribute("webkit-playsinline", "true");
-      
-      // ★ playing 이벤트로 확실하게 isVideoPlaying 설정
-      const onPlaying = () => {
-        console.log("[CameraViewer] ✅ Video 'playing' event fired");
-        setIsVideoPlaying(true);
-      };
-      node.addEventListener("playing", onPlaying);
-      
-      // 항상 play 시도 (일시정지는 오버레이로 처리, 비디오는 계속 재생)
-      const tryPlay = () => {
-        node.muted = true; // 반드시 muted로 재생 시도
-        node.play().then(() => {
-          console.log("[CameraViewer] ✅ Auto-play succeeded");
-          setIsVideoPlaying(true);
-        }).catch((err) => {
-          if (err?.name !== "AbortError") {
-            console.warn("[CameraViewer] ⚠️ Auto-play failed:", err?.message);
-          }
-        });
-      };
-      // ★ 즉시 + 지연 + 이벤트 기반 3중 재생 시도
-      tryPlay();
-      setTimeout(tryPlay, 300);
-      setTimeout(tryPlay, 1000);
-      node.addEventListener("loadedmetadata", tryPlay, { once: true });
-      node.addEventListener("loadeddata", tryPlay, { once: true });
-      node.addEventListener("canplay", tryPlay, { once: true });
-    }
-  }, []);
-
-  // ★ 핵심: remoteStream 변경 시 비디오 연결
-  const prevStreamIdRef = useRef<string | null>(null);
+  // ★ 핵심 수정: videoKey 리마운트 제거 → 기존 video 엘리먼트에 직접 srcObject 설정
+  // (컴퓨터 앱 방식 벤치마킹)
+  const prevStreamTracksRef = useRef<string | null>(null);
 
   useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
     if (!remoteStream) {
-      prevStreamIdRef.current = null;
-      pendingStreamRef.current = null;
-      const video = videoRef.current;
-      if (video) {
-        video.pause();
-        video.srcObject = null;
-      }
+      prevStreamTracksRef.current = null;
+      video.pause();
+      video.srcObject = null;
       setIsVideoPlaying(false);
       return;
     }
 
-    // ★ 스트림 ID가 같으면 리마운트하지 않음 (불필요한 비디오 재생성 방지)
-    const streamId = remoteStream.getTracks().map(t => t.id).sort().join(",");
-    if (streamId === prevStreamIdRef.current) {
-      console.log("[CameraViewer] ⏭️ Same stream tracks, skipping remount");
+    // ★ 트랙 ID가 동일하면 srcObject 재설정하지 않음 (불필요한 재생 중단 방지)
+    const trackIds = remoteStream.getTracks().map(t => t.id).sort().join(",");
+    if (trackIds === prevStreamTracksRef.current) {
+      console.log("[CameraViewer] ⏭️ Same tracks, skipping srcObject update");
       return;
     }
-    prevStreamIdRef.current = streamId;
+    prevStreamTracksRef.current = trackIds;
 
-    // pendingStreamRef에 저장 후 videoKey 변경 → ref callback에서 즉시 attach
-    pendingStreamRef.current = remoteStream;
-    setVideoKey(k => k + 1);
+    console.log("[CameraViewer] 📹 Setting srcObject directly, tracks:",
+      remoteStream.getTracks().map(t => `${t.kind}:${t.readyState}:muted=${t.muted}`).join(", "));
+
+    // ★ 기존 video 엘리먼트에 직접 설정 — 리마운트 없음
+    video.srcObject = remoteStream;
+    video.muted = true;
+    video.setAttribute("playsinline", "true");
+    video.setAttribute("webkit-playsinline", "true");
     setIsVideoPlaying(false);
 
-    console.log("[CameraViewer] 📹 New stream received, recreating video element");
-
     let playing = false;
-    const trackCleanups: Array<() => void> = [];
 
-    // ★ playing 이벤트 리스너 — 가장 확실한 재생 감지
-    const onPlayingEvent = () => {
+    // playing 이벤트 — 가장 확실한 재생 감지
+    const onPlaying = () => {
       if (!playing) {
         playing = true;
         console.log("[CameraViewer] ✅ Video playing (event)");
         setIsVideoPlaying(true);
       }
     };
-    const v = videoRef.current;
-    if (v) v.addEventListener("playing", onPlayingEvent);
+    video.addEventListener("playing", onPlaying);
 
-    // playing 이벤트 + 폴링 fallback
+    // ★ 즉시 재생 시도 + 지연 재시도 (모바일 대응)
+    const tryPlay = () => {
+      if (playing) return;
+      video.muted = true;
+      video.play().then(() => {
+        if (!playing) {
+          playing = true;
+          console.log("[CameraViewer] ✅ play() resolved");
+          setIsVideoPlaying(true);
+        }
+      }).catch((err) => {
+        if (err?.name !== "AbortError") {
+          console.warn("[CameraViewer] ⚠️ play() rejected:", err?.message);
+        }
+      });
+    };
+
+    // 즉시 + 300ms + 1s + 이벤트 기반 재생 시도
+    tryPlay();
+    const t1 = setTimeout(tryPlay, 300);
+    const t2 = setTimeout(tryPlay, 1000);
+    const t3 = setTimeout(tryPlay, 2000);
+
+    // 이벤트 기반 재생 시도
+    const onLoadedData = () => tryPlay();
+    const onCanPlay = () => tryPlay();
+    video.addEventListener("loadeddata", onLoadedData, { once: true });
+    video.addEventListener("canplay", onCanPlay, { once: true });
+
+    // ★ 폴링 fallback: 1.5초 간격으로 재생 확인 (최대 20회 = 30초)
+    let pollCount = 0;
     const checkPlaying = setInterval(() => {
+      if (playing || pollCount >= 20) {
+        clearInterval(checkPlaying);
+        return;
+      }
+      pollCount++;
       const v = videoRef.current;
-      if (!v || v.srcObject !== remoteStream) { clearInterval(checkPlaying); return; }
-      
+      if (!v || v.srcObject !== remoteStream) {
+        clearInterval(checkPlaying);
+        return;
+      }
       if (!v.paused && v.readyState >= 2 && !playing) {
         playing = true;
-        console.log("[CameraViewer] ✅ Video is playing (poll check)");
+        console.log("[CameraViewer] ✅ Playing (poll)");
         setIsVideoPlaying(true);
         clearInterval(checkPlaying);
         return;
       }
-
       if (!playing) {
         v.muted = true;
         v.play().then(() => {
-          if (!playing) {
-            playing = true;
-            setIsVideoPlaying(true);
-          }
-        }).catch((err) => {
-          if (err?.name !== "AbortError") console.warn("[CameraViewer] ⚠️ retry play() rejected:", err?.message);
-        });
+          if (!playing) { playing = true; setIsVideoPlaying(true); }
+        }).catch(() => {});
       }
     }, 1500);
 
     // 트랙 unmute 시 재생 시도
+    const trackCleanups: Array<() => void> = [];
     remoteStream.getTracks().forEach(track => {
       if (track.muted) {
         const onUnmute = () => {
-          const v = videoRef.current;
-          if (v && v.srcObject === remoteStream && !playing) {
-            v.play().catch(() => {});
-          }
+          if (!playing) tryPlay();
         };
         track.addEventListener("unmute", onUnmute, { once: true });
         trackCleanups.push(() => track.removeEventListener("unmute", onUnmute));
@@ -321,10 +291,14 @@ const CameraViewer = ({
     });
 
     return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
       clearInterval(checkPlaying);
       trackCleanups.forEach(fn => fn());
-      const vClean = videoRef.current;
-      if (vClean) vClean.removeEventListener("playing", onPlayingEvent);
+      video.removeEventListener("playing", onPlaying);
+      video.removeEventListener("loadeddata", onLoadedData);
+      video.removeEventListener("canplay", onCanPlay);
     };
   }, [remoteStream]);
 
@@ -341,12 +315,6 @@ const CameraViewer = ({
     return () => clearInterval(interval);
   }, [remoteStream]);
 
-  useEffect(() => {
-    return () => {
-      if (playRetryTimerRef.current) clearTimeout(playRetryTimerRef.current);
-    };
-  }, []);
-
   const formatDuration = (seconds: number) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, "0");
     const s = (seconds % 60).toString().padStart(2, "0");
@@ -355,7 +323,6 @@ const CameraViewer = ({
 
   const handlePlayClick = () => attemptPlay(true);
 
-  // 현재 표시할 상태 결정
   const showConnecting = isConnecting && !isConnected && !remoteStream;
   const showError = !!error && !isConnected && !remoteStream;
   const showVideo = !!remoteStream;
@@ -364,19 +331,18 @@ const CameraViewer = ({
 
   return (
     <div className="flex-1 bg-black rounded-xl flex items-center justify-center relative overflow-hidden aspect-video">
-      {/* ★ video 요소는 항상 DOM에 존재 — videoRef가 null이 되지 않도록 */}
+      {/* ★ video 엘리먼트: 항상 DOM에 존재, 리마운트 없음 */}
       <video
-        key={videoKey}
-        ref={videoRefCallback}
+        ref={videoRef}
         playsInline
         muted
+        autoPlay
         preload="auto"
         className={`w-full h-full object-contain ${showVideo ? "" : "hidden"}`}
         onClick={handlePlayClick}
       />
 
-
-      {/* ★ 일시정지 프레임 오버레이 — 비디오 위에 캡처된 이미지 표시 */}
+      {/* 일시정지 프레임 오버레이 */}
       {pausedFrameUrl && isPaused && (
         <img
           src={pausedFrameUrl}
@@ -393,7 +359,6 @@ const CameraViewer = ({
         </div>
       )}
 
-      {/* Error */}
       {showError && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
           <p className="text-white/70 text-sm">{error}</p>
@@ -407,7 +372,6 @@ const CameraViewer = ({
         </div>
       )}
 
-      {/* Waiting */}
       {showWaiting && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
           <RefreshCw className="w-6 h-6 text-white/50 animate-spin" />
@@ -415,7 +379,6 @@ const CameraViewer = ({
         </div>
       )}
 
-      {/* 카메라 연결 해제 오버레이 */}
       {showDisconnectOverlay && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60">
           <VideoOff className="w-10 h-10 text-white/50 mb-2" />
@@ -460,7 +423,7 @@ const CameraViewer = ({
         </div>
       )}
 
-      {/* 오디오 레벨 인디케이터 */}
+      {/* 오디오 레벨 */}
       {isConnected && (
         <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 px-2 py-1.5 rounded">
           {hasAudioTrack ? (
