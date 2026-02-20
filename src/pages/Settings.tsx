@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronRight, Globe } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import {
   SettingItem,
   SensorSection,
@@ -347,6 +348,40 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
             <SettingItem label={t("settings.alarmPin")} value={alarmPin} onClick={() => setShowPinDialog(true)} />
             <div className="border-t border-white/10" />
             <SettingItem label={t("settings.alarmSound")} value={selectedSoundLabel} onClick={() => setShowSoundDialog(true)} />
+          </div>
+
+          {/* Language Setting */}
+          <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
+            <div className="px-4 py-4">
+              <div className="mb-3">
+                <span className="text-white font-semibold text-sm block">{t("settings.language")}</span>
+                <span className="text-white/80 text-xs">{t("settings.languageDesc")}</span>
+              </div>
+              <div className="flex gap-2">
+                {(["ko", "en"] as const).map((lang) => (
+                  <button
+                    key={lang}
+                    onClick={async () => {
+                      i18n.changeLanguage(lang);
+                      localStorage.setItem("meercop_language", lang);
+                      // Save to device metadata so laptop program can read it
+                      try {
+                        await saveMetadata({ language: lang });
+                        toast({ title: t("common.saved"), description: t("settings.languageChanged") });
+                      } catch {
+                        toast({ title: t("common.error"), description: t("common.saveFailed"), variant: "destructive" });
+                      }
+                    }}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                      i18n.language === lang ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
+                    }`}
+                    style={i18n.language === lang ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
+                  >
+                    {t(`settings.language${lang === "ko" ? "Ko" : "En"}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Toggle Settings */}
