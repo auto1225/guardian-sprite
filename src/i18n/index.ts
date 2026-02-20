@@ -9,24 +9,16 @@ import zhCN from "./locales/zh-CN.json";
 import zhTW from "./locales/zh-TW.json";
 import es from "./locales/es.json";
 import fr from "./locales/fr.json";
-
-// Try to restore cached translation for non-static languages on init
-const CACHE_PREFIX = "meercop_i18n_";
-const savedLang = localStorage.getItem("meercop_language");
-const additionalResources: Record<string, { translation: unknown }> = {};
-
-// Languages not yet bundled statically — restore from cache if available
-const STATIC_LANGS = ["ko", "en", "ja", "zh-CN", "zh-TW", "es", "fr"];
-if (savedLang && !STATIC_LANGS.includes(savedLang)) {
-  try {
-    const cached = localStorage.getItem(`${CACHE_PREFIX}${savedLang}`);
-    if (cached) {
-      additionalResources[savedLang] = { translation: JSON.parse(cached) };
-    }
-  } catch {
-    // ignore
-  }
-}
+import de from "./locales/de.json";
+import pt from "./locales/pt.json";
+import ru from "./locales/ru.json";
+import ar from "./locales/ar.json";
+import hi from "./locales/hi.json";
+import th from "./locales/th.json";
+import vi from "./locales/vi.json";
+import id from "./locales/id.json";
+import tr from "./locales/tr.json";
+import it from "./locales/it.json";
 
 i18n
   .use(LanguageDetector)
@@ -40,7 +32,16 @@ i18n
       "zh-TW": { translation: zhTW },
       es: { translation: es },
       fr: { translation: fr },
-      ...additionalResources,
+      de: { translation: de },
+      pt: { translation: pt },
+      ru: { translation: ru },
+      ar: { translation: ar },
+      hi: { translation: hi },
+      th: { translation: th },
+      vi: { translation: vi },
+      id: { translation: id },
+      tr: { translation: tr },
+      it: { translation: it },
     },
     fallbackLng: "ko",
     interpolation: {
