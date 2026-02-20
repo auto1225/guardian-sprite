@@ -29,6 +29,8 @@ import { usePhotoReceiver } from "@/hooks/usePhotoReceiver";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { useDeviceHeartbeat } from "@/hooks/useDeviceHeartbeat";
 import { useLocationResponder } from "@/hooks/useLocationResponder";
+import { useWakeLock } from "@/hooks/useWakeLock";
+import { useAppStabilizer } from "@/hooks/useAppStabilizer";
 
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -73,9 +75,11 @@ const Index = () => {
   const { toggleMonitoring } = useCommands();
   const { toast } = useToast();
 
-  // 상태 하트비트 & 위치 응답 로직
+  // 상태 하트비트 & 위치 응답 & 안정화 로직
   useDeviceHeartbeat();
   useLocationResponder();
+  useWakeLock(isMonitoring);
+  useAppStabilizer();
 
   // 자동 푸시 구독: 디바이스 선택 + 푸시 미구독 시 자동 시도 (S-11: subscribePush를 ref로 안정화)
   const subscribePushRef = useRef(subscribePush);
