@@ -1,4 +1,4 @@
-import { X, User, Laptop, LogOut, HelpCircle, Pencil, UserCog, Globe, Lock, MapPin, Camera } from "lucide-react";
+import { X, User, Laptop, LogOut, HelpCircle, UserCog, Globe, Lock, MapPin, Camera } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -126,11 +126,6 @@ const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick, onRemoteC
                     </p>
                   </div>
                 </div>
-                <Pencil className={`w-4 h-4 ${
-                  device.id === selectedDeviceId 
-                    ? 'text-secondary-foreground' 
-                    : 'text-primary-foreground'
-                }`} />
               </button>
             ))}
             {devices?.filter(d => d.device_type !== "smartphone").length === 0 && (

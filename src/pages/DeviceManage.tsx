@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, MoreVertical, Plus, Copy, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowLeft, MoreVertical, Plus, Copy, GripVertical } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { useDevices } from "@/hooks/useDevices";
 import { useCommands } from "@/hooks/useCommands";
@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 import { useAuth } from "@/hooks/useAuth";
-import { sortDevicesByOrder, reorderDevices } from "@/lib/deviceSortOrder";
+import { sortDevicesByOrder } from "@/lib/deviceSortOrder";
 import { useTranslation } from "react-i18next";
 import {
   DropdownMenu,
@@ -63,7 +63,20 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
   const [newDeviceType, setNewDeviceType] = useState<DeviceType>("laptop");
   const [serialMap, setSerialMap] = useState<Record<string, string>>({});
 
+  // ── Drag reorder state ──
+  const [dragOrder, setDragOrder] = useState<Device[] | null>(null);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const dragStartY = useRef(0);
+
   const managedDevices = devices.filter(d => d.device_type !== "smartphone");
+  const sortedDevices = dragOrder ?? sortDevicesByOrder(managedDevices);
+
+  // Reset dragOrder when devices change from DB
+  useEffect(() => {
+    setDragOrder(null);
+  }, [devices]);
 
   useEffect(() => {
     if (!isOpen || !user) return;
@@ -83,6 +96,56 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
   }, [isOpen, user]);
 
   if (!isOpen) return null;
+
+  // ── Touch drag handlers ──
+  const handleDragStart = (idx: number, clientY: number) => {
+    setDragOrder(sortDevicesByOrder(managedDevices));
+    setDragIdx(idx);
+    setOverIdx(idx);
+    dragStartY.current = clientY;
+  };
+
+  const handleDragMove = (clientY: number) => {
+    if (dragIdx === null || !cardRefs.current.length) return;
+    // Find which card the touch is over
+    for (let i = 0; i < cardRefs.current.length; i++) {
+      const el = cardRefs.current[i];
+      if (!el) continue;
+      const rect = el.getBoundingClientRect();
+      if (clientY >= rect.top && clientY <= rect.bottom) {
+        if (i !== overIdx) setOverIdx(i);
+        break;
+      }
+    }
+  };
+
+  const handleDragEnd = async () => {
+    if (dragIdx === null || overIdx === null || !dragOrder) {
+      setDragIdx(null);
+      setOverIdx(null);
+      return;
+    }
+
+    if (dragIdx !== overIdx) {
+      const newOrder = [...dragOrder];
+      const [moved] = newOrder.splice(dragIdx, 1);
+      newOrder.splice(overIdx, 0, moved);
+      setDragOrder(newOrder);
+
+      // Save all sort_orders
+      try {
+        await Promise.all(
+          newOrder.map((d, i) => safeMetadataUpdate(d.id, { sort_order: i }))
+        );
+        queryClient.invalidateQueries({ queryKey: ["devices"] });
+      } catch {
+        toast({ title: t("common.error"), description: "순서 저장 실패", variant: "destructive" });
+      }
+    }
+
+    setDragIdx(null);
+    setOverIdx(null);
+  };
 
   const handleSetAsMain = async (deviceId: string) => {
     try {
@@ -143,6 +206,15 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
     }
   };
 
+  // Compute visual order for rendering
+  const displayDevices = (() => {
+    if (dragIdx === null || overIdx === null) return sortedDevices;
+    const arr = [...sortedDevices];
+    const [moved] = arr.splice(dragIdx, 1);
+    arr.splice(overIdx, 0, moved);
+    return arr;
+  })();
+
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col">
       <div className="flex items-center justify-between p-4 border-b border-white/20">
@@ -157,22 +229,30 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {sortDevicesByOrder(managedDevices).map((device, idx, arr) => (
-          <DeviceCardItem
+      <div
+        className="flex-1 overflow-y-auto p-4 space-y-3"
+        onTouchMove={(e) => handleDragMove(e.touches[0].clientY)}
+        onTouchEnd={handleDragEnd}
+        onMouseMove={(e) => { if (dragIdx !== null) handleDragMove(e.clientY); }}
+        onMouseUp={handleDragEnd}
+      >
+        {displayDevices.map((device, idx) => (
+          <div
             key={device.id}
-            device={device}
-            isMain={!!((device.metadata as Record<string, unknown>)?.is_main)}
-            serialKey={serialMap[device.id]}
-            onSetAsMain={() => handleSetAsMain(device.id)}
-            onToggleMonitoring={() => handleToggleMonitoring(device)}
-            onDelete={() => handleDeleteDevice(device.id)}
-            onViewAlertHistory={() => onViewAlertHistory?.(device.id)}
-            canMoveUp={idx > 0}
-            canMoveDown={idx < arr.length - 1}
-            onMoveUp={async () => { await reorderDevices(arr, device.id, "up"); queryClient.invalidateQueries({ queryKey: ["devices"] }); }}
-            onMoveDown={async () => { await reorderDevices(arr, device.id, "down"); queryClient.invalidateQueries({ queryKey: ["devices"] }); }}
-          />
+            ref={(el) => { cardRefs.current[idx] = el; }}
+            className={`transition-transform ${dragIdx !== null && dragIdx === sortedDevices.indexOf(device) ? 'opacity-60 scale-95' : ''}`}
+          >
+            <DeviceCardItem
+              device={device}
+              isMain={!!((device.metadata as Record<string, unknown>)?.is_main)}
+              serialKey={serialMap[device.id]}
+              onSetAsMain={() => handleSetAsMain(device.id)}
+              onToggleMonitoring={() => handleToggleMonitoring(device)}
+              onDelete={() => handleDeleteDevice(device.id)}
+              onViewAlertHistory={() => onViewAlertHistory?.(device.id)}
+              onDragStart={(clientY) => handleDragStart(sortedDevices.indexOf(device), clientY)}
+            />
+          </div>
         ))}
 
         {managedDevices.length === 0 && (
@@ -231,13 +311,10 @@ interface DeviceCardItemProps {
   onToggleMonitoring: () => void;
   onDelete: () => void;
   onViewAlertHistory: () => void;
-  canMoveUp: boolean;
-  canMoveDown: boolean;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
+  onDragStart: (clientY: number) => void;
 }
 
-const DeviceCardItem = ({ device, isMain, serialKey, onSetAsMain, onToggleMonitoring, onDelete, onViewAlertHistory, canMoveUp, canMoveDown, onMoveUp, onMoveDown }: DeviceCardItemProps) => {
+const DeviceCardItem = ({ device, isMain, serialKey, onSetAsMain, onToggleMonitoring, onDelete, onViewAlertHistory, onDragStart }: DeviceCardItemProps) => {
   const { t } = useTranslation();
   const isOnline = device.status !== "offline";
   const isMonitoring = device.is_monitoring;
@@ -246,13 +323,13 @@ const DeviceCardItem = ({ device, isMain, serialKey, onSetAsMain, onToggleMonito
     <div className="rounded-2xl p-4 bg-white/15 backdrop-blur-xl border border-white/25 shadow-lg">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="flex flex-col gap-0.5 shrink-0">
-            <button onClick={onMoveUp} disabled={!canMoveUp} className="p-0.5 rounded text-white/50 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed">
-              <ArrowUp className="w-3.5 h-3.5" />
-            </button>
-            <button onClick={onMoveDown} disabled={!canMoveDown} className="p-0.5 rounded text-white/50 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed">
-              <ArrowDown className="w-3.5 h-3.5" />
-            </button>
+          {/* Drag handle */}
+          <div
+            className="shrink-0 cursor-grab active:cursor-grabbing touch-none p-1 -ml-1"
+            onTouchStart={(e) => { e.stopPropagation(); onDragStart(e.touches[0].clientY); }}
+            onMouseDown={(e) => { e.preventDefault(); onDragStart(e.clientY); }}
+          >
+            <GripVertical className="w-5 h-5 text-white/40" />
           </div>
           {isMain && (
             <span className="bg-status-active text-accent-foreground px-2.5 py-1 rounded text-xs font-bold shrink-0">
