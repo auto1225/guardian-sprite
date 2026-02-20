@@ -135,6 +135,11 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       bundlePolicy: "max-bundle",
     });
 
+    // ★ 오디오 수신을 위한 트랜시버 명시적 추가 — SDP에 audio line 보장
+    pc.addTransceiver("audio", { direction: "recvonly" });
+    pc.addTransceiver("video", { direction: "recvonly" });
+    console.log("[WebRTC Viewer] ✅ Added audio+video transceivers (recvonly)");
+
     // ★ ontrack: 항상 PC receivers에서 새 MediaStream 생성 (stale stream 방지)
     let pendingStreamUpdate: NodeJS.Timeout | null = null;
     let receivedTrackKinds = new Set<string>();
