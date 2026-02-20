@@ -462,6 +462,7 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
 
         <CameraControls
           isStreaming={isStreaming}
+          isConnected={isConnected}
           isPaused={isPaused}
           onTogglePause={togglePause}
           isMuted={isMuted}
