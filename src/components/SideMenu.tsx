@@ -141,9 +141,9 @@ const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick, onRemoteC
 
         {/* Bottom Menu */}
         <div className="border-t border-white/20">
-          <MenuItem icon={Lock} label={t("sideMenu2.remoteCommands")} onClick={() => { if (onRemoteCommandsClick) { onRemoteCommandsClick(); onClose(); } }} />
-          <MenuItem icon={MapPin} label={t("sideMenu2.locationHistory")} onClick={() => { if (onLocationHistoryClick) { onLocationHistoryClick(); onClose(); } }} />
-          <MenuItem icon={Camera} label={t("sideMenu2.photoAlertHistory")} onClick={() => { if (onPhotoHistoryClick) { onPhotoHistoryClick(); onClose(); } }} />
+          <MenuItem icon={Lock} label={t("sideMenu.remoteCommands")} onClick={() => { if (onRemoteCommandsClick) { onRemoteCommandsClick(); onClose(); } }} />
+          <MenuItem icon={MapPin} label={t("sideMenu.locationHistory")} onClick={() => { if (onLocationHistoryClick) { onLocationHistoryClick(); onClose(); } }} />
+          <MenuItem icon={Camera} label={t("sideMenu.photoAlertHistory")} onClick={() => { if (onPhotoHistoryClick) { onPhotoHistoryClick(); onClose(); } }} />
           <MenuItem icon={UserCog} label={t("sideMenu.editProfile")} onClick={() => handleNavigate("/settings")} />
           <MenuItem icon={HelpCircle} label={t("sideMenu.helpQA")} onClick={() => { if (onHelpClick) { onHelpClick(); onClose(); } }} />
           <button
