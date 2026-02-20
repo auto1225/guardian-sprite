@@ -206,11 +206,29 @@ const CameraViewer = ({
       node.setAttribute("playsinline", "true");
       node.setAttribute("webkit-playsinline", "true");
       
+      // ★ playing 이벤트로 확실하게 isVideoPlaying 설정
+      const onPlaying = () => {
+        console.log("[CameraViewer] ✅ Video 'playing' event fired");
+        setIsVideoPlaying(true);
+      };
+      node.addEventListener("playing", onPlaying);
+      
       // 항상 play 시도 (일시정지는 오버레이로 처리, 비디오는 계속 재생)
       const tryPlay = () => {
-        node.play().catch(() => {});
+        node.muted = true; // 반드시 muted로 재생 시도
+        node.play().then(() => {
+          console.log("[CameraViewer] ✅ Auto-play succeeded");
+          setIsVideoPlaying(true);
+        }).catch((err) => {
+          if (err?.name !== "AbortError") {
+            console.warn("[CameraViewer] ⚠️ Auto-play failed:", err?.message);
+          }
+        });
       };
+      // ★ 즉시 + 지연 + 이벤트 기반 3중 재생 시도
       tryPlay();
+      setTimeout(tryPlay, 300);
+      setTimeout(tryPlay, 1000);
       node.addEventListener("loadedmetadata", tryPlay, { once: true });
       node.addEventListener("loadeddata", tryPlay, { once: true });
       node.addEventListener("canplay", tryPlay, { once: true });
@@ -251,28 +269,42 @@ const CameraViewer = ({
     let playing = false;
     const trackCleanups: Array<() => void> = [];
 
-    // playing 이벤트는 ref callback에서 attach된 후 발생
+    // ★ playing 이벤트 리스너 — 가장 확실한 재생 감지
+    const onPlayingEvent = () => {
+      if (!playing) {
+        playing = true;
+        console.log("[CameraViewer] ✅ Video playing (event)");
+        setIsVideoPlaying(true);
+      }
+    };
+    const v = videoRef.current;
+    if (v) v.addEventListener("playing", onPlayingEvent);
+
+    // playing 이벤트 + 폴링 fallback
     const checkPlaying = setInterval(() => {
       const v = videoRef.current;
       if (!v || v.srcObject !== remoteStream) { clearInterval(checkPlaying); return; }
       
       if (!v.paused && v.readyState >= 2 && !playing) {
         playing = true;
-        console.log("[CameraViewer] ✅ Video is playing (muted auto-play)");
+        console.log("[CameraViewer] ✅ Video is playing (poll check)");
         setIsVideoPlaying(true);
-        // ★ 자동 재생 시에는 muted 유지 — 사용자가 탭하여 재생 오버레이를 클릭하면 unmute됨
         clearInterval(checkPlaying);
         return;
       }
 
       if (!playing) {
-        console.log(`[CameraViewer] 🔄 Retry play() — readyState: ${v.readyState}, paused: ${v.paused}, networkState: ${v.networkState}`);
         v.muted = true;
-        v.play().catch((err) => {
+        v.play().then(() => {
+          if (!playing) {
+            playing = true;
+            setIsVideoPlaying(true);
+          }
+        }).catch((err) => {
           if (err?.name !== "AbortError") console.warn("[CameraViewer] ⚠️ retry play() rejected:", err?.message);
         });
       }
-    }, 2000);
+    }, 1500);
 
     // 트랙 unmute 시 재생 시도
     remoteStream.getTracks().forEach(track => {
@@ -291,6 +323,8 @@ const CameraViewer = ({
     return () => {
       clearInterval(checkPlaying);
       trackCleanups.forEach(fn => fn());
+      const vClean = videoRef.current;
+      if (vClean) vClean.removeEventListener("playing", onPlayingEvent);
     };
   }, [remoteStream]);
 
