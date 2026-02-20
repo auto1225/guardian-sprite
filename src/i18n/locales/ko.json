@@ -25,10 +25,12 @@
     "manageDevices": "기기 관리"
   },
   "statusIcons": {
-    "laptop": "Laptop",
-    "network": "Network",
-    "camera": "Camera",
-    "settings": "Settings"
+    "laptop": "노트북",
+    "desktop": "데스크탑",
+    "tablet": "태블릿",
+    "network": "네트워크",
+    "camera": "카메라",
+    "settings": "설정"
   },
   "status": {
     "alertDetected": "🚨 노트북에 충격이 감지되었습니다!",

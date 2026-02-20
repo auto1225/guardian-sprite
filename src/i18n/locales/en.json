@@ -26,6 +26,8 @@
   },
   "statusIcons": {
     "laptop": "Laptop",
+    "desktop": "Desktop",
+    "tablet": "Tablet",
     "network": "Network",
     "camera": "Camera",
     "settings": "Settings"
