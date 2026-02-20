@@ -439,7 +439,6 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
 
         <div className="px-2 pb-2 flex flex-col gap-2 relative">
           <CameraViewer
-            key={streamKey}
             isStreaming={isStreaming}
             isConnecting={isConnecting || isWaitingForCamera}
             isConnected={isConnected}
