@@ -7,7 +7,7 @@ const CACHE_VERSION_KEY = "meercop_i18n_version";
 // Bump this when ko.json changes to invalidate cached translations
 const CURRENT_VERSION = "3";
 
-const STATIC_LANGS = ["ko", "en"];
+const STATIC_LANGS = ["ko", "en", "ja", "zh-CN", "zh-TW", "es", "fr"];
 
 export const SUPPORTED_LANGUAGES = [
   { code: "ko", label: "한국어", flag: "🇰🇷" },

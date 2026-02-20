@@ -4,13 +4,20 @@ import LanguageDetector from "i18next-browser-languagedetector";
 
 import ko from "./locales/ko.json";
 import en from "./locales/en.json";
+import ja from "./locales/ja.json";
+import zhCN from "./locales/zh-CN.json";
+import zhTW from "./locales/zh-TW.json";
+import es from "./locales/es.json";
+import fr from "./locales/fr.json";
 
 // Try to restore cached translation for non-static languages on init
 const CACHE_PREFIX = "meercop_i18n_";
 const savedLang = localStorage.getItem("meercop_language");
 const additionalResources: Record<string, { translation: unknown }> = {};
 
-if (savedLang && savedLang !== "ko" && savedLang !== "en") {
+// Languages not yet bundled statically — restore from cache if available
+const STATIC_LANGS = ["ko", "en", "ja", "zh-CN", "zh-TW", "es", "fr"];
+if (savedLang && !STATIC_LANGS.includes(savedLang)) {
   try {
     const cached = localStorage.getItem(`${CACHE_PREFIX}${savedLang}`);
     if (cached) {
@@ -28,6 +35,11 @@ i18n
     resources: {
       ko: { translation: ko },
       en: { translation: en },
+      ja: { translation: ja },
+      "zh-CN": { translation: zhCN },
+      "zh-TW": { translation: zhTW },
+      es: { translation: es },
+      fr: { translation: fr },
       ...additionalResources,
     },
     fallbackLng: "ko",
