@@ -277,13 +277,12 @@ export const useAlerts = (deviceId?: string | null) => {
     // 🔧 FIX v7: suppress 30초로 증가
     // 이전: 10초 (주석에는 "5초"라고 잘못 기재)
     // 문제: 사진 청크 전송이 10초 이상 걸리면 photo_alert_end 도착 시
-    //       suppress가 이미 풀려있어 재트리거 가능했음
-    // 수정: 30초간 억제 → 사진 전송 완료 + 네트워크 지연 충분히 커버
-    Alarm.suppressFor(60000);
-    // ★ Per-device suppression — 해당 기기의 모든 경보를 60초간 차단
+    // 수정: 10초간 억제
+    Alarm.suppressFor(10000);
+    // ★ Per-device suppression — 해당 기기의 모든 경보를 10초간 차단
     if (lastAlertDeviceRef.current) {
-      deviceSuppressRef.current.set(lastAlertDeviceRef.current, Date.now() + 60000);
-      console.log("[useAlerts] 🛡️ Device suppressed:", lastAlertDeviceRef.current.slice(0, 8), "for 60s");
+      deviceSuppressRef.current.set(lastAlertDeviceRef.current, Date.now() + 10000);
+      console.log("[useAlerts] 🛡️ Device suppressed:", lastAlertDeviceRef.current.slice(0, 8), "for 10s");
     }
     safeSetActiveAlert(null);
     activeAlertRef.current = null;
