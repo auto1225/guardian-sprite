@@ -27,11 +27,30 @@ const ALARM_SOUND_CONFIGS: Record<string, { freq: number[]; pattern: number[] }>
 // 모든 AudioContext 인스턴스를 추적하여 stop() 시 전부 파기
 // ══════════════════════════════════════
 const TRACKED_CONTEXTS_KEY = '__meercop_all_audio_contexts';
+const TRACKED_INTERVALS_KEY = '__meercop_all_intervals_v2';
 
 function getTrackedContexts(): AudioContext[] {
   const w = window as unknown as Record<string, AudioContext[]>;
   if (!w[TRACKED_CONTEXTS_KEY]) w[TRACKED_CONTEXTS_KEY] = [];
   return w[TRACKED_CONTEXTS_KEY];
+}
+
+function getTrackedIntervals(): ReturnType<typeof setInterval>[] {
+  const w = window as unknown as Record<string, ReturnType<typeof setInterval>[]>;
+  if (!w[TRACKED_INTERVALS_KEY]) w[TRACKED_INTERVALS_KEY] = [];
+  return w[TRACKED_INTERVALS_KEY];
+}
+
+function trackInterval(id: ReturnType<typeof setInterval>) {
+  getTrackedIntervals().push(id);
+}
+
+function clearAllTrackedIntervals() {
+  const arr = getTrackedIntervals();
+  for (const id of arr) {
+    try { clearInterval(id); } catch {}
+  }
+  arr.length = 0;
 }
 
 function installAudioContextTracker() {
@@ -373,11 +392,12 @@ export function setSelectedSoundId(soundId: string) {
 function killAllSources() {
   const refs = getAudioRefs();
 
-  // 1. 반복 인터벌 먼저 정지
+  // 1. 반복 인터벌 먼저 정지 (현재 + 추적된 모든 인터벌)
   if (refs.interval) {
     clearInterval(refs.interval);
     refs.interval = null;
   }
+  clearAllTrackedIntervals();
 
   // 2. 오실레이터 즉시 정지 + 연결 해제
   for (const osc of refs.oscillators) {
@@ -582,6 +602,7 @@ export async function play(_deviceId?: string) {
     }
     playSoundCycle(soundConfig);
   }, intervalMs);
+  trackInterval(refs.interval!);
 }
 
 export function stop() {
