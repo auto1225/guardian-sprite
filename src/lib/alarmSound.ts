@@ -1,11 +1,15 @@
 /**
- * 경보음 모듈 v10 — 단일 AudioContext + 영속 GainNode 아키텍처
+ * 경보음 모듈 v11 — Window-Global Singleton AudioContext
  *
- * 핵심 구조:
- *   Source(Oscillator) → GainNode → Destination(스피커)
- *   - AudioContext와 GainNode는 한 번만 생성, 재사용
- *   - Oscillator는 재생 시 생성, 정지 시 .stop() + .disconnect()
- *   - 볼륨은 GainNode.gain으로 즉시 반영
+ * v10에서의 문제:
+ *   - audioCtx, gainNode 등이 모듈 레벨 변수여서
+ *     코드 분할/HMR 등으로 모듈 인스턴스가 2개 이상 생성되면
+ *     이전 인스턴스의 AudioContext가 정리되지 않아 이중 경보음 발생
+ *
+ * v11 해결:
+ *   - 모든 오디오 참조를 window.__meercop_audio_v11에 저장
+ *   - 어떤 모듈 인스턴스에서든 같은 참조를 공유
+ *   - play() 전에 기존 오디오를 확실히 정리
  */
 
 // ── 경보음 정의 ──
@@ -19,16 +23,34 @@ const ALARM_SOUND_CONFIGS: Record<string, { freq: number[]; pattern: number[] }>
 };
 
 // ══════════════════════════════════════
-// 전역 상태 — 함수 밖에서 선언 (핵심!)
+// Window-Global 오디오 참조 (싱글톤 보장)
 // ══════════════════════════════════════
-let audioCtx: AudioContext | null = null;
-let gainNode: GainNode | null = null;
-let activeOscillators: OscillatorNode[] = [];
-let activeInterval: ReturnType<typeof setInterval> | null = null;
-let customAudioEl: HTMLAudioElement | null = null;
+const AUDIO_KEY = '__meercop_audio_v11';
+
+interface AudioRefs {
+  ctx: AudioContext | null;
+  gain: GainNode | null;
+  oscillators: OscillatorNode[];
+  interval: ReturnType<typeof setInterval> | null;
+  customAudio: HTMLAudioElement | null;
+}
+
+function getAudioRefs(): AudioRefs {
+  const w = window as unknown as Record<string, AudioRefs>;
+  if (!w[AUDIO_KEY]) {
+    w[AUDIO_KEY] = {
+      ctx: null,
+      gain: null,
+      oscillators: [],
+      interval: null,
+      customAudio: null,
+    };
+  }
+  return w[AUDIO_KEY];
+}
 
 // ══════════════════════════════════════
-// 레거시 전역 레지스트리 정리 (HMR / 이전 버전 대응)
+// 레거시 전역 레지스트리 정리 (이전 버전 + v10 모듈 변수 대응)
 // ══════════════════════════════════════
 const LEGACY_KEYS = [
   '__meercop_audio_registry', '__meercop_all_intervals',
@@ -62,9 +84,11 @@ function nukeLegacy() {
     w[key] = [];
   }
 
-  // 레거시 __meercop_alarm* 전역 객체
+  // 레거시 __meercop_alarm* 전역 객체 (v9 이하)
   for (const key of Object.keys(w)) {
     if (!key.startsWith('__meercop_alarm')) continue;
+    // v10 state는 건드리지 않음 (아래에서 마이그레이션)
+    if (key === '__meercop_alarm_state_v10') continue;
     const old = w[key] as Record<string, unknown> | undefined;
     if (!old || typeof old !== 'object') continue;
     old.isAlarming = false;
@@ -78,6 +102,14 @@ function nukeLegacy() {
     old.oscillators = [];
     old.audioCtx = null;
     old.masterGain = null;
+  }
+
+  // ★ v10 → v11 마이그레이션: v10의 모듈 레벨 AudioContext도 정리
+  // v10 state 객체가 있으면 isAlarming을 false로 설정
+  const v10State = w['__meercop_alarm_state_v10'] as Record<string, unknown> | undefined;
+  if (v10State && typeof v10State === 'object') {
+    v10State.isAlarming = false;
+    v10State.pendingPlayGen = 0;
   }
 }
 nukeLegacy();
@@ -95,7 +127,7 @@ interface AlarmState {
   lastStoppedAt: number;
 }
 
-const STATE_KEY = '__meercop_alarm_state_v10';
+const STATE_KEY = '__meercop_alarm_state_v11';
 
 function getState(): AlarmState {
   const w = window as unknown as Record<string, AlarmState>;
@@ -109,13 +141,27 @@ function getState(): AlarmState {
       pendingPlayGen: 0,
       lastStoppedAt: 0,
     };
+    // v10 state에서 마이그레이션
+    const v10 = w['__meercop_alarm_state_v10'] as AlarmState | undefined;
+    if (v10) {
+      if (v10.dismissed instanceof Set) w[STATE_KEY].dismissed = new Set(v10.dismissed);
+      if (v10.lastStoppedAt) w[STATE_KEY].lastStoppedAt = v10.lastStoppedAt;
+      if (v10.suppressUntil > Date.now()) w[STATE_KEY].suppressUntil = v10.suppressUntil;
+      if (v10.unlocked) w[STATE_KEY].unlocked = true;
+    }
     try {
       const lst = localStorage.getItem('meercop_last_stopped_at');
-      if (lst) w[STATE_KEY].lastStoppedAt = parseInt(lst, 10) || 0;
+      if (lst) {
+        const val = parseInt(lst, 10) || 0;
+        if (val > w[STATE_KEY].lastStoppedAt) w[STATE_KEY].lastStoppedAt = val;
+      }
     } catch {}
     try {
       const raw = localStorage.getItem('meercop_dismissed_ids');
-      if (raw) w[STATE_KEY].dismissed = new Set(JSON.parse(raw) as string[]);
+      if (raw) {
+        const ids = JSON.parse(raw) as string[];
+        for (const id of ids) w[STATE_KEY].dismissed.add(id);
+      }
     } catch {}
   }
   const s = w[STATE_KEY];
@@ -129,15 +175,16 @@ function getState(): AlarmState {
 }
 
 // ══════════════════════════════════════
-// AudioContext 초기화 — 한 번만 생성
+// AudioContext 초기화
 // ══════════════════════════════════════
 function initAudio() {
-  if (audioCtx && audioCtx.state !== 'closed') return;
+  const refs = getAudioRefs();
+  if (refs.ctx && refs.ctx.state !== 'closed') return;
 
-  audioCtx = new AudioContext();
-  gainNode = audioCtx.createGain();
-  gainNode.connect(audioCtx.destination);
-  gainNode.gain.value = getVolume();
+  refs.ctx = new AudioContext();
+  refs.gain = refs.ctx.createGain();
+  refs.gain.connect(refs.ctx.destination);
+  refs.gain.gain.value = getVolume();
   console.log("[AlarmSound] 🔊 AudioContext + GainNode initialized");
 }
 
@@ -159,15 +206,15 @@ export function unlockAudio() {
 
   try {
     initAudio();
-    if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume().catch(() => {});
+    const refs = getAudioRefs();
+    if (refs.ctx && refs.ctx.state === 'suspended') {
+      refs.ctx.resume().catch(() => {});
     }
-    // 무음 버퍼 재생으로 unlock 확인
-    if (audioCtx) {
-      const buffer = audioCtx.createBuffer(1, 1, 22050);
-      const source = audioCtx.createBufferSource();
+    if (refs.ctx) {
+      const buffer = refs.ctx.createBuffer(1, 1, 22050);
+      const source = refs.ctx.createBufferSource();
       source.buffer = buffer;
-      source.connect(audioCtx.destination);
+      source.connect(refs.ctx.destination);
       source.start(0);
     }
 
@@ -227,7 +274,7 @@ export function suppressFor(ms: number) { getState().suppressUntil = Date.now() 
 export function getLastStoppedAt(): number { return getState().lastStoppedAt || 0; }
 
 // ══════════════════════════════════════
-// Volume — GainNode에 즉시 반영
+// Volume
 // ══════════════════════════════════════
 export function getVolume(): number {
   try {
@@ -239,13 +286,12 @@ export function getVolume(): number {
 export function setVolume(vol: number) {
   const clamped = Math.max(0, Math.min(1, vol));
   try { localStorage.setItem('meercop_alarm_volume', String(clamped)); } catch {}
-  // GainNode에 즉시 반영 — 부드러운 전환으로 '퍽' 소리 방지
-  if (gainNode && audioCtx && audioCtx.state !== 'closed') {
-    gainNode.gain.setTargetAtTime(clamped, audioCtx.currentTime, 0.01);
+  const refs = getAudioRefs();
+  if (refs.gain && refs.ctx && refs.ctx.state !== 'closed') {
+    refs.gain.gain.setTargetAtTime(clamped, refs.ctx.currentTime, 0.01);
   }
-  // 커스텀 HTMLAudioElement 볼륨도 반영
-  if (customAudioEl) {
-    try { customAudioEl.volume = clamped; } catch {}
+  if (refs.customAudio) {
+    try { refs.customAudio.volume = clamped; } catch {}
   }
 }
 
@@ -260,65 +306,65 @@ export function setSelectedSoundId(soundId: string) {
 }
 
 // ══════════════════════════════════════
-// 모든 소스 정지 (동기적)
+// 모든 소스 정지 (동기적) — window-global 참조 사용
 // ══════════════════════════════════════
 function killAllSources() {
-  // 1. 반복 인터벌 먼저 정지 (새 오실레이터 생성 차단)
-  if (activeInterval) {
-    clearInterval(activeInterval);
-    activeInterval = null;
+  const refs = getAudioRefs();
+
+  // 1. 반복 인터벌 먼저 정지
+  if (refs.interval) {
+    clearInterval(refs.interval);
+    refs.interval = null;
   }
 
   // 2. 오실레이터 즉시 정지 + 연결 해제
-  for (const osc of activeOscillators) {
+  for (const osc of refs.oscillators) {
     try { osc.stop(); } catch {}
     try { osc.disconnect(); } catch {}
   }
-  activeOscillators = [];
+  refs.oscillators = [];
 
   // 3. 커스텀 오디오 정지
-  if (customAudioEl) {
-    try { customAudioEl.pause(); customAudioEl.currentTime = 0; customAudioEl.src = ''; customAudioEl.load(); } catch {}
-    customAudioEl = null;
+  if (refs.customAudio) {
+    try { refs.customAudio.pause(); refs.customAudio.currentTime = 0; refs.customAudio.src = ''; refs.customAudio.load(); } catch {}
+    refs.customAudio = null;
   }
 
   // 4. GainNode 무음
-  if (gainNode) {
-    try { gainNode.gain.value = 0; } catch {}
+  if (refs.gain) {
+    try { refs.gain.gain.value = 0; } catch {}
   }
 
-  // 5. AudioContext 완전 파기 — 예약된 모든 소스를 확실히 죽임
-  if (audioCtx && audioCtx.state !== 'closed') {
-    try { audioCtx.close().catch(() => {}); } catch {}
+  // 5. AudioContext 완전 파기
+  if (refs.ctx && refs.ctx.state !== 'closed') {
+    try { refs.ctx.close().catch(() => {}); } catch {}
   }
-  audioCtx = null;
-  gainNode = null;
+  refs.ctx = null;
+  refs.gain = null;
   console.log("[AlarmSound] 🔇 killAllSources: AudioContext destroyed");
 }
 
 // ══════════════════════════════════════
-// Core: playSoundCycle — 오실레이터 생성 & 추적
+// Core: playSoundCycle
 // ══════════════════════════════════════
 function playSoundCycle(soundConfig: { freq: number[]; pattern: number[] }) {
-  if (!audioCtx || audioCtx.state === 'closed' || !gainNode) return;
+  const refs = getAudioRefs();
+  if (!refs.ctx || refs.ctx.state === 'closed' || !refs.gain) return;
 
   let t = 0;
   for (let repeat = 0; repeat < 2; repeat++) {
     for (let i = 0; i < soundConfig.freq.length; i++) {
       try {
-        const osc = audioCtx.createOscillator();
+        const osc = refs.ctx.createOscillator();
         osc.type = 'square';
         osc.frequency.value = soundConfig.freq[i];
-        // Source → GainNode (→ 이미 destination에 연결됨)
-        osc.connect(gainNode);
-        osc.start(audioCtx.currentTime + t);
-        osc.stop(audioCtx.currentTime + t + soundConfig.pattern[i]);
-        // 추적 등록 — stop() 시 즉시 정지 가능
-        activeOscillators.push(osc);
-        // 자연 종료 시 배열에서 제거 (메모리 정리)
+        osc.connect(refs.gain);
+        osc.start(refs.ctx.currentTime + t);
+        osc.stop(refs.ctx.currentTime + t + soundConfig.pattern[i]);
+        refs.oscillators.push(osc);
         osc.onended = () => {
-          const idx = activeOscillators.indexOf(osc);
-          if (idx >= 0) activeOscillators.splice(idx, 1);
+          const idx = refs.oscillators.indexOf(osc);
+          if (idx >= 0) refs.oscillators.splice(idx, 1);
         };
       } catch {}
       t += soundConfig.pattern[i] + 0.05;
@@ -345,10 +391,11 @@ function playCustomSound(volume: number): boolean {
   if (!dataUrl) return false;
 
   try {
-    customAudioEl = new Audio(dataUrl);
-    customAudioEl.volume = volume;
-    customAudioEl.loop = true;
-    customAudioEl.play().catch((err) => {
+    const refs = getAudioRefs();
+    refs.customAudio = new Audio(dataUrl);
+    refs.customAudio.volume = volume;
+    refs.customAudio.loop = true;
+    refs.customAudio.play().catch((err) => {
       console.warn("[AlarmSound] Custom audio play failed:", err);
     });
     return true;
@@ -399,18 +446,19 @@ export async function play(_deviceId?: string) {
     console.log("[AlarmSound] ⚠️ Custom sound not found, falling back to whistle");
   }
 
-  // AudioContext 초기화 (재사용)
+  // AudioContext 초기화
   initAudio();
-  if (!audioCtx || !gainNode) {
+  const refs = getAudioRefs();
+  if (!refs.ctx || !refs.gain) {
     s.isAlarming = false;
     return;
   }
 
   // 볼륨 설정
-  gainNode.gain.value = volume;
+  refs.gain.gain.value = volume;
 
   // 브라우저 정책 대응
-  if (audioCtx.state === 'suspended') {
+  if (refs.ctx.state === 'suspended') {
     if (!s.unlocked) {
       console.warn("[AlarmSound] AudioContext suspended, no unlock — queuing");
       s.isAlarming = false;
@@ -418,8 +466,8 @@ export async function play(_deviceId?: string) {
       return;
     }
     try {
-      await audioCtx.resume();
-      if (audioCtx.state === 'suspended') {
+      await refs.ctx.resume();
+      if (refs.ctx.state === 'suspended') {
         console.warn("[AlarmSound] Still suspended — queuing");
         s.isAlarming = false;
         s.pendingPlayGen = myGen;
@@ -443,17 +491,19 @@ export async function play(_deviceId?: string) {
   const cycleLength = soundConfig.pattern.reduce((a, b) => a + b + 0.05, 0) * 2 + 0.3;
   const intervalMs = Math.max(2000, cycleLength * 1000 + 500);
 
-  activeInterval = setInterval(() => {
+  refs.interval = setInterval(() => {
     if (!s.isAlarming || s.gen !== myGen) {
-      if (activeInterval) { clearInterval(activeInterval); activeInterval = null; }
+      const r = getAudioRefs();
+      if (r.interval) { clearInterval(r.interval); r.interval = null; }
       return;
     }
     if (isMuted() || isSuppressed()) {
       stop();
       return;
     }
-    if (audioCtx && audioCtx.state === 'closed') {
-      if (activeInterval) { clearInterval(activeInterval); activeInterval = null; }
+    const r = getAudioRefs();
+    if (r.ctx && r.ctx.state === 'closed') {
+      if (r.interval) { clearInterval(r.interval); r.interval = null; }
       s.isAlarming = false;
       return;
     }
@@ -477,8 +527,16 @@ export function stop() {
     s.suppressUntil = minSuppressUntil;
   }
 
-  // 🔑 핵심: 모든 소스를 동기적으로 즉시 정지
+  // 모든 소스를 동기적으로 즉시 정지
   killAllSources();
+
+  // ★ v10 state도 정리 (이전 모듈 인스턴스 대응)
+  const w = window as unknown as Record<string, unknown>;
+  const v10State = w['__meercop_alarm_state_v10'] as Record<string, unknown> | undefined;
+  if (v10State && typeof v10State === 'object') {
+    v10State.isAlarming = false;
+    v10State.pendingPlayGen = 0;
+  }
 
   // 시스템 푸시 알림도 닫기
   try {
@@ -503,11 +561,12 @@ export function stop() {
 // ══════════════════════════════════════
 export function debugAudioSources(): string[] {
   const report: string[] = [];
-  report.push(`[AudioCtx] state: ${audioCtx?.state ?? 'null'}`);
-  report.push(`[GainNode] value: ${gainNode?.gain?.value ?? 'null'}`);
-  report.push(`[Oscillators] active: ${activeOscillators.length}`);
-  report.push(`[Interval] active: ${activeInterval !== null}`);
-  report.push(`[CustomAudio] playing: ${customAudioEl ? !customAudioEl.paused : false}`);
+  const refs = getAudioRefs();
+  report.push(`[AudioCtx] state: ${refs.ctx?.state ?? 'null'}`);
+  report.push(`[GainNode] value: ${refs.gain?.gain?.value ?? 'null'}`);
+  report.push(`[Oscillators] active: ${refs.oscillators.length}`);
+  report.push(`[Interval] active: ${refs.interval !== null}`);
+  report.push(`[CustomAudio] playing: ${refs.customAudio ? !refs.customAudio.paused : false}`);
   const s = getState();
   report.push(`[State] isAlarming=${s.isAlarming}, gen=${s.gen}, pendingPlay=${s.pendingPlayGen}`);
   report.push(`[State] suppressUntil=${s.suppressUntil > Date.now() ? `${Math.round((s.suppressUntil - Date.now()) / 1000)}s` : 'none'}`);
@@ -520,14 +579,6 @@ export function emergencyKillAll(): string[] {
 
   killAllSources();
   report.push("✅ killAllSources() done");
-
-  // AudioContext도 완전히 닫기 (재생성 됨)
-  if (audioCtx && audioCtx.state !== 'closed') {
-    audioCtx.close().catch(() => {});
-    audioCtx = null;
-    gainNode = null;
-    report.push("✅ AudioContext closed");
-  }
 
   nukeLegacy();
   report.push("✅ nukeLegacy() done");
@@ -557,6 +608,6 @@ export function emergencyKillAll(): string[] {
 }
 
 // ══════════════════════════════════════
-// re-export for compatibility (AlarmState는 내부 사용)
+// re-export for compatibility
 // ══════════════════════════════════════
 export type { AlarmState };
