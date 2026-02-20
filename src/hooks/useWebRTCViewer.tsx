@@ -163,16 +163,32 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
           return;
         }
 
+        // ★ FIX: 트랙 중복 제거 — kind별로 unmuted 우선, 1개씩만 선택
+        const bestTracks: MediaStreamTrack[] = [];
+        const tracksByKind = new Map<string, MediaStreamTrack[]>();
+        allTracks.forEach(t => {
+          const arr = tracksByKind.get(t.kind) || [];
+          arr.push(t);
+          tracksByKind.set(t.kind, arr);
+        });
+        tracksByKind.forEach((tracks, kind) => {
+          // unmuted 트랙 우선 선택
+          const unmuted = tracks.find(t => !t.muted);
+          const selected = unmuted || tracks[0];
+          console.log(`[WebRTC Viewer] ✅ Selected ${kind} track: id=${selected.id.substring(0,8)} muted=${selected.muted} (from ${tracks.length} candidates)`);
+          bestTracks.push(selected);
+        });
+
         setRemoteStream(prev => {
           if (prev) {
             const prevIds = prev.getTracks().map(t => t.id).sort().join(",");
-            const newIds = allTracks.map(t => t.id).sort().join(",");
+            const newIds = bestTracks.map(t => t.id).sort().join(",");
             if (prevIds === newIds) {
               console.log("[WebRTC Viewer] ⏭️ Same tracks, skipping stream update");
               return prev;
             }
           }
-          const freshStream = new MediaStream(allTracks);
+          const freshStream = new MediaStream(bestTracks);
           console.log("[WebRTC Viewer] 📹 Committing fresh stream with", freshStream.getTracks().length, "tracks",
             freshStream.getTracks().map(t => `${t.kind}:${t.readyState}:muted=${t.muted}`).join(", "));
           return freshStream;
