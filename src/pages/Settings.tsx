@@ -86,6 +86,10 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
   const [showPinDialog, setShowPinDialog] = useState(false);
   const [showSoundDialog, setShowSoundDialog] = useState(false);
   const [showLangPicker, setShowLangPicker] = useState(false);
+  // ★ 기기별 언어 상태 — metadata.language를 우선 표시
+  const [deviceLanguage, setDeviceLanguage] = useState<string>(
+    (meta.language as string) || i18n.language
+  );
 
   // 기기가 바뀌면 설정값 재초기화
   useEffect(() => {
@@ -105,6 +109,8 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
       : { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device.device_type as "laptop" | "desktop" | "tablet") || "laptop" });
     setMotionSensitivity((m.motionSensitivity as MotionSensitivity) || "insensitive");
     setMouseSensitivity((m.mouseSensitivity as MotionSensitivity) || "sensitive");
+    // ★ 기기별 언어 설정 반영
+    setDeviceLanguage((m.language as string) || i18n.language);
   }, [device?.id, device?.metadata]);
 
   // 초기 기본값 저장
@@ -367,8 +373,8 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>
-                  {SUPPORTED_LANGUAGES.find(l => l.code === i18n.language)?.flag}{' '}
-                  {SUPPORTED_LANGUAGES.find(l => l.code === i18n.language)?.label || i18n.language}
+                  {SUPPORTED_LANGUAGES.find(l => l.code === deviceLanguage)?.flag}{' '}
+                  {SUPPORTED_LANGUAGES.find(l => l.code === deviceLanguage)?.label || deviceLanguage}
                 </span>
                 <ChevronRight className={`w-4 h-4 text-white/40 transition-transform ${showLangPicker ? 'rotate-90' : ''}`} />
               </div>
@@ -383,6 +389,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
                       const success = await loadLanguage(lang.code);
                       if (success) {
                         localStorage.setItem("meercop_language", lang.code);
+                        setDeviceLanguage(lang.code);
                         setShowLangPicker(false);
                         try {
                           await saveMetadata({ language: lang.code });
@@ -395,9 +402,9 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
                       }
                     }}
                     className={`py-1.5 px-1 rounded-lg text-[10px] font-semibold transition-all text-center leading-tight ${
-                      i18n.language === lang.code ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
+                      deviceLanguage === lang.code ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
                     }`}
-                    style={i18n.language === lang.code ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
+                    style={deviceLanguage === lang.code ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
                   >
                     <span className="block text-sm">{lang.flag}</span>
                     <span className="block mt-0.5 truncate">{lang.label}</span>
