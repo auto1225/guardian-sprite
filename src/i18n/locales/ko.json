@@ -104,13 +104,17 @@
   },
   "sideMenu": {
     "user": "사용자",
+    "normalMember": "일반 회원",
     "targetDevices": "대상 디바이스",
     "noDevices": "등록된 대상 기기가 없습니다",
     "editProfile": "내 정보 수정",
     "helpQA": "Q&A / 도움말",
     "logout": "로그아웃",
     "loggedOut": "로그아웃",
-    "loggedOutDesc": "안전하게 로그아웃되었습니다."
+    "loggedOutDesc": "안전하게 로그아웃되었습니다.",
+    "remoteCommands": "원격 명령",
+    "locationHistory": "위치 이력",
+    "photoAlertHistory": "사진 경보 이력"
   },
   "deviceList": {
     "selectDevice": "기기 선택"
@@ -510,9 +514,6 @@
     "snapshot": "스냅샷 저장",
     "download": "다운로드"
   },
-  "sideMenu": {
-    "normalMember": "일반 회원"
-  },
   "notFound": {
     "title": "404",
     "message": "페이지를 찾을 수 없습니다",
@@ -554,9 +555,4 @@
     "latest": "최신",
     "records": "{{count}}건의 위치 기록"
   },
-  "sideMenu2": {
-    "remoteCommands": "원격 명령",
-    "locationHistory": "위치 이력",
-    "photoAlertHistory": "사진 경보 이력"
-  }
 }

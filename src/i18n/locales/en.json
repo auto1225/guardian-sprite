@@ -104,13 +104,17 @@
   },
   "sideMenu": {
     "user": "User",
+    "normalMember": "Normal Member",
     "targetDevices": "Target Devices",
     "noDevices": "No devices registered",
     "editProfile": "Edit Profile",
     "helpQA": "Q&A / Help",
     "logout": "Log out",
     "loggedOut": "Logged out",
-    "loggedOutDesc": "You have been safely logged out."
+    "loggedOutDesc": "You have been safely logged out.",
+    "remoteCommands": "Remote Commands",
+    "locationHistory": "Location History",
+    "photoAlertHistory": "Photo Alert History"
   },
   "deviceList": {
     "selectDevice": "Select device"
@@ -510,9 +514,6 @@
     "snapshot": "Take snapshot",
     "download": "Download"
   },
-  "sideMenu": {
-    "normalMember": "Normal Member"
-  },
   "notFound": {
     "title": "404",
     "message": "Oops! Page not found",
@@ -554,9 +555,4 @@
     "latest": "Latest",
     "records": "{{count}} location records"
   },
-  "sideMenu2": {
-    "remoteCommands": "Remote Commands",
-    "locationHistory": "Location History",
-    "photoAlertHistory": "Photo Alert History"
-  }
 }
