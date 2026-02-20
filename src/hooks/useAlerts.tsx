@@ -101,12 +101,10 @@ export const useAlerts = (deviceId?: string | null) => {
       return;
     }
 
-    // 최근 stop 후 10초 이내면 무시 (Presence 재트리거 방지)
-    const timeSinceStop = Date.now() - Alarm.getLastStoppedAt();
-    if (timeSinceStop < 10000 && Alarm.getLastStoppedAt() > 0) {
-      console.log("[useAlerts] ⏭ Recently stopped (", Math.round(timeSinceStop / 1000), "s ago), ignoring:", alert.id);
-      return;
-    }
+    // ★ FIX: lastStoppedAt 기반 차단을 제거
+    // suppressFor(30000)이 이미 동일 역할을 수행하며,
+    // 10초 차단은 진짜 새 알림도 차단하는 부작용이 있었음
+    // isSuppressed() 체크(line 92)가 이 역할을 대체함
 
     if (activeAlertRef.current?.id === alert.id) return;
 

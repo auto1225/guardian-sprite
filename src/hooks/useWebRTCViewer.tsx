@@ -347,11 +347,13 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
 
     try {
       if (record.type === "offer") {
-        // 자신의 세션 ID와 일치하는 offer만 처리
-        if (record.session_id !== sessionIdRef.current) {
-          console.log("[WebRTC Viewer] ⏭️ Ignoring offer for different session:", record.session_id, "my session:", sessionIdRef.current);
+        // ★ FIX: broadcaster의 session_id가 아닌 data.target_session으로 매칭
+        const targetSession = (record.data as Record<string, unknown>).target_session as string | undefined;
+        if (targetSession && targetSession !== sessionIdRef.current) {
+          console.log("[WebRTC Viewer] ⏭️ Ignoring offer for different session:", targetSession, "my session:", sessionIdRef.current);
           return;
         }
+        // target_session이 없는 경우 (단일 뷰어 시나리오) — 통과 허용
         
         // ★ 이미 offer를 처리 중이거나 완료된 경우 스킵
         if (isProcessingOfferRef.current) {
@@ -423,8 +425,9 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
           isProcessingOfferRef.current = false;
         }
       } else if (record.type === "ice-candidate" && record.data.candidate) {
-        // ICE candidate도 자신의 세션과 일치하는 것만 처리
-        if (record.session_id !== sessionIdRef.current) {
+        // ★ FIX: broadcaster의 session_id가 아닌 data.target_session으로 매칭
+        const iceTargetSession = (record.data as Record<string, unknown>).target_session as string | undefined;
+        if (iceTargetSession && iceTargetSession !== sessionIdRef.current) {
           console.log("[WebRTC Viewer] ⏭️ Ignoring ICE candidate for different session");
           return;
         }
