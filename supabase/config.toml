@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.create-serial]
 verify_jwt = false
+
+[functions.monitor-heartbeat]
+verify_jwt = false
+
+[functions.translate-i18n]
+verify_jwt = false
