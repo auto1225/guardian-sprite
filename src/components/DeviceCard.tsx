@@ -70,7 +70,7 @@ const DeviceCard = ({ device, isSelected, isMain, isCharging, onSelect }: Device
       {/* Row 2: Status icons + Battery */}
       <div className="flex items-center justify-between mt-2">
         <div className="flex items-center gap-1">
-          <StatusIcon active={device.status !== "offline"} label="Laptop" />
+          <StatusIcon active={device.status !== "offline"} label={device.device_type === "desktop" ? "Desktop" : device.device_type === "tablet" ? "Tablet" : "Laptop"} />
           {device.device_type !== "smartphone" && (
             <StatusIcon active={device.is_monitoring} label="MeerCOP" isMeerCOP />
           )}
