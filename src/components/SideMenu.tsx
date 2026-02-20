@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useDevices } from "@/hooks/useDevices";
 import { useTranslation } from "react-i18next";
+import { SUPPORTED_LANGUAGES } from "@/lib/dynamicTranslation";
 import logoImage from "@/assets/meercop-character.png";
 
 interface SideMenuProps {
@@ -147,15 +148,12 @@ const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick, onRemoteC
           <MenuItem icon={UserCog} label={t("sideMenu.editProfile")} onClick={() => handleNavigate("/settings")} />
           <MenuItem icon={HelpCircle} label={t("sideMenu.helpQA")} onClick={() => { if (onHelpClick) { onHelpClick(); onClose(); } }} />
           <button
-            onClick={() => {
-              const nextLng = i18n.language === "ko" ? "en" : "ko";
-              i18n.changeLanguage(nextLng);
-            }}
+            onClick={() => handleNavigate("/settings")}
             className="flex items-center gap-3 w-full px-4 py-4 hover:bg-white/10 transition-colors"
           >
             <Globe className="w-5 h-5 text-primary-foreground" />
             <span className="text-sm font-semibold text-primary-foreground">
-              {i18n.language === "ko" ? "English" : "한국어"}
+              {SUPPORTED_LANGUAGES.find(l => l.code === i18n.language)?.label || i18n.language}
             </span>
           </button>
           <MenuItem 
