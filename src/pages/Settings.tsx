@@ -85,6 +85,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
   const [showNicknameDialog, setShowNicknameDialog] = useState(false);
   const [showPinDialog, setShowPinDialog] = useState(false);
   const [showSoundDialog, setShowSoundDialog] = useState(false);
+  const [showLangPicker, setShowLangPicker] = useState(false);
 
   // 기기가 바뀌면 설정값 재초기화
   useEffect(() => {
@@ -353,15 +354,27 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
 
           {/* Language Setting */}
           <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
-            <div className="px-4 py-3">
-              <div className="flex items-center justify-between mb-2">
-                <div>
+            <button
+              onClick={() => setShowLangPicker(!showLangPicker)}
+              className="w-full px-4 py-4 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-3">
+                <Globe className="w-5 h-5 text-white/70" />
+                <div className="text-left">
                   <span className="text-white font-semibold text-sm block">{t("settings.language")}</span>
                   <span className="text-white/80 text-xs">{t("settings.languageDesc")}</span>
                 </div>
-                <Globe className="w-4 h-4 text-white/50" />
               </div>
-              <div className="grid grid-cols-4 gap-1.5 max-h-[160px] overflow-y-auto alert-history-scroll">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>
+                  {SUPPORTED_LANGUAGES.find(l => l.code === i18n.language)?.flag}{' '}
+                  {SUPPORTED_LANGUAGES.find(l => l.code === i18n.language)?.label || i18n.language}
+                </span>
+                <ChevronRight className={`w-4 h-4 text-white/40 transition-transform ${showLangPicker ? 'rotate-90' : ''}`} />
+              </div>
+            </button>
+            {showLangPicker && (
+              <div className="px-4 pb-3 grid grid-cols-4 gap-1.5 border-t border-white/10 pt-3">
                 {SUPPORTED_LANGUAGES.map((lang) => (
                   <button
                     key={lang.code}
@@ -370,6 +383,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
                       const success = await loadLanguage(lang.code);
                       if (success) {
                         localStorage.setItem("meercop_language", lang.code);
+                        setShowLangPicker(false);
                         try {
                           await saveMetadata({ language: lang.code });
                           toast({ title: t("common.saved"), description: t("settings.languageChanged") });
@@ -390,7 +404,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose }: SettingsPag
                   </button>
                 ))}
               </div>
-            </div>
+            )}
           </div>
 
           {/* Toggle Settings */}
