@@ -304,10 +304,11 @@ export const useDevices = () => {
           if (!oldDevices) return oldDevices;
           return oldDevices.map((d) =>
             d.id === key
-              ? { ...d, status: 'offline' as Device["status"], is_network_connected: false }
+              ? { ...d, status: 'offline' as Device["status"], is_network_connected: false, is_camera_connected: false }
               : d
           );
         });
+        console.log("[Presence] 🔴 Device left:", key.slice(0, 8), "→ offline (network/camera off)");
 
         const timer = setTimeout(() => {
           activeLeaveTimers.delete(key);
