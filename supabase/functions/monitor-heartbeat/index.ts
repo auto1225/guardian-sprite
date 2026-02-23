@@ -32,19 +32,18 @@ serve(async (req) => {
     const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
     const tenMinAgo = new Date(now.getTime() - 10 * 60 * 1000).toISOString();
 
-    // ── 1. 감시 중인 노트북이 5분 이상 무응답 ──
-    const { data: staleMonitoring } = await supabaseAdmin
+    // ── 1. 5분 이상 무응답인 모든 비-스마트폰 기기 → offline 처리 ──
+    const { data: staleDevices } = await supabaseAdmin
       .from("devices")
-      .select("id, user_id, name, status, last_seen_at")
-      .eq("is_monitoring", true)
+      .select("id, user_id, name, status, is_monitoring, last_seen_at")
       .neq("device_type", "smartphone")
+      .neq("status", "offline")
       .lt("last_seen_at", fiveMinAgo);
 
-    if (staleMonitoring && staleMonitoring.length > 0) {
-      console.log(`[monitor-heartbeat] Found ${staleMonitoring.length} stale monitoring device(s)`);
+    if (staleDevices && staleDevices.length > 0) {
+      console.log(`[monitor-heartbeat] Found ${staleDevices.length} stale device(s)`);
 
-      for (const device of staleMonitoring) {
-        // 오프라인으로 전환 + 네트워크/카메라 상태 초기화
+      for (const device of staleDevices) {
         await supabaseAdmin
           .from("devices")
           .update({ status: "offline", is_monitoring: false, is_network_connected: false, is_camera_connected: false })
@@ -52,8 +51,10 @@ serve(async (req) => {
 
         console.log(`[monitor-heartbeat] ⚫ Device ${device.id.slice(0, 8)} (${device.name}) → offline`);
 
-        // 해당 사용자에게 Push 경고
-        await sendWarningPush(supabaseAdmin, device.user_id, device.name, device.id);
+        // 감시 중이었던 기기만 Push 경고
+        if (device.is_monitoring) {
+          await sendWarningPush(supabaseAdmin, device.user_id, device.name, device.id);
+        }
       }
     }
 
