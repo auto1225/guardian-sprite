@@ -86,7 +86,7 @@ serve(async (req) => {
 
     const result = {
       checked_at: now.toISOString(),
-      stale_monitoring: staleMonitoring?.length ?? 0,
+      stale_devices: staleDevices?.length ?? 0,
       stale_phones: stalePhones?.length ?? 0,
     };
 
