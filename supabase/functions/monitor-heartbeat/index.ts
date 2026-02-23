@@ -44,10 +44,10 @@ serve(async (req) => {
       console.log(`[monitor-heartbeat] Found ${staleMonitoring.length} stale monitoring device(s)`);
 
       for (const device of staleMonitoring) {
-        // 오프라인으로 전환
+        // 오프라인으로 전환 + 네트워크/카메라 상태 초기화
         await supabaseAdmin
           .from("devices")
-          .update({ status: "offline", is_monitoring: false })
+          .update({ status: "offline", is_monitoring: false, is_network_connected: false, is_camera_connected: false })
           .eq("id", device.id);
 
         console.log(`[monitor-heartbeat] ⚫ Device ${device.id.slice(0, 8)} (${device.name}) → offline`);
