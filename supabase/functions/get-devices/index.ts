@@ -14,9 +14,9 @@ Deno.serve(async (req) => {
   try {
     const { user_id, device_id } = await req.json();
 
-    if (!user_id) {
+    if (!user_id && !device_id) {
       return new Response(
-        JSON.stringify({ error: "user_id is required" }),
+        JSON.stringify({ error: "user_id or device_id is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -29,9 +29,11 @@ Deno.serve(async (req) => {
     let query = supabaseAdmin
       .from("devices")
       .select("*")
-      .eq("user_id", user_id)
       .order("created_at", { ascending: true });
 
+    if (user_id) {
+      query = query.eq("user_id", user_id);
+    }
     if (device_id) {
       query = query.eq("id", device_id);
     }
