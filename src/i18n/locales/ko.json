@@ -1,4 +1,13 @@
 {
+  "plan": {
+    "trial": "무료체험",
+    "basic": "베이직 플랜",
+    "premium": "프리미엄 플랜",
+    "currentPlan": "현재 플랜",
+    "remainingDays": "남은 기간",
+    "days": "일",
+    "expiresAt": "만료일"
+  },
   "common": {
     "loading": "로딩 중...",
     "error": "오류",

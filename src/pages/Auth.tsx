@@ -3,28 +3,78 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { KeyRound } from "lucide-react";
+import { KeyRound, Crown, Star, Sparkles, CalendarDays } from "lucide-react";
 import meercopCharacter from "@/assets/meercop-character.png";
 import { supabase } from "@/integrations/supabase/client";
 
 const SERIAL_STORAGE_KEY = "meercop_serial_key";
 const SERIAL_DATA_KEY = "meercop_serial_data";
 
+interface PlanInfo {
+  plan_type: string;
+  expires_at: string | null;
+  remaining_days: number | null;
+}
+
+const PLAN_CONFIG: Record<string, { icon: typeof Crown; label: string; colorClass: string; bgClass: string }> = {
+  trial: { icon: Sparkles, label: "plan.trial", colorClass: "text-emerald-300", bgClass: "bg-emerald-500/20 border-emerald-400/30" },
+  basic: { icon: Star, label: "plan.basic", colorClass: "text-blue-300", bgClass: "bg-blue-500/20 border-blue-400/30" },
+  premium: { icon: Crown, label: "plan.premium", colorClass: "text-amber-300", bgClass: "bg-amber-500/20 border-amber-400/30" },
+};
+
+const PlanInfoCard = ({ planInfo }: { planInfo: PlanInfo }) => {
+  const { t } = useTranslation();
+  const config = PLAN_CONFIG[planInfo.plan_type] || PLAN_CONFIG.trial;
+  const Icon = config.icon;
+
+  return (
+    <div className={`mt-5 p-4 rounded-2xl border ${config.bgClass} backdrop-blur-md`}>
+      <div className="flex items-center gap-3 mb-3">
+        <div className={`p-2 rounded-xl bg-white/10`}>
+          <Icon className={`w-5 h-5 ${config.colorClass}`} />
+        </div>
+        <div>
+          <p className={`font-bold text-sm ${config.colorClass}`}>{t(config.label)}</p>
+          <p className="text-white/50 text-xs">{t("plan.currentPlan")}</p>
+        </div>
+      </div>
+
+      {planInfo.remaining_days !== null && (
+        <div className="flex items-center gap-2 mt-2 p-2.5 rounded-xl bg-white/5">
+          <CalendarDays className="w-4 h-4 text-white/50" />
+          <span className="text-white/70 text-xs">{t("plan.remainingDays")}</span>
+          <span className={`font-bold text-sm ml-auto ${
+            planInfo.remaining_days <= 3 ? "text-red-400" : 
+            planInfo.remaining_days <= 7 ? "text-amber-400" : "text-white"
+          }`}>
+            {planInfo.remaining_days}{t("plan.days")}
+          </span>
+        </div>
+      )}
+
+      {planInfo.expires_at && (
+        <p className="text-white/30 text-[10px] mt-2 text-right">
+          {t("plan.expiresAt")}: {new Date(planInfo.expires_at).toLocaleDateString()}
+        </p>
+      )}
+    </div>
+  );
+};
+
 const Auth = () => {
   const { t } = useTranslation();
   const [serialParts, setSerialParts] = useState(["", "", ""]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [planInfo, setPlanInfo] = useState<PlanInfo | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Check if already authenticated via serial
   useEffect(() => {
     const savedSerial = localStorage.getItem(SERIAL_STORAGE_KEY);
     const savedData = localStorage.getItem(SERIAL_DATA_KEY);
     if (savedSerial && savedData) {
       try {
         const data = JSON.parse(savedData);
-        // Check expiry
         if (data.expires_at && new Date(data.expires_at) < new Date()) {
           localStorage.removeItem(SERIAL_STORAGE_KEY);
           localStorage.removeItem(SERIAL_DATA_KEY);
@@ -46,17 +96,14 @@ const Auth = () => {
       next[index] = cleaned;
       return next;
     });
-    // Auto-focus next input
     if (cleaned.length === 4 && index < 2) {
-      const nextInput = document.getElementById(`serial-part-${index + 1}`);
-      nextInput?.focus();
+      document.getElementById(`serial-part-${index + 1}`)?.focus();
     }
   }, []);
 
   const handleKeyDown = useCallback((index: number, e: React.KeyboardEvent) => {
     if (e.key === "Backspace" && serialParts[index] === "" && index > 0) {
-      const prevInput = document.getElementById(`serial-part-${index - 1}`);
-      prevInput?.focus();
+      document.getElementById(`serial-part-${index - 1}`)?.focus();
     }
   }, [serialParts]);
 
@@ -70,6 +117,7 @@ const Auth = () => {
     }
 
     setIsSubmitting(true);
+    setPlanInfo(null);
     try {
       const { data, error } = await supabase.functions.invoke("validate-serial", {
         body: { serial_key: serialKey, device_type: "smartphone" },
@@ -81,12 +129,21 @@ const Auth = () => {
         return;
       }
 
+      // Show plan info before navigating
+      setPlanInfo({
+        plan_type: data.plan_type || "trial",
+        expires_at: data.expires_at,
+        remaining_days: data.remaining_days,
+      });
+
       // Save serial session
       localStorage.setItem(SERIAL_STORAGE_KEY, serialKey);
       localStorage.setItem(SERIAL_DATA_KEY, JSON.stringify(data));
 
       toast({ title: t("auth.loginSuccess"), description: t("auth.loginSuccessDesc") });
-      navigate("/");
+
+      // Navigate after showing plan info briefly
+      setTimeout(() => navigate("/"), 2500);
     } catch {
       toast({ title: t("common.error"), description: t("auth.unexpectedError"), variant: "destructive" });
     } finally {
@@ -141,7 +198,7 @@ const Auth = () => {
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !!planInfo}
               className="w-full py-3.5 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30 text-white font-bold text-base transition-colors disabled:opacity-50 active:scale-[0.98]"
             >
               {isSubmitting ? (
@@ -150,12 +207,17 @@ const Auth = () => {
             </button>
           </form>
 
+          {/* Plan Info Card - shown after successful validation */}
+          {planInfo && <PlanInfoCard planInfo={planInfo} />}
+
           {/* Info */}
-          <div className="mt-6 p-3 rounded-xl bg-white/5 border border-white/10">
-            <p className="text-white/50 text-xs text-center leading-relaxed">
-              {t("auth.serialInfo")}
-            </p>
-          </div>
+          {!planInfo && (
+            <div className="mt-6 p-3 rounded-xl bg-white/5 border border-white/10">
+              <p className="text-white/50 text-xs text-center leading-relaxed">
+                {t("auth.serialInfo")}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

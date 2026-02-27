@@ -1,4 +1,13 @@
 {
+  "plan": {
+    "trial": "Free Trial",
+    "basic": "Basic Plan",
+    "premium": "Premium Plan",
+    "currentPlan": "Current Plan",
+    "remainingDays": "Remaining",
+    "days": " days",
+    "expiresAt": "Expires"
+  },
   "common": {
     "loading": "Loading...",
     "error": "Error",
