@@ -27,7 +27,9 @@
     "or": "or",
     "adding": "Adding...",
     "register": "Register",
-    "copied": "Copied"
+    "copied": "Copied",
+    "noDevice": "No Device",
+    "noDeviceDesc": "No connected device found. Please log in with your serial on the laptop first."
   },
   "header": {
     "openMenu": "Open menu",
@@ -126,7 +128,8 @@
     "photoAlertHistory": "Photo Alert History"
   },
   "deviceList": {
-    "selectDevice": "Select device"
+    "selectDevice": "Select device",
+    "waitingForDevice": "⏳ Waiting for device..."
   },
   "camouflage": {
     "onTitle": "Camouflage ON",

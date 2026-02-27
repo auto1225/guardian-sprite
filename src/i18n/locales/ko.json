@@ -27,7 +27,9 @@
     "or": "또는",
     "adding": "등록 중...",
     "register": "등록",
-    "copied": "복사됨"
+    "copied": "복사됨",
+    "noDevice": "기기 없음",
+    "noDeviceDesc": "연결된 기기가 없습니다. 노트북에서 먼저 시리얼로 로그인해주세요."
   },
   "header": {
     "openMenu": "메뉴 열기",
@@ -126,7 +128,8 @@
     "photoAlertHistory": "사진 경보 이력"
   },
   "deviceList": {
-    "selectDevice": "기기 선택"
+    "selectDevice": "기기 선택",
+    "waitingForDevice": "⏳ 기기 연결 대기 중..."
   },
   "camouflage": {
     "onTitle": "위장 모드 ON",

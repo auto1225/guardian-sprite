@@ -1,0 +1,94 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { user_id, device_name, device_type } = await req.json();
+
+    if (!user_id) {
+      return new Response(
+        JSON.stringify({ error: "user_id is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // 같은 user_id + device_type으로 이미 존재하는지 확인
+    const { data: existing } = await supabaseAdmin
+      .from("devices")
+      .select("id, name, device_type, status")
+      .eq("user_id", user_id)
+      .eq("device_type", device_type || "laptop")
+      .eq("name", device_name || "My Device")
+      .maybeSingle();
+
+    if (existing) {
+      // 기존 기기 재연결
+      await supabaseAdmin
+        .from("devices")
+        .update({
+          status: "online",
+          last_seen_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          device_id: existing.id,
+          reconnected: true,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // 새 기기 등록
+    const { data: newDevice, error } = await supabaseAdmin
+      .from("devices")
+      .insert({
+        user_id,
+        name: device_name || "My Device",
+        device_type: device_type || "laptop",
+        status: "online",
+        last_seen_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      console.error("register-device insert error:", error);
+      return new Response(
+        JSON.stringify({ error: "기기 등록에 실패했습니다." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        device_id: newDevice.id,
+        reconnected: false,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (err) {
+    console.error("register-device error:", err);
+    return new Response(
+      JSON.stringify({ error: "서버 오류가 발생했습니다." }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
