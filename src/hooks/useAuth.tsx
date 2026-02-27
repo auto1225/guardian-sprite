@@ -138,6 +138,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // 시리얼 세션의 user_id를 우선 사용 (기기가 시리얼의 user_id로 등록되므로)
   const effectiveUserId = serialUserId || user?.id;
 
+  // 디버그: effectiveUserId 출처 확인
+  useEffect(() => {
+    console.log("[Auth] effectiveUserId debug:", {
+      serialUserId,
+      authUserId: user?.id || null,
+      effectiveUserId,
+      hasSerialSession: !!serialSession,
+      serialSessionData: serialSession ? { user_id: serialSession.user_id, serial_key: serialSession.serial_key } : null,
+    });
+  }, [serialUserId, user?.id, effectiveUserId, serialSession]);
+
   return (
     <AuthContext.Provider value={{ 
       user, session, loading, signUp, signIn, signOut,
