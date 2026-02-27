@@ -135,7 +135,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const serialUserId = serialSession?.user_id || null;
-  const effectiveUserId = user?.id || serialUserId;
+  // 시리얼 세션의 user_id를 우선 사용 (기기가 시리얼의 user_id로 등록되므로)
+  const effectiveUserId = serialUserId || user?.id;
 
   return (
     <AuthContext.Provider value={{ 
