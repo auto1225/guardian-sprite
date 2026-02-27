@@ -11,13 +11,13 @@ import { useDevices } from "@/hooks/useDevices";
  * - 30초 간격 heartbeat로 last_seen_at 갱신
  */
 export function useDeviceHeartbeat() {
-  const { user } = useAuth();
+  const { effectiveUserId } = useAuth();
   const { devices } = useDevices();
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // 현재 유저의 스마트폰 디바이스 찾기
   const smartphoneDevice = devices.find(
-    (d) => d.device_type === "smartphone" && d.user_id === user?.id
+    (d) => d.device_type === "smartphone" && d.user_id === effectiveUserId
   );
 
   useEffect(() => {
@@ -40,14 +40,14 @@ export function useDeviceHeartbeat() {
     const setOnline = async () => {
       try {
         const { level } = await getBatteryInfo();
-        await supabase
-          .from("devices")
-          .update({
+        await supabase.functions.invoke("update-device", {
+          body: {
+            device_id: deviceId,
             status: "online",
             last_seen_at: new Date().toISOString(),
             ...(level !== null ? { battery_level: level } : {}),
-          })
-          .eq("id", deviceId);
+          },
+        });
         console.log("[Heartbeat] ✅ Status set to online:", deviceId.slice(0, 8), "battery:", level);
       } catch (err) {
         console.error("[Heartbeat] Failed to set online:", err);
@@ -56,18 +56,23 @@ export function useDeviceHeartbeat() {
 
     const setOffline = async () => {
       try {
-        // 스마트폰 오프라인 설정
-        await supabase
-          .from("devices")
-          .update({ status: "offline" })
-          .eq("id", deviceId);
+        await supabase.functions.invoke("update-device", {
+          body: { device_id: deviceId, status: "offline" },
+        });
         // 모든 기기 감시 OFF (스마트폰 앱 종료 시 감시 해제)
-        if (user?.id) {
-          await supabase
-            .from("devices")
-            .update({ is_monitoring: false })
-            .eq("user_id", user.id)
-            .neq("device_type", "smartphone");
+        if (effectiveUserId) {
+          // Edge Function을 통해 처리 (RLS 우회)
+          const { data } = await supabase.functions.invoke("get-devices", {
+            body: { user_id: effectiveUserId },
+          });
+          const otherDevices = (data?.devices || []).filter(
+            (d: { device_type: string; id: string }) => d.device_type !== "smartphone"
+          );
+          for (const d of otherDevices) {
+            await supabase.functions.invoke("update-device", {
+              body: { device_id: d.id, is_monitoring: false },
+            });
+          }
         }
         console.log("[Heartbeat] ⚫ Status set to offline + monitoring OFF:", deviceId.slice(0, 8));
       } catch (err) {
@@ -78,13 +83,13 @@ export function useDeviceHeartbeat() {
     const sendHeartbeat = async () => {
       try {
         const { level } = await getBatteryInfo();
-        await supabase
-          .from("devices")
-          .update({
+        await supabase.functions.invoke("update-device", {
+          body: {
+            device_id: deviceId,
             last_seen_at: new Date().toISOString(),
             ...(level !== null ? { battery_level: level } : {}),
-          })
-          .eq("id", deviceId);
+          },
+        });
       } catch (err) {
         console.error("[Heartbeat] Heartbeat failed:", err);
       }
@@ -114,17 +119,15 @@ export function useDeviceHeartbeat() {
         } catch {}
 
         // 감시 중이면 백그라운드 전환 시 offline으로 바꾸지 않음
-        const { data } = await supabase
-          .from("devices")
-          .select("is_monitoring")
-          .eq("user_id", user!.id)
-          .neq("device_type", "smartphone")
-          .eq("is_monitoring", true)
-          .limit(1);
+        const { data } = await supabase.functions.invoke("get-devices", {
+          body: { user_id: effectiveUserId },
+        });
+        const monitoringDevices = (data?.devices || []).filter(
+          (d: { device_type: string; is_monitoring: boolean }) =>
+            d.device_type !== "smartphone" && d.is_monitoring
+        );
         
-        const anyMonitoring = data && data.length > 0;
-        
-        if (anyMonitoring) {
+        if (monitoringDevices.length > 0) {
           console.log("[Heartbeat] 🟡 Background but monitoring active — staying online");
         } else {
           setOffline();
@@ -144,7 +147,7 @@ export function useDeviceHeartbeat() {
         
         const payload = JSON.stringify({
           device_id: deviceId,
-          user_id: user?.id,
+          user_id: effectiveUserId,
         });
         const blob = new Blob([payload], { type: 'application/json' });
         
@@ -171,5 +174,5 @@ export function useDeviceHeartbeat() {
       // setOffline()을 cleanup에서 호출하지 않음 — 리렌더/HMR 시 레이스 컨디션 방지
       // 실제 종료는 beforeunload(sendBeacon)과 visibilitychange가 처리
     };
-  }, [smartphoneDevice?.id, user?.id]);
+  }, [smartphoneDevice?.id, effectiveUserId]);
 }

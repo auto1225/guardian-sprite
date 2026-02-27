@@ -12,26 +12,23 @@ import { useQueryClient } from "@tanstack/react-query";
  * 3. 메모리 누수 방지를 위한 주기적 캐시 정리
  */
 export function useAppStabilizer() {
-  const { user } = useAuth();
+  const { effectiveUserId } = useAuth();
   const queryClient = useQueryClient();
   const lastSyncRef = useRef<number>(0);
   const memoryCycleRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const syncOnForeground = useCallback(async () => {
-    if (!user?.id) return;
+    if (!effectiveUserId) return;
 
     const now = Date.now();
-    // 3초 이내 재호출 방지
     if (now - lastSyncRef.current < 3000) return;
     lastSyncRef.current = now;
 
     console.log("[Stabilizer] 🔄 Foreground sync started");
 
     try {
-      // 1. 디바이스 상태 DB에서 재확인
-      await queryClient.invalidateQueries({ queryKey: ["devices", user.id] });
+      await queryClient.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
 
-      // 2. Realtime 채널 건강성 체크
       const channels = supabase.getChannels();
       for (const ch of channels) {
         const state = (ch as unknown as { state?: string }).state;
@@ -45,10 +42,10 @@ export function useAppStabilizer() {
     } catch (err) {
       console.error("[Stabilizer] Sync error:", err);
     }
-  }, [user?.id, queryClient]);
+  }, [effectiveUserId, queryClient]);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!effectiveUserId) return;
 
     // visibilitychange → 포그라운드 복귀 시 동기화
     const handleVisibility = () => {
@@ -85,5 +82,5 @@ export function useAppStabilizer() {
       window.removeEventListener("online", handleOnline);
       if (memoryCycleRef.current) clearInterval(memoryCycleRef.current);
     };
-  }, [user?.id, syncOnForeground, queryClient]);
+  }, [effectiveUserId, syncOnForeground, queryClient]);
 }

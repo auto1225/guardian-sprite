@@ -66,7 +66,7 @@ export function usePhotoReceiver(
   selectedDeviceId: string | null | undefined,
   deviceNameMap?: Record<string, string>
 ): UsePhotoReceiverReturn {
-  const { user } = useAuth();
+  const { effectiveUserId } = useAuth();
   const [receiving, setReceiving] = useState(false);
   const [progress, setProgress] = useState(0);
   const [latestAlert, setLatestAlert] = useState<PhotoAlert | null>(null);
@@ -137,7 +137,7 @@ export function usePhotoReceiver(
   }, [loadAlerts]);
 
   useEffect(() => {
-    const userId = user?.id;
+    const userId = effectiveUserId;
     if (!userId) return;
 
     const channelName = `user-photos-${userId}`;
@@ -243,7 +243,7 @@ export function usePhotoReceiver(
       channelManager.remove(channelName);
       channelRef.current = null;
     };
-  }, [user?.id, loadAlerts, finalizeBatch]);
+  }, [effectiveUserId, loadAlerts, finalizeBatch]);
 
   const dismissLatest = useCallback(() => {
     if (latestAlert) {
