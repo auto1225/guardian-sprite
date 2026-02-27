@@ -1,22 +1,31 @@
 import { Navigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+
+const SERIAL_STORAGE_KEY = "meercop_serial_key";
+const SERIAL_DATA_KEY = "meercop_serial_data";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { user, loading } = useAuth();
+  const savedSerial = localStorage.getItem(SERIAL_STORAGE_KEY);
+  const savedData = localStorage.getItem(SERIAL_DATA_KEY);
 
-  if (loading) {
-    return (
-      <div className="h-screen bg-gradient-to-b from-sky-light to-primary flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-foreground border-t-transparent" />
-      </div>
-    );
+  if (!savedSerial || !savedData) {
+    return <Navigate to="/auth" replace />;
   }
 
-  if (!user) {
+  // Check expiry
+  try {
+    const data = JSON.parse(savedData);
+    if (data.expires_at && new Date(data.expires_at) < new Date()) {
+      localStorage.removeItem(SERIAL_STORAGE_KEY);
+      localStorage.removeItem(SERIAL_DATA_KEY);
+      return <Navigate to="/auth" replace />;
+    }
+  } catch {
+    localStorage.removeItem(SERIAL_STORAGE_KEY);
+    localStorage.removeItem(SERIAL_DATA_KEY);
     return <Navigate to="/auth" replace />;
   }
 
