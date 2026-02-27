@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { ArrowLeft, Shield, ShieldCheck, Monitor, Camera, MapPin, Bell, Settings, Smartphone, Laptop, AlertTriangle, HelpCircle, ChevronDown, Users, Download, Volume2, Eye, Wifi, WifiOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -14,20 +15,22 @@ interface HelpPageProps {
   onClose?: () => void;
 }
 
-const SectionTitle = ({ icon: Icon, children }: { icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>; children: React.ReactNode }) => (
-  <div className="flex items-center gap-2 mb-3">
+const SectionTitle = forwardRef<HTMLDivElement, { icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>; children: React.ReactNode }>(({ icon: Icon, children }, ref) => (
+  <div ref={ref} className="flex items-center gap-2 mb-3">
     <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'hsla(52, 100%, 60%, 0.2)' }}>
       <Icon className="w-4 h-4" style={{ color: 'hsl(52, 100%, 60%)' }} />
     </div>
     <h2 className="text-white font-bold text-base">{children}</h2>
   </div>
-);
+));
+SectionTitle.displayName = "SectionTitle";
 
-const Card = ({ children }: { children: React.ReactNode }) => (
-  <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl p-4 mb-3">
+const Card = forwardRef<HTMLDivElement, { children: React.ReactNode }>(({ children }, ref) => (
+  <div ref={ref} className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl p-4 mb-3">
     {children}
   </div>
-);
+));
+Card.displayName = "Card";
 
 const HelpPage = ({ isOpen = true, onClose }: HelpPageProps) => {
   const navigate = useNavigate();
