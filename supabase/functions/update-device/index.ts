@@ -12,7 +12,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { device_id, updates } = await req.json();
+    const body = await req.json();
+    const device_id = body.device_id;
+    // Support both { device_id, updates: {...} } and { device_id, field1, field2, ... }
+    const updates = body.updates || (() => {
+      const { device_id: _, ...rest } = body;
+      return Object.keys(rest).length > 0 ? rest : null;
+    })();
 
     if (!device_id || !updates) {
       return new Response(
