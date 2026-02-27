@@ -6,9 +6,9 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// ── S-2: IP 기반 레이트 리밋 (5회/15분) ──
+// ── IP 기반 레이트 리밋 (5회/15분) ──
 const RATE_LIMIT_MAX = 5;
-const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15분
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const rateLimitMap = new Map<string, number[]>();
 
 function isRateLimited(ip: string): boolean {
@@ -25,7 +25,6 @@ function isRateLimited(ip: string): boolean {
   return false;
 }
 
-// 오래된 엔트리 정리 (메모리 누수 방지, 30분마다)
 setInterval(() => {
   const now = Date.now();
   for (const [ip, timestamps] of rateLimitMap.entries()) {
@@ -41,7 +40,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // 레이트 리밋 체크
     const clientIp =
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       req.headers.get("cf-connecting-ip") ||
@@ -49,13 +47,8 @@ Deno.serve(async (req) => {
 
     if (isRateLimited(clientIp)) {
       return new Response(
-        JSON.stringify({
-          error: "너무 많은 요청입니다. 15분 후 다시 시도해주세요.",
-        }),
-        {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({ error: "Too many requests. Please try again in 15 minutes." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -63,7 +56,7 @@ Deno.serve(async (req) => {
 
     if (!serial_key || typeof serial_key !== "string") {
       return new Response(
-        JSON.stringify({ error: "시리얼 넘버를 입력해주세요." }),
+        JSON.stringify({ error: "Please enter a serial number." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -75,7 +68,6 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // 시리얼 조회
     const { data: license, error: licenseError } = await supabaseAdmin
       .from("licenses")
       .select("*")
@@ -84,23 +76,31 @@ Deno.serve(async (req) => {
 
     if (licenseError || !license) {
       return new Response(
-        JSON.stringify({ error: "유효하지 않은 시리얼 넘버입니다." }),
+        JSON.stringify({ error: "Invalid serial number." }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     if (!license.is_active) {
       return new Response(
-        JSON.stringify({ error: "비활성화된 시리얼 넘버입니다. 구독을 확인해주세요." }),
+        JSON.stringify({ error: "This serial number is inactive. Please check your subscription." }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     if (license.expires_at && new Date(license.expires_at) < new Date()) {
       return new Response(
-        JSON.stringify({ error: "만료된 시리얼 넘버입니다. 구독을 갱신해주세요." }),
+        JSON.stringify({ error: "This serial number has expired. Please renew your subscription." }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // 남은 일수 계산
+    let remaining_days: number | null = null;
+    if (license.expires_at) {
+      const now = new Date();
+      const expires = new Date(license.expires_at);
+      remaining_days = Math.max(0, Math.ceil((expires.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
     }
 
     // 이미 기기가 연결된 시리얼인지 확인
@@ -109,12 +109,9 @@ Deno.serve(async (req) => {
         status: "online",
         last_seen_at: new Date().toISOString(),
       };
-      if (device_name) {
-        updatePayload.name = device_name;
-      }
-      if (device_type) {
-        updatePayload.device_type = device_type;
-      }
+      if (device_name) updatePayload.name = device_name;
+      if (device_type) updatePayload.device_type = device_type;
+
       await supabaseAdmin
         .from("devices")
         .update(updatePayload)
@@ -126,6 +123,9 @@ Deno.serve(async (req) => {
           device_id: license.device_id,
           user_id: license.user_id,
           serial_key: license.serial_key,
+          plan_type: license.plan_type || "trial",
+          expires_at: license.expires_at,
+          remaining_days,
           reconnected: true,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -137,8 +137,8 @@ Deno.serve(async (req) => {
       .from("devices")
       .insert({
         user_id: license.user_id,
-        name: device_name || "My Computer",
-        device_type: device_type || "laptop",
+        name: device_name || "My Device",
+        device_type: device_type || "smartphone",
         status: "online",
         last_seen_at: new Date().toISOString(),
       })
@@ -148,12 +148,11 @@ Deno.serve(async (req) => {
     if (deviceError || !newDevice) {
       console.error("Device creation error:", deviceError);
       return new Response(
-        JSON.stringify({ error: "기기 등록에 실패했습니다." }),
+        JSON.stringify({ error: "Failed to register device." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // 라이선스에 기기 ID 연결
     await supabaseAdmin
       .from("licenses")
       .update({ device_id: newDevice.id })
@@ -165,6 +164,9 @@ Deno.serve(async (req) => {
         device_id: newDevice.id,
         user_id: license.user_id,
         serial_key: license.serial_key,
+        plan_type: license.plan_type || "trial",
+        expires_at: license.expires_at,
+        remaining_days,
         reconnected: false,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -172,7 +174,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error("validate-serial error:", err);
     return new Response(
-      JSON.stringify({ error: "서버 오류가 발생했습니다." }),
+      JSON.stringify({ error: "Server error occurred." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

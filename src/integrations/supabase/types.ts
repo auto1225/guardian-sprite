@@ -287,6 +287,7 @@ export type Database = {
           expires_at: string | null
           id: string
           is_active: boolean
+          plan_type: string
           serial_key: string
           updated_at: string
           user_id: string
@@ -297,6 +298,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           is_active?: boolean
+          plan_type?: string
           serial_key: string
           updated_at?: string
           user_id: string
@@ -307,6 +309,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           is_active?: boolean
+          plan_type?: string
           serial_key?: string
           updated_at?: string
           user_id?: string
