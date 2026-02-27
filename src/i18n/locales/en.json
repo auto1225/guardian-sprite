@@ -1,6 +1,6 @@
 {
   "plan": {
-    "trial": "Free Trial",
+    "free": "Free Trial",
     "basic": "Basic Plan",
     "premium": "Premium Plan",
     "currentPlan": "Current Plan",
