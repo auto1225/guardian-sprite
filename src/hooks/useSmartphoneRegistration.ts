@@ -9,19 +9,19 @@ import { useQueryClient } from "@tanstack/react-query";
  * - 이미 존재하면 스킵
  */
 export function useSmartphoneRegistration() {
-  const { user } = useAuth();
+  const { effectiveUserId } = useAuth();
   const queryClient = useQueryClient();
   const registeredRef = useRef(false);
 
   useEffect(() => {
-    if (!user || registeredRef.current) return;
+    if (!effectiveUserId || registeredRef.current) return;
 
     const registerSmartphone = async () => {
       try {
         // Edge Function을 통해 스마트폰 등록 (RLS 우회)
         const { data, error } = await supabase.functions.invoke("register-device", {
           body: {
-            user_id: user.id,
+            user_id: effectiveUserId,
             device_name: "My Smartphone",
             device_type: "smartphone",
           },
@@ -50,7 +50,7 @@ export function useSmartphoneRegistration() {
 
         // 사용자의 모든 노트북/데스크탑 기기도 감시 OFF로 리셋
         const { data: devicesData } = await supabase.functions.invoke("get-devices", {
-          body: { user_id: user.id },
+          body: { user_id: effectiveUserId },
         });
         const allDevices = devicesData?.devices || [];
         const laptopDevices = allDevices.filter(
@@ -91,7 +91,7 @@ export function useSmartphoneRegistration() {
 
         console.log("[SmartphoneReg] ♻️ Reset ALL devices monitoring to OFF on app start");
         registeredRef.current = true;
-        queryClient.invalidateQueries({ queryKey: ["devices", user.id] });
+        queryClient.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
 
         return;
       } catch (err) {
@@ -100,5 +100,5 @@ export function useSmartphoneRegistration() {
     };
 
     registerSmartphone();
-  }, [user?.id, queryClient]);
+  }, [effectiveUserId, queryClient]);
 }
