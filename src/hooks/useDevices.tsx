@@ -68,18 +68,7 @@ export const useDevices = () => {
     queryFn: async () => {
       if (!effectiveUserId) return [];
       
-      // Supabase Auth 세션이 있으면 직접 쿼리 (RLS 통과)
-      if (user) {
-        const { data, error } = await supabase
-          .from("devices")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: true });
-        if (error) throw error;
-        return data as Device[];
-      }
-      
-      // 시리얼 인증만 있을 때: get-devices Edge Function 사용 (RLS 우회)
+      // 항상 Edge Function 사용 (effectiveUserId 기반, RLS 우회)
       const { data, error } = await supabase.functions.invoke("get-devices", {
         body: { user_id: effectiveUserId },
       });
