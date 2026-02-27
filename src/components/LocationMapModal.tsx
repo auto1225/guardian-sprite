@@ -44,22 +44,42 @@ const LocationMapModal = ({ isOpen, onClose, deviceId, deviceName }: LocationMap
     if (!isOpen || !deviceId) return;
     const fetchAndRequest = async () => {
       setLoading(true); setError(null); setCommandSent(false);
-      const { data: deviceData } = await supabase.from("devices").select("latitude, longitude, location_updated_at, metadata").eq("id", deviceId).maybeSingle();
-      const meta = (deviceData?.metadata as Record<string, unknown>) || {};
-      if (deviceData && deviceData.latitude !== null && deviceData.longitude !== null) {
-        setLocation({ ...deviceData, location_source: (meta.location_source as string) || null }); setLoading(false);
-      }
-      if (!deviceData?.latitude) {
-        const { data: locData } = await supabase.from("device_locations").select("latitude, longitude, recorded_at").eq("device_id", deviceId).order("recorded_at", { ascending: false }).limit(1).maybeSingle();
-        if (locData && locData.latitude !== null && locData.longitude !== null) {
-          setLocation({ latitude: locData.latitude, longitude: locData.longitude, location_updated_at: locData.recorded_at }); setLoading(false);
+
+      // Edge Function으로 기기 데이터 조회 (RLS 우회)
+      try {
+        const { data } = await supabase.functions.invoke("get-devices", {
+          body: { device_id: deviceId },
+        });
+        const devices = data?.devices || [];
+        const deviceData = devices.find((d: { id: string }) => d.id === deviceId);
+        const meta = (deviceData?.metadata as Record<string, unknown>) || {};
+
+        if (deviceData && deviceData.latitude !== null && deviceData.longitude !== null) {
+          setLocation({
+            latitude: deviceData.latitude,
+            longitude: deviceData.longitude,
+            location_updated_at: deviceData.location_updated_at,
+            location_source: (meta.location_source as string) || null,
+          });
+          setLoading(false);
         }
+      } catch (err) {
+        console.warn("[LocationMap] Device fetch error:", err);
       }
-      await safeMetadataUpdate(deviceId, { locate_requested: new Date().toISOString() });
-      setCommandSent(true);
-      if (!deviceData?.latitude) { setError(t("location.requestSent")); setLoading(false); }
+
+      // 위치 요청 전송 (Edge Function 경유)
+      try {
+        await safeMetadataUpdate(deviceId, { locate_requested: new Date().toISOString() });
+        setCommandSent(true);
+      } catch (err) {
+        console.error("[LocationMap] Failed to send locate request:", err);
+      }
+
+      if (loading) { setError(t("location.requestSent")); setLoading(false); }
     };
     fetchAndRequest();
+
+    // Realtime 구독으로 위치 업데이트 감지
     const channel = supabase.channel(`device-location-${deviceId}`).on("postgres_changes", { event: "UPDATE", schema: "public", table: "devices", filter: `id=eq.${deviceId}` }, (payload) => {
       const newData = payload.new as { latitude: number | null; longitude: number | null; location_updated_at: string | null; metadata: Record<string, unknown> | null };
       if (newData.latitude !== null && newData.longitude !== null) {

@@ -77,7 +77,9 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
 
   const requestStreamingStart = useCallback(async () => {
     try {
-      await supabase.from("devices").update({ is_streaming_requested: true }).eq("id", device.id);
+      await supabase.functions.invoke("update-device", {
+        body: { device_id: device.id, is_streaming_requested: true },
+      });
     } catch (err) {
       console.error("[Camera] Failed to request streaming:", err);
     }
@@ -87,7 +89,9 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
     const elapsed = Date.now() - connectionStartTimeRef.current;
     if (elapsed < 5000 && isConnectingRef.current) return;
     try {
-      await supabase.from("devices").update({ is_streaming_requested: false }).eq("id", device.id);
+      await supabase.functions.invoke("update-device", {
+        body: { device_id: device.id, is_streaming_requested: false },
+      });
     } catch (err) {
       console.error("[Camera] Failed to stop streaming:", err);
     }
@@ -101,8 +105,14 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
   const waitForBroadcaster = useCallback(async (): Promise<boolean> => {
     for (let i = 0; i < 30; i++) {
       if (!isConnectingRef.current) return false;
-      const { data } = await supabase.from("devices").select("is_camera_connected").eq("id", device.id).single();
-      if (data?.is_camera_connected) return true;
+      try {
+        const { data } = await supabase.functions.invoke("get-devices", {
+          body: { device_id: device.id },
+        });
+        const devices = data?.devices || [];
+        const dev = devices.find((d: { id: string }) => d.id === device.id);
+        if (dev?.is_camera_connected) return true;
+      } catch { /* ignore */ }
       await new Promise(r => setTimeout(r, 500));
     }
     return false;
@@ -241,7 +251,7 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
             // ★ disconnect()로 PC close + 시그널링 정리 + 스트림 해제
             disconnect();
             // 스트리밍 요청 플래그 리셋 — 재연결 시 false→true 변경을 브로드캐스터가 감지하도록
-            supabase.from("devices").update({ is_streaming_requested: false }).eq("id", device.id);
+            supabase.functions.invoke("update-device", { body: { device_id: device.id, is_streaming_requested: false } });
             setError(t("camera.cameraNotRecognized", { name: device.name }));
           }
           
@@ -410,7 +420,7 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
       setRecordingDuration(0);
       cleanupSubscription();
       disconnect();
-      supabase.from("devices").update({ is_streaming_requested: false }).eq("id", device.id);
+      supabase.functions.invoke("update-device", { body: { device_id: device.id, is_streaming_requested: false } });
     }
     onClose();
   }, [isStreaming, disconnect, cleanupSubscription, device.id, onClose]);

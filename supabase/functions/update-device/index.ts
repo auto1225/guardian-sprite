@@ -14,9 +14,37 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     const device_id = body.device_id;
+    const action = body._action;
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // 삭제 액션 지원
+    if (action === "delete") {
+      if (!device_id) {
+        return new Response(
+          JSON.stringify({ error: "device_id required for delete" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const { error } = await supabase.from("devices").delete().eq("id", device_id);
+      if (error) {
+        return new Response(
+          JSON.stringify({ error: error.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      return new Response(
+        JSON.stringify({ deleted: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Support both { device_id, updates: {...} } and { device_id, field1, field2, ... }
     const updates = body.updates || (() => {
-      const { device_id: _, ...rest } = body;
+      const { device_id: _, _action: _a, ...rest } = body;
       return Object.keys(rest).length > 0 ? rest : null;
     })();
 
@@ -26,11 +54,6 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
 
     const { data, error } = await supabase
       .from("devices")

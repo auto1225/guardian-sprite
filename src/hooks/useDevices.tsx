@@ -155,7 +155,9 @@ export const useDevices = () => {
 
   const deleteDevice = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("devices").delete().eq("id", id);
+      const { error } = await supabase.functions.invoke("update-device", {
+        body: { device_id: id, _action: "delete" },
+      });
       if (error) throw error;
     },
     onSuccess: () => {

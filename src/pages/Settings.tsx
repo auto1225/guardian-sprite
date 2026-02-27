@@ -177,7 +177,9 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
 
   const handleSaveNickname = async (name: string) => {
     try {
-      const { error } = await supabase.from("devices").update({ name }).eq("id", device.id);
+      const { error } = await supabase.functions.invoke("update-device", {
+        body: { device_id: device.id, name },
+      });
       if (error) throw error;
       setNickname(name);
       setShowNicknameDialog(false);
@@ -488,7 +490,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
                     setSensorSettings(updated);
                     try {
                       await saveMetadata({ sensorSettings: updated });
-                      await supabase.from("devices").update({ device_type: type }).eq("id", device.id);
+                      await supabase.functions.invoke("update-device", { body: { device_id: device.id, device_type: type } });
                       queryClient.invalidateQueries({ queryKey: ["devices"] });
                     } catch {
                       toast({ title: t("common.error"), description: t("common.settingSaveFailed"), variant: "destructive" });
