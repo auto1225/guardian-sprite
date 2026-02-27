@@ -1,0 +1,1 @@
+ALTER TABLE public.licenses ALTER COLUMN plan_type SET DEFAULT 'free';
