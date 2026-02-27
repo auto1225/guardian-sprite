@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, forwardRef } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Lock, MessageSquare, Send, Loader2 } from "lucide-react";
 import { useCommands } from "@/hooks/useCommands";
@@ -14,7 +14,7 @@ interface RemoteCommandsPanelProps {
   device: Device | null;
 }
 
-const RemoteCommandsPanel = ({ isOpen, onClose, device }: RemoteCommandsPanelProps) => {
+const RemoteCommandsPanel = forwardRef<HTMLDivElement, RemoteCommandsPanelProps>(({ isOpen, onClose, device }, ref) => {
   const { t } = useTranslation();
   const { lockDevice, sendMessage } = useCommands();
   const { toast } = useToast();
@@ -184,6 +184,8 @@ const RemoteCommandsPanel = ({ isOpen, onClose, device }: RemoteCommandsPanelPro
       </div>
     </div>
   );
-};
+});
+
+RemoteCommandsPanel.displayName = "RemoteCommandsPanel";
 
 export default RemoteCommandsPanel;
