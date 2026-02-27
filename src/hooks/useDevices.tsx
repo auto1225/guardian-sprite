@@ -248,26 +248,56 @@ export const useDevices = () => {
     activePresenceChannel
       .on('presence', { event: 'sync' }, () => {
         const state = activePresenceChannel!.presenceState();
+
+        // 모든 Presence 항목을 수집 (키는 랩탑 로컬 DB ID일 수 있음)
+        type PresenceEntry = {
+          device_id?: string;
+          status?: string;
+          is_network_connected?: boolean;
+          is_camera_connected?: boolean;
+          battery_level?: number;
+          is_charging?: boolean;
+          last_seen_at?: string;
+        };
+        const allPresenceEntries: Array<{ key: string; data: PresenceEntry }> = [];
+        for (const [key, entries] of Object.entries(state)) {
+          const typedEntries = entries as PresenceEntry[];
+          if (!typedEntries || typedEntries.length === 0) continue;
+          const latest = typedEntries.reduce((a, b) => {
+            const aT = a.last_seen_at ? new Date(a.last_seen_at).getTime() : 0;
+            const bT = b.last_seen_at ? new Date(b.last_seen_at).getTime() : 0;
+            return bT > aT ? b : a;
+          });
+          allPresenceEntries.push({ key, data: latest });
+        }
+
         queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
           if (!oldDevices) return oldDevices;
+
+          // 매칭된 Presence 키 추적 (중복 매칭 방지)
+          const matchedKeys = new Set<string>();
+
           return oldDevices.map((d) => {
             if (d.device_type === "smartphone") return d;
-            const entries = state[d.id] as Array<{
-              status?: string;
-              is_network_connected?: boolean;
-              is_camera_connected?: boolean;
-              battery_level?: number;
-              is_charging?: boolean;
-              last_seen_at?: string;
-            }> | undefined;
-            if (!entries || entries.length === 0) return d;
 
-            const latest = entries.reduce((a, b) => {
-              const aT = a.last_seen_at ? new Date(a.last_seen_at).getTime() : 0;
-              const bT = b.last_seen_at ? new Date(b.last_seen_at).getTime() : 0;
-              return bT > aT ? b : a;
-            });
+            // 1) 공유 DB ID로 직접 매칭
+            let match = allPresenceEntries.find(e => e.key === d.id && !matchedKeys.has(e.key));
 
+            // 2) 직접 매칭 실패 → 미매칭된 Presence 항목 중 랩탑 후보 찾기
+            //    (랩탑은 로컬 DB ID를 Presence 키로 사용하므로 공유 DB ID와 다름)
+            if (!match) {
+              const knownDeviceIds = new Set(oldDevices.map(od => od.id));
+              match = allPresenceEntries.find(e =>
+                !matchedKeys.has(e.key) &&
+                !knownDeviceIds.has(e.key) &&
+                e.data.status === 'online'
+              );
+            }
+
+            if (!match) return d;
+            matchedKeys.add(match.key);
+
+            const latest = match.data;
             const newStatus = latest.status === 'online' ? 'online' : 'offline';
             if (newStatus === 'online') realtimeConfirmedOnline.add(d.id);
             else realtimeConfirmedOnline.delete(d.id);
@@ -279,11 +309,12 @@ export const useDevices = () => {
             const hasChanges = d.is_network_connected !== latest.is_network_connected || d.status !== newStatus || (latest.battery_level !== undefined && d.battery_level !== latest.battery_level);
             if (!hasChanges) return d;
 
-            console.log("[Presence] ✅ Updating:", d.id.slice(0, 8), { status: `${d.status}→${newStatus}` });
+            console.log("[Presence] ✅ Updating:", d.id.slice(0, 8), "←", match.key.slice(0, 8), { status: `${d.status}→${newStatus}` });
             return {
               ...d,
               status: newStatus as Device["status"],
               is_network_connected: latest.is_network_connected ?? d.is_network_connected,
+              is_camera_connected: latest.is_camera_connected ?? d.is_camera_connected,
               battery_level: latest.battery_level ?? d.battery_level,
             };
           });
@@ -297,37 +328,35 @@ export const useDevices = () => {
         const existingTimer = activeLeaveTimers.get(key);
         if (existingTimer) clearTimeout(existingTimer);
 
+        // key가 공유 DB ID가 아닐 수 있음 (랩탑은 로컬 DB ID 사용)
+        // 매칭 가능한 기기 찾기
         realtimeConfirmedOnline.delete(key);
         queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
           if (!oldDevices) return oldDevices;
-          return oldDevices.map((d) =>
-            d.id === key
-              ? { ...d, status: 'offline' as Device["status"], is_network_connected: false, is_camera_connected: false }
-              : d
-          );
+          // 직접 ID 매칭 시도
+          const directMatch = oldDevices.some(d => d.id === key);
+          if (directMatch) {
+            return oldDevices.map((d) =>
+              d.id === key
+                ? { ...d, status: 'offline' as Device["status"], is_network_connected: false, is_camera_connected: false }
+                : d
+            );
+          }
+          // 직접 매칭 실패 → 랩탑 기기 중 online인 것을 offline로 전환
+          // (단일 랩탑 시나리오, 다중 랩탑일 경우 첫 번째만)
+          let found = false;
+          return oldDevices.map((d) => {
+            if (found || d.device_type === "smartphone" || d.status !== "online") return d;
+            found = true;
+            return { ...d, status: 'offline' as Device["status"], is_network_connected: false, is_camera_connected: false };
+          });
         });
         console.log("[Presence] 🔴 Device left:", key.slice(0, 8), "→ offline (network/camera off)");
 
         const timer = setTimeout(() => {
           activeLeaveTimers.delete(key);
-          supabase.functions.invoke("get-devices", {
-            body: { user_id: effectiveUserId, device_id: key },
-          }).then(({ data }) => {
-            const device = data?.devices?.[0];
-            queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
-              if (!oldDevices) return oldDevices;
-              return oldDevices.map((d) =>
-                d.id === key
-                  ? {
-                      ...d,
-                      status: (device?.status ?? 'offline') as Device["status"],
-                      is_network_connected: device?.is_network_connected ?? false,
-                      is_camera_connected: device?.is_camera_connected ?? d.is_camera_connected,
-                    }
-                  : d
-              );
-            });
-          });
+          // 전체 기기 새로고침으로 정확한 상태 복구
+          queryClient.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
         }, 3000);
         activeLeaveTimers.set(key, timer);
       })
