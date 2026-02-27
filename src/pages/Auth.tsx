@@ -5,7 +5,10 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { KeyRound, Crown, Star, Sparkles, CalendarDays } from "lucide-react";
 import meercopCharacter from "@/assets/meercop-character.png";
-import { supabase } from "@/integrations/supabase/client";
+
+// 웹사이트 프로젝트의 DB를 직접 호출 (랩탑 앱과 동일한 패턴)
+const MASTER_SUPABASE_URL = "https://peqgmuicrorjvvburqly.supabase.co";
+const MASTER_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlcWdtdWljcm9yanZ2YnVycWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NDA1NzQsImV4cCI6MjA4NzUxNjU3NH0.e5HYG3dSMqhm4ahT-en-nNX2mD95KM_TdKIlfuzdMc4";
 
 const SERIAL_STORAGE_KEY = "meercop_serial_key";
 const SERIAL_DATA_KEY = "meercop_serial_data";
@@ -119,26 +122,65 @@ const Auth = () => {
     setIsSubmitting(true);
     setPlanInfo(null);
     try {
-      const { data, error } = await supabase.functions.invoke("validate-serial", {
-        body: { serial_key: serialKey, device_type: "smartphone" },
-      });
+      const headers = {
+        "Content-Type": "application/json",
+        apikey: MASTER_SUPABASE_ANON_KEY,
+      };
 
-      if (error || !data?.success) {
-        const msg = data?.error || error?.message || t("auth.unexpectedError");
+      // Step 1: 시리얼 검증 (action: "verify")
+      const verifyRes = await fetch(`${MASTER_SUPABASE_URL}/functions/v1/verify-serial`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ action: "verify", serial_key: serialKey }),
+      });
+      const verifyData = await verifyRes.json().catch(() => ({}));
+
+      if (!verifyRes.ok || !verifyData.valid) {
+        const msg = verifyData.error || t("auth.unexpectedError");
         toast({ title: t("auth.serialValidationFailed"), description: msg, variant: "destructive" });
         return;
       }
 
+      // Step 2: 기기 등록 (action: "register_device")
+      const registerRes = await fetch(`${MASTER_SUPABASE_URL}/functions/v1/verify-serial`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          action: "register_device",
+          serial_key: serialKey,
+          device_name: "My Smartphone",
+          device_type: "smartphone",
+        }),
+      });
+      const registerData = await registerRes.json().catch(() => ({}));
+
+      if (!registerRes.ok) {
+        const msg = registerData.error || t("auth.unexpectedError");
+        toast({ title: t("auth.serialValidationFailed"), description: msg, variant: "destructive" });
+        return;
+      }
+
+      const serial = verifyData.serial || verifyData;
+
       // Show plan info before navigating
       setPlanInfo({
-        plan_type: data.plan_type || "free",
-        expires_at: data.expires_at,
-        remaining_days: data.remaining_days,
+        plan_type: serial.plan_type || "free",
+        expires_at: serial.expires_at || null,
+        remaining_days: serial.remaining_days ?? null,
       });
 
       // Save serial session
+      const sessionData = {
+        success: true,
+        device_id: registerData.device_id || serial.id || serial.device_id || "",
+        user_id: serial.user_id || "",
+        serial_key: serial.serial_key || serialKey,
+        plan_type: serial.plan_type || "free",
+        expires_at: serial.expires_at || null,
+        remaining_days: serial.remaining_days ?? null,
+      };
       localStorage.setItem(SERIAL_STORAGE_KEY, serialKey);
-      localStorage.setItem(SERIAL_DATA_KEY, JSON.stringify(data));
+      localStorage.setItem(SERIAL_DATA_KEY, JSON.stringify(sessionData));
 
       toast({ title: t("auth.loginSuccess"), description: t("auth.loginSuccessDesc") });
 
