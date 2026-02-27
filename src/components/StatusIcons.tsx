@@ -46,10 +46,10 @@ const StatusItem = ({ iconOn, iconOff, label, isActive, batteryLevel, onClick }:
 
 const StatusIcons = ({ device, onIconClick }: StatusIconsProps) => {
   const { t } = useTranslation();
-  const isOnline = device?.status !== "offline";
-  const batteryLevel = device?.battery_level ?? 100;
-  const isNetworkConnected = device?.is_network_connected ?? false;
-  const isCameraConnected = device?.is_camera_connected ?? false;
+  const isOnline = !!device && device.status !== "offline";
+  const batteryLevel = device?.battery_level ?? undefined;
+  const isNetworkConnected = !!device && (device.is_network_connected ?? false);
+  const isCameraConnected = !!device && (device.is_camera_connected ?? false);
 
   console.log("[StatusIcons] Device state:", {
     id: device?.id?.slice(0, 8),
