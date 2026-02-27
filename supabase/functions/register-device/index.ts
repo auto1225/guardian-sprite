@@ -26,13 +26,13 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // 같은 user_id + device_type으로 이미 존재하는지 확인
+    // 같은 user_id + device_type으로 이미 존재하는지 확인 (이름 무관 — 중복 방지)
     const { data: existing } = await supabaseAdmin
       .from("devices")
       .select("id, name, device_type, status")
       .eq("user_id", user_id)
       .eq("device_type", device_type || "laptop")
-      .eq("name", device_name || "My Device")
+      .limit(1)
       .maybeSingle();
 
     if (existing) {
