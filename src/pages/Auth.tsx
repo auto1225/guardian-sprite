@@ -134,6 +134,7 @@ const Auth = () => {
         body: JSON.stringify({ action: "verify", serial_key: serialKey }),
       });
       const verifyData = await verifyRes.json().catch(() => ({}));
+      console.log("[Auth] verify response:", verifyRes.status, verifyData);
 
       if (!verifyRes.ok || !verifyData.valid) {
         const msg = verifyData.error || t("auth.unexpectedError");
@@ -153,6 +154,7 @@ const Auth = () => {
         }),
       });
       const registerData = await registerRes.json().catch(() => ({}));
+      console.log("[Auth] register response:", registerRes.status, registerData);
 
       if (!registerRes.ok) {
         const msg = registerData.error || t("auth.unexpectedError");
