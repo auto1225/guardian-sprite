@@ -45,6 +45,8 @@ export function useSmartphoneRegistration() {
         }
 
         // 2) 랩탑 로컬 DB에도 등록 (fire-and-forget)
+        // 랩탑 DB는 device_id(unique) = user_id 패턴 사용, smartphone은 별도 ID 필요
+        const smartphoneDeviceId = `${effectiveUserId}-smartphone`;
         fetch(`${LAPTOP_DB_URL}/functions/v1/register-device`, {
           method: "POST",
           headers: { "Content-Type": "application/json", apikey: LAPTOP_DB_ANON_KEY },
@@ -52,10 +54,11 @@ export function useSmartphoneRegistration() {
             user_id: effectiveUserId,
             device_name: "My Smartphone",
             device_type: "smartphone",
+            device_id_override: smartphoneDeviceId,
           }),
         })
           .then(res => res.ok
-            ? res.json().then(d => console.log("[SmartphoneReg] ✅ Laptop DB register OK:", d.device_id?.slice(0, 8)))
+            ? res.json().then(d => console.log("[SmartphoneReg] ✅ Laptop DB register OK:", d.device?.id?.slice(0, 8)))
             : res.text().then(t => console.warn("[SmartphoneReg] ⚠️ Laptop DB register failed:", t)))
           .catch(err => console.warn("[SmartphoneReg] ⚠️ Laptop DB register error:", err));
 
