@@ -32,7 +32,7 @@ const Card = forwardRef<HTMLDivElement, { children: React.ReactNode }>(({ childr
 ));
 Card.displayName = "Card";
 
-const HelpPage = ({ isOpen = true, onClose }: HelpPageProps) => {
+const HelpPage = forwardRef<HTMLDivElement, HelpPageProps>(({ isOpen = true, onClose }, ref) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -43,6 +43,7 @@ const HelpPage = ({ isOpen = true, onClose }: HelpPageProps) => {
 
   return (
     <div
+      ref={ref}
       className={`fixed inset-0 z-50 flex flex-col transition-transform duration-300 ${
         isOpen ? "translate-x-0" : "translate-x-full"
       }`}
@@ -275,6 +276,7 @@ const HelpPage = ({ isOpen = true, onClose }: HelpPageProps) => {
       </div>
     </div>
   );
-};
+});
+HelpPage.displayName = "HelpPage";
 
 export default HelpPage;
