@@ -164,28 +164,24 @@ const Index = () => {
   };
 
   const handleStatusIconClick = async (type: "laptop" | "meercop" | "network" | "camera" | "settings") => {
+    if (!selectedDevice) {
+      toast({ title: t("common.noDevice"), description: t("common.noDeviceDesc") });
+      return;
+    }
     switch (type) {
       case "laptop":
         openPanel("locationMap");
         break;
       case "camera":
-        if (selectedDeviceId) {
-          await refreshDeviceStatus(selectedDeviceId);
-        }
+        await refreshDeviceStatus(selectedDeviceId!);
         openPanel("camera");
         break;
       case "meercop":
-        if (selectedDevice) {
-          openPanel("settings");
-        }
+      case "settings":
+        openPanel("settings");
         break;
       case "network":
         openPanel("networkInfo");
-        break;
-      case "settings":
-        if (selectedDevice) {
-          openPanel("settings");
-        }
         break;
     }
   };

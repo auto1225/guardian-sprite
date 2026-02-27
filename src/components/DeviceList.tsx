@@ -20,8 +20,17 @@ const DeviceList = ({ isExpanded, onToggle, selectedDeviceId, selectedDevice, on
   const devices = allDevices.filter(d => d.device_type !== "smartphone");
 
   if (!selectedDevice || selectedDevice.device_type === "smartphone") {
-    if (devices.length === 0) return null;
-    return null;
+    return (
+      <div className="px-4 py-2">
+        <div className="flex items-center justify-center">
+          <div className="bg-white/15 backdrop-blur-xl border border-white/25 rounded-full px-4 py-1.5 shadow-lg">
+            <span className="text-white/60 font-medium text-sm">
+              {t("deviceList.waitingForDevice")}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
