@@ -32,12 +32,21 @@ const NetworkInfoModal = ({ isOpen, onClose, deviceId, deviceName }: NetworkInfo
     const fetchAndRequest = async () => {
       setLoading(true);
       setRequesting(true);
-      const { data } = await supabase.from("devices").select("ip_address, is_network_connected, metadata").eq("id", deviceId).maybeSingle();
-      if (data) {
-        setIsConnected(data.is_network_connected);
-        setIpAddress(data.ip_address);
-        const meta = data.metadata as Record<string, unknown> | null;
-        if (meta?.network_info) setNetworkInfo(meta.network_info as NetworkInfo);
+      // Edge Function으로 기기 데이터 조회 (RLS 우회)
+      try {
+        const { data } = await supabase.functions.invoke("get-devices", {
+          body: { device_id: deviceId },
+        });
+        const devices = data?.devices || [];
+        const device = devices.find((d: { id: string }) => d.id === deviceId);
+        if (device) {
+          setIsConnected(device.is_network_connected);
+          setIpAddress(device.ip_address);
+          const meta = device.metadata as Record<string, unknown> | null;
+          if (meta?.network_info) setNetworkInfo(meta.network_info as NetworkInfo);
+        }
+      } catch (err) {
+        console.warn("[NetworkInfo] Device fetch error:", err);
       }
       setLoading(false);
       await safeMetadataUpdate(deviceId, { network_info_requested: new Date().toISOString() });
