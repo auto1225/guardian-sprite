@@ -31,6 +31,7 @@ import { useDeviceHeartbeat } from "@/hooks/useDeviceHeartbeat";
 import { useLocationResponder } from "@/hooks/useLocationResponder";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useAppStabilizer } from "@/hooks/useAppStabilizer";
+import { useSmartphoneRegistration } from "@/hooks/useSmartphoneRegistration";
 
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -65,6 +66,9 @@ const Index = () => {
     localStorage.setItem(NUKE_KEY, String(Date.now()));
     console.log("[Index] ✅ All alert data nuked, removed", keysToRemove.length, "keys");
   }, []);
+
+  // 스마트폰 자동 등록
+  useSmartphoneRegistration();
 
   const { devices, selectedDevice, selectedDeviceId, setSelectedDeviceId, isLoading, refreshDeviceStatus } = useDevices();
   const nonSmartphoneDevices = devices.filter(d => d.device_type !== "smartphone");

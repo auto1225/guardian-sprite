@@ -44,7 +44,7 @@ export function useSmartphoneRegistration() {
         // 앱 시작 시 감시 OFF 리셋 (Edge Function으로)
         if (deviceId) {
           await supabase.functions.invoke("update-device", {
-            body: { device_id: deviceId, is_monitoring: false, status: "online" },
+            body: { device_id: deviceId, updates: { is_monitoring: false, status: "online" } },
           });
         }
 
