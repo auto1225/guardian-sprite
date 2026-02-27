@@ -73,7 +73,18 @@ export const useDevices = () => {
         body: { user_id: effectiveUserId },
       });
       if (error) throw error;
-      return (data?.devices || []) as Device[];
+      const dbDevices = (data?.devices || []) as Device[];
+
+      // ★ DB 조회 결과에 Presence 확인된 온라인 상태 보존
+      // DB는 랩탑의 공유DB 업데이트가 실패하면 항상 offline을 반환하므로
+      // Presence로 확인된 online 상태를 덮어쓰지 않도록 함
+      return dbDevices.map(d => {
+        if (d.device_type === "smartphone") return d;
+        if (realtimeConfirmedOnline.has(d.id) && d.status === "offline") {
+          return { ...d, status: "online" as Device["status"], is_network_connected: true };
+        }
+        return d;
+      });
     },
     enabled: !!effectiveUserId,
   });
@@ -328,36 +339,46 @@ export const useDevices = () => {
         const existingTimer = activeLeaveTimers.get(key);
         if (existingTimer) clearTimeout(existingTimer);
 
-        // key가 공유 DB ID가 아닐 수 있음 (랩탑은 로컬 DB ID 사용)
-        // 매칭 가능한 기기 찾기
-        realtimeConfirmedOnline.delete(key);
-        queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
-          if (!oldDevices) return oldDevices;
-          // 직접 ID 매칭 시도
-          const directMatch = oldDevices.some(d => d.id === key);
-          if (directMatch) {
+        // 직접 ID 매칭 여부 확인
+        const currentDevices = queryClient.getQueryData<Device[]>(["devices", effectiveUserId]);
+        const isDirectMatch = currentDevices?.some(d => d.id === key);
+
+        if (isDirectMatch) {
+          // 직접 매칭: 즉시 offline 처리
+          realtimeConfirmedOnline.delete(key);
+          queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
+            if (!oldDevices) return oldDevices;
             return oldDevices.map((d) =>
               d.id === key
                 ? { ...d, status: 'offline' as Device["status"], is_network_connected: false, is_camera_connected: false }
                 : d
             );
-          }
-          // 직접 매칭 실패 → 랩탑 기기 중 online인 것을 offline로 전환
-          // (단일 랩탑 시나리오, 다중 랩탑일 경우 첫 번째만)
-          let found = false;
-          return oldDevices.map((d) => {
-            if (found || d.device_type === "smartphone" || d.status !== "online") return d;
-            found = true;
-            return { ...d, status: 'offline' as Device["status"], is_network_connected: false, is_camera_connected: false };
           });
-        });
-        console.log("[Presence] 🔴 Device left:", key.slice(0, 8), "→ offline (network/camera off)");
+          console.log("[Presence] 🔴 Device left (direct):", key.slice(0, 8), "→ offline");
+        } else {
+          // 크로스 DB 매칭: 즉시 offline 처리하지 않음 (깜빡임 방지)
+          // 타이머 후에도 Presence에 없으면 offline 처리
+          console.log("[Presence] ⏳ Device left (cross-DB):", key.slice(0, 8), "→ waiting 5s before offline");
+        }
 
         const timer = setTimeout(() => {
           activeLeaveTimers.delete(key);
-          // 전체 기기 새로고침으로 정확한 상태 복구
-          queryClient.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
-        }, 3000);
+          // Presence 재확인: 아직 없으면 offline 처리
+          const state = activePresenceChannel?.presenceState() || {};
+          const stillPresent = Object.keys(state).includes(key);
+          if (!stillPresent) {
+            // 크로스 DB 매칭된 기기도 이제 offline 처리
+            if (!isDirectMatch) {
+              // realtimeConfirmedOnline에서 관련 기기 제거
+              currentDevices?.forEach(d => {
+                if (d.device_type !== "smartphone" && d.status === "online") {
+                  realtimeConfirmedOnline.delete(d.id);
+                }
+              });
+            }
+            queryClient.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
+          }
+        }, isDirectMatch ? 3000 : 5000);
         activeLeaveTimers.set(key, timer);
       })
       .subscribe((status) => {
