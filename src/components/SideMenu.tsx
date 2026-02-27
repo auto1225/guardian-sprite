@@ -25,12 +25,16 @@ const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick, onRemoteC
   const { devices, selectedDeviceId, setSelectedDeviceId } = useDevices();
 
   const handleSignOut = async () => {
+    // 시리얼 인증 데이터 삭제
+    localStorage.removeItem("meercop_serial_key");
+    localStorage.removeItem("meercop_serial_data");
     await signOut();
     toast({
       title: t("sideMenu.loggedOut"),
       description: t("sideMenu.loggedOutDesc"),
     });
     onClose();
+    navigate("/auth");
   };
 
   const handleNavigate = (path: string) => {
