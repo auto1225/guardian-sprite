@@ -14,3 +14,21 @@ verify_jwt = false
 
 [functions.translate-i18n]
 verify_jwt = false
+
+[functions.register-device]
+verify_jwt = false
+
+[functions.get-devices]
+verify_jwt = false
+
+[functions.update-device]
+verify_jwt = false
+
+[functions.app-close]
+verify_jwt = false
+
+[functions.get-signaling]
+verify_jwt = false
+
+[functions.manage-signaling]
+verify_jwt = false
