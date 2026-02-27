@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, forwardRef } from "react";
 import { useTranslation } from "react-i18next";
 import { X, MapPin, Loader2, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,7 +42,7 @@ interface LocationHistoryModalProps {
   deviceName: string;
 }
 
-const LocationHistoryModal = ({ isOpen, onClose, deviceId, deviceName }: LocationHistoryModalProps) => {
+const LocationHistoryModal = forwardRef<HTMLDivElement, LocationHistoryModalProps>(({ isOpen, onClose, deviceId, deviceName }, ref) => {
   const { t, i18n } = useTranslation();
   const [locations, setLocations] = useState<LocationRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -190,6 +190,8 @@ const LocationHistoryModal = ({ isOpen, onClose, deviceId, deviceName }: Locatio
       </div>
     </div>
   );
-};
+});
+
+LocationHistoryModal.displayName = "LocationHistoryModal";
 
 export default LocationHistoryModal;
