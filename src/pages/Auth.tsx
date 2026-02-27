@@ -17,14 +17,14 @@ interface PlanInfo {
 }
 
 const PLAN_CONFIG: Record<string, { icon: typeof Crown; label: string; colorClass: string; bgClass: string }> = {
-  trial: { icon: Sparkles, label: "plan.trial", colorClass: "text-emerald-300", bgClass: "bg-emerald-500/20 border-emerald-400/30" },
+  free: { icon: Sparkles, label: "plan.free", colorClass: "text-emerald-300", bgClass: "bg-emerald-500/20 border-emerald-400/30" },
   basic: { icon: Star, label: "plan.basic", colorClass: "text-blue-300", bgClass: "bg-blue-500/20 border-blue-400/30" },
   premium: { icon: Crown, label: "plan.premium", colorClass: "text-amber-300", bgClass: "bg-amber-500/20 border-amber-400/30" },
 };
 
 const PlanInfoCard = ({ planInfo }: { planInfo: PlanInfo }) => {
   const { t } = useTranslation();
-  const config = PLAN_CONFIG[planInfo.plan_type] || PLAN_CONFIG.trial;
+  const config = PLAN_CONFIG[planInfo.plan_type] || PLAN_CONFIG.free;
   const Icon = config.icon;
 
   return (
@@ -131,7 +131,7 @@ const Auth = () => {
 
       // Show plan info before navigating
       setPlanInfo({
-        plan_type: data.plan_type || "trial",
+        plan_type: data.plan_type || "free",
         expires_at: data.expires_at,
         remaining_days: data.remaining_days,
       });
