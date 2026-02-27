@@ -40,7 +40,7 @@ export const getAlarmState = () => ({ muted: Alarm.isMuted() });
 export const setAlarmMuted = Alarm.setMuted;
 
 export const useAlerts = (deviceId?: string | null) => {
-  const { user } = useAuth();
+  const { effectiveUserId } = useAuth();
   const [alerts, setAlerts] = useState<LocalActivityLog[]>([]);
   const [activeAlert, setActiveAlert] = useState<ActiveAlert | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,13 +51,13 @@ export const useAlerts = (deviceId?: string | null) => {
   const deviceIdRef = useRef(deviceId);
   const activeAlertRef = useRef<ActiveAlert | null>(null);
   const handleAlertRef = useRef<(alert: ActiveAlert, fromDeviceId?: string) => void>(() => {});
-  const userIdRef = useRef(user?.id);
+  const userIdRef = useRef(effectiveUserId);
   const lastAlertDeviceRef = useRef<string | null>(null);
   // ★ Per-device suppression — 해제 후 같은 기기의 모든 경보 차단
   const deviceSuppressRef = useRef<Map<string, number>>(new Map());
 
   deviceIdRef.current = deviceId;
-  userIdRef.current = user?.id;
+  userIdRef.current = effectiveUserId;
 
   // ── safe setState (unmounted 컴포넌트 업데이트 방지) ──
   const safe = <T,>(setter: React.Dispatch<React.SetStateAction<T>>) =>
@@ -150,7 +150,7 @@ export const useAlerts = (deviceId?: string | null) => {
 
   // ── 단일 채널 구독: user-alerts-{userId} ──
   useEffect(() => {
-    const userId = user?.id;
+    const userId = effectiveUserId;
     if (!userId) return;
 
     const channelName = `user-alerts-${userId}`;
@@ -207,7 +207,7 @@ export const useAlerts = (deviceId?: string | null) => {
       channelRef.current = null;
       channelManager.remove(channelName);
     };
-  }, [user?.id]);
+  }, [effectiveUserId]);
 
   // ── 컴퓨터 경보음 원격 해제 ──
   const dismissRemoteAlarm = useCallback(async () => {

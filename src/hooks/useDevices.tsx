@@ -60,24 +60,33 @@ function cleanupAllChannels() {
 }
 
 export const useDevices = () => {
-  const { user } = useAuth();
+  const { user, effectiveUserId } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: devices = [], isLoading, error } = useQuery({
-    queryKey: ["devices", user?.id],
+    queryKey: ["devices", effectiveUserId],
     queryFn: async () => {
-      if (!user) return [];
-      const { data, error } = await supabase
-        .from("devices")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: true });
+      if (!effectiveUserId) return [];
       
+      // Supabase Auth 세션이 있으면 직접 쿼리 (RLS 통과)
+      if (user) {
+        const { data, error } = await supabase
+          .from("devices")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: true });
+        if (error) throw error;
+        return data as Device[];
+      }
+      
+      // 시리얼 인증만 있을 때: get-devices Edge Function 사용 (RLS 우회)
+      const { data, error } = await supabase.functions.invoke("get-devices", {
+        body: { user_id: effectiveUserId },
+      });
       if (error) throw error;
-      
-      return data as Device[];
+      return (data?.devices || []) as Device[];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   // 전역 싱글톤 선택 상태 사용
@@ -113,33 +122,34 @@ export const useDevices = () => {
 
   const addDevice = useMutation({
     mutationFn: async (device: Omit<DeviceInsert, "user_id">) => {
-      if (!user) throw new Error("Not authenticated");
-      const { data, error } = await supabase
-        .from("devices")
-        .insert({ ...device, user_id: user.id })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+      if (!effectiveUserId) throw new Error("Not authenticated");
+      if (user) {
+        const { data, error } = await supabase
+          .from("devices")
+          .insert({ ...device, user_id: user.id })
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      }
+      // 시리얼 인증 시 Edge Function 필요 (향후 구현)
+      throw new Error("Device creation requires auth session");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["devices", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
     },
   });
 
   const updateDevice = useMutation({
     mutationFn: async ({ id, ...updates }: { id: string } & Partial<Device>) => {
-      const { data, error } = await supabase
-        .from("devices")
-        .update(updates)
-        .eq("id", id)
-        .select()
-        .single();
+      const { data, error } = await supabase.functions.invoke("update-device", {
+        body: { device_id: id, ...updates },
+      });
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["devices", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
     },
   });
 
@@ -149,22 +159,24 @@ export const useDevices = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["devices", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
     },
   });
 
   const refreshDeviceStatus = async (deviceId?: string) => {
-    if (!user) return;
+    if (!effectiveUserId) return;
     try {
-      const query = supabase.from("devices").select("*").eq("user_id", user.id);
-      if (deviceId) query.eq("id", deviceId);
-      const { data, error } = await query;
+      // Edge Function을 통해 기기 상태 새로고침
+      const { data, error } = await supabase.functions.invoke("get-devices", {
+        body: { user_id: effectiveUserId, device_id: deviceId },
+      });
       if (error) { console.error("[Devices] Refresh error:", error); return; }
-      if (data && data.length > 0) {
-        queryClient.setQueryData(["devices", user.id], (oldDevices: Device[] | undefined) => {
-          if (!oldDevices) return data;
+      const devices = data?.devices || [];
+      if (devices.length > 0) {
+        queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
+          if (!oldDevices) return devices;
           return oldDevices.map((device) => {
-            const updated = data.find((d) => d.id === device.id);
+            const updated = devices.find((d: Device) => d.id === device.id);
             return updated ? { ...device, ...updated } : device;
           });
         });
@@ -176,23 +188,23 @@ export const useDevices = () => {
 
   // ── Realtime 구독: 사용자당 단일 Presence 채널 ──
   useEffect(() => {
-    if (!user) return;
+    if (!effectiveUserId) return;
 
     subscriberCount++;
 
     // 이미 같은 유저로 설정되어 있으면 스킵
-    if (activeUserId === user.id) {
+    if (activeUserId === effectiveUserId) {
       return () => {
         subscriberCount--;
         if (subscriberCount <= 0) cleanupAllChannels();
       };
     }
 
-    if (activeUserId && activeUserId !== user.id) cleanupAllChannels();
-    activeUserId = user.id;
+    if (activeUserId && activeUserId !== effectiveUserId) cleanupAllChannels();
+    activeUserId = effectiveUserId;
 
     // ── DB 변경 감지 채널 ──
-    const dbChannelName = `devices-db-${user.id}`;
+    const dbChannelName = `devices-db-${effectiveUserId}`;
     const existingDbCh = supabase.getChannels().find(ch => ch.topic === `realtime:${dbChannelName}`);
     if (existingDbCh) {
       supabase.removeChannel(existingDbCh);
@@ -200,15 +212,14 @@ export const useDevices = () => {
 
     activeDbChannel = supabase
         .channel(dbChannelName, { config: { broadcast: { self: false } } })
-        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "devices", filter: `user_id=eq.${user.id}` },
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "devices", filter: `user_id=eq.${effectiveUserId}` },
           (payload) => {
             const updatedDevice = payload.new as Device;
-            // 스마트폰 하트비트는 무시 (30초마다 last_seen_at만 바뀌므로 불필요한 리렌더 방지)
             if (updatedDevice.device_type === "smartphone") return;
             if (updatedDevice.status === "online") realtimeConfirmedOnline.add(updatedDevice.id);
             else if (updatedDevice.status === "offline") realtimeConfirmedOnline.delete(updatedDevice.id);
             console.log("[Realtime] Device updated:", { id: updatedDevice.id, status: updatedDevice.status });
-            queryClient.setQueryData(["devices", user.id], (oldDevices: Device[] | undefined) => {
+            queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
               if (!oldDevices) return oldDevices;
               return oldDevices.map((device) =>
                 device.id === updatedDevice.id
@@ -218,17 +229,17 @@ export const useDevices = () => {
             });
           }
         )
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "devices", filter: `user_id=eq.${user.id}` },
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "devices", filter: `user_id=eq.${effectiveUserId}` },
           (payload) => {
-            queryClient.setQueryData(["devices", user.id], (oldDevices: Device[] | undefined) => {
+            queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
               if (!oldDevices) return [payload.new as Device];
               return [...oldDevices, payload.new as Device];
             });
           }
         )
-        .on("postgres_changes", { event: "DELETE", schema: "public", table: "devices", filter: `user_id=eq.${user.id}` },
+        .on("postgres_changes", { event: "DELETE", schema: "public", table: "devices", filter: `user_id=eq.${effectiveUserId}` },
           (payload) => {
-            queryClient.setQueryData(["devices", user.id], (oldDevices: Device[] | undefined) => {
+            queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
               if (!oldDevices) return oldDevices;
               return oldDevices.filter((device) => device.id !== (payload.old as Device).id);
             });
@@ -239,8 +250,7 @@ export const useDevices = () => {
         });
 
     // ── 단일 Presence 채널: user-presence-{userId} ──
-    // 모든 노트북이 이 채널에 join하고 key=deviceId로 track
-    const presenceChannelName = `user-presence-${user.id}`;
+    const presenceChannelName = `user-presence-${effectiveUserId}`;
     const existingPresence = supabase.getChannels().find(ch => ch.topic === `realtime:${presenceChannelName}`);
     if (existingPresence) supabase.removeChannel(existingPresence);
 
@@ -249,7 +259,7 @@ export const useDevices = () => {
     activePresenceChannel
       .on('presence', { event: 'sync' }, () => {
         const state = activePresenceChannel!.presenceState();
-        queryClient.setQueryData(["devices", user.id], (oldDevices: Device[] | undefined) => {
+        queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
           if (!oldDevices) return oldDevices;
           return oldDevices.map((d) => {
             if (d.device_type === "smartphone") return d;
@@ -273,7 +283,6 @@ export const useDevices = () => {
             if (newStatus === 'online') realtimeConfirmedOnline.add(d.id);
             else realtimeConfirmedOnline.delete(d.id);
 
-            // Track is_charging in module-level map (not in DB)
             if (latest.is_charging !== undefined) {
               deviceChargingMap.set(d.id, latest.is_charging);
             }
@@ -300,7 +309,7 @@ export const useDevices = () => {
         if (existingTimer) clearTimeout(existingTimer);
 
         realtimeConfirmedOnline.delete(key);
-        queryClient.setQueryData(["devices", user.id], (oldDevices: Device[] | undefined) => {
+        queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
           if (!oldDevices) return oldDevices;
           return oldDevices.map((d) =>
             d.id === key
@@ -312,26 +321,24 @@ export const useDevices = () => {
 
         const timer = setTimeout(() => {
           activeLeaveTimers.delete(key);
-          supabase
-            .from("devices")
-            .select("status, is_camera_connected, is_network_connected")
-            .eq("id", key)
-            .maybeSingle()
-            .then(({ data }) => {
-              queryClient.setQueryData(["devices", user.id], (oldDevices: Device[] | undefined) => {
-                if (!oldDevices) return oldDevices;
-                return oldDevices.map((d) =>
-                  d.id === key
-                    ? {
-                        ...d,
-                        status: (data?.status ?? 'offline') as Device["status"],
-                        is_network_connected: data?.is_network_connected ?? false,
-                        is_camera_connected: data?.is_camera_connected ?? d.is_camera_connected,
-                      }
-                    : d
-                );
-              });
+          supabase.functions.invoke("get-devices", {
+            body: { user_id: effectiveUserId, device_id: key },
+          }).then(({ data }) => {
+            const device = data?.devices?.[0];
+            queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
+              if (!oldDevices) return oldDevices;
+              return oldDevices.map((d) =>
+                d.id === key
+                  ? {
+                      ...d,
+                      status: (device?.status ?? 'offline') as Device["status"],
+                      is_network_connected: device?.is_network_connected ?? false,
+                      is_camera_connected: device?.is_camera_connected ?? d.is_camera_connected,
+                    }
+                  : d
+              );
             });
+          });
         }, 3000);
         activeLeaveTimers.set(key, timer);
       })
@@ -345,10 +352,9 @@ export const useDevices = () => {
       const name = detail?.name;
       if (name === dbChannelName || name === presenceChannelName) {
         console.log("[useDevices] ♻️ Reconnecting channel:", name);
-        // 전체 채널 재설정을 위해 cleanup 후 재구독 트리거
         cleanupAllChannels();
-        activeUserId = null; // 다음 렌더에서 재구독하도록 리셋
-        queryClient.invalidateQueries({ queryKey: ["devices", user?.id] });
+        activeUserId = null;
+        queryClient.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
       }
     };
     window.addEventListener('channelmanager:reconnect', handleReconnect);
@@ -358,7 +364,7 @@ export const useDevices = () => {
       if (subscriberCount <= 0) cleanupAllChannels();
       window.removeEventListener('channelmanager:reconnect', handleReconnect);
     };
-  }, [user, queryClient]);
+  }, [effectiveUserId, queryClient]);
 
   const getDeviceCharging = useCallback((deviceId: string): boolean => {
     return deviceChargingMap.get(deviceId) ?? false;
