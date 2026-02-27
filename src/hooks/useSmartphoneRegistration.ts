@@ -22,29 +22,32 @@ export function useSmartphoneRegistration() {
     const registerSmartphone = async () => {
       try {
         // 1) 공유 DB (이 프로젝트)에 등록
-        const { data, error } = await supabase.functions.invoke("register-device", {
-          body: {
-            user_id: effectiveUserId,
-            device_name: "My Smartphone",
-            device_type: "smartphone",
-          },
-        });
+        let deviceId: string | undefined;
+        try {
+          const { data, error } = await supabase.functions.invoke("register-device", {
+            body: {
+              user_id: effectiveUserId,
+              device_name: "My Smartphone",
+              device_type: "smartphone",
+            },
+          });
 
-        if (error) {
-          console.error("[SmartphoneReg] Register error:", error);
-          return;
+          if (error) {
+            console.error("[SmartphoneReg] Shared DB register error:", error);
+          } else {
+            deviceId = data?.device_id;
+            const reconnected = data?.reconnected;
+            if (reconnected) {
+              console.log("[SmartphoneReg] Already registered:", deviceId?.slice(0, 8));
+            } else {
+              console.log("[SmartphoneReg] ✅ Smartphone registered:", deviceId?.slice(0, 8));
+            }
+          }
+        } catch (sharedErr) {
+          console.error("[SmartphoneReg] Shared DB error:", sharedErr);
         }
 
-        const deviceId = data?.device_id;
-        const reconnected = data?.reconnected;
-
-        if (reconnected) {
-          console.log("[SmartphoneReg] Already registered:", deviceId?.slice(0, 8));
-        } else {
-          console.log("[SmartphoneReg] ✅ Smartphone registered:", deviceId?.slice(0, 8));
-        }
-
-        // 2) 랩탑 로컬 DB에도 등록 (fire-and-forget)
+        // 2) 랩탑 로컬 DB에도 등록 (독립 실행, fire-and-forget)
         // 랩탑 DB는 device_id(unique) = user_id 패턴 사용, smartphone은 별도 ID 필요
         const smartphoneDeviceId = `${effectiveUserId}-smartphone`;
         fetch(`${LAPTOP_DB_URL}/functions/v1/register-device`, {
