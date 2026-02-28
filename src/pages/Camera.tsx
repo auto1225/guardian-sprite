@@ -103,20 +103,18 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
   }, []);
 
   const waitForBroadcaster = useCallback(async (): Promise<boolean> => {
-    for (let i = 0; i < 30; i++) {
-      if (!isConnectingRef.current) return false;
-      try {
-        // 1차: DB에서 is_camera_connected 확인
-        const { data } = await supabase.functions.invoke("get-devices", {
-          body: { device_id: device.id },
-        });
-        const devices = data?.devices || [];
-        const dev = devices.find((d: { id: string }) => d.id === device.id);
-        if (dev?.is_camera_connected) return true;
-
-        // 2차: 시그널링 테이블에서 broadcaster-ready 또는 offer 확인
-        // (랩탑이 is_camera_connected를 DB에 동기화하지 못해도, 
-        //  시그널링이 있으면 브로드캐스터가 준비된 것)
+    // ★ 최적화: 먼저 DB를 1회 체크하고, 이미 준비되어 있으면 즉시 반환
+    try {
+      const { data } = await supabase.functions.invoke("get-devices", {
+        body: { device_id: device.id },
+      });
+      const dev = (data?.devices || []).find((d: { id: string }) => d.id === device.id);
+      if (dev?.is_camera_connected) {
+        console.log("[Camera] ✅ Broadcaster already ready (DB check)");
+        return true;
+      }
+      // 기기가 온라인이면 시그널링 테이블도 체크
+      if (dev?.status === "online") {
         const { data: sigData } = await supabase
           .from("webrtc_signaling")
           .select("id")
@@ -126,18 +124,28 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
           .order("created_at", { ascending: false })
           .limit(1);
         if (sigData && sigData.length > 0) {
-          console.log("[Camera] ✅ Broadcaster signaling detected, proceeding");
+          console.log("[Camera] ✅ Broadcaster signaling detected");
           return true;
         }
+      }
+    } catch { /* ignore */ }
 
-        // 3차: 기기가 온라인이고 is_streaming_requested가 true면 
-        // 일정 시간(5초) 후 강제 진행 (브로드캐스터가 곧 시작할 것으로 판단)
-        if (i >= 10 && dev?.status === "online" && dev?.is_streaming_requested) {
-          console.log("[Camera] ⏳ Device online & streaming requested, proceeding after wait");
+    // ★ 짧은 폴링: 최대 10회 × 500ms = 5초
+    for (let i = 0; i < 10; i++) {
+      if (!isConnectingRef.current) return false;
+      await new Promise(r => setTimeout(r, 500));
+      try {
+        const { data } = await supabase.functions.invoke("get-devices", {
+          body: { device_id: device.id },
+        });
+        const dev = (data?.devices || []).find((d: { id: string }) => d.id === device.id);
+        if (dev?.is_camera_connected) return true;
+        // 온라인 + 스트리밍 요청됨 → 3초 후 강제 진행
+        if (i >= 5 && dev?.status === "online" && dev?.is_streaming_requested) {
+          console.log("[Camera] ⏳ Device online & streaming requested, proceeding");
           return true;
         }
       } catch { /* ignore */ }
-      await new Promise(r => setTimeout(r, 500));
     }
     return false;
   }, [device.id]);
@@ -182,7 +190,7 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
       return;
     }
 
-    await new Promise(r => setTimeout(r, 1000));
+    // ★ 딜레이 제거 — 즉시 연결 시작
     if (!isConnectingRef.current) return;
 
     setIsWaitingForCamera(false);
