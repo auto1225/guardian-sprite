@@ -3,6 +3,7 @@
  *
  * 채널 구조:
  *   - user-alerts-{userId} 단일 채널로 모든 기기의 경보를 수신
+ *   - 경보 해제는 user-commands-{userId} 채널(통합 명령 프로토콜)로 전송
  *   - 각 노트북은 key=deviceId로 Presence track
  *   - 브로드캐스트 payload에 device_id 포함
  *
@@ -15,6 +16,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { channelManager } from "@/lib/channelManager";
+import { broadcastCommand } from "@/lib/broadcastCommand";
 import {
   addActivityLog,
   getAlertLogs,
@@ -96,14 +98,17 @@ export const useAlerts = (deviceId?: string | null) => {
       console.log("[useAlerts] ⏭ Suppressed, ignoring alert:", alert.id);
       return;
     }
-    // ★ Per-device suppression — 해제된 기기에서 오는 모든 경보 차단
+    // ★ Per-device suppression — 해제 직후 동일 경보의 Presence 잔류 방지
+    // 단, 새로운 경보(다른 ID)는 억제하지 않음
     if (fromDeviceId) {
       const deviceSuppressUntil = deviceSuppressRef.current.get(fromDeviceId);
       if (deviceSuppressUntil && Date.now() < deviceSuppressUntil) {
-        console.log("[useAlerts] ⏭ Device suppressed:", fromDeviceId.slice(0, 8),
-          "for", Math.round((deviceSuppressUntil - Date.now()) / 1000), "s more");
-        Alarm.addDismissed(alert.id);
-        return;
+        // 이미 dismissed된 알림만 억제 — 완전히 새로운 경보는 통과
+        if (Alarm.isDismissed(alert.id) || isAlertIdProcessed(alert.id)) {
+          console.log("[useAlerts] ⏭ Device suppressed (stale alert):", fromDeviceId.slice(0, 8));
+          return;
+        }
+        console.log("[useAlerts] ⚠️ Device suppressed but NEW alert detected, allowing:", alert.id.slice(0, 8));
       }
     }
 
@@ -209,7 +214,7 @@ export const useAlerts = (deviceId?: string | null) => {
     };
   }, [effectiveUserId]);
 
-  // ── 컴퓨터 경보음 원격 해제 ──
+  // ── 컴퓨터 경보음 원격 해제 (통합 명령 채널 사용) ──
   const dismissRemoteAlarm = useCallback(async () => {
     const did = deviceIdRef.current;
     if (!did) throw new Error("No device selected");
@@ -217,56 +222,34 @@ export const useAlerts = (deviceId?: string | null) => {
     const userId = userIdRef.current;
     if (!userId) throw new Error("Login required");
 
-    const channelName = `user-alerts-${userId}`;
     const dismissPayload = {
+      device_id: did,
       dismissed_at: new Date().toISOString(),
       dismissed_by: 'smartphone',
       remote_alarm_off: true,
-      device_id: did, // 대상 기기 지정
     };
 
-    // 메인 채널이 살아있으면 바로 전송
+    // ★ 통합 명령 채널(user-commands)로 전송 — 노트북이 확실히 수신
+    await broadcastCommand({
+      userId,
+      event: "alarm_dismiss",
+      payload: dismissPayload,
+    });
+
+    // ★ user-alerts 채널에도 동시 전송 (하위 호환)
     if (channelRef.current && isSubscribedRef.current) {
-      await channelRef.current.send({
-        type: 'broadcast',
-        event: 'remote_alarm_off',
-        payload: dismissPayload,
-      });
-      console.log("[useAlerts] ✅ Remote alarm off sent (main channel):", dismissPayload.dismissed_at);
-      return;
-    }
-
-    // 메인 채널이 죽었으면 → 새 채널 생성 (self-healing)
-    console.log("[useAlerts] Main channel dead, creating fresh channel");
-    const existingCh = supabase.getChannels().find(
-      ch => ch.topic === `realtime:${channelName}`
-    );
-    if (existingCh) supabase.removeChannel(existingCh);
-
-    const freshChannel = supabase.channel(channelName);
-
-    try {
-      await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error("Channel connection timeout")), 5000);
-        freshChannel.subscribe((status) => {
-          if (status === 'SUBSCRIBED') { clearTimeout(timeout); resolve(); }
-          if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') { clearTimeout(timeout); reject(new Error(status)); }
+      try {
+        await channelRef.current.send({
+          type: 'broadcast',
+          event: 'remote_alarm_off',
+          payload: dismissPayload,
         });
-      });
-
-      await freshChannel.send({
-        type: 'broadcast',
-        event: 'remote_alarm_off',
-        payload: dismissPayload,
-      });
-
-      channelRef.current = freshChannel;
-      isSubscribedRef.current = true;
-      console.log("[useAlerts] ✅ Remote alarm off sent (fresh channel):", dismissPayload.dismissed_at);
-    } catch (err) {
-      supabase.removeChannel(freshChannel);
-      throw err;
+      } catch (err) {
+        console.warn("[useAlerts] user-alerts fallback send failed:", err);
+      }
     }
+
+    console.log("[useAlerts] ✅ Remote alarm off sent via user-commands + user-alerts:", dismissPayload.dismissed_at);
   }, []);
 
   // ── 전체 해제 ──
@@ -286,16 +269,16 @@ export const useAlerts = (deviceId?: string | null) => {
       }
     }
 
-    Alarm.suppressFor(10000);
+    Alarm.suppressFor(5000); // 5초 전역 억제 (Presence 잔류 데이터 방지)
     if (lastAlertDeviceRef.current) {
-      deviceSuppressRef.current.set(lastAlertDeviceRef.current, Date.now() + 120000);
-      console.log("[useAlerts] 🛡️ Device suppressed:", lastAlertDeviceRef.current.slice(0, 8), "for 120s");
+      deviceSuppressRef.current.set(lastAlertDeviceRef.current, Date.now() + 30000); // 30초 기기 억제
+      console.log("[useAlerts] 🛡️ Device suppressed:", lastAlertDeviceRef.current.slice(0, 8), "for 30s");
     }
     safeSetActiveAlert(null);
     activeAlertRef.current = null;
     lastAlertDeviceRef.current = null;
-    loadAlerts(); // 읽음 처리 반영
-    console.log("[useAlerts] ✅ All dismissed (suppress 10s, device 120s)");
+    loadAlerts();
+    console.log("[useAlerts] ✅ All dismissed (suppress 5s, device 30s)");
   }, [safeSetActiveAlert, loadAlerts]);
 
   return {

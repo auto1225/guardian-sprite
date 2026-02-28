@@ -84,6 +84,18 @@
 }
 ```
 
+### 6. `alarm_dismiss`
+컴퓨터 경보음 원격 해제 (📱→💻)
+
+```json
+{
+  "device_id": "uuid",
+  "dismissed_at": "2026-02-28T12:00:00.000Z",
+  "dismissed_by": "smartphone",
+  "remote_alarm_off": true
+}
+```
+
 ---
 
 ## 🔧 구현 가이드
@@ -107,7 +119,6 @@ await broadcastCommand({
 const channel = supabase.channel(`user-commands-${userId}`);
 channel
   .on("broadcast", { event: "monitoring_toggle" }, ({ payload }) => {
-    // payload.device_id로 대상 기기 확인
     handleMonitoringToggle(payload);
   })
   .on("broadcast", { event: "camouflage_toggle" }, ({ payload }) => {
@@ -121,6 +132,10 @@ channel
   })
   .on("broadcast", { event: "message_command" }, ({ payload }) => {
     handleMessageCommand(payload);
+  })
+  .on("broadcast", { event: "alarm_dismiss" }, ({ payload }) => {
+    // ★ 컴퓨터 경보음 해제 — 반드시 구현!
+    handleAlarmDismiss(payload);
   })
   .subscribe();
 ```
