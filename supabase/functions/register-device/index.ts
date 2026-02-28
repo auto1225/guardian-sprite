@@ -26,14 +26,34 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // 같은 user_id + device_type으로 이미 존재하는지 확인 (이름 무관 — 중복 방지)
-    const { data: existing } = await supabaseAdmin
-      .from("devices")
-      .select("id, name, device_type, status")
-      .eq("user_id", user_id)
-      .eq("device_type", device_type || "laptop")
-      .limit(1)
-      .maybeSingle();
+    const effectiveType = device_type || "laptop";
+    // laptop/desktop are treated as the same "computer" group to prevent duplicates
+    const isComputerType = (t: string) => ["laptop", "desktop"].includes(t);
+    const computerTypes = ["laptop", "desktop"];
+
+    // 같은 user_id + device_type 그룹으로 이미 존재하는지 확인 (이름 무관 — 중복 방지)
+    let existing: any = null;
+    if (isComputerType(effectiveType)) {
+      // 컴퓨터 그룹: laptop 또는 desktop 중 하나라도 있으면 재사용
+      const { data } = await supabaseAdmin
+        .from("devices")
+        .select("id, name, device_type, status")
+        .eq("user_id", user_id)
+        .in("device_type", computerTypes)
+        .limit(1)
+        .maybeSingle();
+      existing = data;
+    } else {
+      // smartphone, tablet 등: 정확한 타입 매칭
+      const { data } = await supabaseAdmin
+        .from("devices")
+        .select("id, name, device_type, status")
+        .eq("user_id", user_id)
+        .eq("device_type", effectiveType)
+        .limit(1)
+        .maybeSingle();
+      existing = data;
+    }
 
     if (existing) {
       // 기존 기기 재연결
@@ -61,7 +81,7 @@ Deno.serve(async (req) => {
       .insert({
         user_id,
         name: device_name || "My Device",
-        device_type: device_type || "laptop",
+        device_type: effectiveType,
         status: "online",
         last_seen_at: new Date().toISOString(),
       })
