@@ -44,6 +44,7 @@ const LocationMapModal = ({ isOpen, onClose, deviceId, deviceName }: LocationMap
     if (!isOpen || !deviceId) return;
     const fetchAndRequest = async () => {
       setLoading(true); setError(null); setCommandSent(false);
+      let locationFound = false;
 
       // Edge Function으로 기기 데이터 조회 (RLS 우회)
       try {
@@ -61,6 +62,7 @@ const LocationMapModal = ({ isOpen, onClose, deviceId, deviceName }: LocationMap
             location_updated_at: deviceData.location_updated_at,
             location_source: (meta.location_source as string) || null,
           });
+          locationFound = true;
           setLoading(false);
         }
       } catch (err) {
@@ -75,7 +77,7 @@ const LocationMapModal = ({ isOpen, onClose, deviceId, deviceName }: LocationMap
         console.error("[LocationMap] Failed to send locate request:", err);
       }
 
-      if (loading) { setError(t("location.requestSent")); setLoading(false); }
+      if (!locationFound) { setError(t("location.requestSent")); setLoading(false); }
     };
     fetchAndRequest();
 

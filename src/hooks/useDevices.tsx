@@ -13,6 +13,7 @@ let activeDbChannel: ReturnType<typeof supabase.channel> | null = null;
 let activePresenceChannel: ReturnType<typeof supabase.channel> | null = null;
 const activeLeaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const realtimeConfirmedOnline = new Set<string>();
+const devicePresenceData = new Map<string, { is_network_connected?: boolean; is_camera_connected?: boolean }>();
 const deviceChargingMap = new Map<string, boolean>(); // Presence-only: is_charging per deviceId
 let subscriberCount = 0;
 
@@ -80,8 +81,15 @@ export const useDevices = () => {
       // Presence로 확인된 online 상태를 덮어쓰지 않도록 함
       return dbDevices.map(d => {
         if (d.device_type === "smartphone") return d;
-        if (realtimeConfirmedOnline.has(d.id) && d.status === "offline") {
-          return { ...d, status: "online" as Device["status"], is_network_connected: true };
+        if (realtimeConfirmedOnline.has(d.id)) {
+          const presenceData = devicePresenceData.get(d.id);
+          return {
+            ...d,
+            status: "online" as Device["status"],
+            // Presence 확인된 온라인 기기: 네트워크는 반드시 연결, 카메라는 Presence 데이터 우선
+            is_network_connected: presenceData?.is_network_connected ?? true,
+            is_camera_connected: presenceData?.is_camera_connected ?? d.is_camera_connected,
+          };
         }
         return d;
       });
@@ -318,8 +326,13 @@ export const useDevices = () => {
             if (latest.is_charging !== undefined) {
               deviceChargingMap.set(d.id, latest.is_charging);
             }
+            // Presence 데이터 저장 (DB 재조회 시 덮어쓰기 방지)
+            devicePresenceData.set(d.id, {
+              is_network_connected: latest.is_network_connected,
+              is_camera_connected: latest.is_camera_connected,
+            });
 
-            const hasChanges = d.is_network_connected !== latest.is_network_connected || d.status !== newStatus || (latest.battery_level !== undefined && d.battery_level !== latest.battery_level);
+            const hasChanges = d.is_network_connected !== latest.is_network_connected || d.is_camera_connected !== latest.is_camera_connected || d.status !== newStatus || (latest.battery_level !== undefined && d.battery_level !== latest.battery_level);
             if (!hasChanges) return d;
 
             console.log("[Presence] ✅ Updating:", d.id.slice(0, 8), "←", match.key.slice(0, 8), { status: `${d.status}→${newStatus}` });
