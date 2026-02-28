@@ -43,32 +43,6 @@ const Index = () => {
   const { t } = useTranslation();
   const { effectiveUserId } = useAuth();
 
-  // ── 1회성 경보 데이터 완전 삭제 (배포 후 제거 가능) ──
-  useEffect(() => {
-    const NUKE_KEY = 'meercop_nuke_done_v1';
-    if (localStorage.getItem(NUKE_KEY)) return;
-    console.log("[Index] 🧹 Nuking all alert data...");
-    const keysToRemove: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && (
-        key.startsWith('meercop_activity') ||
-        key.startsWith('meercop_photo') ||
-        key.startsWith('meercop_deleted') ||
-        key.startsWith('meercop_dismissed')
-        // processed IDs와 last_stopped_at은 보존 — Presence 재트리거 방지
-      )) {
-        keysToRemove.push(key);
-      }
-    }
-    keysToRemove.forEach(k => localStorage.removeItem(k));
-    try { indexedDB.deleteDatabase('meercop_photo_alerts'); } catch {}
-    try { indexedDB.deleteDatabase('meercop_alert_videos'); } catch {}
-    // 즉시 suppress 60초 — 새로고침 직후 Presence stale alert 차단
-    localStorage.setItem('meercop_last_stopped_at', String(Date.now()));
-    localStorage.setItem(NUKE_KEY, String(Date.now()));
-    console.log("[Index] ✅ All alert data nuked, removed", keysToRemove.length, "keys");
-  }, []);
 
   // 스마트폰 자동 등록
   useSmartphoneRegistration();
