@@ -32,14 +32,16 @@ import { useLocationResponder } from "@/hooks/useLocationResponder";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useAppStabilizer } from "@/hooks/useAppStabilizer";
 import { useSmartphoneRegistration } from "@/hooks/useSmartphoneRegistration";
+import { useAuth } from "@/hooks/useAuth";
+import { broadcastCommand } from "@/lib/broadcastCommand";
 
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 
 const Index = () => {
   const { t } = useTranslation();
+  const { effectiveUserId } = useAuth();
 
   // ── 1회성 경보 데이터 완전 삭제 (배포 후 제거 가능) ──
   useEffect(() => {
@@ -327,33 +329,13 @@ const Index = () => {
                     : d
                 );
               });
-              const broadcastChannelName = `device-commands-${selectedDevice.id}`;
-              const existingCh = supabase.getChannels().find(ch => ch.topic === `realtime:${broadcastChannelName}`);
-              if (existingCh) supabase.removeChannel(existingCh);
-              
-              const channel = supabase.channel(broadcastChannelName);
-              try {
-                await new Promise<void>((resolve) => {
-                  const timeout = setTimeout(() => { supabase.removeChannel(channel); resolve(); }, 5000);
-                  channel.subscribe((status) => {
-                    if (status === "SUBSCRIBED") {
-                      clearTimeout(timeout);
-                      channel.send({
-                        type: "broadcast",
-                        event: "camouflage_toggle",
-                        payload: { device_id: selectedDevice.id, camouflage_mode: newVal },
-                      }).then(() => {
-                        supabase.removeChannel(channel);
-                        resolve();
-                      });
-                    } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-                      clearTimeout(timeout);
-                      supabase.removeChannel(channel);
-                      resolve();
-                    }
-                  });
+              if (effectiveUserId) {
+                await broadcastCommand({
+                  userId: effectiveUserId,
+                  event: "camouflage_toggle",
+                  payload: { device_id: selectedDevice.id, camouflage_mode: newVal },
                 });
-              } catch { /* best-effort */ }
+              }
 
               toast({
                 title: newVal ? t("camouflage.onTitle") : t("camouflage.offTitle"),

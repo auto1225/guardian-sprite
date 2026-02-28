@@ -86,30 +86,13 @@ export function useSmartphoneRegistration() {
             body: { device_id: laptop.id, updates: { is_monitoring: false } },
           });
 
-          const broadcastChannelName = `device-commands-${laptop.id}`;
-          const existingCh = supabase.getChannels().find(ch => ch.topic === `realtime:${broadcastChannelName}`);
-          if (existingCh) supabase.removeChannel(existingCh);
-          
-          const channel = supabase.channel(broadcastChannelName);
-          try {
-            await new Promise<void>((resolve) => {
-              const timeout = setTimeout(() => { supabase.removeChannel(channel); resolve(); }, 3000);
-              channel.subscribe((status) => {
-                if (status === "SUBSCRIBED") {
-                  clearTimeout(timeout);
-                  channel.send({
-                    type: "broadcast",
-                    event: "monitoring_toggle",
-                    payload: { device_id: laptop.id, is_monitoring: false },
-                  }).then(() => { supabase.removeChannel(channel); resolve(); });
-                } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-                  clearTimeout(timeout);
-                  supabase.removeChannel(channel);
-                  resolve();
-                }
-              });
-            });
-          } catch { /* best-effort */ }
+          const { broadcastCommand } = await import("@/lib/broadcastCommand");
+          await broadcastCommand({
+            userId: effectiveUserId,
+            event: "monitoring_toggle",
+            payload: { device_id: laptop.id, is_monitoring: false },
+            timeoutMs: 3000,
+          });
         }
 
         console.log("[SmartphoneReg] ♻️ Reset ALL devices monitoring to OFF on app start");

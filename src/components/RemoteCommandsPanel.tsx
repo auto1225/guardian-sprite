@@ -4,7 +4,7 @@ import { ArrowLeft, Lock, MessageSquare, Send, Loader2 } from "lucide-react";
 import { useCommands } from "@/hooks/useCommands";
 import { useToast } from "@/hooks/use-toast";
 import { Database } from "@/integrations/supabase/types";
-import { supabase } from "@/integrations/supabase/client";
+import { broadcastCommand } from "@/lib/broadcastCommand";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 
@@ -16,7 +16,7 @@ interface RemoteCommandsPanelProps {
 
 const RemoteCommandsPanel = forwardRef<HTMLDivElement, RemoteCommandsPanelProps>(({ isOpen, onClose, device }, ref) => {
   const { t } = useTranslation();
-  const { lockDevice, sendMessage } = useCommands();
+  const { lockDevice, sendMessage, effectiveUserId } = useCommands();
   const { toast } = useToast();
   const [message, setMessage] = useState("");
   const [lockLoading, setLockLoading] = useState(false);
@@ -28,32 +28,13 @@ const RemoteCommandsPanel = forwardRef<HTMLDivElement, RemoteCommandsPanelProps>
     setLockLoading(true);
     try {
       await lockDevice(device.id);
-      // Also broadcast for RLS-free laptop reception
-      // CRITICAL: Channel name must match what the laptop subscribes to
-      const broadcastChannelName = `device-commands-${device.id}`;
-      const existingCh = supabase.getChannels().find(ch => ch.topic === `realtime:${broadcastChannelName}`);
-      if (existingCh) supabase.removeChannel(existingCh);
-      
-      const channel = supabase.channel(broadcastChannelName);
-      try {
-        await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => { supabase.removeChannel(channel); resolve(); }, 5000);
-          channel.subscribe((status) => {
-            if (status === "SUBSCRIBED") {
-              clearTimeout(timeout);
-              channel.send({
-                type: "broadcast",
-                event: "lock_command",
-                payload: { device_id: device.id },
-              }).then(() => { supabase.removeChannel(channel); resolve(); });
-            } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-              clearTimeout(timeout);
-              supabase.removeChannel(channel);
-              resolve(); // DB command already sent, broadcast is best-effort
-            }
-          });
+      if (effectiveUserId) {
+        await broadcastCommand({
+          userId: effectiveUserId,
+          event: "lock_command",
+          payload: { device_id: device.id },
         });
-      } catch { /* broadcast is best-effort */ }
+      }
       toast({ title: t("commands.lockSent"), description: t("commands.lockSentDesc") });
     } catch {
       toast({ title: t("common.error"), description: t("commands.lockFailed"), variant: "destructive" });
@@ -67,31 +48,13 @@ const RemoteCommandsPanel = forwardRef<HTMLDivElement, RemoteCommandsPanelProps>
     setMessageLoading(true);
     try {
       await sendMessage(device.id, message.trim());
-      // Also broadcast for RLS-free laptop reception
-      const broadcastChannelName = `device-commands-${device.id}`;
-      const existingCh = supabase.getChannels().find(ch => ch.topic === `realtime:${broadcastChannelName}`);
-      if (existingCh) supabase.removeChannel(existingCh);
-      
-      const channel = supabase.channel(broadcastChannelName);
-      try {
-        await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => { supabase.removeChannel(channel); resolve(); }, 5000);
-          channel.subscribe((status) => {
-            if (status === "SUBSCRIBED") {
-              clearTimeout(timeout);
-              channel.send({
-                type: "broadcast",
-                event: "message_command",
-                payload: { device_id: device.id, message: message.trim() },
-              }).then(() => { supabase.removeChannel(channel); resolve(); });
-            } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-              clearTimeout(timeout);
-              supabase.removeChannel(channel);
-              resolve();
-            }
-          });
+      if (effectiveUserId) {
+        await broadcastCommand({
+          userId: effectiveUserId,
+          event: "message_command",
+          payload: { device_id: device.id, message: message.trim() },
         });
-      } catch { /* broadcast is best-effort */ }
+      }
       toast({ title: t("commands.messageSent"), description: t("commands.messageSentDesc") });
       setMessage("");
     } catch {
