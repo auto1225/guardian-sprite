@@ -1,0 +1,1 @@
+DELETE FROM devices WHERE id = 'c4b186b0-30e0-4e12-a61f-e86ba191c344';
