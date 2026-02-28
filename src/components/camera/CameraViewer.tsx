@@ -302,10 +302,49 @@ const CameraViewer = ({
     });
   }, []);
 
-  const showConnecting = isConnecting && !isConnected && !remoteStream;
+  // ★ 비디오가 실제 데이터를 수신했는지 추적
+  const [hasVideoData, setHasVideoData] = useState(false);
+  
+  useEffect(() => {
+    if (!remoteStream) { setHasVideoData(false); return; }
+    const videoTrack = remoteStream.getVideoTracks()[0];
+    if (!videoTrack) { setHasVideoData(false); return; }
+    
+    // 이미 unmuted이고 readyState가 live면 데이터가 있을 수 있음
+    if (!videoTrack.muted) {
+      // video element의 readyState로 판단
+      const checkVideo = () => {
+        const v = videoRef.current;
+        if (v && v.readyState >= 2 && v.videoWidth > 0) {
+          setHasVideoData(true);
+        }
+      };
+      checkVideo();
+      const interval = setInterval(checkVideo, 200);
+      return () => clearInterval(interval);
+    }
+    
+    // muted 트랙: unmute 이벤트 대기
+    const onUnmute = () => {
+      console.log("[CameraViewer] 🎬 Video track unmuted, waiting for frames...");
+      const interval = setInterval(() => {
+        const v = videoRef.current;
+        if (v && v.readyState >= 2 && v.videoWidth > 0) {
+          setHasVideoData(true);
+          clearInterval(interval);
+        }
+      }, 200);
+      // 10초 후 정리
+      setTimeout(() => clearInterval(interval), 10000);
+    };
+    videoTrack.addEventListener("unmute", onUnmute);
+    return () => videoTrack.removeEventListener("unmute", onUnmute);
+  }, [remoteStream]);
+
+  const showConnecting = (isConnecting && !isConnected && !remoteStream) || (!!remoteStream && !hasVideoData && !error);
   const showError = !!error && !isConnected && !remoteStream;
-  const showVideo = !!remoteStream;
-  const showWaiting = !showConnecting && !showError && !showVideo;
+  const showVideo = !!remoteStream && hasVideoData;
+  const showWaiting = !showConnecting && !showError && !showVideo && !remoteStream;
   const showDisconnectOverlay = showVideo && !isConnected && !isConnecting;
 
   return (
@@ -370,7 +409,7 @@ const CameraViewer = ({
         </div>
       )}
 
-      {/* ★ 터치하여 재생: 비디오 스트림은 있지만 재생되지 않을 때 — 자동으로도 play 시도 */}
+      {/* ★ 터치하여 재생: 비디오 데이터가 있지만 재생되지 않을 때 */}
       {showVideo && !isVideoPlaying && isConnected && (
         <TapToPlayOverlay onPlay={handlePlayClick} />
       )}
