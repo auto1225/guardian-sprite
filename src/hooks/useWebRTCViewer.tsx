@@ -134,49 +134,33 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       bundlePolicy: "max-bundle",
     });
 
-    // ★ 오디오/비디오 수신용 트랜시버 명시적 추가
-    pc.addTransceiver("audio", { direction: "recvonly" });
-    pc.addTransceiver("video", { direction: "recvonly" });
-    console.log("[WebRTC Viewer] ✅ Added audio+video transceivers (recvonly)");
+    // ★ 오디오/비디오 수신용 트랜시버는 추가하지 않음
+    // offer의 m-line이 자동으로 트랜시버를 생성하므로 수동 추가 시 더미 리시버가 중복 생성됨
 
-    // ★ ontrack: PC receivers에서 새 MediaStream 생성
+    // ★ ontrack: 실제로 수신된 트랙만 수집하여 MediaStream 생성
     let pendingStreamUpdate: NodeJS.Timeout | null = null;
-    let receivedTrackKinds = new Set<string>();
+    const receivedTracks = new Map<string, MediaStreamTrack>(); // kind → best track
 
     pc.ontrack = (event) => {
       console.log("[WebRTC Viewer] ✅ Received remote track:", event.track.kind, "readyState:", event.track.readyState, "muted:", event.track.muted);
       
       const track = event.track;
-      receivedTrackKinds.add(track.kind);
+
+      // kind별로 unmuted 트랙 우선 저장
+      const existing = receivedTracks.get(track.kind);
+      if (!existing || (existing.muted && !track.muted)) {
+        receivedTracks.set(track.kind, track);
+      }
 
       const commitStream = () => {
-        const currentPc = peerConnectionRef.current;
-        if (!currentPc) return;
-        const allTracks: MediaStreamTrack[] = [];
-        currentPc.getReceivers().forEach(r => {
-          if (r.track && r.track.readyState !== "ended") {
-            allTracks.push(r.track);
-          }
-        });
-        if (allTracks.length === 0) {
-          console.warn("[WebRTC Viewer] ⚠️ No tracks from receivers, skipping commit");
+        const bestTracks = Array.from(receivedTracks.values()).filter(t => t.readyState !== "ended");
+        if (bestTracks.length === 0) {
+          console.warn("[WebRTC Viewer] ⚠️ No live tracks, skipping commit");
           return;
         }
 
-        // ★ FIX: 트랙 중복 제거 — kind별로 unmuted 우선, 1개씩만 선택
-        const bestTracks: MediaStreamTrack[] = [];
-        const tracksByKind = new Map<string, MediaStreamTrack[]>();
-        allTracks.forEach(t => {
-          const arr = tracksByKind.get(t.kind) || [];
-          arr.push(t);
-          tracksByKind.set(t.kind, arr);
-        });
-        tracksByKind.forEach((tracks, kind) => {
-          // unmuted 트랙 우선 선택
-          const unmuted = tracks.find(t => !t.muted);
-          const selected = unmuted || tracks[0];
-          console.log(`[WebRTC Viewer] ✅ Selected ${kind} track: id=${selected.id.substring(0,8)} muted=${selected.muted} (from ${tracks.length} candidates)`);
-          bestTracks.push(selected);
+        bestTracks.forEach(t => {
+          console.log(`[WebRTC Viewer] ✅ Using ${t.kind} track: id=${t.id.substring(0,8)} muted=${t.muted}`);
         });
 
         setRemoteStream(prev => {
@@ -223,6 +207,8 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         const onUnmute = () => {
           console.log(`[WebRTC Viewer] ✅ ${track.kind} track unmuted`);
           track.removeEventListener("unmute", onUnmute);
+          // ★ unmute된 트랙으로 교체 후 커밋
+          receivedTracks.set(track.kind, track);
           scheduleUpdate();
         };
         track.addEventListener("unmute", onUnmute);
@@ -232,7 +218,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
             track.removeEventListener("unmute", onUnmute);
             scheduleUpdate();
           }
-        }, 800); // ★ 2000ms → 800ms: 뮤트 트랙 대기 시간 단축
+        }, 800);
       } else {
         scheduleUpdate();
       }
