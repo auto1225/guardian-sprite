@@ -134,20 +134,24 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
     // 에러 상태 초기화
     setError(null);
 
-    // 카메라 미연결 시 최신 DB 상태 확인 (Edge Function으로 RLS 우회)
-    try {
-      const { data: deviceData } = await supabase.functions.invoke("get-devices", {
-        body: { device_id: device.id },
-      });
-      const latestDevice = deviceData?.devices?.[0];
-      if (!latestDevice?.is_camera_connected) {
+    // 카메라 연결 확인: Presence(로컬 상태) 우선, DB는 폴백
+    // device.is_camera_connected는 Presence에 의해 이미 업데이트된 상태일 수 있음
+    if (!device.is_camera_connected) {
+      // Presence에서 카메라 미연결 → DB에서 한번 더 확인
+      try {
+        const { data: deviceData } = await supabase.functions.invoke("get-devices", {
+          body: { device_id: device.id },
+        });
+        const latestDevice = deviceData?.devices?.[0];
+        if (!latestDevice?.is_camera_connected) {
+          setError(t("camera.cameraNotRecognized", { name: device.name }));
+          return;
+        }
+      } catch (err) {
+        console.error("[Camera] Failed to check camera status:", err);
         setError(t("camera.cameraNotRecognized", { name: device.name }));
         return;
       }
-    } catch (err) {
-      console.error("[Camera] Failed to check camera status:", err);
-      setError(t("camera.cameraNotRecognized", { name: device.name }));
-      return;
     }
 
     isConnectingRef.current = true;
