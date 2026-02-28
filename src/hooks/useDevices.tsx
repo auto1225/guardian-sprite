@@ -361,6 +361,7 @@ export const useDevices = () => {
         if (isDirectMatch) {
           // 직접 매칭: 즉시 offline 처리
           realtimeConfirmedOnline.delete(key);
+          devicePresenceData.delete(key);
           queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
             if (!oldDevices) return oldDevices;
             return oldDevices.map((d) =>
@@ -371,9 +372,7 @@ export const useDevices = () => {
           });
           console.log("[Presence] 🔴 Device left (direct):", key.slice(0, 8), "→ offline");
         } else {
-          // 크로스 DB 매칭: 즉시 offline 처리하지 않음 (깜빡임 방지)
-          // 타이머 후에도 Presence에 없으면 offline 처리
-          console.log("[Presence] ⏳ Device left (cross-DB):", key.slice(0, 8), "→ waiting 5s before offline");
+          console.log("[Presence] ⏳ Device left (cross-DB):", key.slice(0, 8), "→ waiting 8s before offline");
         }
 
         const timer = setTimeout(() => {
@@ -382,18 +381,30 @@ export const useDevices = () => {
           const state = activePresenceChannel?.presenceState() || {};
           const stillPresent = Object.keys(state).includes(key);
           if (!stillPresent) {
-            // 크로스 DB 매칭된 기기도 이제 offline 처리
             if (!isDirectMatch) {
-              // realtimeConfirmedOnline에서 관련 기기 제거
-              currentDevices?.forEach(d => {
-                if (d.device_type !== "smartphone" && d.status === "online") {
-                  realtimeConfirmedOnline.delete(d.id);
-                }
-              });
+              // 크로스 DB 매칭: 해당 키에 매칭된 기기만 offline 처리 (모든 기기를 제거하지 않음)
+              // Presence에 남아있는 다른 키가 있는지 확인
+              const remainingPresenceKeys = Object.keys(state);
+              const knownDeviceIds = new Set(currentDevices?.map(d => d.id) || []);
+              
+              // 현재 Presence에 아무 항목도 없는 경우에만 해당 랩탑을 offline으로 전환
+              const hasAnyLaptopPresence = remainingPresenceKeys.some(k => 
+                !knownDeviceIds.has(k) || currentDevices?.some(d => d.id === k && d.device_type !== 'smartphone')
+              );
+              
+              if (!hasAnyLaptopPresence) {
+                // 랩탑 Presence가 완전히 사라짐 → 해당 랩탑만 offline
+                currentDevices?.forEach(d => {
+                  if (d.device_type !== "smartphone") {
+                    realtimeConfirmedOnline.delete(d.id);
+                    devicePresenceData.delete(d.id);
+                  }
+                });
+              }
             }
             queryClient.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
           }
-        }, isDirectMatch ? 3000 : 5000);
+        }, isDirectMatch ? 3000 : 8000);
         activeLeaveTimers.set(key, timer);
       })
       .subscribe((status) => {
