@@ -134,14 +134,62 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       bundlePolicy: "max-bundle",
     });
 
-    // ★ 오디오/비디오 수신용 트랜시버 추가 (answer SDP에 m-line 포함 보장)
-    pc.addTransceiver("audio", { direction: "recvonly" });
-    pc.addTransceiver("video", { direction: "recvonly" });
-    console.log("[WebRTC Viewer] ✅ Added audio+video transceivers (recvonly)");
+    // ★ 트랜시버를 미리 추가하지 않음 — offer의 m-line이 자동으로 트랜시버를 생성
+    // 이렇게 하면 offer의 sendrecv m-line에 대응하는 recvonly 트랜시버가 정확히 매칭됨
+    console.log("[WebRTC Viewer] ✅ PC created (no pre-added transceivers)");
 
     // ★ ontrack: 실제로 수신된 트랙만 수집하여 MediaStream 생성
     let pendingStreamUpdate: NodeJS.Timeout | null = null;
     const receivedTracks = new Map<string, MediaStreamTrack>(); // kind → best track
+
+    const commitStream = () => {
+      const bestTracks = Array.from(receivedTracks.values()).filter(t => t.readyState !== "ended");
+      if (bestTracks.length === 0) {
+        console.warn("[WebRTC Viewer] ⚠️ No live tracks, skipping commit");
+        return;
+      }
+
+      bestTracks.forEach(t => {
+        console.log(`[WebRTC Viewer] ✅ Using ${t.kind} track: id=${t.id.substring(0,8)} muted=${t.muted}`);
+      });
+
+      setRemoteStream(prev => {
+        if (prev) {
+          const prevIds = prev.getTracks().map(t => t.id).sort().join(",");
+          const newIds = bestTracks.map(t => t.id).sort().join(",");
+          if (prevIds === newIds) {
+            console.log("[WebRTC Viewer] ⏭️ Same tracks, skipping stream update");
+            return prev;
+          }
+        }
+        const freshStream = new MediaStream(bestTracks);
+        console.log("[WebRTC Viewer] 📹 Committing fresh stream with", freshStream.getTracks().length, "tracks",
+          freshStream.getTracks().map(t => `${t.kind}:${t.readyState}:muted=${t.muted}`).join(", "));
+        return freshStream;
+      });
+
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+        connectionTimeoutRef.current = null;
+      }
+      
+      if (offerPollingRef.current) {
+        clearInterval(offerPollingRef.current);
+        offerPollingRef.current = null;
+      }
+      
+      isConnectedRef.current = true;
+      isConnectingRef.current = false;
+      setIsConnected(true);
+      setIsConnecting(false);
+    };
+
+    const scheduleUpdate = () => {
+      if (pendingStreamUpdate) clearTimeout(pendingStreamUpdate);
+      pendingStreamUpdate = setTimeout(() => {
+        commitStream();
+      }, 150);
+    };
 
     pc.ontrack = (event) => {
       console.log("[WebRTC Viewer] ✅ Received remote track:", event.track.kind, "readyState:", event.track.readyState, "muted:", event.track.muted, "id:", event.track.id.substring(0,8));
@@ -153,65 +201,11 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       if (!existing) {
         receivedTracks.set(track.kind, track);
       } else if (existing.muted && !track.muted) {
-        // 기존이 muted이고 새것이 unmuted → 교체
         console.log(`[WebRTC Viewer] 🔄 Replacing muted ${track.kind} track with unmuted one`);
         receivedTracks.set(track.kind, track);
-      } else if (!existing.muted && track.muted) {
-        // 기존이 unmuted → 유지 (새 muted 트랙 무시)
-        console.log(`[WebRTC Viewer] ⏭️ Ignoring muted ${track.kind} track, keeping unmuted one`);
       }
 
-      const commitStream = () => {
-        const bestTracks = Array.from(receivedTracks.values()).filter(t => t.readyState !== "ended");
-        if (bestTracks.length === 0) {
-          console.warn("[WebRTC Viewer] ⚠️ No live tracks, skipping commit");
-          return;
-        }
-
-        bestTracks.forEach(t => {
-          console.log(`[WebRTC Viewer] ✅ Using ${t.kind} track: id=${t.id.substring(0,8)} muted=${t.muted}`);
-        });
-
-        setRemoteStream(prev => {
-          if (prev) {
-            const prevIds = prev.getTracks().map(t => t.id).sort().join(",");
-            const newIds = bestTracks.map(t => t.id).sort().join(",");
-            if (prevIds === newIds) {
-              console.log("[WebRTC Viewer] ⏭️ Same tracks, skipping stream update");
-              return prev;
-            }
-          }
-          const freshStream = new MediaStream(bestTracks);
-          console.log("[WebRTC Viewer] 📹 Committing fresh stream with", freshStream.getTracks().length, "tracks",
-            freshStream.getTracks().map(t => `${t.kind}:${t.readyState}:muted=${t.muted}`).join(", "));
-          return freshStream;
-        });
-
-        if (connectionTimeoutRef.current) {
-          clearTimeout(connectionTimeoutRef.current);
-          connectionTimeoutRef.current = null;
-        }
-        
-        // ★ offer 폴링 중지 — 연결 성공
-        if (offerPollingRef.current) {
-          clearInterval(offerPollingRef.current);
-          offerPollingRef.current = null;
-        }
-        
-        isConnectedRef.current = true;
-        isConnectingRef.current = false;
-        setIsConnected(true);
-        setIsConnecting(false);
-      };
-
-      const scheduleUpdate = () => {
-        if (pendingStreamUpdate) clearTimeout(pendingStreamUpdate);
-        pendingStreamUpdate = setTimeout(() => {
-          commitStream();
-        }, 150); // ★ 500ms → 150ms: 트랙 커밋 속도 개선
-      };
-
-      // ★ unmute 리스너는 항상 등록 (force commit 후에도 유지)
+      // ★ unmute 리스너
       const onUnmute = () => {
         console.log(`[WebRTC Viewer] ✅ ${track.kind} track unmuted (id=${track.id.substring(0,8)})`);
         track.removeEventListener("unmute", onUnmute);
@@ -222,16 +216,15 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       if (track.muted) {
         console.log(`[WebRTC Viewer] ⏳ ${track.kind} track is muted, waiting for unmute...`);
         track.addEventListener("unmute", onUnmute);
-        // Force commit after timeout BUT keep unmute listener alive
+        // Force commit after timeout
         setTimeout(() => {
           if (track.readyState !== "ended") {
             console.log(`[WebRTC Viewer] ⏰ Force commit for ${track.kind} (muted=${track.muted})`);
-            // ★ unmute 리스너는 제거하지 않음! 나중에 unmute되면 스트림 갱신
             scheduleUpdate();
           }
         }, 800);
       } else {
-        track.addEventListener("unmute", onUnmute); // 이미 unmuted여도 리스너 등록 (재mute 대비)
+        track.addEventListener("unmute", onUnmute);
         scheduleUpdate();
       }
       
@@ -255,7 +248,6 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
           clearTimeout(connectionTimeoutRef.current);
           connectionTimeoutRef.current = null;
         }
-        // ★ offer 폴링 중지
         if (offerPollingRef.current) {
           clearInterval(offerPollingRef.current);
           offerPollingRef.current = null;
@@ -267,13 +259,54 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         connectionSucceededAtRef.current = Date.now();
         setIsConnected(true);
         setIsConnecting(false);
+
+        // ★ 연결 후 2초 뒤 receiver 진단 + 트랙 재수집
+        setTimeout(() => {
+          if (pc.connectionState !== "connected") return;
+          const receivers = pc.getReceivers();
+          console.log("[WebRTC Viewer] 🔍 Receiver diagnostics:", receivers.map(r => ({
+            kind: r.track?.kind,
+            muted: r.track?.muted,
+            readyState: r.track?.readyState,
+            id: r.track?.id?.substring(0, 8),
+          })));
+          
+          // 비디오 트랙이 여전히 muted면 receiver에서 직접 가져와서 스트림 재구성
+          const videoReceiver = receivers.find(r => r.track?.kind === "video");
+          const audioReceiver = receivers.find(r => r.track?.kind === "audio");
+          
+          if (videoReceiver?.track && videoReceiver.track.readyState === "live") {
+            const currentVideo = receivedTracks.get("video");
+            if (!currentVideo || currentVideo.muted) {
+              console.log("[WebRTC Viewer] 🔄 Re-collecting video track from receiver");
+              receivedTracks.set("video", videoReceiver.track);
+              
+              // unmute 리스너도 재등록
+              const onLateUnmute = () => {
+                console.log("[WebRTC Viewer] ✅ Late video unmute detected!");
+                videoReceiver.track!.removeEventListener("unmute", onLateUnmute);
+                receivedTracks.set("video", videoReceiver.track!);
+                commitStream();
+              };
+              videoReceiver.track.addEventListener("unmute", onLateUnmute);
+            }
+            if (audioReceiver?.track) {
+              receivedTracks.set("audio", audioReceiver.track);
+            }
+            // 강제 스트림 재구성
+            const allTracks = Array.from(receivedTracks.values()).filter(t => t.readyState !== "ended");
+            const freshStream = new MediaStream(allTracks);
+            console.log("[WebRTC Viewer] 📹 Force rebuilding stream from receivers:", 
+              allTracks.map(t => `${t.kind}:${t.readyState}:muted=${t.muted}`).join(", "));
+            setRemoteStream(freshStream);
+          }
+        }, 2000);
       } else if (pc.connectionState === "disconnected") {
         console.log("[WebRTC Viewer] ⚠️ Connection disconnected, waiting 10s for recovery...");
         isConnectedRef.current = false;
         isConnectingRef.current = false;
         setIsConnected(false);
         setIsConnecting(false);
-        // ★ 브로드캐스터와 동일: 10초 grace period 후 재연결
         setTimeout(() => {
           if (peerConnectionRef.current?.connectionState === "disconnected") {
             console.log("[WebRTC Viewer] Connection did not recover after 10s, reconnecting...");
