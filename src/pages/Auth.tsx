@@ -183,6 +183,8 @@ const Auth = () => {
       };
       localStorage.setItem(SERIAL_STORAGE_KEY, serialKey);
       localStorage.setItem(SERIAL_DATA_KEY, JSON.stringify(sessionData));
+      // 같은 탭에서 useAuth가 감지하도록 storage 이벤트 수동 발생
+      window.dispatchEvent(new Event("storage"));
 
       toast({ title: t("auth.loginSuccess"), description: t("auth.loginSuccessDesc") });
 
