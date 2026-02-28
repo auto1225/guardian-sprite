@@ -204,6 +204,56 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         connectionSucceededAtRef.current = Date.now();
         setIsConnected(true);
         setIsConnecting(false);
+
+        // ★ 진단: getStats()로 비디오 RTP 수신 여부 확인
+        let diagCount = 0;
+        const diagInterval = setInterval(async () => {
+          diagCount++;
+          if (diagCount > 10 || !peerConnectionRef.current) {
+            clearInterval(diagInterval);
+            return;
+          }
+          try {
+            const stats = await pc.getStats();
+            stats.forEach((report) => {
+              if (report.type === "inbound-rtp" && report.kind === "video") {
+                console.log(`[WebRTC Diag ${diagCount}] 📊 Video RTP:`, {
+                  bytesReceived: report.bytesReceived,
+                  packetsReceived: report.packetsReceived,
+                  packetsLost: report.packetsLost,
+                  framesReceived: report.framesReceived,
+                  framesDecoded: report.framesDecoded,
+                  framesDropped: report.framesDropped,
+                  jitter: report.jitter,
+                  codecId: report.codecId,
+                });
+                if (diagCount >= 3 && report.bytesReceived === 0) {
+                  console.error("[WebRTC Diag] ❌ 비디오 RTP 바이트 0 — 브로드캐스터가 비디오를 전송하지 않고 있음!");
+                  console.error("[WebRTC Diag] 💡 노트북 앱에서 카메라가 정상 작동 중인지, getUserMedia에 video:true가 포함되어 있는지 확인하세요.");
+                }
+              }
+              if (report.type === "inbound-rtp" && report.kind === "audio") {
+                console.log(`[WebRTC Diag ${diagCount}] 🔊 Audio RTP:`, {
+                  bytesReceived: report.bytesReceived,
+                  packetsReceived: report.packetsReceived,
+                });
+              }
+            });
+            // ★ 수신기 트랙 상태 진단
+            const receivers = pc.getReceivers();
+            receivers.forEach((r, i) => {
+              console.log(`[WebRTC Diag ${diagCount}] Receiver[${i}]:`, {
+                kind: r.track.kind,
+                readyState: r.track.readyState,
+                muted: r.track.muted,
+                enabled: r.track.enabled,
+                id: r.track.id,
+              });
+            });
+          } catch (e) {
+            console.warn("[WebRTC Diag] Stats error:", e);
+          }
+        }, 2000);
       } else if (pc.connectionState === "disconnected") {
         console.log("[WebRTC Viewer] ⚠️ Connection disconnected, waiting 10s for recovery...");
         isConnectedRef.current = false;
