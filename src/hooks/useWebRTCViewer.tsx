@@ -134,22 +134,31 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       bundlePolicy: "max-bundle",
     });
 
-    // ★ 오디오/비디오 수신용 트랜시버는 추가하지 않음
-    // offer의 m-line이 자동으로 트랜시버를 생성하므로 수동 추가 시 더미 리시버가 중복 생성됨
+    // ★ 오디오/비디오 수신용 트랜시버 추가 (answer SDP에 m-line 포함 보장)
+    pc.addTransceiver("audio", { direction: "recvonly" });
+    pc.addTransceiver("video", { direction: "recvonly" });
+    console.log("[WebRTC Viewer] ✅ Added audio+video transceivers (recvonly)");
 
     // ★ ontrack: 실제로 수신된 트랙만 수집하여 MediaStream 생성
     let pendingStreamUpdate: NodeJS.Timeout | null = null;
     const receivedTracks = new Map<string, MediaStreamTrack>(); // kind → best track
 
     pc.ontrack = (event) => {
-      console.log("[WebRTC Viewer] ✅ Received remote track:", event.track.kind, "readyState:", event.track.readyState, "muted:", event.track.muted);
+      console.log("[WebRTC Viewer] ✅ Received remote track:", event.track.kind, "readyState:", event.track.readyState, "muted:", event.track.muted, "id:", event.track.id.substring(0,8));
       
       const track = event.track;
 
-      // kind별로 unmuted 트랙 우선 저장
+      // kind별로 unmuted 트랙 우선 저장, 또는 첫 트랙
       const existing = receivedTracks.get(track.kind);
-      if (!existing || (existing.muted && !track.muted)) {
+      if (!existing) {
         receivedTracks.set(track.kind, track);
+      } else if (existing.muted && !track.muted) {
+        // 기존이 muted이고 새것이 unmuted → 교체
+        console.log(`[WebRTC Viewer] 🔄 Replacing muted ${track.kind} track with unmuted one`);
+        receivedTracks.set(track.kind, track);
+      } else if (!existing.muted && track.muted) {
+        // 기존이 unmuted → 유지 (새 muted 트랙 무시)
+        console.log(`[WebRTC Viewer] ⏭️ Ignoring muted ${track.kind} track, keeping unmuted one`);
       }
 
       const commitStream = () => {
