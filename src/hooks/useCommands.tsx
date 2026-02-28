@@ -40,11 +40,10 @@ export const useCommands = () => {
   const toggleMonitoring = async (deviceId: string, enable: boolean) => {
     console.log("[useCommands] toggleMonitoring called:", deviceId, "enable:", enable);
     
-    // Update device monitoring status in DB
-    const { error } = await supabase
-      .from("devices")
-      .update({ is_monitoring: enable })
-      .eq("id", deviceId);
+    // Update device monitoring status in DB (Edge Function으로 RLS 우회)
+    const { error } = await supabase.functions.invoke("update-device", {
+      body: { device_id: deviceId, is_monitoring: enable },
+    });
     
     if (error) {
       console.error("[useCommands] toggleMonitoring error:", error);
