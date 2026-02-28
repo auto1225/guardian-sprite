@@ -158,12 +158,11 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
     // 에러 상태 초기화
     setError(null);
 
-    // 카메라 연결 확인: 기기가 온라인이면 스트리밍 시도 (카메라 체크는 waitForBroadcaster에서 수행)
-    // DB의 is_camera_connected는 랩탑이 동기화하지 않아 항상 false일 수 있으므로
-    // 기기가 오프라인인 경우에만 차단
+    // 카메라 연결 확인: Presence 상태가 stale할 수 있으므로 즉시 차단하지 않고
+    // waitForBroadcaster에서 DB + 시그널링으로 다시 확인.
+    // 완전히 오프라인이고 카메라도 없는 경우에만 경고 표시 (차단하지 않음)
     if (device.status === "offline" && !device.is_camera_connected) {
-      setError(t("camera.cameraNotRecognized", { name: device.name }));
-      return;
+      console.log("[Camera] ⚠️ Device appears offline, but will try streaming anyway");
     }
 
     isConnectingRef.current = true;
