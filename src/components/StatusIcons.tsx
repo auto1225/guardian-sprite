@@ -48,7 +48,8 @@ const StatusIcons = ({ device, onIconClick }: StatusIconsProps) => {
   const { t } = useTranslation();
   const isOnline = !!device && device.status !== "offline";
   const batteryLevel = device?.battery_level ?? undefined;
-  const isNetworkConnected = !!device && (device.is_network_connected ?? false);
+  // 온라인이면 네트워크는 반드시 연결된 상태 (네트워크 없이 온라인 불가)
+  const isNetworkConnected = isOnline || (!!device && (device.is_network_connected ?? false));
   const isCameraConnected = !!device && (device.is_camera_connected ?? false);
 
   console.log("[StatusIcons] Device state:", {

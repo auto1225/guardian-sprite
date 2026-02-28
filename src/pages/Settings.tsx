@@ -469,6 +469,8 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
                     try {
                       await saveMetadata({ sensorSettings: updated });
                       await supabase.functions.invoke("update-device", { body: { device_id: device.id, device_type: type } });
+                      // 기기 타입 변경을 노트북에 즉시 브로드캐스트
+                      await broadcastSettingsUpdate(device.id, { device_type: type, sensorSettings: updated });
                       queryClient.invalidateQueries({ queryKey: ["devices"] });
                     } catch {
                       toast({ title: t("common.error"), description: t("common.settingSaveFailed"), variant: "destructive" });
