@@ -160,58 +160,14 @@ export const useWebRTCBroadcaster = ({
         }
       };
 
-      // ★ 키프레임 강제 생성: replaceTrack으로 인코더 리셋 → 실제 키프레임 전송
-      let keyframeForced = false;
-      const forceKeyframe = async (source: string) => {
-        if (keyframeForced) {
-          console.log(`[WebRTC Broadcaster] ⏭️ Keyframe already forced, skipping (${source})`);
-          return;
-        }
-        keyframeForced = true;
-        
-        const senders = pc.getSenders();
-        const videoSender = senders.find(s => s.track && s.track.kind === "video");
-        if (!videoSender || !videoSender.track) {
-          console.warn("[WebRTC Broadcaster] No video sender/track for keyframe");
-          keyframeForced = false;
-          return;
-        }
-        
-        console.log(`[WebRTC Broadcaster] 🔑 Forcing keyframe via replaceTrack (${source})`);
-        const originalTrack = videoSender.track;
-        
-        try {
-          // 1차: replaceTrack으로 인코더 리셋 → 첫 프레임이 키프레임
-          const clonedTrack = originalTrack.clone();
-          await videoSender.replaceTrack(clonedTrack);
-          
-          // 200ms 후 원래 트랙 복원 (두 번째 키프레임)
-          setTimeout(async () => {
-            try {
-              if (pc.connectionState === "connected" || pc.connectionState === "connecting") {
-                await videoSender.replaceTrack(originalTrack);
-                clonedTrack.stop();
-                console.log("[WebRTC Broadcaster] ✅ Keyframe forced, original track restored");
-              } else {
-                clonedTrack.stop();
-              }
-            } catch (e) {
-              console.warn("[WebRTC Broadcaster] replaceTrack restore failed:", e);
-              clonedTrack.stop();
-            }
-          }, 200);
-        } catch (err) {
-          console.warn("[WebRTC Broadcaster] replaceTrack failed:", err);
-          keyframeForced = false;
-        }
-      };
+      // ★ forceKeyframe 제거 — 표준 WebRTC에서는 불필요
+      // 연결 후 인코더가 자동으로 키프레임을 전송함
+      // replaceTrack/track toggle은 오히려 인코더를 교란하여 비디오 전송을 중단시킴
 
       pc.onconnectionstatechange = () => {
         console.log(`[WebRTC Broadcaster] Connection state with ${viewerId}:`, pc.connectionState);
         if (pc.connectionState === "connected") {
           console.log("[WebRTC Broadcaster] ✅ Connected to viewer:", viewerId);
-          // 약간의 딜레이 후 키프레임 강제 (DTLS 완료 보장)
-          setTimeout(() => forceKeyframe("connectionState"), 300);
         } else if (
           pc.connectionState === "disconnected" ||
           pc.connectionState === "failed" ||
@@ -225,7 +181,6 @@ export const useWebRTCBroadcaster = ({
 
       pc.oniceconnectionstatechange = () => {
         console.log(`[WebRTC Broadcaster] ICE state with ${viewerId}:`, pc.iceConnectionState);
-        // ICE connected에서는 키프레임을 강제하지 않음 — connectionState에서 한 번만 처리
       };
 
       return pc;

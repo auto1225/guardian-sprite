@@ -302,48 +302,33 @@ const CameraViewer = ({
     });
   }, []);
 
-  // ★ 비디오가 실제 데이터를 수신했는지 추적
-  const [hasVideoData, setHasVideoData] = useState(false);
+  // ★ 비디오 프레임 감지: videoWidth > 0 폴링 (간단하고 확실한 방법)
+  const [hasVideoFrames, setHasVideoFrames] = useState(false);
   
   useEffect(() => {
-    if (!remoteStream) { setHasVideoData(false); return; }
-    const videoTrack = remoteStream.getVideoTracks()[0];
-    if (!videoTrack) { setHasVideoData(false); return; }
+    if (!remoteStream) { setHasVideoFrames(false); return; }
     
-    // 이미 unmuted이고 readyState가 live면 데이터가 있을 수 있음
-    if (!videoTrack.muted) {
-      // video element의 readyState로 판단
-      const checkVideo = () => {
-        const v = videoRef.current;
-        if (v && v.readyState >= 2 && v.videoWidth > 0) {
-          setHasVideoData(true);
-        }
-      };
-      checkVideo();
-      const interval = setInterval(checkVideo, 200);
-      return () => clearInterval(interval);
-    }
-    
-    // muted 트랙: unmute 이벤트 대기
-    const onUnmute = () => {
-      console.log("[CameraViewer] 🎬 Video track unmuted, waiting for frames...");
-      const interval = setInterval(() => {
-        const v = videoRef.current;
-        if (v && v.readyState >= 2 && v.videoWidth > 0) {
-          setHasVideoData(true);
-          clearInterval(interval);
-        }
-      }, 200);
-      // 10초 후 정리
-      setTimeout(() => clearInterval(interval), 10000);
+    const checkFrames = () => {
+      const v = videoRef.current;
+      if (v && v.videoWidth > 0 && v.videoHeight > 0) {
+        setHasVideoFrames(true);
+        return true;
+      }
+      return false;
     };
-    videoTrack.addEventListener("unmute", onUnmute);
-    return () => videoTrack.removeEventListener("unmute", onUnmute);
+    
+    if (checkFrames()) return;
+    
+    const interval = setInterval(() => {
+      if (checkFrames()) clearInterval(interval);
+    }, 200);
+    const timeout = setTimeout(() => clearInterval(interval), 30000);
+    return () => { clearInterval(interval); clearTimeout(timeout); };
   }, [remoteStream]);
 
-  const showConnecting = (isConnecting && !isConnected && !remoteStream) || (!!remoteStream && !hasVideoData && !error);
+  const showConnecting = (isConnecting && !isConnected && !remoteStream) || (!!remoteStream && !hasVideoFrames && !error);
   const showError = !!error && !isConnected && !remoteStream;
-  const showVideo = !!remoteStream && hasVideoData;
+  const showVideo = !!remoteStream && hasVideoFrames;
   const showWaiting = !showConnecting && !showError && !showVideo && !remoteStream;
   const showDisconnectOverlay = showVideo && !isConnected && !isConnecting;
 
