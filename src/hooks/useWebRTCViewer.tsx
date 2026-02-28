@@ -135,54 +135,36 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     });
     console.log("[WebRTC Viewer] ✅ PC created");
 
-    // ★ 핵심 변경: event.streams[0]을 직접 사용
-    // 브로드캐스터가 addTrack(track, stream)으로 동일 스트림에 오디오/비디오를 추가하므로
-    // event.streams[0]은 브라우저가 관리하는 원본 스트림 — RTP 라우팅이 정확히 동작함
-    // 수동 new MediaStream(tracks)은 브라우저 내부 바인딩을 깨뜨려 비디오 RTP가 누락됨
-    let streamSet = false;
+    // ★ 핵심: event.streams[0]을 직접 사용 — 절대 new MediaStream()으로 래핑하지 않음
+    // new MediaStream(stream.getTracks())는 브라우저의 RTP 바인딩을 깨뜨려 비디오가 muted 상태로 유지됨
+    // React 리렌더는 별도 카운터로 트리거
+    let nativeStreamRef: MediaStream | null = null;
     
     pc.ontrack = (event) => {
       console.log("[WebRTC Viewer] ✅ Track received:", event.track.kind,
         "readyState:", event.track.readyState, "muted:", event.track.muted,
         "streams:", event.streams?.length || 0);
       
-      if (event.streams && event.streams[0]) {
-        const stream = event.streams[0];
+      const stream = event.streams?.[0] ?? null;
+      
+      if (stream) {
         console.log("[WebRTC Viewer] 📹 Browser-managed stream, tracks:", 
           stream.getTracks().map(t => `${t.kind}:${t.readyState}:muted=${t.muted}`).join(", "));
         
-        // ★ 같은 스트림 객체가 오므로 최초 1회만 setRemoteStream 호출
-        // 두 번째 ontrack에서는 같은 스트림에 트랙이 이미 추가되어 있음
-        // video element는 srcObject의 트랙 변경을 자동 감지
-        if (!streamSet) {
-          streamSet = true;
-          setRemoteStream(stream);
-          console.log("[WebRTC Viewer] 📹 remoteStream set (first time)");
-        } else {
-          // ★ 두 번째 트랙 추가 시: React 리렌더를 위해 새 참조 생성하지 않음
-          // 대신 video element가 스트림 내 트랙 변경을 자동 감지함
-          // 하지만 CameraViewer의 useEffect가 trackIds 변경을 감지하도록 강제 업데이트
-          setRemoteStream(prev => {
-            if (prev === stream) {
-              // 같은 참조이므로 React가 리렌더하지 않음 → 강제로 새 MediaStream 래핑
-              const wrapped = new MediaStream(stream.getTracks());
-              console.log("[WebRTC Viewer] 📹 Wrapping stream for React update, tracks:", 
-                wrapped.getTracks().map(t => `${t.kind}:${t.readyState}:muted=${t.muted}`).join(", "));
-              return wrapped;
-            }
-            return stream;
-          });
-        }
+        // ★ 항상 원본 스트림 객체를 그대로 전달 — 절대 래핑하지 않음
+        nativeStreamRef = stream;
+        setRemoteStream(stream);
+        console.log("[WebRTC Viewer] 📹 remoteStream set (native stream)");
       } else {
-        // Fallback: event.streams가 없는 경우
-        console.log("[WebRTC Viewer] ⚠️ No streams in event, creating manual stream");
-        setRemoteStream(prev => {
-          const s = prev || new MediaStream();
-          if (!s.getTracks().find(t => t.id === event.track.id)) {
-            s.addTrack(event.track);
-          }
-          return new MediaStream(s.getTracks());
-        });
+        // Fallback: event.streams가 없는 경우 (드물지만 방어)
+        console.log("[WebRTC Viewer] ⚠️ No streams in event, adding track to existing stream");
+        if (!nativeStreamRef) {
+          nativeStreamRef = new MediaStream();
+        }
+        if (!nativeStreamRef.getTracks().find(t => t.id === event.track.id)) {
+          nativeStreamRef.addTrack(event.track);
+        }
+        setRemoteStream(nativeStreamRef);
       }
       
       if (connectionTimeoutRef.current) {
@@ -500,12 +482,15 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
       // ★ 이미 offer를 받았으면 불필요
       if (hasRemoteDescriptionRef.current || hasSentAnswerRef.current) return true;
       
+      // ★ 60초 이내의 offer만 유효 — stale offer 방지
+      const cutoff = new Date(Date.now() - 60_000).toISOString();
       const { data: existingOffers, error: fetchError } = await supabase
         .from("webrtc_signaling")
         .select("*")
         .eq("device_id", deviceId)
         .eq("sender_type", "broadcaster")
         .eq("type", "offer")
+        .gt("created_at", cutoff)
         .order("created_at", { ascending: false })
         .limit(1);
 
