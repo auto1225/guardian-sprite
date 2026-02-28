@@ -61,6 +61,9 @@ function installAudioContextTracker() {
   const OriginalAudioContext = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   if (!OriginalAudioContext) return;
 
+  // ★ 원본 생성자를 보존하여 알람 전용 AudioContext 생성에 사용
+  (w as Record<string, unknown>).__meercop_OriginalAudioContext = OriginalAudioContext;
+
   const PatchedAudioContext = function (this: AudioContext, ...args: ConstructorParameters<typeof AudioContext>) {
     const instance = new OriginalAudioContext(...args);
     getTrackedContexts().push(instance);
@@ -282,11 +285,14 @@ function initAudio() {
   const refs = getAudioRefs();
   if (refs.ctx && refs.ctx.state !== 'closed') return;
 
-  refs.ctx = new AudioContext();
+  // ★ 원본 AudioContext 사용 — 추적 목록에 들어가지 않아 WebRTC와 간섭 없음
+  const w = window as unknown as Record<string, unknown>;
+  const OrigAC = (w.__meercop_OriginalAudioContext as typeof AudioContext) || AudioContext;
+  refs.ctx = new OrigAC();
   refs.gain = refs.ctx.createGain();
   refs.gain.connect(refs.ctx.destination);
   refs.gain.gain.value = getVolume();
-  console.log("[AlarmSound] 🔊 AudioContext + GainNode initialized");
+  console.log("[AlarmSound] 🔊 AudioContext + GainNode initialized (untracked)");
 }
 
 // ══════════════════════════════════════
@@ -444,17 +450,9 @@ function killAllSources() {
   refs.ctx = null;
   refs.gain = null;
 
-  // 6. ★ 추적된 모든 AudioContext 파기 (클로저에 갇힌 것 포함)
-  const tracked = getTrackedContexts();
-  let killed = 0;
-  for (const ctx of tracked) {
-    if (ctx && ctx.state !== 'closed') {
-      try { ctx.close().catch(() => {}); killed++; } catch {}
-    }
-  }
-  tracked.length = 0; // 배열 비우기
-  if (killed > 0) console.log(`[AlarmSound] 🔇 killAllSources: closed ${killed} tracked AudioContexts`);
-  else console.log("[AlarmSound] 🔇 killAllSources: AudioContext destroyed");
+  // 6. ★ 추적된 AudioContext는 WebRTC 등 외부 모듈의 것이므로 건드리지 않음
+  // 알람 자체 AudioContext(refs.ctx)는 위 4-5단계에서 이미 파기됨
+  console.log("[AlarmSound] 🔇 killAllSources: alarm AudioContext destroyed (external contexts preserved)");
 }
 
 // ══════════════════════════════════════
