@@ -177,7 +177,6 @@ const Index = () => {
         openPanel("locationMap");
         break;
       case "camera":
-        await refreshDeviceStatus(selectedDeviceId!);
         openPanel("camera");
         break;
       case "meercop":

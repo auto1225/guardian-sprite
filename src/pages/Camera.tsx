@@ -134,14 +134,18 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
     // 에러 상태 초기화
     setError(null);
 
-    // 카메라 미연결 시 최신 DB 상태 확인
-    const { data: latestDevice } = await supabase
-      .from("devices")
-      .select("is_camera_connected")
-      .eq("id", device.id)
-      .single();
-    
-    if (!latestDevice?.is_camera_connected) {
+    // 카메라 미연결 시 최신 DB 상태 확인 (Edge Function으로 RLS 우회)
+    try {
+      const { data: deviceData } = await supabase.functions.invoke("get-devices", {
+        body: { device_id: device.id },
+      });
+      const latestDevice = deviceData?.devices?.[0];
+      if (!latestDevice?.is_camera_connected) {
+        setError(t("camera.cameraNotRecognized", { name: device.name }));
+        return;
+      }
+    } catch (err) {
+      console.error("[Camera] Failed to check camera status:", err);
       setError(t("camera.cameraNotRecognized", { name: device.name }));
       return;
     }
