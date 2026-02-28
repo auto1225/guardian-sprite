@@ -15,6 +15,8 @@ const activeLeaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const realtimeConfirmedOnline = new Set<string>();
 const devicePresenceData = new Map<string, { is_network_connected?: boolean; is_camera_connected?: boolean }>();
 const deviceChargingMap = new Map<string, boolean>(); // Presence-only: is_charging per deviceId
+// ★ 카메라 다운그레이드 grace period 타이머
+const cameraDowngradeTimers = new Map<string, ReturnType<typeof setTimeout>>();
 let subscriberCount = 0;
 
 // ── 모듈 레벨 싱글톤: 기기 선택 상태 (모든 컴포넌트가 공유) ──
@@ -328,21 +330,43 @@ export const useDevices = () => {
             if (latest.is_charging !== undefined) {
               deviceChargingMap.set(d.id, latest.is_charging);
             }
-            // ★ Presence 데이터 저장 시에도 카메라 다운그레이드 방지
-            const existingPresence = devicePresenceData.get(d.id);
+            // Presence 데이터 저장
             devicePresenceData.set(d.id, {
               is_network_connected: latest.is_network_connected,
-              is_camera_connected: (latest.is_camera_connected === false && (existingPresence?.is_camera_connected === true || d.is_camera_connected === true))
-                ? true
-                : latest.is_camera_connected,
+              is_camera_connected: latest.is_camera_connected,
             });
 
-            // ★ 카메라 상태: Presence에서 false→true는 즉시 반영하지만,
-            // true→false는 노트북 새로고침 시 초기값(false)으로 인한 일시적 깜빡임을 방지하기 위해
-            // DB 값을 유지 (DB UPDATE 이벤트에서 정확한 값이 올 때까지)
-            const resolvedCameraConnected = (latest.is_camera_connected === false && d.is_camera_connected === true)
-              ? true  // 기존 true 유지 — DB UPDATE에서 최종 판정
-              : (latest.is_camera_connected ?? d.is_camera_connected);
+            // ★ 카메라 true→false: 5초 grace period (노트북 새로고침 시 일시적 false 방지)
+            // false→true 또는 변화 없음: 즉시 반영 & 기존 타이머 취소
+            let resolvedCameraConnected = latest.is_camera_connected ?? d.is_camera_connected;
+            if (latest.is_camera_connected === false && d.is_camera_connected === true) {
+              // 이미 타이머가 없으면 생성, 있으면 기존 유지
+              if (!cameraDowngradeTimers.has(d.id)) {
+                console.log("[Presence] ⏳ Camera downgrade grace period started for", d.id.slice(0, 8));
+                const timer = setTimeout(() => {
+                  cameraDowngradeTimers.delete(d.id);
+                  // 5초 후에도 Presence에서 여전히 false인지 확인
+                  const currentPresence = devicePresenceData.get(d.id);
+                  if (currentPresence?.is_camera_connected === false) {
+                    console.log("[Presence] 📷 Camera downgrade confirmed for", d.id.slice(0, 8));
+                    queryClient.setQueryData(["devices", effectiveUserId], (old: Device[] | undefined) => {
+                      if (!old) return old;
+                      return old.map(dev => dev.id === d.id ? { ...dev, is_camera_connected: false } : dev);
+                    });
+                  }
+                }, 5000);
+                cameraDowngradeTimers.set(d.id, timer);
+              }
+              resolvedCameraConnected = true; // grace period 동안 true 유지
+            } else if (latest.is_camera_connected === true) {
+              // true로 복귀 → 타이머 취소
+              const existingTimer = cameraDowngradeTimers.get(d.id);
+              if (existingTimer) {
+                clearTimeout(existingTimer);
+                cameraDowngradeTimers.delete(d.id);
+                console.log("[Presence] ✅ Camera downgrade cancelled for", d.id.slice(0, 8));
+              }
+            }
 
             const hasChanges = d.is_network_connected !== latest.is_network_connected || d.is_camera_connected !== resolvedCameraConnected || d.status !== newStatus || (latest.battery_level !== undefined && d.battery_level !== latest.battery_level);
             if (!hasChanges) return d;
