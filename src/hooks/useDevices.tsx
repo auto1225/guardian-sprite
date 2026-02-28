@@ -328,21 +328,31 @@ export const useDevices = () => {
             if (latest.is_charging !== undefined) {
               deviceChargingMap.set(d.id, latest.is_charging);
             }
-            // Presence 데이터 저장 (DB 재조회 시 덮어쓰기 방지)
+            // ★ Presence 데이터 저장 시에도 카메라 다운그레이드 방지
+            const existingPresence = devicePresenceData.get(d.id);
             devicePresenceData.set(d.id, {
               is_network_connected: latest.is_network_connected,
-              is_camera_connected: latest.is_camera_connected,
+              is_camera_connected: (latest.is_camera_connected === false && (existingPresence?.is_camera_connected === true || d.is_camera_connected === true))
+                ? true
+                : latest.is_camera_connected,
             });
 
-            const hasChanges = d.is_network_connected !== latest.is_network_connected || d.is_camera_connected !== latest.is_camera_connected || d.status !== newStatus || (latest.battery_level !== undefined && d.battery_level !== latest.battery_level);
+            // ★ 카메라 상태: Presence에서 false→true는 즉시 반영하지만,
+            // true→false는 노트북 새로고침 시 초기값(false)으로 인한 일시적 깜빡임을 방지하기 위해
+            // DB 값을 유지 (DB UPDATE 이벤트에서 정확한 값이 올 때까지)
+            const resolvedCameraConnected = (latest.is_camera_connected === false && d.is_camera_connected === true)
+              ? true  // 기존 true 유지 — DB UPDATE에서 최종 판정
+              : (latest.is_camera_connected ?? d.is_camera_connected);
+
+            const hasChanges = d.is_network_connected !== latest.is_network_connected || d.is_camera_connected !== resolvedCameraConnected || d.status !== newStatus || (latest.battery_level !== undefined && d.battery_level !== latest.battery_level);
             if (!hasChanges) return d;
 
-            console.log("[Presence] ✅ Updating:", d.id.slice(0, 8), "←", match.key.slice(0, 8), { status: `${d.status}→${newStatus}` });
+            console.log("[Presence] ✅ Updating:", d.id.slice(0, 8), "←", match.key.slice(0, 8), { status: `${d.status}→${newStatus}`, camera: `${d.is_camera_connected}→${resolvedCameraConnected}` });
             return {
               ...d,
               status: newStatus as Device["status"],
               is_network_connected: latest.is_network_connected ?? d.is_network_connected,
-              is_camera_connected: latest.is_camera_connected ?? d.is_camera_connected,
+              is_camera_connected: resolvedCameraConnected,
               battery_level: latest.battery_level ?? d.battery_level,
             };
           });
