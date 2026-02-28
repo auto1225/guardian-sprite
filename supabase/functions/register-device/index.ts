@@ -27,24 +27,25 @@ Deno.serve(async (req) => {
     );
 
     const effectiveType = device_type || "laptop";
-    // laptop/desktop are treated as the same "computer" group to prevent duplicates
-    const isComputerType = (t: string) => ["laptop", "desktop"].includes(t);
-    const computerTypes = ["laptop", "desktop"];
+    // laptop/desktop/tablet are treated as the same "non-smartphone" group to prevent duplicates
+    // 설정에서 기기타입을 변경해도 기존 레코드를 재사용
+    const isNonSmartphone = (t: string) => t !== "smartphone";
+    const nonSmartphoneTypes = ["laptop", "desktop", "tablet"];
 
     // 같은 user_id + device_type 그룹으로 이미 존재하는지 확인 (이름 무관 — 중복 방지)
     let existing: any = null;
-    if (isComputerType(effectiveType)) {
-      // 컴퓨터 그룹: laptop 또는 desktop 중 하나라도 있으면 재사용
+    if (isNonSmartphone(effectiveType)) {
+      // 비스마트폰 그룹: laptop, desktop, tablet 중 하나라도 있으면 재사용
       const { data } = await supabaseAdmin
         .from("devices")
         .select("id, name, device_type, status")
         .eq("user_id", user_id)
-        .in("device_type", computerTypes)
+        .in("device_type", nonSmartphoneTypes)
         .limit(1)
         .maybeSingle();
       existing = data;
     } else {
-      // smartphone, tablet 등: 정확한 타입 매칭
+      // smartphone: 정확한 타입 매칭
       const { data } = await supabaseAdmin
         .from("devices")
         .select("id, name, device_type, status")
