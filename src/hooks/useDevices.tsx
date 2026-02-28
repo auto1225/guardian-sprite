@@ -118,7 +118,9 @@ export const useDevices = () => {
     
     if (!_selectionInitialized || !_selectedDeviceId) {
       const mainDevice = nonSmartphones.find(d => (d.metadata as Record<string, unknown>)?.is_main);
-      const target = mainDevice || nonSmartphones[0];
+      // online 기기 우선 선택
+      const onlineDevice = nonSmartphones.find(d => d.status === "online" || d.status === "monitoring" || d.status === "alert");
+      const target = mainDevice || onlineDevice || nonSmartphones[0];
       if (target) {
         setGlobalSelectedDeviceId(target.id);
         _selectionInitialized = true;
