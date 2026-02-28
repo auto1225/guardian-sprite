@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useDevices } from "@/hooks/useDevices";
@@ -6,27 +6,101 @@ import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 import { channelManager } from "@/lib/channelManager";
 
 /**
- * 스마트폰의 위치 응답 훅
- * - 앱 로드 시 위치 권한을 미리 요청 (오버레이 차단 방지)
- * - 자신의 devices 레코드의 metadata.locate_requested를 실시간 감시
+ * 스마트폰의 위치 응답 훅 (Realtime + Polling 하이브리드)
+ * - Realtime postgres_changes로 즉시 감지 (빠른 경로)
+ * - 10초 간격 폴링으로 Realtime 실패 시 폴백
  * - 타임스탬프가 감지되면 GPS 위치 획득 → DB 업데이트 → locate_requested를 null로 초기화
  */
 export function useLocationResponder() {
-  const { user } = useAuth();
+  const { user, effectiveUserId } = useAuth();
   const { devices } = useDevices();
   const processingRef = useRef(false);
+  const lastProcessedRef = useRef<string | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // 현재 유저의 스마트폰 디바이스 찾기
   const smartphoneDevice = devices.find(
-    (d) => d.device_type === "smartphone" && d.user_id === user?.id
+    (d) => d.device_type === "smartphone" && d.user_id === (effectiveUserId || user?.id)
   );
 
-  // 앱 로드 시 위치 권한 미리 요청 — 오버레이 위에서 권한 다이얼로그 차단 방지
+  // 앱 로드 시 위치 권한 미리 요청
   useEffect(() => {
     if (!smartphoneDevice) return;
     preRequestLocationPermission();
   }, [smartphoneDevice?.id]);
 
+  // 위치 요청 처리 핵심 로직
+  const handleLocateRequest = useCallback(async (deviceId: string, locateRequested: string) => {
+    if (processingRef.current) return;
+    if (lastProcessedRef.current === locateRequested) return;
+
+    processingRef.current = true;
+    lastProcessedRef.current = locateRequested;
+    console.log("[LocationResponder] 📍 Location request detected:", locateRequested);
+
+    try {
+      const { position, source } = await getLocationWithFallback();
+      const { latitude, longitude } = position.coords;
+
+      console.log(`[LocationResponder] Location acquired (${source}):`, { latitude, longitude });
+
+      await safeMetadataUpdate(
+        deviceId,
+        { locate_requested: null, location_source: source },
+        { latitude, longitude, location_updated_at: new Date().toISOString() }
+      );
+      console.log("[LocationResponder] ✅ Location updated successfully (source:", source, ")");
+
+      // 랩탑 로컬 DB에도 위치 응답 이중 쓰기 (fire-and-forget)
+      try {
+        const LAPTOP_DB_URL = "https://dmvbwyfzueywuwxkjuuy.supabase.co";
+        const LAPTOP_DB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtdmJ3eWZ6dWV5d3V3eGtqdXV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyOTI2ODMsImV4cCI6MjA4NTg2ODY4M30.0lDX72JHWonW5fRRPve_cdfJrNVyDMzz5nzshJ0cEuI";
+        
+        const userId = effectiveUserId || user?.id;
+        if (userId) {
+          const res = await fetch(`${LAPTOP_DB_URL}/functions/v1/get-devices`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", apikey: LAPTOP_DB_KEY },
+            body: JSON.stringify({ user_id: userId }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const localDevices = data.devices || data || [];
+            const localSmartphone = localDevices.find((d: any) => d.device_type === "smartphone");
+            if (localSmartphone) {
+              const localMeta = (localSmartphone.metadata as Record<string, unknown>) || {};
+              await fetch(`${LAPTOP_DB_URL}/functions/v1/update-device`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", apikey: LAPTOP_DB_KEY },
+                body: JSON.stringify({
+                  device_id: localSmartphone.id,
+                  updates: {
+                    latitude,
+                    longitude,
+                    location_updated_at: new Date().toISOString(),
+                    metadata: { ...localMeta, locate_requested: null, location_source: source },
+                  },
+                }),
+              });
+              console.log("[LocationResponder] ✅ Laptop local DB also updated");
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[LocationResponder] Laptop DB update failed (non-critical):", e);
+      }
+    } catch (err) {
+      console.error("[LocationResponder] All location methods failed:", err);
+      await safeMetadataUpdate(deviceId, {
+        locate_requested: null,
+        locate_error: "All location methods failed",
+        location_source: null,
+      });
+    } finally {
+      processingRef.current = false;
+    }
+  }, [effectiveUserId, user?.id]);
+
+  // Realtime 구독 (빠른 경로)
   useEffect(() => {
     if (!smartphoneDevice) return;
 
@@ -48,40 +122,10 @@ export function useLocationResponder() {
           filter: `id=eq.${deviceId}`,
         },
         async (payload) => {
-          const newData = payload.new as {
-            metadata: Record<string, unknown> | null;
-          };
+          const newData = payload.new as { metadata: Record<string, unknown> | null };
           const metadata = newData.metadata;
-
           if (!metadata || !metadata.locate_requested) return;
-          if (processingRef.current) return;
-
-          processingRef.current = true;
-          console.log("[LocationResponder] 📍 Location request detected:", metadata.locate_requested);
-
-          try {
-            const { position, source } = await getLocationWithFallback();
-            const { latitude, longitude } = position.coords;
-
-            console.log(`[LocationResponder] Location acquired (${source}):`, { latitude, longitude });
-
-            await safeMetadataUpdate(
-              deviceId,
-              { locate_requested: null, location_source: source },
-              { latitude, longitude, location_updated_at: new Date().toISOString() }
-            );
-            console.log("[LocationResponder] ✅ Location updated successfully (source:", source, ")");
-          } catch (err) {
-            console.error("[LocationResponder] All location methods failed:", err);
-
-            await safeMetadataUpdate(deviceId, {
-              locate_requested: null,
-              locate_error: "All location methods failed",
-              location_source: null,
-            });
-          } finally {
-            processingRef.current = false;
-          }
+          await handleLocateRequest(deviceId, metadata.locate_requested as string);
         }
       )
       .subscribe((status) => {
@@ -91,19 +135,55 @@ export function useLocationResponder() {
     return () => {
       channelManager.remove(channelName);
     };
-  }, [smartphoneDevice?.id]);
+  }, [smartphoneDevice?.id, handleLocateRequest]);
+
+  // 폴링 폴백 (Realtime 실패 대비, 10초 간격)
+  useEffect(() => {
+    if (!smartphoneDevice) return;
+
+    const deviceId = smartphoneDevice.id;
+
+    const pollForLocateRequest = async () => {
+      if (processingRef.current) return;
+
+      try {
+        const { data, error } = await supabase.functions.invoke("get-devices", {
+          body: { device_id: deviceId },
+        });
+        if (error) return;
+
+        const devicesList = data?.devices || [];
+        const device = devicesList.find((d: any) => d.id === deviceId);
+        const meta = device?.metadata as Record<string, unknown> | null;
+
+        if (meta?.locate_requested && lastProcessedRef.current !== meta.locate_requested) {
+          console.log("[LocationResponder] 🔄 Polling detected locate_requested:", meta.locate_requested);
+          await handleLocateRequest(deviceId, meta.locate_requested as string);
+        }
+      } catch {
+        // silent - polling failure is non-critical
+      }
+    };
+
+    pollForLocateRequest();
+    pollIntervalRef.current = setInterval(pollForLocateRequest, 10000);
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, [smartphoneDevice?.id, handleLocateRequest]);
 }
 
 async function getLocationWithFallback(): Promise<{ position: GeolocationPosition; source: "gps" | "wifi" }> {
-  // 1순위: GPS (High Accuracy)
   try {
     const position = await getPosition(true, 10000);
     return { position, source: "gps" };
   } catch {
     console.warn("[LocationResponder] GPS failed, falling back to Wi-Fi/network");
   }
-
-  // 2순위: Wi-Fi/네트워크 위치
   const position = await getPosition(false, 15000);
   return { position, source: "wifi" };
 }
@@ -122,14 +202,8 @@ function getPosition(highAccuracy: boolean, timeout: number): Promise<Geolocatio
   });
 }
 
-/**
- * 앱 초기 로드 시 위치 권한을 미리 요청.
- * Android Chrome은 오버레이(fixed/absolute)가 있을 때 권한 다이얼로그를 차단하므로,
- * 오버레이가 없는 초기 상태에서 미리 권한을 받아두면 이후 요청 시 다이얼로그 없이 동작함.
- */
 async function preRequestLocationPermission() {
   try {
-    // Permissions API로 이미 허용 여부 확인
     if (navigator.permissions) {
       const status = await navigator.permissions.query({ name: "geolocation" });
       if (status.state === "granted") {
@@ -137,13 +211,10 @@ async function preRequestLocationPermission() {
         return;
       }
     }
-
-    // 아직 허용되지 않은 경우, 짧은 타임아웃으로 위치 요청하여 권한 다이얼로그 트리거
     console.log("[LocationResponder] 📍 Pre-requesting location permission...");
     await getPosition(true, 5000);
     console.log("[LocationResponder] ✅ Location permission granted via pre-request");
   } catch (err) {
-    // 사용자가 거부하거나 타임아웃되어도 무시 — 나중에 다시 시도됨
     console.warn("[LocationResponder] Pre-request failed (user may have denied):", err);
   }
 }
