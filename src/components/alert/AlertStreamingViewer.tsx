@@ -83,7 +83,6 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
       const v = videoRef.current;
       if (!v || v.srcObject !== remoteStream) return;
       
-      // 🔧 FIX: 매 시도마다 muted 강제 — srcObject 재할당 시 풀릴 수 있음
       v.muted = true;
       v.volume = 0;
       
@@ -91,16 +90,9 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
         console.log("[AlertStreaming] ✅ Video playing!", { videoWidth: v.videoWidth, videoHeight: v.videoHeight });
       }).catch((err) => {
         console.warn("[AlertStreaming] ⚠️ play() failed (attempt", retries + 1, "):", err.message);
-        if (retries < 20) {
-          const delay = Math.min(100 * (retries + 1), 1000);
-          setTimeout(() => {
-            if (retries > 0 && retries % 5 === 0 && v) {
-              const currentStream = v.srcObject;
-              v.srcObject = null;
-              v.srcObject = currentStream;
-            }
-            attemptPlay(retries + 1);
-          }, delay);
+        if (retries < 10) {
+          const delay = Math.min(200 * (retries + 1), 1000);
+          setTimeout(() => attemptPlay(retries + 1), delay);
         }
       });
     };

@@ -340,12 +340,17 @@ const CameraViewer = ({
         </div>
       )}
 
-      {/* ★ 터치하여 재생: 투명 오버레이로 변경 — 비디오 영역 전체가 탭 가능 */}
+      {/* ★ 터치하여 재생: 비디오 스트림은 있지만 재생되지 않을 때 안내 */}
       {showVideo && !isVideoPlaying && isConnected && (
         <div
-          className="absolute inset-0 cursor-pointer z-20"
+          className="absolute inset-0 cursor-pointer z-20 flex flex-col items-center justify-center bg-black/40"
           onClick={handlePlayClick}
-        />
+        >
+          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center mb-2">
+            <div className="w-0 h-0 border-l-[16px] border-l-white border-y-[10px] border-y-transparent ml-1" />
+          </div>
+          <p className="text-white/80 text-sm font-medium">{t("cameraViewer.tapToPlay")}</p>
+        </div>
       )}
 
       {/* LIVE / REC */}

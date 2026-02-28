@@ -215,7 +215,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         if (pendingStreamUpdate) clearTimeout(pendingStreamUpdate);
         pendingStreamUpdate = setTimeout(() => {
           commitStream();
-        }, 500);
+        }, 150); // ★ 500ms → 150ms: 트랙 커밋 속도 개선
       };
 
       if (track.muted) {
@@ -232,7 +232,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
             track.removeEventListener("unmute", onUnmute);
             scheduleUpdate();
           }
-        }, 2000);
+        }, 800); // ★ 2000ms → 800ms: 뮤트 트랙 대기 시간 단축
       } else {
         scheduleUpdate();
       }
@@ -733,13 +733,13 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         startOfferRetry();
       }
 
-      // ★ NEW: 지속적 폴링 시작 (4초 유예 후 — 브로드캐스터 벤치마킹)
+      // ★ 폴링 시작 (2초 유예 후)
       setTimeout(() => {
         if (isConnectingRef.current && !isConnectedRef.current && !hasRemoteDescriptionRef.current) {
           console.log("[WebRTC Viewer] Starting continuous offer polling...");
           startOfferPolling();
         }
-      }, 4000);
+      }, 2000);
 
       // 30초 타임아웃
       connectionTimeoutRef.current = setTimeout(() => {
