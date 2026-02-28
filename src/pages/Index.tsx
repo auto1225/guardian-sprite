@@ -34,6 +34,7 @@ import { useAppStabilizer } from "@/hooks/useAppStabilizer";
 import { useSmartphoneRegistration } from "@/hooks/useSmartphoneRegistration";
 
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 
@@ -78,6 +79,7 @@ const Index = () => {
   const isMonitoring = selectedDevice?.is_monitoring ?? false;
   const { toggleMonitoring } = useCommands();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // 상태 하트비트 & 위치 응답 & 안정화 로직
   useDeviceHeartbeat();
@@ -155,10 +157,26 @@ const Index = () => {
 
   const handleToggleMonitoring = async () => {
     if (!selectedDevice) return;
+    const newVal = !isMonitoring;
     
+    // 즉시 로컬 캐시 업데이트 (UI 반응성)
+    queryClient.setQueriesData({ queryKey: ["devices"] }, (oldDevices: any[] | undefined) => {
+      if (!oldDevices || !Array.isArray(oldDevices)) return oldDevices;
+      return oldDevices.map((d: any) =>
+        d.id === selectedDevice.id ? { ...d, is_monitoring: newVal } : d
+      );
+    });
+
     try {
-      await toggleMonitoring(selectedDevice.id, !isMonitoring);
+      await toggleMonitoring(selectedDevice.id, newVal);
     } catch (error) {
+      // 실패 시 롤백
+      queryClient.setQueriesData({ queryKey: ["devices"] }, (oldDevices: any[] | undefined) => {
+        if (!oldDevices || !Array.isArray(oldDevices)) return oldDevices;
+        return oldDevices.map((d: any) =>
+          d.id === selectedDevice.id ? { ...d, is_monitoring: !newVal } : d
+        );
+      });
       toast({
         title: t("common.error"),
         description: t("status.statusChangeFailed"),
@@ -300,6 +318,15 @@ const Index = () => {
             try {
               await safeMetadataUpdate(selectedDevice.id, { camouflage_mode: newVal });
 
+              // 로컬 캐시 즉시 업데이트 (UI 반영)
+              queryClient.setQueriesData({ queryKey: ["devices"] }, (oldDevices: any[] | undefined) => {
+                if (!oldDevices || !Array.isArray(oldDevices)) return oldDevices;
+                return oldDevices.map((d: any) =>
+                  d.id === selectedDevice.id
+                    ? { ...d, metadata: { ...((d.metadata as Record<string, unknown>) || {}), camouflage_mode: newVal } }
+                    : d
+                );
+              });
               const broadcastChannelName = `device-commands-${selectedDevice.id}`;
               const existingCh = supabase.getChannels().find(ch => ch.topic === `realtime:${broadcastChannelName}`);
               if (existingCh) supabase.removeChannel(existingCh);
