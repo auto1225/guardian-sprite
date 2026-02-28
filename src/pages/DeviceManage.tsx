@@ -382,8 +382,8 @@ const DeviceCardItem = ({ device, isMain, serialKey, onSetAsMain, onToggleMonito
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-6">
           <StatusIconItem iconOn={laptopOn} iconOff={laptopOff} isActive={isOnline} label={device.device_type === "desktop" ? "Desktop" : device.device_type === "tablet" ? "Tablet" : "Laptop"} />
-          <StatusIconItem iconOn={wifiOn} iconOff={wifiOff} isActive={isOnline} label="Network" />
-          <StatusIconItem iconOn={cameraOn} iconOff={cameraOff} isActive={true} label="Camera" />
+          <StatusIconItem iconOn={wifiOn} iconOff={wifiOff} isActive={isOnline && device.is_network_connected} label="Network" />
+          <StatusIconItem iconOn={cameraOn} iconOff={cameraOff} isActive={isOnline && device.is_camera_connected} label="Camera" />
         </div>
 
         <button
