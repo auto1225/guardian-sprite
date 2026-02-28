@@ -1,6 +1,27 @@
-import { RefreshCw, Mic, MicOff, VideoOff } from "lucide-react";
+import { RefreshCw, Mic, MicOff, VideoOff, Play } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+/** 마운트 즉시 play()를 시도하고, 실패 시 탭 안내를 보여주는 오버레이 */
+const TapToPlayOverlay = ({ onPlay }: { onPlay: () => void }) => {
+  const { t } = useTranslation();
+
+  useEffect(() => {
+    // 마운트 시 자동으로 play 시도 (이미 사용자 제스처 컨텍스트에 있을 수 있음)
+    onPlay();
+  }, []);
+
+  return (
+    <div
+      className="absolute inset-0 cursor-pointer z-20 flex flex-col items-center justify-center bg-black/40"
+      onClick={onPlay}
+    >
+      <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center mb-2">
+        <Play className="w-5 h-5 text-white ml-0.5" />
+      </div>
+      <p className="text-white/80 text-sm font-medium">{t("cameraViewer.tapToPlay")}</p>
+    </div>
+  );
+};
 
 interface CameraViewerProps {
   isStreaming: boolean;
@@ -182,24 +203,33 @@ const CameraViewer = ({
       });
     };
 
-    // ★ 즉시 + 점진적 재시도
+    // ★ 즉시 + 점진적 재시도 (더 공격적)
     tryPlay();
-    const t1 = setTimeout(tryPlay, 200);
-    const t2 = setTimeout(tryPlay, 500);
-    const t3 = setTimeout(tryPlay, 1000);
-    const t4 = setTimeout(tryPlay, 2000);
+    const t1 = setTimeout(tryPlay, 100);
+    const t2 = setTimeout(tryPlay, 300);
+    const t3 = setTimeout(tryPlay, 600);
+    const t4 = setTimeout(tryPlay, 1000);
+    const t5 = setTimeout(tryPlay, 1500);
 
     video.addEventListener("loadeddata", tryPlay, { once: true });
     video.addEventListener("canplay", tryPlay, { once: true });
 
+    // ★ readyState 감시: 이미 재생 가능한 상태인데 playing 이벤트가 안 올 때
+    const checkReadyState = () => {
+      const v = videoRef.current;
+      if (!v || playing) return;
+      if (!v.paused && v.readyState >= 2) {
+        console.log("[CameraViewer] ✅ Video ready (readyState check)");
+        markPlaying();
+      }
+    };
+
     // ★ 모바일 핵심: document 레벨 터치/클릭으로 play() 트리거
-    // 사용자의 어떤 터치든 최초 1회로 재생을 시작
     const onUserGesture = () => {
       if (!playing) {
         console.log("[CameraViewer] 👆 User gesture detected, triggering play");
         tryPlay();
       }
-      // 재생 성공 후에도 unmute를 위해 한번 더 처리
       const v = videoRef.current;
       if (v && playing) {
         v.muted = isMutedRef.current;
@@ -208,16 +238,16 @@ const CameraViewer = ({
     document.addEventListener("touchstart", onUserGesture, { once: true, passive: true });
     document.addEventListener("click", onUserGesture, { once: true });
 
-    // ★ 폴링 fallback
+    // ★ 폴링 fallback (더 빠른 주기)
     let pollCount = 0;
     const poll = setInterval(() => {
-      if (playing || pollCount >= 20) { clearInterval(poll); return; }
+      if (playing || pollCount >= 30) { clearInterval(poll); return; }
       pollCount++;
       const v = videoRef.current;
       if (!v || v.srcObject !== remoteStream) { clearInterval(poll); return; }
-      if (!v.paused && v.readyState >= 2) { markPlaying(); clearInterval(poll); return; }
-      tryPlay();
-    }, 1500);
+      checkReadyState();
+      if (!playing) tryPlay();
+    }, 500);
 
     // 트랙 unmute 시 재생
     const trackCleanups: Array<() => void> = [];
@@ -230,7 +260,7 @@ const CameraViewer = ({
     });
 
     return () => {
-      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4);
+      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); clearTimeout(t5);
       clearInterval(poll);
       trackCleanups.forEach(fn => fn());
       video.removeEventListener("playing", markPlaying);
@@ -340,17 +370,9 @@ const CameraViewer = ({
         </div>
       )}
 
-      {/* ★ 터치하여 재생: 비디오 스트림은 있지만 재생되지 않을 때 안내 */}
+      {/* ★ 터치하여 재생: 비디오 스트림은 있지만 재생되지 않을 때 — 자동으로도 play 시도 */}
       {showVideo && !isVideoPlaying && isConnected && (
-        <div
-          className="absolute inset-0 cursor-pointer z-20 flex flex-col items-center justify-center bg-black/40"
-          onClick={handlePlayClick}
-        >
-          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center mb-2">
-            <div className="w-0 h-0 border-l-[16px] border-l-white border-y-[10px] border-y-transparent ml-1" />
-          </div>
-          <p className="text-white/80 text-sm font-medium">{t("cameraViewer.tapToPlay")}</p>
-        </div>
+        <TapToPlayOverlay onPlay={handlePlayClick} />
       )}
 
       {/* LIVE / REC */}
