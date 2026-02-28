@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
+import { broadcastCommand } from "@/lib/broadcastCommand";
 import { sortDevicesByOrder, reorderDevices } from "@/lib/deviceSortOrder";
 import { isMuted as isAlarmMuted, setMuted as setAlarmMuted } from "@/lib/alarmSound";
 import { hashPin } from "@/lib/pinHash";
@@ -136,36 +137,13 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
   }, [isOpen, device.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const broadcastSettingsUpdate = async (deviceId: string, updates: Record<string, unknown>) => {
-    const broadcastChannelName = `device-commands-${deviceId}`;
-    const existingCh = supabase.getChannels().find(ch => ch.topic === `realtime:${broadcastChannelName}`);
-    if (existingCh) supabase.removeChannel(existingCh);
-    
-    const channel = supabase.channel(broadcastChannelName);
-    try {
-      await new Promise<void>((resolve) => {
-        const timeout = setTimeout(() => { supabase.removeChannel(channel); resolve(); }, 5000);
-        channel.subscribe((status) => {
-          if (status === "SUBSCRIBED") {
-            clearTimeout(timeout);
-            channel.send({
-              type: "broadcast",
-              event: "settings_updated",
-              payload: { device_id: deviceId, settings: updates },
-            }).then(() => {
-              console.log("[Settings] Broadcast settings_updated sent:", Object.keys(updates));
-              supabase.removeChannel(channel);
-              resolve();
-            });
-          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-            clearTimeout(timeout);
-            supabase.removeChannel(channel);
-            resolve();
-          }
-        });
-      });
-    } catch (err) {
-      console.warn("[Settings] Settings broadcast failed (DB update succeeded):", err);
-    }
+    const userId = device?.user_id;
+    if (!userId) return;
+    await broadcastCommand({
+      userId,
+      event: "settings_updated",
+      payload: { device_id: deviceId, settings: updates },
+    });
   };
 
   const saveMetadata = async (updates: Record<string, unknown>) => {

@@ -1,12 +1,15 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
+import { useAuth } from "@/hooks/useAuth";
+import { broadcastCommand } from "@/lib/broadcastCommand";
 
 type CommandType = Database["public"]["Enums"]["command_type"];
 type Json = Database["public"]["Tables"]["commands"]["Insert"]["payload"];
 
 export const useCommands = () => {
   const queryClient = useQueryClient();
+  const { effectiveUserId } = useAuth();
 
   const sendCommand = useMutation({
     mutationFn: async ({
@@ -40,7 +43,6 @@ export const useCommands = () => {
   const toggleMonitoring = async (deviceId: string, enable: boolean) => {
     console.log("[useCommands] toggleMonitoring called:", deviceId, "enable:", enable);
     
-    // Update device monitoring status in DB (Edge Function으로 RLS 우회)
     const { error } = await supabase.functions.invoke("update-device", {
       body: { device_id: deviceId, is_monitoring: enable },
     });
@@ -52,38 +54,12 @@ export const useCommands = () => {
     
     console.log("[useCommands] toggleMonitoring success, is_monitoring set to:", enable);
     
-    // Broadcast to laptop via Realtime channel (laptop can't use postgres_changes due to RLS)
-    // CRITICAL: Channel name must match what the laptop subscribes to: device-commands-${deviceId}
-    const broadcastChannelName = `device-commands-${deviceId}`;
-    // Remove any existing local channel with same name to avoid conflicts
-    const existingCh = supabase.getChannels().find(ch => ch.topic === `realtime:${broadcastChannelName}`);
-    if (existingCh) supabase.removeChannel(existingCh);
-    
-    const channel = supabase.channel(broadcastChannelName);
-    try {
-      await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => { supabase.removeChannel(channel); reject(new Error("Channel timeout")); }, 5000);
-        channel.subscribe((status) => {
-          if (status === "SUBSCRIBED") {
-            clearTimeout(timeout);
-            channel.send({
-              type: "broadcast",
-              event: "monitoring_toggle",
-              payload: { device_id: deviceId, is_monitoring: enable },
-            }).then(() => {
-              console.log("[useCommands] Broadcast monitoring_toggle sent:", { deviceId, enable });
-              supabase.removeChannel(channel);
-              resolve();
-            });
-          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-            clearTimeout(timeout);
-            supabase.removeChannel(channel);
-            reject(new Error(status));
-          }
-        });
+    if (effectiveUserId) {
+      await broadcastCommand({
+        userId: effectiveUserId,
+        event: "monitoring_toggle",
+        payload: { device_id: deviceId, is_monitoring: enable },
       });
-    } catch (err) {
-      console.warn("[useCommands] Broadcast failed (DB update succeeded):", err);
     }
     
     queryClient.invalidateQueries({ queryKey: ["devices"] });
@@ -133,5 +109,6 @@ export const useCommands = () => {
     lockDevice,
     locateDevice,
     sendMessage,
+    effectiveUserId,
   };
 };
