@@ -55,6 +55,19 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ★ metadata 안전 병합: 기존 metadata를 읽어서 새 값과 병합
+    // 이렇게 하면 heartbeat가 network_info만 보내도 alarm_pin 등이 보존됨
+    if (updates.metadata && typeof updates.metadata === "object") {
+      const { data: existing } = await supabase
+        .from("devices")
+        .select("metadata")
+        .eq("id", device_id)
+        .single();
+
+      const existingMeta = (existing?.metadata as Record<string, unknown>) || {};
+      updates.metadata = { ...existingMeta, ...updates.metadata };
+    }
+
     const { data, error } = await supabase
       .from("devices")
       .update(updates)
