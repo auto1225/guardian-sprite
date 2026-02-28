@@ -39,6 +39,7 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
   const recordedChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasAutoStarted = useRef(false);
+  const cameraDisconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastCameraConnectedRef = useRef<boolean | null>(null);
 
   const handleWebRTCError = useCallback((err: string) => {
@@ -265,41 +266,68 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
           const prevCameraConnected = lastCameraConnectedRef.current;
           lastCameraConnectedRef.current = newDevice.is_camera_connected;
           
-          // 카메라가 해제됨: 이전에 연결 상태였거나 현재 스트리밍 중인데 카메라가 false가 된 경우
+          // 카메라가 해제됨: grace period 적용 (일시적 false 무시)
           if (
             !newDevice.is_camera_connected &&
             (prevCameraConnected === true || isConnectedRef.current || isConnectingRef.current)
           ) {
-            console.log("[Camera] 📷 Camera disconnected detected via DB, prev:", prevCameraConnected);
-            // ★ 즉시 동기적으로 상태 리셋
-            isConnectingRef.current = false;
-            setIsStreaming(false);
-            setIsWaitingForCamera(false);
-            // ★ disconnect()로 PC close + 시그널링 정리 + 스트림 해제
-            disconnect();
-            // 스트리밍 요청 플래그 리셋 — 재연결 시 false→true 변경을 브로드캐스터가 감지하도록
-            supabase.functions.invoke("update-device", { body: { device_id: device.id, is_streaming_requested: false } });
-            setError(t("camera.cameraNotRecognized", { name: device.name }));
+            console.log("[Camera] 📷 Camera disconnect detected, starting 5s grace period...");
+            // 이미 타이머가 있으면 무시 (중복 방지)
+            if (!cameraDisconnectTimerRef.current) {
+              cameraDisconnectTimerRef.current = setTimeout(() => {
+                cameraDisconnectTimerRef.current = null;
+                // 5초 후에도 여전히 카메라가 해제 상태인지 DB에서 재확인
+                supabase.functions.invoke("get-devices", { body: { device_id: device.id } })
+                  .then(({ data }) => {
+                    const dev = (data?.devices || []).find((d: { id: string }) => d.id === device.id);
+                    if (dev && !dev.is_camera_connected) {
+                      console.log("[Camera] 📷 Camera still disconnected after grace period, stopping stream");
+                      isConnectingRef.current = false;
+                      setIsStreaming(false);
+                      setIsWaitingForCamera(false);
+                      disconnect();
+                      supabase.functions.invoke("update-device", { body: { device_id: device.id, is_streaming_requested: false } });
+                      setError(t("camera.cameraNotRecognized", { name: device.name }));
+                    } else {
+                      console.log("[Camera] ✅ Camera reconnected within grace period, continuing");
+                    }
+                  })
+                  .catch(() => {
+                    // 조회 실패 시 안전하게 종료
+                    isConnectingRef.current = false;
+                    setIsStreaming(false);
+                    setIsWaitingForCamera(false);
+                    disconnect();
+                    setError(t("camera.cameraNotRecognized", { name: device.name }));
+                  });
+              }, 5000);
+            }
           }
           
-          // 카메라가 재연결됨: 이전에 해제 상태였거나 null이었는데 true가 된 경우
-          if (
-            newDevice.is_camera_connected &&
-            prevCameraConnected !== true &&
-            !isConnectingRef.current &&
-            !isConnectedRef.current
-          ) {
-            console.log("[Camera] 📸 Camera reconnected, scheduling auto-restart with delay...");
-            setError(null);
-            // ★ streamKey를 변경하여 CameraViewer를 완전히 새로 마운트 — 처음 연결과 동일한 상태
-            setStreamKey(k => k + 1);
-            // ★ 디바운스 2초: 이전 시그널링 잔재가 지나가도록 충분한 대기 후 연결 시도
-            setTimeout(() => {
-              if (!isConnectedRef.current && !isConnectingRef.current) {
-                console.log("[Camera] 🔄 Debounce complete, starting stream...");
-                startStreamingRef.current?.();
-              }
-            }, 2000);
+          // 카메라가 재연결됨: grace period 타이머 취소 + 자동 재시작
+          if (newDevice.is_camera_connected) {
+            // grace period 타이머가 있으면 취소 (일시적 해제 → 재연결)
+            if (cameraDisconnectTimerRef.current) {
+              console.log("[Camera] ✅ Camera reconnected, cancelling disconnect timer");
+              clearTimeout(cameraDisconnectTimerRef.current);
+              cameraDisconnectTimerRef.current = null;
+            }
+            
+            if (
+              prevCameraConnected !== true &&
+              !isConnectingRef.current &&
+              !isConnectedRef.current
+            ) {
+              console.log("[Camera] 📸 Camera reconnected, scheduling auto-restart with delay...");
+              setError(null);
+              setStreamKey(k => k + 1);
+              setTimeout(() => {
+                if (!isConnectedRef.current && !isConnectingRef.current) {
+                  console.log("[Camera] 🔄 Debounce complete, starting stream...");
+                  startStreamingRef.current?.();
+                }
+              }, 2000);
+            }
           }
         }
       )
@@ -307,6 +335,10 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
 
     return () => {
       supabase.removeChannel(channel);
+      if (cameraDisconnectTimerRef.current) {
+        clearTimeout(cameraDisconnectTimerRef.current);
+        cameraDisconnectTimerRef.current = null;
+      }
     };
   }, [isOpen, device.id]);
 
