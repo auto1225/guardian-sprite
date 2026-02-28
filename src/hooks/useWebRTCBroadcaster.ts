@@ -160,18 +160,35 @@ export const useWebRTCBroadcaster = ({
         }
       };
 
-      // ★ 키프레임 강제 생성: 트랙 토글만 (가장 확실한 방법)
+      // ★ 키프레임 강제 생성: setParameters를 사용하여 트랙 비활성화 없이 키프레임 요청
       const forceKeyframe = (source: string) => {
         const senders = pc.getSenders();
         const videoSender = senders.find(s => s.track && s.track.kind === "video");
-        if (videoSender && videoSender.track) {
-          const track = videoSender.track;
-          console.log(`[WebRTC Broadcaster] 🔑 Forcing keyframe (${source}): track toggle`);
-          track.enabled = false;
-          setTimeout(() => {
-            track.enabled = true;
-            console.log("[WebRTC Broadcaster] ✅ Track re-enabled after 1s (keyframe sent)");
-          }, 1000);
+        if (videoSender) {
+          console.log(`[WebRTC Broadcaster] 🔑 Forcing keyframe (${source})`);
+          // 방법 1: setParameters로 encodings 갱신 (트랙 비활성화 없이 키프레임 트리거)
+          const params = videoSender.getParameters();
+          if (params.encodings && params.encodings.length > 0) {
+            // maxFramerate를 미세 변경하여 키프레임 유도
+            const current = params.encodings[0].maxFramerate || 30;
+            params.encodings[0].maxFramerate = current === 30 ? 29 : 30;
+            videoSender.setParameters(params).then(() => {
+              console.log("[WebRTC Broadcaster] ✅ Keyframe triggered via setParameters");
+            }).catch((err) => {
+              console.warn("[WebRTC Broadcaster] setParameters failed, using short toggle:", err);
+              // 폴백: 매우 짧은 토글 (50ms) — 뷰어의 unmute 리스너가 살아있으므로 복구됨
+              if (videoSender.track) {
+                videoSender.track.enabled = false;
+                setTimeout(() => { if (videoSender.track) videoSender.track.enabled = true; }, 50);
+              }
+            });
+          } else {
+            // encodings 미지원 시 짧은 토글
+            if (videoSender.track) {
+              videoSender.track.enabled = false;
+              setTimeout(() => { if (videoSender.track) videoSender.track.enabled = true; }, 50);
+            }
+          }
         }
       };
 

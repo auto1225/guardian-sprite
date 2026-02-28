@@ -211,24 +211,27 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         }, 150); // ★ 500ms → 150ms: 트랙 커밋 속도 개선
       };
 
+      // ★ unmute 리스너는 항상 등록 (force commit 후에도 유지)
+      const onUnmute = () => {
+        console.log(`[WebRTC Viewer] ✅ ${track.kind} track unmuted (id=${track.id.substring(0,8)})`);
+        track.removeEventListener("unmute", onUnmute);
+        receivedTracks.set(track.kind, track);
+        scheduleUpdate();
+      };
+
       if (track.muted) {
         console.log(`[WebRTC Viewer] ⏳ ${track.kind} track is muted, waiting for unmute...`);
-        const onUnmute = () => {
-          console.log(`[WebRTC Viewer] ✅ ${track.kind} track unmuted`);
-          track.removeEventListener("unmute", onUnmute);
-          // ★ unmute된 트랙으로 교체 후 커밋
-          receivedTracks.set(track.kind, track);
-          scheduleUpdate();
-        };
         track.addEventListener("unmute", onUnmute);
+        // Force commit after timeout BUT keep unmute listener alive
         setTimeout(() => {
           if (track.readyState !== "ended") {
             console.log(`[WebRTC Viewer] ⏰ Force commit for ${track.kind} (muted=${track.muted})`);
-            track.removeEventListener("unmute", onUnmute);
+            // ★ unmute 리스너는 제거하지 않음! 나중에 unmute되면 스트림 갱신
             scheduleUpdate();
           }
         }, 800);
       } else {
+        track.addEventListener("unmute", onUnmute); // 이미 unmuted여도 리스너 등록 (재mute 대비)
         scheduleUpdate();
       }
       
