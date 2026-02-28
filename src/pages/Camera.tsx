@@ -106,12 +106,36 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
     for (let i = 0; i < 30; i++) {
       if (!isConnectingRef.current) return false;
       try {
+        // 1차: DB에서 is_camera_connected 확인
         const { data } = await supabase.functions.invoke("get-devices", {
           body: { device_id: device.id },
         });
         const devices = data?.devices || [];
         const dev = devices.find((d: { id: string }) => d.id === device.id);
         if (dev?.is_camera_connected) return true;
+
+        // 2차: 시그널링 테이블에서 broadcaster-ready 또는 offer 확인
+        // (랩탑이 is_camera_connected를 DB에 동기화하지 못해도, 
+        //  시그널링이 있으면 브로드캐스터가 준비된 것)
+        const { data: sigData } = await supabase
+          .from("webrtc_signaling")
+          .select("id")
+          .eq("device_id", device.id)
+          .in("type", ["broadcaster-ready", "offer"])
+          .eq("sender_type", "broadcaster")
+          .order("created_at", { ascending: false })
+          .limit(1);
+        if (sigData && sigData.length > 0) {
+          console.log("[Camera] ✅ Broadcaster signaling detected, proceeding");
+          return true;
+        }
+
+        // 3차: 기기가 온라인이고 is_streaming_requested가 true면 
+        // 일정 시간(5초) 후 강제 진행 (브로드캐스터가 곧 시작할 것으로 판단)
+        if (i >= 10 && dev?.status === "online" && dev?.is_streaming_requested) {
+          console.log("[Camera] ⏳ Device online & streaming requested, proceeding after wait");
+          return true;
+        }
       } catch { /* ignore */ }
       await new Promise(r => setTimeout(r, 500));
     }
