@@ -1,4 +1,5 @@
 import { ArrowLeft, ChevronRight, Globe, ArrowUp, ArrowDown } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
 import { useState, useEffect } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,6 +85,9 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
   const [mouseSensitivity, setMouseSensitivity] = useState<MotionSensitivity>(
     (meta.mouseSensitivity as MotionSensitivity) || "sensitive"
   );
+  const [micThresholdDb, setMicThresholdDb] = useState<number>(
+    (meta.micThresholdDb as number) ?? 60
+  );
 
   const [showNicknameDialog, setShowNicknameDialog] = useState(false);
   const [showPinDialog, setShowPinDialog] = useState(false);
@@ -112,6 +116,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
       : { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device.device_type as "laptop" | "desktop" | "tablet") || "laptop" });
     setMotionSensitivity((m.motionSensitivity as MotionSensitivity) || "insensitive");
     setMouseSensitivity((m.mouseSensitivity as MotionSensitivity) || "sensitive");
+    setMicThresholdDb((m.micThresholdDb as number) ?? 60);
     // ★ 기기별 언어 설정 반영
     setDeviceLanguage((m.language as string) || i18n.language);
   }, [device?.id, device?.metadata]);
@@ -532,6 +537,75 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
               <SensorToggle label={t("settings.micDetection")} description={t("settings.micDetectionDesc")} checked={sensorSettings.microphone} onChange={(v) => handleSensorToggle("microphone", v)} />
             </SensorSection>
 
+            {sensorSettings.microphone && (
+              <>
+                <div className="border-t border-white/10" />
+                <div className="px-4 py-4">
+                  <span className="text-white font-semibold text-sm block mb-1">{t("settings.micSensitivity")}</span>
+                  <span className="text-white/70 text-xs block mb-3">{t("settings.micSensitivityDesc")}</span>
+                  
+                  {/* dB Slider */}
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-white/60 text-xs w-10 text-right">30dB</span>
+                    <Slider
+                      value={[micThresholdDb]}
+                      min={30}
+                      max={100}
+                      step={5}
+                      onValueChange={(vals) => setMicThresholdDb(vals[0])}
+                      onValueCommit={async (vals) => {
+                        try { await saveMetadata({ micThresholdDb: vals[0] }); }
+                        catch { toast({ title: t("common.error"), description: t("common.settingSaveFailed"), variant: "destructive" }); }
+                      }}
+                      className="flex-1"
+                    />
+                    <span className="text-white/60 text-xs w-12">100dB</span>
+                  </div>
+                  
+                  {/* Current value */}
+                  <div className="text-center mb-3">
+                    <span className="text-lg font-bold" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>{micThresholdDb}dB</span>
+                    <span className="text-white/60 text-xs ml-2">{t("settings.micThresholdLabel")}</span>
+                  </div>
+
+                  {/* dB examples */}
+                  <div className="space-y-1.5 mb-3">
+                    {[
+                      { db: 30, icon: "🤫", labelKey: "settings.micExample.whisper" },
+                      { db: 50, icon: "💬", labelKey: "settings.micExample.conversation" },
+                      { db: 60, icon: "📺", labelKey: "settings.micExample.tv" },
+                      { db: 70, icon: "🐕", labelKey: "settings.micExample.dogBark" },
+                      { db: 80, icon: "📢", labelKey: "settings.micExample.shout" },
+                      { db: 90, icon: "🚗", labelKey: "settings.micExample.carHorn" },
+                      { db: 100, icon: "✈️", labelKey: "settings.micExample.airplane" },
+                    ].map((ex) => (
+                      <div
+                        key={ex.db}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all ${
+                          micThresholdDb <= ex.db ? "opacity-100" : "opacity-40"
+                        }`}
+                        style={{ background: micThresholdDb <= ex.db ? 'hsla(0,0%,100%,0.1)' : 'transparent' }}
+                      >
+                        <span className="text-sm">{ex.icon}</span>
+                        <span className="text-white/80 flex-1">{t(ex.labelKey)}</span>
+                        <span className="text-white/50 font-mono">{ex.db}dB</span>
+                        {micThresholdDb === ex.db && (
+                          <span className="font-bold text-xs" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>◀</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Warning */}
+                  <div className="rounded-xl px-3 py-2.5 border border-yellow-400/30" style={{ background: 'hsla(45, 100%, 50%, 0.1)' }}>
+                    <span className="text-yellow-200/90 text-xs leading-relaxed">
+                      ⚠️ {t("settings.micWarning")}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+
             <div className="border-t border-white/10" />
             <SensorSection>
               <SensorToggle label={t("settings.keyboardDetection")} description={t("settings.keyboardDetectionDesc")} checked={sensorSettings.keyboard} onChange={(v) => handleSensorToggle("keyboard", v)} />
@@ -570,10 +644,14 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
               <SensorToggle label={t("settings.usbDetection")} description={t("settings.usbDetectionDesc")} checked={sensorSettings.usb} onChange={(v) => handleSensorToggle("usb", v)} />
             </SensorSection>
 
-            <div className="border-t border-white/10" />
-            <SensorSection>
-              <SensorToggle label={t("settings.powerDetection")} description={t("settings.powerDetectionDesc")} checked={sensorSettings.power} onChange={(v) => handleSensorToggle("power", v)} />
-            </SensorSection>
+            {sensorSettings.deviceType !== "desktop" && (
+              <>
+                <div className="border-t border-white/10" />
+                <SensorSection>
+                  <SensorToggle label={t("settings.powerDetection")} description={t("settings.powerDetectionDesc")} checked={sensorSettings.power} onChange={(v) => handleSensorToggle("power", v)} />
+                </SensorSection>
+              </>
+            )}
           </div>
 
           <div className="h-10" />
