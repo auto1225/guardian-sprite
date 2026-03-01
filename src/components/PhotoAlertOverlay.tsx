@@ -19,6 +19,8 @@ interface PhotoAlertOverlayProps {
   onDismissRemoteAlarm?: () => void;
   remoteAlarmDismissed?: boolean;
   isHistoryView?: boolean;
+  /** DB 기반 기기 ID — 크로스 프로젝트 ID 불일치 방지용 */
+  streamingDeviceId?: string | null;
 }
 
 export default function PhotoAlertOverlay({
@@ -29,6 +31,7 @@ export default function PhotoAlertOverlay({
   onDismissRemoteAlarm,
   remoteAlarmDismissed,
   isHistoryView = false,
+  streamingDeviceId,
 }: PhotoAlertOverlayProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -172,8 +175,8 @@ export default function PhotoAlertOverlay({
         {isHistoryView ? (
           <AlertVideoPlayer alertId={alert.id} />
         ) : (
-          alert.auto_streaming && alert.device_id ? (
-            <AlertStreamingViewer deviceId={alert.device_id} alertId={alert.id} />
+          alert.auto_streaming && (streamingDeviceId || alert.device_id) ? (
+            <AlertStreamingViewer deviceId={streamingDeviceId || alert.device_id} alertId={alert.id} />
           ) : (
             <div className="mx-4 mb-3">
               <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden">

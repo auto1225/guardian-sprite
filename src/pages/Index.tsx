@@ -410,6 +410,7 @@ const Index = () => {
         <PhotoAlertOverlay
           alert={(viewingPhotoAlert || latestPhotoAlert)!}
           isHistoryView={!!viewingPhotoAlert && !latestPhotoAlert}
+          streamingDeviceId={selectedDeviceId}
           onDismiss={() => {
             // 사진 경보 ID + 활성 경보 ID 모두 dismissed에 등록
             const photoId = (viewingPhotoAlert || latestPhotoAlert)?.id;

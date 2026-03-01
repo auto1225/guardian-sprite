@@ -51,10 +51,11 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSelectMode, setIsSelectMode] = useState(false);
 
+  // ★ 크로스 프로젝트 ID 불일치 방지: 모든 사진 경보를 표시 (device_id 필터 제거)
   const photoAlerts = useMemo(() => {
     void refreshKey;
-    return getPhotoAlerts(deviceId || undefined);
-  }, [deviceId, refreshKey, isOpen]);
+    return getPhotoAlerts();
+  }, [refreshKey, isOpen]);
 
   const photoUnread = photoAlerts.filter(a => !a.is_read).length;
   const totalUnread = activityUnread + photoUnread;
