@@ -340,7 +340,7 @@ const CameraViewer = ({
         muted
         autoPlay
         preload="auto"
-        className={`w-full h-full object-contain ${showVideo ? "" : "hidden"}`}
+        className={`w-full h-full object-cover ${showVideo ? "" : "hidden"}`}
         onClick={handlePlayClick}
       />
 
@@ -348,7 +348,7 @@ const CameraViewer = ({
         <img
           src={pausedFrameUrl}
           alt="Paused frame"
-          className="absolute inset-0 w-full h-full object-contain z-10"
+          className="absolute inset-0 w-full h-full object-cover z-10"
         />
       )}
 
