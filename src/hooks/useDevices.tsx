@@ -490,11 +490,14 @@ export const useDevices = () => {
     const cmdChannelName = `user-commands-${effectiveUserId}`;
     const nameChangedHandler = ({ payload }: { payload: any }) => {
       console.log("[useDevices] 📝 name_changed received:", payload);
-      const { device_id, name } = payload || {};
-      if (!device_id || !name) return;
+      // 노트북 페이로드: target_shared_device_id + new_name (또는 device_id + name 호환)
+      const deviceId = payload?.target_shared_device_id || payload?.device_id;
+      const newName = payload?.new_name || payload?.name;
+      if (!deviceId || !newName) return;
+      console.log("[useDevices] ✅ Applying name change:", deviceId, "→", newName);
       queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
         if (!oldDevices) return oldDevices;
-        return oldDevices.map(d => d.id === device_id ? { ...d, name } : d);
+        return oldDevices.map(d => d.id === deviceId ? { ...d, name: newName } : d);
       });
       queryClient.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
     };
