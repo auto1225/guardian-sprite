@@ -313,20 +313,22 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
               cameraDisconnectTimerRef.current = null;
             }
             
-            if (
-              prevCameraConnected !== true &&
-              !isConnectingRef.current &&
-              !isConnectedRef.current
-            ) {
-              console.log("[Camera] 📸 Camera reconnected, scheduling auto-restart with delay...");
+            // ★ 카메라 재연결 시: 기존 연결이 있더라도 완전히 정리 후 재시작
+            // (브로드캐스터가 새 스트림으로 재시작하므로 기존 연결의 트랙은 stale)
+            if (prevCameraConnected !== true) {
+              console.log("[Camera] 📸 Camera reconnected, cleaning up and restarting...");
               setError(null);
+              
+              // 기존 연결 완전 정리
+              isConnectingRef.current = false;
+              disconnect();
+              setIsStreaming(false);
               setStreamKey(k => k + 1);
+              
               setTimeout(() => {
-                if (!isConnectedRef.current && !isConnectingRef.current) {
-                  console.log("[Camera] 🔄 Debounce complete, starting stream...");
-                  startStreamingRef.current?.();
-                }
-              }, 2000);
+                console.log("[Camera] 🔄 Debounce complete, starting fresh stream...");
+                startStreamingRef.current?.();
+              }, 3000); // 브로드캐스터가 새 스트림을 준비할 시간 확보
             }
           }
         }
