@@ -86,7 +86,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
     (meta.mouseSensitivity as MotionSensitivity) || "sensitive"
   );
   const [micThresholdDb, setMicThresholdDb] = useState<number>(
-    (meta.micThresholdDb as number) ?? 80
+    (meta.micThresholdDb as number) ?? 60
   );
 
   const [showNicknameDialog, setShowNicknameDialog] = useState(false);
@@ -537,7 +537,22 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
               <SensorToggle label={t("settings.micDetection")} description={t("settings.micDetectionDesc")} checked={sensorSettings.microphone} onChange={(v) => handleSensorToggle("microphone", v)} />
             </SensorSection>
 
-            {sensorSettings.microphone && (
+            {sensorSettings.microphone && (() => {
+              const MIC_EXAMPLES = [
+                { db: 30, icon: "🤫", labelKey: "settings.micExample.whisper" },
+                { db: 50, icon: "🏢", labelKey: "settings.micExample.office" },
+                { db: 70, icon: "💬", labelKey: "settings.micExample.conversation" },
+                { db: 85, icon: "🚗", labelKey: "settings.micExample.street" },
+                { db: 100, icon: "✈️", labelKey: "settings.micExample.airplane" },
+              ];
+              const getMicWarning = () => {
+                if (micThresholdDb <= 40) return { key: "settings.micWarningVeryLow", color: "hsla(0, 80%, 60%, 1)" };
+                if (micThresholdDb <= 55) return { key: "settings.micWarningLow", color: "hsla(30, 90%, 55%, 1)" };
+                if (micThresholdDb <= 80) return { key: "settings.micWarningNormal", color: "hsla(120, 50%, 55%, 1)" };
+                return { key: "settings.micWarningHigh", color: "hsla(200, 60%, 60%, 1)" };
+              };
+              const warn = getMicWarning();
+              return (
               <>
                 <div className="border-t border-white/10" />
                 <div className="px-4 py-4">
@@ -565,38 +580,46 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
                   {/* Current value */}
                   <div className="text-center mb-3">
                     <span className="text-lg font-bold" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>{micThresholdDb}dB</span>
-                    <span className="text-white/60 text-xs ml-2">{t("settings.micThresholdLabel")}</span>
+                    <span className="text-white/60 text-xs ml-2">{t("settings.micThresholdLabel", { value: micThresholdDb })}</span>
                   </div>
 
-                  {/* dB examples */}
+                  {/* Range warning */}
+                  <div className="rounded-xl px-3 py-2 mb-3 border" style={{ borderColor: warn.color + '40', background: warn.color + '15' }}>
+                    <span className="text-xs font-semibold leading-relaxed" style={{ color: warn.color }}>
+                      {t(warn.key)}
+                    </span>
+                  </div>
+
+                  {/* dB scale examples */}
                   <div className="space-y-1.5 mb-3">
-                    {[
-                      { db: 30, icon: "🤫", labelKey: "settings.micExample.whisper" },
-                      { db: 50, icon: "💬", labelKey: "settings.micExample.conversation" },
-                      { db: 60, icon: "📺", labelKey: "settings.micExample.tv" },
-                      { db: 70, icon: "🐕", labelKey: "settings.micExample.dogBark" },
-                      { db: 80, icon: "📢", labelKey: "settings.micExample.shout" },
-                      { db: 90, icon: "🚗", labelKey: "settings.micExample.carHorn" },
-                      { db: 100, icon: "✈️", labelKey: "settings.micExample.airplane" },
-                    ].map((ex) => (
-                      <div
-                        key={ex.db}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all ${
-                          micThresholdDb <= ex.db ? "opacity-100" : "opacity-40"
-                        }`}
-                        style={{ background: micThresholdDb <= ex.db ? 'hsla(0,0%,100%,0.1)' : 'transparent' }}
-                      >
-                        <span className="text-sm">{ex.icon}</span>
-                        <span className="text-white/80 flex-1">{t(ex.labelKey)}</span>
-                        <span className="text-white/50 font-mono">{ex.db}dB</span>
-                        {micThresholdDb === ex.db && (
-                          <span className="font-bold text-xs" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>◀</span>
-                        )}
-                      </div>
-                    ))}
+                    {MIC_EXAMPLES.map((ex) => {
+                      const isAboveThreshold = ex.db >= micThresholdDb;
+                      const isExact = micThresholdDb >= ex.db && (MIC_EXAMPLES.find(e => e.db > ex.db)?.db ?? 999) > micThresholdDb;
+                      return (
+                        <div
+                          key={ex.db}
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all ${
+                            isAboveThreshold ? "opacity-100" : "opacity-40"
+                          }`}
+                          style={{
+                            background: isAboveThreshold
+                              ? 'hsla(0, 70%, 50%, 0.15)'
+                              : 'transparent',
+                            border: isAboveThreshold ? '1px solid hsla(0, 70%, 50%, 0.25)' : '1px solid transparent',
+                          }}
+                        >
+                          <span className="text-sm">{ex.icon}</span>
+                          <span className={`flex-1 ${isAboveThreshold ? 'text-white font-medium' : 'text-white/60'}`}>{t(ex.labelKey)}</span>
+                          <span className={`font-mono ${isAboveThreshold ? 'text-red-300' : 'text-white/40'}`}>{ex.db}dB</span>
+                          {isExact && (
+                            <span className="font-bold text-xs" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>◀</span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
 
-                  {/* Warning */}
+                  {/* Hardware warning */}
                   <div className="rounded-xl px-3 py-2.5 border border-yellow-400/30" style={{ background: 'hsla(45, 100%, 50%, 0.1)' }}>
                     <span className="text-yellow-200/90 text-xs leading-relaxed">
                       ⚠️ {t("settings.micWarning")}
@@ -604,7 +627,8 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
                   </div>
                 </div>
               </>
-            )}
+              );
+            })()}
 
             <div className="border-t border-white/10" />
             <SensorSection>
