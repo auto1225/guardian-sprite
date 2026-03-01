@@ -17,6 +17,8 @@ const devicePresenceData = new Map<string, { is_network_connected?: boolean; is_
 const deviceChargingMap = new Map<string, boolean>(); // Presence-only: is_charging per deviceId
 // ★ 카메라 다운그레이드 grace period 타이머
 const cameraDowngradeTimers = new Map<string, ReturnType<typeof setTimeout>>();
+// ★ 카메라 상태 DB 재검증 타이머 (Presence 온라인 확인 후 DB 값 교차 검증)
+const cameraVerifyTimers = new Map<string, ReturnType<typeof setTimeout>>();
 let subscriberCount = 0;
 
 // ── 모듈 레벨 싱글톤: 기기 선택 상태 (모든 컴포넌트가 공유) ──
@@ -49,6 +51,10 @@ function subscribeSelection(listener: () => void) {
 function cleanupAllChannels() {
   activeLeaveTimers.forEach((timer) => clearTimeout(timer));
   activeLeaveTimers.clear();
+  cameraDowngradeTimers.forEach((timer) => clearTimeout(timer));
+  cameraDowngradeTimers.clear();
+  cameraVerifyTimers.forEach((timer) => clearTimeout(timer));
+  cameraVerifyTimers.clear();
   if (activeDbChannel) {
     supabase.removeChannel(activeDbChannel);
     activeDbChannel = null;
@@ -335,6 +341,36 @@ export const useDevices = () => {
               is_network_connected: latest.is_network_connected,
               is_camera_connected: latest.is_camera_connected,
             });
+
+            // ★ Presence에서 온라인인데 카메라 상태가 undefined/false → DB 재검증 예약
+            if (newStatus === 'online' && !latest.is_camera_connected && !cameraVerifyTimers.has(d.id)) {
+              const verifyTimer = setTimeout(async () => {
+                cameraVerifyTimers.delete(d.id);
+                try {
+                  const { data } = await supabase.functions.invoke("get-devices", {
+                    body: { device_id: d.id },
+                  });
+                  const dbDevice = data?.devices?.[0];
+                  if (dbDevice?.is_camera_connected === true) {
+                    console.log("[Presence] 🔄 Camera verified via DB for", d.id.slice(0, 8));
+                    devicePresenceData.set(d.id, {
+                      ...devicePresenceData.get(d.id),
+                      is_camera_connected: true,
+                    });
+                    queryClient.setQueryData(["devices", effectiveUserId], (old: Device[] | undefined) => {
+                      if (!old) return old;
+                      return old.map(dev => dev.id === d.id ? { ...dev, is_camera_connected: true } : dev);
+                    });
+                  }
+                } catch { /* best effort */ }
+              }, 3000);
+              cameraVerifyTimers.set(d.id, verifyTimer);
+            }
+            // 카메라가 true로 확인되면 검증 타이머 취소
+            if (latest.is_camera_connected === true && cameraVerifyTimers.has(d.id)) {
+              clearTimeout(cameraVerifyTimers.get(d.id)!);
+              cameraVerifyTimers.delete(d.id);
+            }
 
             // ★ 카메라 true→false: 5초 grace period (노트북 새로고침 시 일시적 false 방지)
             // false→true 또는 변화 없음: 즉시 반영 & 기존 타이머 취소
