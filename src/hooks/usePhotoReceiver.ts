@@ -88,7 +88,7 @@ export function usePhotoReceiver(
   }, [loadAlerts]);
 
   /** 배치 완료 시 호출 — 모든 사진을 하나의 PhotoAlert로 병합 후 오버레이 표시 */
-  const finalizeBatch = useCallback((batch: PendingBatch) => {
+  const finalizeBatch = useCallback(async (batch: PendingBatch) => {
     const allPhotos: string[] = [];
     let firstSeq: PendingSequence | null = null;
     let lastLatitude: number | null = null;
@@ -110,6 +110,25 @@ export function usePhotoReceiver(
     }
 
     if (!firstSeq) return;
+
+    // 위치 정보가 없으면 DB에서 기기의 마지막 위치를 가져오기
+    if (lastLatitude == null || lastLongitude == null) {
+      try {
+        const deviceId = selectedDeviceIdRef.current || firstSeq.device_id;
+        const { data } = await supabase.functions.invoke("get-devices", {
+          body: { device_id: deviceId },
+        });
+        const device = Array.isArray(data) ? data[0] : data;
+        if (device?.latitude != null && device?.longitude != null) {
+          lastLatitude = device.latitude;
+          lastLongitude = device.longitude;
+          lastLocationSource = "db_fallback";
+          console.log("[PhotoReceiver] 📍 Location fallback from DB:", lastLatitude, lastLongitude);
+        }
+      } catch (err) {
+        console.warn("[PhotoReceiver] Location fallback failed:", err);
+      }
+    }
 
     const completed: PhotoAlert = {
       id: batch.batch_id,
@@ -186,6 +205,9 @@ export function usePhotoReceiver(
           total_chunks: Math.ceil(payload.total_photos / 2),
           received_chunks: 0,
           photos: [],
+          latitude: payload.latitude ?? null,
+          longitude: payload.longitude ?? null,
+          location_source: payload.location_source ?? null,
           completed: false,
         });
 
