@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { PhotoAlert } from "@/lib/photoAlertStorage";
 import { stopAlertSound } from "@/hooks/useAlerts";
 import * as Alarm from "@/lib/alarmSound";
-import { X, Download, ChevronLeft, ChevronRight, ZoomIn, CheckSquare, Square, Video, VideoOff, MapPin } from "lucide-react";
+import { X, Download, ChevronLeft, ChevronRight, ZoomIn, CheckSquare, Square, Video, VideoOff, MapPin, ArrowLeft } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { saveSinglePhoto, savePhotos } from "@/lib/photoDownload";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +14,7 @@ import AlertLocationMap from "@/components/alert/AlertLocationMap";
 interface PhotoAlertOverlayProps {
   alert: PhotoAlert;
   onDismiss: () => void;
+  onBack?: () => void;
   receiving?: boolean;
   progress?: number;
   onDismissRemoteAlarm?: () => void;
@@ -26,6 +27,7 @@ interface PhotoAlertOverlayProps {
 export default function PhotoAlertOverlay({
   alert,
   onDismiss,
+  onBack,
   receiving,
   progress = 0,
   onDismissRemoteAlarm,
@@ -143,9 +145,15 @@ export default function PhotoAlertOverlay({
         <div className="flex items-center gap-2">
           <span className="text-white font-black text-xl">{t("alert.securityAlert")}</span>
         </div>
-        <button onClick={onDismiss} className="text-white/70 active:text-white">
-          <X size={24} />
-        </button>
+        {isHistoryView && onBack ? (
+          <button onClick={onBack} className="text-white/70 active:text-white">
+            <ArrowLeft size={24} />
+          </button>
+        ) : (
+          <button onClick={onDismiss} className="text-white/70 active:text-white">
+            <X size={24} />
+          </button>
+        )}
       </div>
 
       {/* Scrollable content area */}
