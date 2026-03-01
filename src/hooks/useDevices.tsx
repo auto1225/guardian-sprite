@@ -82,6 +82,7 @@ export const useDevices = () => {
         body: { user_id: effectiveUserId },
       });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       const dbDevices = (data?.devices || []) as Device[];
 
       // ★ DB 조회 결과에 Presence 확인된 온라인 상태 보존
@@ -103,6 +104,8 @@ export const useDevices = () => {
       });
     },
     enabled: !!effectiveUserId,
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
 
   // 전역 싱글톤 선택 상태 사용
