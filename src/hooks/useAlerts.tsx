@@ -149,7 +149,8 @@ export const useAlerts = (deviceId?: string | null) => {
       console.log("[useAlerts] ⏭ Alarm already playing or muted, skipping play");
     }
 
-    const logDeviceId = fromDeviceId || deviceIdRef.current;
+    // ★ 항상 선택된 기기 ID(DB 기준)로 저장 — Presence key(크로스 프로젝트 ID)가 아닌 공유 DB의 기기 ID 사용
+    const logDeviceId = deviceIdRef.current || fromDeviceId;
     if (logDeviceId) {
       try {
         // 처리 완료 등록 — 이후 Presence sync에서 재생성 차단

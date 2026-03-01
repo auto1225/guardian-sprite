@@ -66,6 +66,8 @@ export function usePhotoReceiver(
   selectedDeviceId: string | null | undefined,
   deviceNameMap?: Record<string, string>
 ): UsePhotoReceiverReturn {
+  const selectedDeviceIdRef = useRef(selectedDeviceId);
+  selectedDeviceIdRef.current = selectedDeviceId;
   const { effectiveUserId } = useAuth();
   const [receiving, setReceiving] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -78,7 +80,7 @@ export function usePhotoReceiver(
   deviceNameMapRef.current = deviceNameMap;
 
   const loadAlerts = useCallback(() => {
-    setAlerts(getPhotoAlerts());
+    setAlerts(getPhotoAlerts(selectedDeviceIdRef.current || undefined));
   }, []);
 
   useEffect(() => {
@@ -110,8 +112,9 @@ export function usePhotoReceiver(
     if (!firstSeq) return;
 
     const completed: PhotoAlert = {
-      id: batch.batch_id, // 배치 ID를 경보 ID로 사용
-      device_id: firstSeq.device_id,
+      id: batch.batch_id,
+      // ★ 항상 선택된 기기 ID(공유 DB)를 사용 — 크로스 프로젝트 ID 불일치 방지
+      device_id: selectedDeviceIdRef.current || firstSeq.device_id,
       device_name: firstSeq.device_name,
       event_type: firstSeq.event_type,
       total_photos: allPhotos.length,
