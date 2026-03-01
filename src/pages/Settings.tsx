@@ -86,7 +86,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
     (meta.mouseSensitivity as MotionSensitivity) || "sensitive"
   );
   const [micThresholdDb, setMicThresholdDb] = useState<number>(
-    (meta.micThresholdDb as number) ?? 60
+    (meta.micThresholdDb as number) ?? 80
   );
 
   const [showNicknameDialog, setShowNicknameDialog] = useState(false);
