@@ -1,4 +1,4 @@
-import { X, User, Laptop, LogOut, HelpCircle, UserCog, Globe, Lock, MapPin, Camera } from "lucide-react";
+import { ChevronLeft, User, Laptop, LogOut, HelpCircle, UserCog, Globe, Lock, MapPin, Camera } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -66,7 +66,7 @@ const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick, onRemoteC
             </div>
           </div>
           <button onClick={onClose} className="p-2" aria-label={t("common.close")}>
-            <X className="w-5 h-5 text-primary-foreground" />
+            <ChevronLeft className="w-5 h-5 text-primary-foreground" />
           </button>
         </div>
 
