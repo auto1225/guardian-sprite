@@ -258,6 +258,18 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         setIsConnecting(false);
         timers.clearTimeout("connectionTimeout");
         timers.clearInterval("offerPoll");
+
+        // ★ Stale track detection: if no video frames arrive within 8s, reconnect
+        timers.setTimeout("staleTrackCheck", () => {
+          const videoTrack = pc.getReceivers().find(r => r.track?.kind === "video")?.track;
+          if (!videoTrack || videoTrack.muted || videoTrack.readyState === "ended") {
+            console.log("[WebRTC Viewer] ⚠️ Stale track detected after connection, forcing reconnect");
+            cleanup(false);
+            // Reset reconnect counter for this specific case
+            guards.current.reconnectAttempt = 0;
+            timers.setTimeout("staleReconnect", () => connectRef.current(), 1000);
+          }
+        }, 8000);
       } else if (state === "disconnected") {
         guards.current.connected = false;
         setIsConnected(false);
