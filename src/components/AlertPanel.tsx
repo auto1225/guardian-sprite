@@ -39,11 +39,12 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
 
+  // ★ 선택된 기기의 이력만 표시 — 기기간 데이터 격리
   const activityAlerts = useMemo(() => {
     void refreshKey;
     void isOpen;
-    return getAlertLogs(undefined, 50);
-  }, [refreshKey, isOpen]);
+    return getAlertLogs(deviceId || undefined, 50);
+  }, [deviceId, refreshKey, isOpen]);
   const activityUnread = activityAlerts.filter(a => !a.is_read).length;
 
   const refreshAlerts = useCallback(() => setRefreshKey(k => k + 1), []);
@@ -51,11 +52,11 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSelectMode, setIsSelectMode] = useState(false);
 
-  // ★ 크로스 프로젝트 ID 불일치 방지: 모든 사진 경보를 표시 (device_id 필터 제거)
+  // ★ 선택된 기기의 사진 경보만 표시 — 기기간 데이터 격리
   const photoAlerts = useMemo(() => {
     void refreshKey;
-    return getPhotoAlerts();
-  }, [refreshKey, isOpen]);
+    return getPhotoAlerts(deviceId || undefined);
+  }, [deviceId, refreshKey, isOpen]);
 
   const photoUnread = photoAlerts.filter(a => !a.is_read).length;
   const totalUnread = activityUnread + photoUnread;
