@@ -87,7 +87,7 @@ export default function AlertVideoPlayer({ alertId }: AlertVideoPlayerProps) {
             <video
               ref={videoRef}
               src={videoUrl}
-              className="w-full h-full object-contain"
+              className="w-full h-full object-cover"
               playsInline
               onEnded={() => setIsPlaying(false)}
               onPause={() => setIsPlaying(false)}
