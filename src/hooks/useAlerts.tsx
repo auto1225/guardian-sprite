@@ -57,6 +57,9 @@ export const useAlerts = (deviceId?: string | null) => {
   const lastAlertDeviceRef = useRef<string | null>(null);
   // ★ Per-device suppression — 해제 후 같은 기기의 모든 경보 차단
   const deviceSuppressRef = useRef<Map<string, number>>(new Map());
+  // ★ Per-device 시간 기반 중복 방지 — 동일 기기에서 짧은 시간 내 다중 경보 수신 시 하나만 처리
+  const deviceLastAlertTimeRef = useRef<Map<string, number>>(new Map());
+  const DEVICE_DEDUP_WINDOW_MS = 10_000; // 10초
 
   deviceIdRef.current = deviceId;
   userIdRef.current = effectiveUserId;
@@ -121,9 +124,22 @@ export const useAlerts = (deviceId?: string | null) => {
 
     if (activeAlertRef.current?.id === alert.id) return;
 
+    // ★ Per-device 시간 기반 중복 방지 — 같은 기기에서 10초 내 다중 경보 수신 시 하나만 처리
+    if (fromDeviceId) {
+      const lastTime = deviceLastAlertTimeRef.current.get(fromDeviceId);
+      if (lastTime && Date.now() - lastTime < DEVICE_DEDUP_WINDOW_MS) {
+        console.log("[useAlerts] ⏭ Device dedup (within 10s window):", fromDeviceId.slice(0, 8), "alert:", alert.id.slice(0, 8));
+        addProcessedAlertId(alert.id);
+        return;
+      }
+    }
+
     console.log("[useAlerts] 🚨 New alert:", alert.id, "from device:", fromDeviceId?.slice(0, 8), "age:", Math.round(age / 1000), "s");
     activeAlertRef.current = alert;
     lastAlertDeviceRef.current = fromDeviceId || null;
+    if (fromDeviceId) {
+      deviceLastAlertTimeRef.current.set(fromDeviceId, Date.now());
+    }
     safeSetActiveAlert(alert);
 
     if (!Alarm.isPlaying() && !Alarm.isMuted()) {
