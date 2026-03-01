@@ -260,17 +260,21 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         timers.clearTimeout("connectionTimeout");
         timers.clearInterval("offerPoll");
 
-        // ★ Stale track detection: if no video frames arrive within 8s, reconnect (max 3 times)
+        // ★ Stale track detection: if no video frames arrive within 8s, signal broadcaster to restart
         timers.setTimeout("staleTrackCheck", () => {
           const videoTrack = pc.getReceivers().find(r => r.track?.kind === "video")?.track;
-          if (!videoTrack || videoTrack.muted || videoTrack.readyState === "ended") {
+          const hasVideo = videoTrack && !videoTrack.muted && videoTrack.readyState === "live";
+          if (!hasVideo) {
             const g2 = guards.current;
             g2.staleReconnectCount++;
             if (g2.staleReconnectCount <= 3) {
-              console.log(`[WebRTC Viewer] ⚠️ Stale track detected (attempt ${g2.staleReconnectCount}/3), forcing reconnect`);
+              console.log(`[WebRTC Viewer] ⚠️ Stale/missing video track (attempt ${g2.staleReconnectCount}/3), requesting broadcaster restart`);
+              // Signal broadcaster to re-acquire camera and restart
+              sendMsg("broadcast-needs-restart", { reason: "no-video-track", attempt: g2.staleReconnectCount });
               cleanup(false);
               g2.reconnectAttempt = 0;
-              timers.setTimeout("staleReconnect", () => connectRef.current(), 2000);
+              // Wait longer for broadcaster to re-acquire camera (5s for getUserMedia retries)
+              timers.setTimeout("staleReconnect", () => connectRef.current(), 5000);
             } else {
               console.log("[WebRTC Viewer] ❌ Stale track persists after 3 attempts, giving up");
               cleanup(false);

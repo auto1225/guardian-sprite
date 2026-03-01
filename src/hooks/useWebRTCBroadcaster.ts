@@ -71,6 +71,37 @@ export const useWebRTCBroadcaster = ({
     setViewerCount(0);
   }, [onViewerDisconnected]);
 
+  // ── Re-acquire stream with video retry ──────────────────────────────────
+  const acquireStreamWithVideo = useCallback(async (maxRetries = 5, delayMs = 2000): Promise<MediaStream | null> => {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640, max: 640 }, height: { ideal: 480, max: 480 }, frameRate: { ideal: 15, max: 30 }, facingMode: "user" },
+          audio: true,
+        });
+        const videoTracks = stream.getVideoTracks().filter(t => t.readyState === "live");
+        if (videoTracks.length > 0) {
+          console.log(`[WebRTC Broadcaster] ✅ Got video track on attempt ${attempt + 1}`);
+          return stream;
+        }
+        console.log(`[WebRTC Broadcaster] ⚠️ No live video track on attempt ${attempt + 1}, retrying...`);
+        stream.getTracks().forEach(t => t.stop());
+      } catch (err) {
+        console.log(`[WebRTC Broadcaster] ⚠️ getUserMedia failed on attempt ${attempt + 1}:`, err);
+      }
+      if (attempt < maxRetries - 1) {
+        await new Promise(r => setTimeout(r, delayMs));
+      }
+    }
+    // Last resort: return audio-only stream
+    try {
+      console.log("[WebRTC Broadcaster] ⚠️ Falling back to audio-only stream");
+      return await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      return null;
+    }
+  }, []);
+
   // ── Re-acquire stream and replace tracks on all PCs ─────────────────────
   const recoverStream = useCallback(async () => {
     if (isRecoveringRef.current) return;
@@ -78,11 +109,12 @@ export const useWebRTCBroadcaster = ({
     console.log("[WebRTC Broadcaster] 🔄 Track ended, re-acquiring camera stream...");
 
     try {
-      // Acquire new stream
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640, max: 640 }, height: { ideal: 480, max: 480 }, frameRate: { ideal: 15, max: 30 }, facingMode: "user" },
-        audio: true,
-      });
+      const newStream = await acquireStreamWithVideo();
+      if (!newStream) {
+        console.error("[WebRTC Broadcaster] ❌ Could not acquire any stream");
+        onError?.("Camera recovery failed");
+        return;
+      }
 
       // Stop old tracks
       if (streamRef.current) {
@@ -96,12 +128,7 @@ export const useWebRTCBroadcaster = ({
       streamRef.current = newStream;
       setLocalStream(newStream);
 
-      // Replace tracks on all existing PeerConnections
-      const newVideoTrack = newStream.getVideoTracks()[0];
-      const newAudioTrack = newStream.getAudioTracks()[0];
-
       // Close all existing viewer connections (clean slate for new tracks)
-      // Viewers will reconnect when they detect disconnection or via broadcaster-ready
       viewersRef.current.forEach(({ pc, viewerId }) => {
         pc.close();
         onViewerDisconnected?.(viewerId);
@@ -124,7 +151,7 @@ export const useWebRTCBroadcaster = ({
     } finally {
       isRecoveringRef.current = false;
     }
-  }, [deviceId, sendMsg, onError, onViewerDisconnected]);
+  }, [deviceId, sendMsg, onError, onViewerDisconnected, acquireStreamWithVideo]);
 
   // ── Track ended listeners ───────────────────────────────────────────────
   const setupTrackEndedListeners = useCallback((stream: MediaStream) => {
@@ -190,13 +217,35 @@ export const useWebRTCBroadcaster = ({
       return;
     }
 
-    // ★ Verify tracks are alive before creating offer
-    const hasLiveTracks = streamRef.current.getTracks().some(t => t.readyState === "live");
-    if (!hasLiveTracks) {
-      console.log("[WebRTC Broadcaster] ⚠️ All tracks ended, recovering before joining viewer");
+    // ★ Verify both audio AND video tracks are alive before creating offer
+    const liveVideoTracks = streamRef.current.getVideoTracks().filter(t => t.readyState === "live");
+    const hasLiveAudio = streamRef.current.getAudioTracks().some(t => t.readyState === "live");
+    
+    if (liveVideoTracks.length === 0) {
+      console.log("[WebRTC Broadcaster] ⚠️ No live video track, re-acquiring stream before offer...");
       processedJoinsRef.current.delete(viewerId);
-      await recoverStream();
+      
+      // Try to get a fresh stream with video
+      const freshStream = await acquireStreamWithVideo(3, 1500);
+      if (freshStream) {
+        if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+        trackEndedCleanupRef.current.forEach(fn => fn());
+        trackEndedCleanupRef.current = [];
+        streamRef.current = freshStream;
+        setLocalStream(freshStream);
+        setupTrackEndedListeners(freshStream);
+        // Re-attempt the join with new stream
+        processedJoinsRef.current.delete(viewerId);
+        handleViewerJoin(viewerId);
+      } else {
+        console.error("[WebRTC Broadcaster] ❌ Cannot get video for viewer");
+        onError?.("Camera not available");
+      }
       return;
+    }
+    
+    if (!hasLiveAudio) {
+      console.log("[WebRTC Broadcaster] ⚠️ No live audio track, proceeding with video only");
     }
 
     const pc = createPCForViewer(viewerId);
@@ -215,7 +264,7 @@ export const useWebRTCBroadcaster = ({
       processedJoinsRef.current.delete(viewerId);
       setViewerCount(viewersRef.current.size);
     }
-  }, [createPCForViewer, sendMsg, onViewerConnected, recoverStream]);
+  }, [createPCForViewer, sendMsg, onViewerConnected, recoverStream, acquireStreamWithVideo, onError]);
 
   // ── Handle signaling message ────────────────────────────────────────────
   const handleRecord = useCallback(async (record: SignalingRecord) => {
@@ -224,6 +273,13 @@ export const useWebRTCBroadcaster = ({
 
     if (record.type === "viewer-join") {
       handleViewerJoin(record.data.viewerId || record.session_id);
+      return;
+    }
+
+    // ★ Handle broadcast-needs-restart: viewer detected stale/missing video track
+    if (record.type === "broadcast-needs-restart") {
+      console.log("[WebRTC Broadcaster] 🔄 Viewer requested restart:", record.data.reason);
+      recoverStream();
       return;
     }
 
@@ -264,7 +320,7 @@ export const useWebRTCBroadcaster = ({
     } catch (err) {
       console.error("[WebRTC Broadcaster] Signaling error:", err);
     }
-  }, [handleViewerJoin]);
+  }, [handleViewerJoin, recoverStream]);
 
   // ── Start broadcasting ──────────────────────────────────────────────────
   const startBroadcasting = useCallback(async () => {
