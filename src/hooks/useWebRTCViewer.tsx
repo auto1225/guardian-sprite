@@ -78,6 +78,7 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     connectedAt: 0,
     reconnectAttempt: 0,
     joinRetryCount: 0,
+    staleReconnectCount: 0,
   });
 
   // Stable reference to connect for reconnect scheduling
@@ -259,15 +260,25 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
         timers.clearTimeout("connectionTimeout");
         timers.clearInterval("offerPoll");
 
-        // ★ Stale track detection: if no video frames arrive within 8s, reconnect
+        // ★ Stale track detection: if no video frames arrive within 8s, reconnect (max 3 times)
         timers.setTimeout("staleTrackCheck", () => {
           const videoTrack = pc.getReceivers().find(r => r.track?.kind === "video")?.track;
           if (!videoTrack || videoTrack.muted || videoTrack.readyState === "ended") {
-            console.log("[WebRTC Viewer] ⚠️ Stale track detected after connection, forcing reconnect");
-            cleanup(false);
-            // Reset reconnect counter for this specific case
-            guards.current.reconnectAttempt = 0;
-            timers.setTimeout("staleReconnect", () => connectRef.current(), 1000);
+            const g2 = guards.current;
+            g2.staleReconnectCount++;
+            if (g2.staleReconnectCount <= 3) {
+              console.log(`[WebRTC Viewer] ⚠️ Stale track detected (attempt ${g2.staleReconnectCount}/3), forcing reconnect`);
+              cleanup(false);
+              g2.reconnectAttempt = 0;
+              timers.setTimeout("staleReconnect", () => connectRef.current(), 2000);
+            } else {
+              console.log("[WebRTC Viewer] ❌ Stale track persists after 3 attempts, giving up");
+              cleanup(false);
+              onError?.(i18n.t("camera.staleTrackError", "카메라 스트림을 수신할 수 없습니다. 노트북의 카메라를 확인해주세요."));
+            }
+          } else {
+            // Successfully receiving frames — reset counter
+            g.staleReconnectCount = 0;
           }
         }, 8000);
       } else if (state === "disconnected") {
@@ -304,6 +315,8 @@ export const useWebRTCViewer = ({ deviceId, onError }: WebRTCViewerOptions) => {
     const g = guards.current;
     if (g.connecting || g.connected) return;
     g.connecting = true;
+    // Reset stale counter only on fresh manual connect (not stale-reconnect)
+    if (g.staleReconnectCount === 0) g.staleReconnectCount = 0;
     setIsConnecting(true);
 
     // Full reset
