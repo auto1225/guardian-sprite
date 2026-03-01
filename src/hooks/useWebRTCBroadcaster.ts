@@ -34,6 +34,8 @@ export const useWebRTCBroadcaster = ({
   const processedRef = useRef(new Set<string>());
   const processedJoinsRef = useRef(new Set<string>());
   const sessionIdRef = useRef(createSessionId("broadcaster"));
+  const isRecoveringRef = useRef(false);
+  const trackEndedCleanupRef = useRef<Array<() => void>>([]);
 
   // ── Helpers ─────────────────────────────────────────────────────────────
   const sendMsg = useCallback(
@@ -47,6 +49,10 @@ export const useWebRTCBroadcaster = ({
 
   // ── Cleanup ─────────────────────────────────────────────────────────────
   const cleanup = useCallback(() => {
+    // Clean up track-ended listeners
+    trackEndedCleanupRef.current.forEach(fn => fn());
+    trackEndedCleanupRef.current = [];
+
     viewersRef.current.forEach(({ pc, viewerId }) => {
       pc.close();
       onViewerDisconnected?.(viewerId);
@@ -59,10 +65,90 @@ export const useWebRTCBroadcaster = ({
     if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null; }
     processedRef.current.clear();
     processedJoinsRef.current.clear();
+    isRecoveringRef.current = false;
     setLocalStream(null);
     setIsBroadcasting(false);
     setViewerCount(0);
   }, [onViewerDisconnected]);
+
+  // ── Re-acquire stream and replace tracks on all PCs ─────────────────────
+  const recoverStream = useCallback(async () => {
+    if (isRecoveringRef.current) return;
+    isRecoveringRef.current = true;
+    console.log("[WebRTC Broadcaster] 🔄 Track ended, re-acquiring camera stream...");
+
+    try {
+      // Acquire new stream
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 640, max: 640 }, height: { ideal: 480, max: 480 }, frameRate: { ideal: 15, max: 30 }, facingMode: "user" },
+        audio: true,
+      });
+
+      // Stop old tracks
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+      }
+
+      // Clean up old track-ended listeners
+      trackEndedCleanupRef.current.forEach(fn => fn());
+      trackEndedCleanupRef.current = [];
+
+      streamRef.current = newStream;
+      setLocalStream(newStream);
+
+      // Replace tracks on all existing PeerConnections
+      const newVideoTrack = newStream.getVideoTracks()[0];
+      const newAudioTrack = newStream.getAudioTracks()[0];
+
+      // Close all existing viewer connections (clean slate for new tracks)
+      // Viewers will reconnect when they detect disconnection or via broadcaster-ready
+      viewersRef.current.forEach(({ pc, viewerId }) => {
+        pc.close();
+        onViewerDisconnected?.(viewerId);
+      });
+      viewersRef.current.clear();
+      processedJoinsRef.current.clear();
+      setViewerCount(0);
+
+      // Set up track-ended listeners on new tracks
+      setupTrackEndedListeners(newStream);
+
+      // Signal viewers to reconnect
+      console.log("[WebRTC Broadcaster] ✅ Stream recovered, signaling broadcaster-ready");
+      await cleanSignaling(deviceId, "broadcaster");
+      await sendMsg("broadcaster-ready", { broadcasterId: sessionIdRef.current, reason: "stream-recovered" });
+
+    } catch (err) {
+      console.error("[WebRTC Broadcaster] ❌ Failed to recover stream:", err);
+      onError?.("Camera recovery failed");
+    } finally {
+      isRecoveringRef.current = false;
+    }
+  }, [deviceId, sendMsg, onError, onViewerDisconnected]);
+
+  // ── Track ended listeners ───────────────────────────────────────────────
+  const setupTrackEndedListeners = useCallback((stream: MediaStream) => {
+    // Clean up previous listeners
+    trackEndedCleanupRef.current.forEach(fn => fn());
+    trackEndedCleanupRef.current = [];
+
+    stream.getTracks().forEach(track => {
+      const handler = () => {
+        console.log(`[WebRTC Broadcaster] ⚠️ Track ended: ${track.kind} (${track.label})`);
+        // Only recover if we're still broadcasting
+        if (streamRef.current === stream) {
+          // Small delay to allow camera to reinitialize
+          setTimeout(() => {
+            if (streamRef.current && streamRef.current.getTracks().some(t => t.readyState === "ended")) {
+              recoverStream();
+            }
+          }, 2000);
+        }
+      };
+      track.addEventListener("ended", handler);
+      trackEndedCleanupRef.current.push(() => track.removeEventListener("ended", handler));
+    });
+  }, [recoverStream]);
 
   // ── Create PC for a viewer ──────────────────────────────────────────────
   const createPCForViewer = useCallback((viewerId: string) => {
@@ -104,6 +190,15 @@ export const useWebRTCBroadcaster = ({
       return;
     }
 
+    // ★ Verify tracks are alive before creating offer
+    const hasLiveTracks = streamRef.current.getTracks().some(t => t.readyState === "live");
+    if (!hasLiveTracks) {
+      console.log("[WebRTC Broadcaster] ⚠️ All tracks ended, recovering before joining viewer");
+      processedJoinsRef.current.delete(viewerId);
+      await recoverStream();
+      return;
+    }
+
     const pc = createPCForViewer(viewerId);
     viewersRef.current.set(viewerId, { pc, viewerId, hasRemoteDescription: false, pendingIceCandidates: [] });
     setViewerCount(viewersRef.current.size);
@@ -120,7 +215,7 @@ export const useWebRTCBroadcaster = ({
       processedJoinsRef.current.delete(viewerId);
       setViewerCount(viewersRef.current.size);
     }
-  }, [createPCForViewer, sendMsg, onViewerConnected]);
+  }, [createPCForViewer, sendMsg, onViewerConnected, recoverStream]);
 
   // ── Handle signaling message ────────────────────────────────────────────
   const handleRecord = useCallback(async (record: SignalingRecord) => {
@@ -185,6 +280,9 @@ export const useWebRTCBroadcaster = ({
       streamRef.current = stream;
       setLocalStream(stream);
 
+      // ★ Set up track-ended listeners for auto-recovery
+      setupTrackEndedListeners(stream);
+
       await cleanSignaling(deviceId, "broadcaster");
 
       const channel = supabase
@@ -219,7 +317,7 @@ export const useWebRTCBroadcaster = ({
       cleanup();
       onError?.("Camera access failed. Please check permissions.");
     }
-  }, [deviceId, isBroadcasting, cleanup, handleRecord, sendMsg, onError]);
+  }, [deviceId, isBroadcasting, cleanup, handleRecord, sendMsg, onError, setupTrackEndedListeners]);
 
   // ── Stop broadcasting ───────────────────────────────────────────────────
   const stopBroadcasting = useCallback(async () => {
