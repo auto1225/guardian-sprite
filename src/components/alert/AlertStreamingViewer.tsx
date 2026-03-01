@@ -264,7 +264,7 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
           {/* Last frame canvas - shown when disconnected */}
           <canvas
             ref={canvasRef}
-            className={`w-full h-full object-contain ${showLastFrame && !isConnected ? "" : "hidden"}`}
+            className={`w-full h-full object-cover ${showLastFrame && !isConnected ? "" : "hidden"}`}
           />
           {showLastFrame && !isConnected && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60">
@@ -278,7 +278,7 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
             autoPlay
             playsInline
             muted
-            className={`w-full h-full object-contain ${isConnected ? "" : "hidden"}`}
+            className={`w-full h-full object-cover ${isConnected ? "" : "hidden"}`}
           />
         </div>
       </div>

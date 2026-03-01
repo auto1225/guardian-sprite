@@ -138,7 +138,8 @@ export const useAlerts = (deviceId?: string | null) => {
       try {
         // 처리 완료 등록 — 이후 Presence sync에서 재생성 차단
         addProcessedAlertId(alert.id);
-        addActivityLog(logDeviceId, alert.type, {
+        // ★ event_type을 "security_alert"로 저장 — getAlertLogs의 excludeTypes에 "intrusion"이 포함되어 필터링되는 문제 방지
+        addActivityLog(logDeviceId, "security_alert", {
           title: alert.title,
           message: alert.message,
           alertType: alert.type,
