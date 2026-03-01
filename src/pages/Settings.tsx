@@ -114,7 +114,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
     setMouseSensitivity((m.mouseSensitivity as MotionSensitivity) || "sensitive");
     // ★ 기기별 언어 설정 반영
     setDeviceLanguage((m.language as string) || i18n.language);
-  }, [device?.id, device?.metadata]);
+  }, [device?.id, device?.name, device?.metadata]);
 
   // 초기 기본값 저장
   useEffect(() => {
