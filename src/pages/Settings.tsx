@@ -527,10 +527,11 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
               </div>
             </SensorSection>
 
-            <div className="border-t border-white/10" />
+            {/* 마이크 감지 - 임시 숨김 처리 (필요 시 복원) */}
+            {/* <div className="border-t border-white/10" />
             <SensorSection>
               <SensorToggle label={t("settings.micDetection")} description={t("settings.micDetectionDesc")} checked={sensorSettings.microphone} onChange={(v) => handleSensorToggle("microphone", v)} />
-            </SensorSection>
+            </SensorSection> */}
 
             <div className="border-t border-white/10" />
             <SensorSection>
