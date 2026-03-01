@@ -488,23 +488,26 @@ export const useDevices = () => {
 
     // ── name_changed 브로드캐스트 수신: 노트북에서 이름 변경 시 즉시 반영 ──
     const cmdChannelName = `user-commands-${effectiveUserId}`;
+    const nameChangedHandler = ({ payload }: { payload: any }) => {
+      console.log("[useDevices] 📝 name_changed received:", payload);
+      const { device_id, name } = payload || {};
+      if (!device_id || !name) return;
+      queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
+        if (!oldDevices) return oldDevices;
+        return oldDevices.map(d => d.id === device_id ? { ...d, name } : d);
+      });
+      queryClient.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
+    };
     const existingCmdCh = supabase.getChannels().find(ch => ch.topic === `realtime:${cmdChannelName}`);
-    // 기존 채널이 있으면 재사용 (다른 훅에서 이미 구독 중일 수 있음)
     const cmdChannel = existingCmdCh || supabase.channel(cmdChannelName);
+    // 기존 채널이든 새 채널이든 리스너를 항상 등록
+    cmdChannel.on("broadcast", { event: "name_changed" }, nameChangedHandler);
     if (!existingCmdCh) {
-      cmdChannel
-        .on("broadcast", { event: "name_changed" }, ({ payload }) => {
-          console.log("[useDevices] 📝 name_changed received:", payload);
-          const { device_id, name } = payload || {};
-          if (!device_id || !name) return;
-          queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
-            if (!oldDevices) return oldDevices;
-            return oldDevices.map(d => d.id === device_id ? { ...d, name } : d);
-          });
-          // DB에서도 최신 상태 가져오기 (best-effort)
-          queryClient.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
-        })
-        .subscribe();
+      cmdChannel.subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          console.log("[useDevices] ✅ user-commands channel subscribed for name_changed");
+        }
+      });
     }
 
     // ── 네트워크 복구 시 채널 재연결 ──
