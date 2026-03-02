@@ -1,6 +1,7 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from "react";
-import { User, Session } from "@supabase/supabase-js";
+import { useState, useEffect, useRef, createContext, useContext, ReactNode } from "react";
+import { User, Session, RealtimeChannel } from "@supabase/supabase-js";
 import { websiteSupabase, fetchUserSerials, UserSerial } from "@/lib/websiteAuth";
+import { useToast } from "@/hooks/use-toast";
 
 // Legacy keys (cleanup on logout)
 const SERIAL_STORAGE_KEY = "meercop_serial_key";
@@ -31,6 +32,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [serials, setSerials] = useState<UserSerial[]>([]);
   const [serialsLoading, setSerialsLoading] = useState(false);
+  const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
+  const { toast } = useToast();
 
   const loadSerials = async (accessToken: string) => {
     setSerialsLoading(true);
@@ -44,6 +47,55 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const subscribeRealtime = (userId: string) => {
+    // Cleanup existing
+    if (realtimeChannelRef.current) {
+      websiteSupabase.removeChannel(realtimeChannelRef.current);
+      realtimeChannelRef.current = null;
+    }
+
+    const channel = websiteSupabase
+      .channel("my-serials")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "serial_numbers",
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          console.log("[Auth] Realtime serial change:", payload.eventType);
+          if (payload.eventType === "INSERT") {
+            toast({ title: "🆕 New serial added", description: "A new device license has been added to your account." });
+          } else if (payload.eventType === "UPDATE") {
+            const newData = payload.new as Record<string, unknown>;
+            if (newData.device_name) {
+              toast({ title: "📱 Device connected", description: `${newData.device_name} has been linked.` });
+            }
+          } else if (payload.eventType === "DELETE") {
+            toast({ title: "❌ Serial removed", description: "A device license has been removed." });
+          }
+          // Refresh serials list
+          websiteSupabase.auth.getSession().then(({ data: { session: s } }) => {
+            if (s?.access_token) loadSerials(s.access_token);
+          });
+        }
+      )
+      .subscribe((status) => {
+        console.log("[Auth] Realtime subscription status:", status);
+      });
+
+    realtimeChannelRef.current = channel;
+  };
+
+  const unsubscribeRealtime = () => {
+    if (realtimeChannelRef.current) {
+      websiteSupabase.removeChannel(realtimeChannelRef.current);
+      realtimeChannelRef.current = null;
+    }
+  };
+
   useEffect(() => {
     const { data: { subscription } } = websiteSupabase.auth.onAuthStateChange(
       (event, newSession) => {
@@ -51,11 +103,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(newSession?.user ?? null);
         setLoading(false);
 
-        if (newSession?.access_token) {
-          // Defer serial fetch to avoid blocking auth state
+        if (newSession?.access_token && newSession.user) {
           setTimeout(() => loadSerials(newSession.access_token), 0);
+          subscribeRealtime(newSession.user.id);
         } else {
           setSerials([]);
+          unsubscribeRealtime();
         }
       }
     );
@@ -64,12 +117,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(existing);
       setUser(existing?.user ?? null);
       setLoading(false);
-      if (existing?.access_token) {
+      if (existing?.access_token && existing.user) {
         loadSerials(existing.access_token);
+        subscribeRealtime(existing.user.id);
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Reconnect on network restore
+    const handleOnline = () => {
+      if (user?.id) {
+        console.log("[Auth] Network restored, re-subscribing to serials...");
+        subscribeRealtime(user.id);
+      }
+    };
+    window.addEventListener("online", handleOnline);
+
+    return () => {
+      subscription.unsubscribe();
+      unsubscribeRealtime();
+      window.removeEventListener("online", handleOnline);
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -82,10 +149,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
-    // Cleanup legacy serial data
     localStorage.removeItem(SERIAL_STORAGE_KEY);
     localStorage.removeItem(SERIAL_DATA_KEY);
     setSerials([]);
+    unsubscribeRealtime();
     await websiteSupabase.auth.signOut();
   };
 
