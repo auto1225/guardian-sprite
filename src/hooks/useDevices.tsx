@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Database } from "@/integrations/supabase/types";
+import { deleteLaptopDbDevice } from "@/lib/laptopDb";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 type DeviceInsert = Database["public"]["Tables"]["devices"]["Insert"];
@@ -184,10 +185,23 @@ export const useDevices = () => {
 
   const deleteDevice = useMutation({
     mutationFn: async (id: string) => {
+      // 삭제 전에 기기의 serial_key를 확보 (노트북 DB 동기화용)
+      const currentDevices = queryClient.getQueryData<Device[]>(["devices", effectiveUserId]);
+      const targetDevice = currentDevices?.find(d => d.id === id);
+      const serialKey = (targetDevice?.metadata as Record<string, unknown>)?.serial_key as string | undefined;
+
+      // 1) 공유 DB에서 삭제
       const { error } = await supabase.functions.invoke("update-device", {
         body: { device_id: id, _action: "delete" },
       });
       if (error) throw error;
+
+      // 2) 노트북 로컬 DB에서도 삭제 (serial_key 기반, fire-and-forget)
+      if (serialKey && effectiveUserId) {
+        deleteLaptopDbDevice(serialKey, effectiveUserId).catch(err =>
+          console.warn("[DeleteSync] Laptop DB delete failed:", err)
+        );
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
