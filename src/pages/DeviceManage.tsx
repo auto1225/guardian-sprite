@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
-import { ArrowLeft, MoreVertical, Crown, Star, Sparkles, CalendarDays } from "lucide-react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { ArrowLeft, MoreVertical, Crown, Star, Sparkles, CalendarDays, GripVertical, ChevronLeft, ChevronRight, ArrowUpDown, CheckSquare, Square } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { useDevices } from "@/hooks/useDevices";
 import { useCommands } from "@/hooks/useCommands";
@@ -24,9 +24,10 @@ import cameraOn from "@/assets/camera-on.png";
 import cameraOff from "@/assets/camera-off.png";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
+type SortMode = "default" | "alpha" | "plan" | "days" | "monitoring";
 
 const ITEMS_PER_PAGE = 5;
-
+const PLAN_ORDER: Record<string, number> = { premium: 0, basic: 1, free: 2 };
 const PLAN_CONFIG: Record<string, { icon: typeof Crown; colorClass: string; bgClass: string }> = {
   free: { icon: Sparkles, colorClass: "text-emerald-300", bgClass: "bg-emerald-500/20 border-emerald-400/30" },
   basic: { icon: Star, colorClass: "text-blue-300", bgClass: "bg-blue-500/20 border-blue-400/30" },
@@ -40,6 +41,8 @@ interface DeviceManagePageProps {
   onViewAlertHistory?: (deviceId: string) => void;
 }
 
+type MatchedItem = { serial: UserSerial | null; device: Device | null };
+
 const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory }: DeviceManagePageProps) => {
   const { devices, selectedDeviceId, setSelectedDeviceId, deleteDevice } = useDevices();
   const { serials, serialsLoading, effectiveUserId } = useAuth();
@@ -47,123 +50,199 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation();
+
   const [page, setPage] = useState(1);
-  const [licenseMap, setLicenseMap] = useState<Map<string, string>>(new Map()); // serial_key → device_id
+  const [sortMode, setSortMode] = useState<SortMode>("default");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [customOrder, setCustomOrder] = useState<string[]>([]);
+  const [licenseMap, setLicenseMap] = useState<Map<string, string>>(new Map());
+
+  // Swipe state
+  const touchStartX = useRef(0);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const managedDevices = devices.filter(d => d.device_type !== "smartphone");
 
-  // ★ licenses 테이블에서 serial_key → device_id 매핑 조회 (유일한 진실의 원천)
+  // Fetch licenses
   useEffect(() => {
     if (!effectiveUserId || serials.length === 0) return;
-
     const fetchLicenses = async () => {
       try {
         const serialKeys = serials.map(s => s.serial_key).filter(Boolean);
         if (serialKeys.length === 0) return;
-
         const { data: licData, error: licError } = await supabase
           .from("licenses")
           .select("serial_key, device_id")
           .in("serial_key", serialKeys);
-
-        if (licError) {
-          console.error("[DeviceManage] License fetch error:", licError);
-          return;
-        }
-
+        if (licError) return;
         const map = new Map<string, string>();
         for (const lic of (licData || [])) {
-          if (lic.serial_key && lic.device_id) {
-            map.set(lic.serial_key, lic.device_id);
-          }
+          if (lic.serial_key && lic.device_id) map.set(lic.serial_key, lic.device_id);
         }
-        console.log("[DeviceManage] License map:", Object.fromEntries(map));
         setLicenseMap(map);
-      } catch (err) {
-        console.error("[DeviceManage] License fetch failed:", err);
-      }
+      } catch {}
     };
-
     fetchLicenses();
   }, [effectiveUserId, serials]);
 
-  // ★ serial ↔ device 매칭: 결정적(deterministic) 매칭만 사용
-  // device_id = ${user_id}_${serialkey}_${type} 형식으로 직접 매칭
-  const items = useMemo(() => {
+  // Match serials to devices
+  const baseItems = useMemo(() => {
     const usedDeviceIds = new Set<string>();
-    const result: { serial: UserSerial | null; device: Device | null }[] = [];
-
-    console.log("[DeviceManage] Matching serials:", serials.length, "devices:", managedDevices.length);
+    const result: MatchedItem[] = [];
 
     for (const serial of serials) {
       let matched = false;
 
-      // 1순위: device metadata.serial_key (가장 정확한 매칭 — 기기가 직접 보고한 시리얼)
       if (!matched && serial.serial_key) {
         const device = managedDevices.find(d =>
           !usedDeviceIds.has(d.id) &&
           (d.metadata as Record<string, unknown>)?.serial_key === serial.serial_key
         );
-        if (device) {
-          usedDeviceIds.add(device.id);
-          result.push({ serial, device });
-          console.log("[DeviceManage] ✅ Metadata match:", serial.serial_key, "→", device.name);
-          matched = true;
-        }
+        if (device) { usedDeviceIds.add(device.id); result.push({ serial, device }); matched = true; }
       }
 
-      // 2순위: licenses 테이블 (serial_key → device_id)
-      // 단, 해당 device_id의 metadata.serial_key가 다른 시리얼이면 스킵 (오매칭 방지)
       if (!matched) {
         const linkedDeviceId = licenseMap.get(serial.serial_key);
         if (linkedDeviceId) {
           const device = managedDevices.find(d => d.id === linkedDeviceId && !usedDeviceIds.has(d.id));
           if (device) {
             const deviceSerial = (device.metadata as Record<string, unknown>)?.serial_key;
-            // 기기의 실제 serial_key가 없거나, 이 시리얼과 일치할 때만 매칭
             if (!deviceSerial || deviceSerial === serial.serial_key) {
-              usedDeviceIds.add(device.id);
-              result.push({ serial, device });
-              console.log("[DeviceManage] ✅ License match:", serial.serial_key, "→", device.name);
-              matched = true;
-            } else {
-              console.log("[DeviceManage] ⚠️ License points to device with different serial:", serial.serial_key, "→ device has", deviceSerial);
+              usedDeviceIds.add(device.id); result.push({ serial, device }); matched = true;
             }
           }
         }
       }
 
-      if (!matched) {
-        result.push({ serial, device: null });
-        console.log("[DeviceManage] ⏳ No exact match:", serial.serial_key);
-      }
+      if (!matched) result.push({ serial, device: null });
     }
 
-    // 남은 미매칭 기기 추가 (시리얼 없이 존재하는 기기)
     for (const device of managedDevices) {
-      if (!usedDeviceIds.has(device.id)) {
-        result.push({ serial: null, device });
-      }
+      if (!usedDeviceIds.has(device.id)) result.push({ serial: null, device });
     }
-
-    // 정렬: 연결된(device 있는) 기기 먼저, 그 중 온라인 먼저
-    result.sort((a, b) => {
-      const aOnline = a.device && a.device.status !== "offline" ? 1 : 0;
-      const bOnline = b.device && b.device.status !== "offline" ? 1 : 0;
-      if (aOnline !== bOnline) return bOnline - aOnline;
-      const aHasDevice = a.device ? 1 : 0;
-      const bHasDevice = b.device ? 1 : 0;
-      return bHasDevice - aHasDevice;
-    });
 
     return result;
   }, [serials, managedDevices, licenseMap]);
 
+  // Sort items
+  const items = useMemo(() => {
+    const sorted = [...baseItems];
+
+    if (sortMode === "default" && customOrder.length > 0) {
+      // Apply custom drag order
+      sorted.sort((a, b) => {
+        const aKey = a.serial?.serial_key || a.device?.id || "";
+        const bKey = b.serial?.serial_key || b.device?.id || "";
+        const aIdx = customOrder.indexOf(aKey);
+        const bIdx = customOrder.indexOf(bKey);
+        if (aIdx === -1 && bIdx === -1) return 0;
+        if (aIdx === -1) return 1;
+        if (bIdx === -1) return -1;
+        return aIdx - bIdx;
+      });
+    } else if (sortMode === "alpha") {
+      sorted.sort((a, b) => {
+        const aName = a.device?.name || a.serial?.device_name || a.serial?.serial_key || "";
+        const bName = b.device?.name || b.serial?.device_name || b.serial?.serial_key || "";
+        return aName.localeCompare(bName);
+      });
+    } else if (sortMode === "plan") {
+      sorted.sort((a, b) => {
+        const aP = PLAN_ORDER[a.serial?.plan_type || "free"] ?? 2;
+        const bP = PLAN_ORDER[b.serial?.plan_type || "free"] ?? 2;
+        return aP - bP;
+      });
+    } else if (sortMode === "days") {
+      sorted.sort((a, b) => {
+        const aD = a.serial?.remaining_days ?? 9999;
+        const bD = b.serial?.remaining_days ?? 9999;
+        return aD - bD;
+      });
+    } else if (sortMode === "monitoring") {
+      sorted.sort((a, b) => {
+        const aM = a.device?.is_monitoring ? 0 : 1;
+        const bM = b.device?.is_monitoring ? 0 : 1;
+        return aM - bM;
+      });
+    } else {
+      // Default: online first, then matched
+      sorted.sort((a, b) => {
+        const aOnline = a.device && a.device.status !== "offline" ? 1 : 0;
+        const bOnline = b.device && b.device.status !== "offline" ? 1 : 0;
+        if (aOnline !== bOnline) return bOnline - aOnline;
+        const aHas = a.device ? 1 : 0;
+        const bHas = b.device ? 1 : 0;
+        return bHas - aHas;
+      });
+    }
+
+    return sorted;
+  }, [baseItems, sortMode, customOrder]);
+
   const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
   const pageItems = items.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
-  if (!isOpen) return null;
+  // Item key helper
+  const itemKey = (item: MatchedItem) => item.serial?.serial_key || item.device?.id || "";
 
+  // Selection
+  const toggleSelect = (key: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  const selectableItems = items.filter(i => i.device);
+  const allSelected = selectableItems.length > 0 && selectableItems.every(i => selectedIds.has(itemKey(i)));
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(selectableItems.map(i => itemKey(i))));
+    }
+  };
+
+  // Bulk monitoring
+  const handleBulkMonitoring = async (enable: boolean) => {
+    const targetDevices = items.filter(i => i.device && selectedIds.has(itemKey(i))).map(i => i.device!);
+    for (const dev of targetDevices) {
+      await toggleMonitoring(dev.id, enable);
+    }
+    setSelectedIds(new Set());
+    toast({ title: t("deviceManage.bulkSuccess"), description: t("deviceManage.bulkSuccessDesc") });
+  };
+
+  // Drag and drop
+  const handleDragStart = (idx: number) => setDragIdx(idx);
+  const handleDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    if (dragIdx === null || dragIdx === idx) return;
+    const globalFromIdx = (page - 1) * ITEMS_PER_PAGE + dragIdx;
+    const globalToIdx = (page - 1) * ITEMS_PER_PAGE + idx;
+    const keys = items.map(i => itemKey(i));
+    const [moved] = keys.splice(globalFromIdx, 1);
+    keys.splice(globalToIdx, 0, moved);
+    setCustomOrder(keys);
+    setSortMode("default");
+    setDragIdx(idx);
+  };
+  const handleDragEnd = () => setDragIdx(null);
+
+  // Swipe for pagination
+  const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX; };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(dx) > 80) {
+      if (dx < 0 && page < totalPages) setPage(p => p + 1);
+      if (dx > 0 && page > 1) setPage(p => p - 1);
+    }
+  };
+
+  // Actions
   const handleSetAsMain = async (deviceId: string) => {
     try {
       for (const d of managedDevices) {
@@ -190,18 +269,69 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
     }
   };
 
+  if (!isOpen) return null;
+
+  const SORT_OPTIONS: { mode: SortMode; label: string }[] = [
+    { mode: "default", label: "Default" },
+    { mode: "alpha", label: t("deviceManage.sortAlpha") },
+    { mode: "plan", label: t("deviceManage.sortPlan") },
+    { mode: "days", label: t("deviceManage.sortDays") },
+    { mode: "monitoring", label: t("deviceManage.sortMonitoring") },
+  ];
+
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col">
       {/* Header */}
-      <div className="flex items-center p-4 border-b border-white/20">
-        <button onClick={onClose} className="text-primary-foreground mr-3">
-          <ArrowLeft className="w-6 h-6" />
-        </button>
-        <h1 className="text-primary-foreground font-bold text-lg">{t("deviceManage.title")}</h1>
+      <div className="flex items-center justify-between p-4 border-b border-white/20">
+        <div className="flex items-center">
+          <button onClick={onClose} className="text-primary-foreground mr-3">
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <h1 className="text-primary-foreground font-bold text-lg">{t("deviceManage.title")}</h1>
+        </div>
+
+        {/* Sort dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-1 text-primary-foreground/80 px-2 py-1 rounded-lg bg-white/10 text-xs font-medium">
+              <ArrowUpDown className="w-3.5 h-3.5" />
+              {SORT_OPTIONS.find(s => s.mode === sortMode)?.label}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="bg-primary/90 backdrop-blur-xl border border-white/25 z-[100]">
+            {SORT_OPTIONS.map(opt => (
+              <DropdownMenuItem
+                key={opt.mode}
+                onClick={() => setSortMode(opt.mode)}
+                className={`text-primary-foreground focus:bg-white/15 focus:text-primary-foreground ${sortMode === opt.mode ? "bg-white/10" : ""}`}
+              >
+                {opt.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      {/* List */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 alert-history-scroll">
+      {/* Select All bar */}
+      {selectableItems.length > 0 && (
+        <div className="flex items-center justify-between px-4 py-2 border-b border-white/10">
+          <button onClick={toggleSelectAll} className="flex items-center gap-2 text-primary-foreground/80 text-sm font-medium">
+            {allSelected ? <CheckSquare className="w-4 h-4 text-secondary" /> : <Square className="w-4 h-4" />}
+            {allSelected ? t("deviceManage.deselectAll") : t("deviceManage.selectAll")}
+          </button>
+          {selectedIds.size > 0 && (
+            <span className="text-primary-foreground/60 text-xs">{selectedIds.size}{t("deviceManage.selected")}</span>
+          )}
+        </div>
+      )}
+
+      {/* List with swipe */}
+      <div
+        ref={listRef}
+        className="flex-1 overflow-y-auto p-4 space-y-3 alert-history-scroll"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         {serialsLoading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent" />
@@ -212,128 +342,58 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
             <p className="text-sm mt-2">{t("deviceManage.noDevicesHint")}</p>
           </div>
         ) : (
-          pageItems.map((item, idx) => {
-            const { serial, device } = item;
-            const isMain = !!(device && (device.metadata as Record<string, unknown>)?.is_main);
-            const isOnline = device ? device.status !== "offline" : false;
-            const planConfig = PLAN_CONFIG[serial?.plan_type || "free"] || PLAN_CONFIG.free;
-            const PlanIcon = planConfig.icon;
-
-            return (
-              <div
-                key={serial?.id || device?.id || idx}
-                className="rounded-2xl p-4 bg-[hsla(220,35%,18%,0.95)] backdrop-blur-xl border border-white/30 shadow-xl"
-              >
-                {/* Top row: device name + actions */}
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {isMain && (
-                      <span className="bg-status-active text-accent-foreground px-2 py-0.5 rounded text-[10px] font-bold shrink-0">
-                        MAIN
-                      </span>
-                    )}
-                    {device ? (
-                      <>
-                        <span className="text-white font-bold truncate drop-shadow-sm">{device.name}</span>
-                        {device.battery_level !== null && (
-                          <span className="text-white/90 text-sm font-semibold shrink-0">
-                            {device.battery_level}% <span className="text-status-active">⚡</span>
-                          </span>
-                        )}
-                      </>
-                    ) : serial?.device_name ? (
-                      <span className="text-white/80 font-semibold truncate drop-shadow-sm">{serial.device_name}</span>
-                    ) : (
-                      <span className="text-white/70 text-sm font-medium">{t("deviceManage.noDeviceConnected")}</span>
-                    )}
-                  </div>
-
-                  {device && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="text-primary-foreground p-1 shrink-0">
-                          <MoreVertical className="w-5 h-5" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-primary/90 backdrop-blur-xl border border-white/25 z-[100]">
-                        {!isMain && (
-                          <DropdownMenuItem onClick={() => handleSetAsMain(device.id)} className="text-primary-foreground focus:bg-white/15 focus:text-primary-foreground">
-                            {t("deviceManage.setAsMain")}
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem onClick={() => onViewAlertHistory?.(device.id)} className="text-primary-foreground focus:bg-white/15 focus:text-primary-foreground">
-                          {t("deviceManage.alertHistory")}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDeleteDevice(device.id)} className="text-destructive focus:bg-white/15 focus:text-destructive">
-                          {t("common.delete")}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </div>
-
-                {/* Serial info */}
-                {serial && serial.serial_key && (
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="font-mono text-sm font-bold tracking-wider text-yellow-300 drop-shadow-sm">
-                      {serial.serial_key}
-                    </span>
-                    <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${planConfig.bgClass}`}>
-                      <PlanIcon className={`w-3 h-3 ${planConfig.colorClass}`} />
-                      <span className={planConfig.colorClass}>{t(`plan.${serial.plan_type}`)}</span>
-                    </span>
-                  </div>
-                )}
-
-                {/* Remaining days */}
-                {serial && serial.remaining_days !== null && (
-                  <div className="flex items-center gap-1.5 mb-3">
-                    <CalendarDays className="w-3.5 h-3.5 text-white/60" />
-                    <span className={`text-xs font-semibold ${
-                      serial.remaining_days <= 3 ? "text-red-300" :
-                      serial.remaining_days <= 7 ? "text-amber-300" : "text-white/80"
-                    }`}>
-                      {serial.remaining_days}{t("plan.days")} {t("plan.remainingDays")}
-                    </span>
-                  </div>
-                )}
-
-                {/* Device status icons + monitoring toggle */}
-                {device && (
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="flex items-center gap-6">
-                      <StatusIcon iconOn={laptopOn} iconOff={laptopOff} active={isOnline} label={device.device_type === "desktop" ? "Desktop" : device.device_type === "tablet" ? "Tablet" : "Laptop"} />
-                      <StatusIcon iconOn={wifiOn} iconOff={wifiOff} active={isOnline && device.is_network_connected} label="Network" />
-                      <StatusIcon iconOn={cameraOn} iconOff={cameraOff} active={isOnline && device.is_camera_connected} label="Camera" />
-                    </div>
-                    <button
-                      onClick={() => toggleMonitoring(device.id, !device.is_monitoring)}
-                      className={`px-6 py-2 rounded-lg text-base font-bold transition-all ${
-                        device.is_monitoring
-                          ? "bg-status-active text-accent-foreground shadow-[0_0_12px_hsla(48,100%,55%,0.4)]"
-                          : "bg-white/20 text-primary-foreground/70"
-                      }`}
-                    >
-                      {device.is_monitoring ? t("common.on") : t("common.off")}
-                    </button>
-                  </div>
-                )}
-
-                {/* No device placeholder */}
-                {!device && (
-                  <div className="mt-2 py-2 text-center">
-                    <span className="text-white/60 text-xs font-medium">⏳ {t("deviceManage.noDeviceConnected")}</span>
-                  </div>
-                )}
-              </div>
-            );
-          })
+          pageItems.map((item, localIdx) => (
+            <DeviceCard
+              key={itemKey(item) || localIdx}
+              item={item}
+              itemKey={itemKey(item)}
+              isSelected={selectedIds.has(itemKey(item))}
+              onToggleSelect={toggleSelect}
+              onSetAsMain={handleSetAsMain}
+              onDelete={handleDeleteDevice}
+              onViewAlertHistory={onViewAlertHistory}
+              onToggleMonitoring={toggleMonitoring}
+              managedDevices={managedDevices}
+              // Drag
+              draggable={sortMode === "default"}
+              onDragStart={() => handleDragStart(localIdx)}
+              onDragOver={(e) => handleDragOver(e, localIdx)}
+              onDragEnd={handleDragEnd}
+              isDragging={dragIdx === localIdx}
+              t={t}
+            />
+          ))
         )}
       </div>
 
-      {/* Pagination */}
+      {/* Bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center justify-center gap-3 p-3 border-t border-white/20 bg-primary/80 backdrop-blur-xl">
+          <button
+            onClick={() => handleBulkMonitoring(true)}
+            className="px-5 py-2 rounded-lg bg-status-active text-accent-foreground font-bold text-sm shadow-[0_0_12px_hsla(48,100%,55%,0.3)]"
+          >
+            {t("deviceManage.bulkMonitorOn")}
+          </button>
+          <button
+            onClick={() => handleBulkMonitoring(false)}
+            className="px-5 py-2 rounded-lg bg-white/20 text-primary-foreground/80 font-bold text-sm"
+          >
+            {t("deviceManage.bulkMonitorOff")}
+          </button>
+        </div>
+      )}
+
+      {/* Pagination with arrows */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-1.5 p-4 border-t border-white/20">
+        <div className="flex items-center justify-center gap-2 p-4 border-t border-white/20">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="p-1.5 rounded-lg text-primary-foreground/60 hover:bg-white/10 disabled:opacity-30"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
           {Array.from({ length: totalPages }, (_, i) => (
             <button
               key={i}
@@ -347,12 +407,177 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
               {i + 1}
             </button>
           ))}
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="p-1.5 rounded-lg text-primary-foreground/60 hover:bg-white/10 disabled:opacity-30"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
       )}
     </div>
   );
 };
 
+// ─── DeviceCard ───────────────────────────────────────────
+interface DeviceCardProps {
+  item: MatchedItem;
+  itemKey: string;
+  isSelected: boolean;
+  onToggleSelect: (key: string) => void;
+  onSetAsMain: (deviceId: string) => void;
+  onDelete: (deviceId: string) => void;
+  onViewAlertHistory?: (deviceId: string) => void;
+  onToggleMonitoring: (deviceId: string, enable: boolean) => void;
+  managedDevices: Device[];
+  draggable: boolean;
+  onDragStart: () => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragEnd: () => void;
+  isDragging: boolean;
+  t: (key: string) => string;
+}
+
+const DeviceCard = ({
+  item, itemKey: key, isSelected, onToggleSelect,
+  onSetAsMain, onDelete, onViewAlertHistory, onToggleMonitoring,
+  managedDevices, draggable, onDragStart, onDragOver, onDragEnd, isDragging, t,
+}: DeviceCardProps) => {
+  const { serial, device } = item;
+  const isMain = !!(device && (device.metadata as Record<string, unknown>)?.is_main);
+  const isOnline = device ? device.status !== "offline" : false;
+  const planConfig = PLAN_CONFIG[serial?.plan_type || "free"] || PLAN_CONFIG.free;
+  const PlanIcon = planConfig.icon;
+
+  return (
+    <div
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragEnd={onDragEnd}
+      className={`rounded-2xl p-4 bg-[hsla(220,35%,18%,0.95)] backdrop-blur-xl border shadow-xl transition-all ${
+        isDragging ? "border-secondary/60 opacity-70 scale-[0.98]" : "border-white/30"
+      } ${isSelected ? "ring-2 ring-secondary/50" : ""}`}
+    >
+      {/* Top row */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2 min-w-0">
+          {/* Checkbox */}
+          {device && (
+            <button onClick={() => onToggleSelect(key)} className="shrink-0">
+              {isSelected
+                ? <CheckSquare className="w-5 h-5 text-secondary" />
+                : <Square className="w-5 h-5 text-white/40" />
+              }
+            </button>
+          )}
+          {/* Drag handle */}
+          {draggable && (
+            <GripVertical className="w-4 h-4 text-white/30 cursor-grab shrink-0" />
+          )}
+          {isMain && (
+            <span className="bg-status-active text-accent-foreground px-2 py-0.5 rounded text-[10px] font-bold shrink-0">
+              MAIN
+            </span>
+          )}
+          {device ? (
+            <>
+              <span className="text-white font-bold truncate drop-shadow-sm">{device.name}</span>
+              {device.battery_level !== null && (
+                <span className="text-white/90 text-sm font-semibold shrink-0">
+                  {device.battery_level}% <span className="text-status-active">⚡</span>
+                </span>
+              )}
+            </>
+          ) : serial?.device_name ? (
+            <span className="text-white/80 font-semibold truncate drop-shadow-sm">{serial.device_name}</span>
+          ) : (
+            <span className="text-white/70 text-sm font-medium">{t("deviceManage.noDeviceConnected")}</span>
+          )}
+        </div>
+
+        {device && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="text-primary-foreground p-1 shrink-0">
+                <MoreVertical className="w-5 h-5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-primary/90 backdrop-blur-xl border border-white/25 z-[100]">
+              {!isMain && (
+                <DropdownMenuItem onClick={() => onSetAsMain(device.id)} className="text-primary-foreground focus:bg-white/15 focus:text-primary-foreground">
+                  {t("deviceManage.setAsMain")}
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={() => onViewAlertHistory?.(device.id)} className="text-primary-foreground focus:bg-white/15 focus:text-primary-foreground">
+                {t("deviceManage.alertHistory")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onDelete(device.id)} className="text-destructive focus:bg-white/15 focus:text-destructive">
+                {t("common.delete")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+
+      {/* Serial info */}
+      {serial && serial.serial_key && (
+        <div className="flex items-center gap-2 mb-2">
+          <span className="font-mono text-sm font-bold tracking-wider text-yellow-300 drop-shadow-sm">
+            {serial.serial_key}
+          </span>
+          <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${planConfig.bgClass}`}>
+            <PlanIcon className={`w-3 h-3 ${planConfig.colorClass}`} />
+            <span className={planConfig.colorClass}>{t(`plan.${serial.plan_type}`)}</span>
+          </span>
+        </div>
+      )}
+
+      {/* Remaining days */}
+      {serial && serial.remaining_days !== null && (
+        <div className="flex items-center gap-1.5 mb-3">
+          <CalendarDays className="w-3.5 h-3.5 text-white/60" />
+          <span className={`text-xs font-semibold ${
+            serial.remaining_days <= 3 ? "text-red-300" :
+            serial.remaining_days <= 7 ? "text-amber-300" : "text-white/80"
+          }`}>
+            {serial.remaining_days}{t("plan.days")} {t("plan.remainingDays")}
+          </span>
+        </div>
+      )}
+
+      {/* Status icons + monitoring toggle */}
+      {device && (
+        <div className="flex items-center justify-between mt-2">
+          <div className="flex items-center gap-6">
+            <StatusIcon iconOn={laptopOn} iconOff={laptopOff} active={isOnline} label={device.device_type === "desktop" ? "Desktop" : device.device_type === "tablet" ? "Tablet" : "Laptop"} />
+            <StatusIcon iconOn={wifiOn} iconOff={wifiOff} active={isOnline && device.is_network_connected} label="Network" />
+            <StatusIcon iconOn={cameraOn} iconOff={cameraOff} active={isOnline && device.is_camera_connected} label="Camera" />
+          </div>
+          <button
+            onClick={() => onToggleMonitoring(device.id, !device.is_monitoring)}
+            className={`px-6 py-2 rounded-lg text-base font-bold transition-all ${
+              device.is_monitoring
+                ? "bg-status-active text-accent-foreground shadow-[0_0_12px_hsla(48,100%,55%,0.4)]"
+                : "bg-white/20 text-primary-foreground/70"
+            }`}
+          >
+            {device.is_monitoring ? t("common.on") : t("common.off")}
+          </button>
+        </div>
+      )}
+
+      {!device && (
+        <div className="mt-2 py-2 text-center">
+          <span className="text-white/60 text-xs font-medium">⏳ {t("deviceManage.noDeviceConnected")}</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── StatusIcon ───────────────────────────────────────────
 const StatusIcon = ({ iconOn, iconOff, active, label }: { iconOn: string; iconOff: string; active: boolean; label: string }) => (
   <div className="flex flex-col items-center gap-1">
     <img src={active ? iconOn : iconOff} alt={label} className="w-10 h-10 object-contain" />
