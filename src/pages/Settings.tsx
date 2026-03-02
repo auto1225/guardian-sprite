@@ -357,6 +357,38 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
             <SettingItem label={t("settings.alarmSound")} value={selectedSoundLabel} onClick={() => setShowSoundDialog(true)} />
           </div>
 
+          {/* Streaming Quality */}
+          <div className="rounded-2xl p-4 border border-white/25" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
+            <div className="mb-3">
+              <span className="text-white font-semibold text-sm block">{t("settings.streamingQuality")}</span>
+              <span className="text-white/80 text-xs">{t("settings.streamingQualityDesc")}</span>
+            </div>
+            <div className="flex gap-2">
+              {(["vga", "hd", "fhd"] as const).map((q) => (
+                <button
+                  key={q}
+                  onClick={async () => {
+                    try {
+                      await saveMetadata({ streaming_quality: q });
+                      toast({ title: t("common.saved"), description: t("settings.streamingQualityChanged") });
+                    } catch {
+                      toast({ title: t("common.error"), description: t("common.settingSaveFailed"), variant: "destructive" });
+                    }
+                  }}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                    ((meta.streaming_quality as string) || "vga") === q ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
+                  }`}
+                  style={((meta.streaming_quality as string) || "vga") === q ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
+                >
+                  {q === "vga" ? "VGA" : q === "hd" ? "HD" : "FHD"}
+                  <span className="block text-[10px] opacity-70 font-normal">
+                    {q === "vga" ? "640×480" : q === "hd" ? "1280×720" : "1920×1080"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Language Setting */}
           <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
             <button
