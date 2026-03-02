@@ -302,7 +302,19 @@
     "serialLabel": "Serial",
     "serialNotLinked": "Serial not linked",
     "serialPrefix": "Serial:",
-    "noDeviceConnected": "No device connected"
+    "noDeviceConnected": "No device connected",
+    "sortAlpha": "Name",
+    "sortPlan": "Plan",
+    "sortDays": "Days left",
+    "sortMonitoring": "Monitoring",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "bulkMonitorOn": "Monitor ON",
+    "bulkMonitorOff": "Monitor OFF",
+    "selected": " selected",
+    "bulkSuccess": "Bulk update done",
+    "bulkSuccessDesc": "Monitoring status updated for selected devices.",
+    "dragHint": "Hold to reorder"
   },
   "auth": {
     "title": "MeerCOP",

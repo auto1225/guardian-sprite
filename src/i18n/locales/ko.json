@@ -302,7 +302,19 @@
     "serialLabel": "시리얼",
     "serialNotLinked": "시리얼 미연결",
     "serialPrefix": "시리얼:",
-    "noDeviceConnected": "기기 미연결"
+    "noDeviceConnected": "기기 미연결",
+    "sortAlpha": "이름순",
+    "sortPlan": "플랜순",
+    "sortDays": "남은기간순",
+    "sortMonitoring": "감시상태순",
+    "selectAll": "전체선택",
+    "deselectAll": "선택해제",
+    "bulkMonitorOn": "감시 ON",
+    "bulkMonitorOff": "감시 OFF",
+    "selected": "개 선택",
+    "bulkSuccess": "일괄 적용 완료",
+    "bulkSuccessDesc": "선택한 기기에 감시 상태가 변경되었습니다.",
+    "dragHint": "길게 눌러 순서 변경"
   },
   "auth": {
     "title": "MeerCOP",
