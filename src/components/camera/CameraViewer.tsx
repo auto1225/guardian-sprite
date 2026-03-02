@@ -68,18 +68,24 @@ const CameraViewer = ({
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioAnimFrameRef = useRef<number | null>(null);
 
-  // Orientation detection
+  // Orientation detection — use screen.orientation API + resize fallback
   useEffect(() => {
     const checkOrientation = () => {
-      setIsLandscape(window.innerWidth > window.innerHeight);
+      if (screen.orientation) {
+        setIsLandscape(screen.orientation.type.startsWith("landscape"));
+      } else {
+        setIsLandscape(window.innerWidth > window.innerHeight);
+      }
     };
     checkOrientation();
     window.addEventListener("resize", checkOrientation);
     const handleOrientationChange = () => setTimeout(checkOrientation, 100);
     window.addEventListener("orientationchange", handleOrientationChange);
+    screen.orientation?.addEventListener?.("change", checkOrientation);
     return () => {
       window.removeEventListener("resize", checkOrientation);
       window.removeEventListener("orientationchange", handleOrientationChange);
+      screen.orientation?.removeEventListener?.("change", checkOrientation);
     };
   }, []);
 
@@ -138,12 +144,14 @@ const CameraViewer = ({
 
   useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
 
-  // Fullscreen toggle (NO forced rotation)
+  // Fullscreen toggle — unlock orientation so device can rotate freely
   const toggleFullscreen = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
     if (!document.fullscreenElement) {
-      container.requestFullscreen().catch(err => console.warn("[CameraViewer] Fullscreen failed:", err));
+      container.requestFullscreen().then(() => {
+        try { (screen.orientation as any)?.unlock?.(); } catch (_) {}
+      }).catch(err => console.warn("[CameraViewer] Fullscreen failed:", err));
     } else {
       document.exitFullscreen();
     }
