@@ -47,6 +47,7 @@
     "alertDetected": "🚨 Impact detected on your laptop!",
     "networkDisconnected": "⚠️ Computer is not connected to the network. Please check Wi-Fi or LAN connection. Monitoring is not available.",
     "deviceOffline": "⚠️ Cannot connect to computer. It may be turned off or in sleep mode. Monitoring is not available.",
+    "deviceOfflineActionDesc": "Cannot connect because the computer is logged out or offline.",
     "networkLost": "⚠️ Computer's network connection was lost. Some remote features may be limited.",
     "monitoring": "MeerCOP is monitoring your laptop.",
     "ready": "MeerCOP is ready! You can start monitoring anytime.",
