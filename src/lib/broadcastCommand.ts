@@ -1,7 +1,7 @@
 // src/lib/broadcastCommand.ts
-// 통합 명령 브로드캐스트 유틸리티
-// 모든 명령은 user-commands-${userId} 채널을 통해 전송
-// 노트북은 이 채널을 구독하여 device_id 필드로 대상 기기를 식별
+// 기기별 독립 명령 브로드캐스트 유틸리티
+// targetDeviceId가 있으면 device-commands-${deviceId} 채널로 전송 (기기 독립)
+// 없으면 user-commands-${userId} 채널로 전송 (계정 레벨)
 
 import { supabase } from "@/integrations/supabase/client";
 
@@ -10,6 +10,8 @@ interface BroadcastOptions {
   event: string;
   payload: Record<string, unknown>;
   timeoutMs?: number;
+  /** 기기별 독립 채널로 전송 (device-commands-${deviceId}) */
+  targetDeviceId?: string;
 }
 
 /**
@@ -23,8 +25,12 @@ export async function broadcastCommand({
   event,
   payload,
   timeoutMs = 5000,
+  targetDeviceId,
 }: BroadcastOptions): Promise<void> {
-  const channelName = `user-commands-${userId}`;
+  // 기기별 독립 채널 우선, 없으면 사용자 통합 채널
+  const channelName = targetDeviceId
+    ? `device-commands-${targetDeviceId}`
+    : `user-commands-${userId}`;
 
   // 기존 동일 이름 채널 제거 (충돌 방지)
   const existing = supabase.getChannels().find(

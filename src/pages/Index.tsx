@@ -318,6 +318,7 @@ const Index = () => {
                   userId: effectiveUserId,
                   event: "camouflage_toggle",
                   payload: { device_id: selectedDevice.id, camouflage_mode: newVal },
+                  targetDeviceId: selectedDevice.id,
                 });
               }
 

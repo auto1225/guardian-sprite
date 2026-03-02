@@ -91,6 +91,7 @@ export function useSmartphoneRegistration() {
             userId: effectiveUserId,
             event: "monitoring_toggle",
             payload: { device_id: laptop.id, is_monitoring: false },
+            targetDeviceId: laptop.id,
             timeoutMs: 3000,
           });
         }
