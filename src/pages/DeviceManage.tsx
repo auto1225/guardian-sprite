@@ -52,18 +52,12 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
 
   const managedDevices = devices.filter(d => d.device_type !== "smartphone");
 
-  // ★ licenses 테이블에서 serial_key → device_id 매핑 조회 (이름 기반 매칭 대신 확실한 DB 관계 사용)
+  // ★ licenses 테이블에서 serial_key → device_id 매핑 조회 (유일한 진실의 원천)
   useEffect(() => {
     if (!effectiveUserId || serials.length === 0) return;
 
     const fetchLicenses = async () => {
       try {
-        const { data, error } = await supabase.functions.invoke("get-devices", {
-          body: { user_id: effectiveUserId },
-        });
-        if (error || !data?.devices) return;
-
-        // licenses 테이블 직접 조회 (Edge Function 경유)
         const serialKeys = serials.map(s => s.serial_key).filter(Boolean);
         if (serialKeys.length === 0) return;
 
@@ -93,11 +87,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
     fetchLicenses();
   }, [effectiveUserId, serials]);
 
-  // ★ serial ↔ device 매칭: 4단계 매칭 시스템
-  // 1순위: licenses 테이블 (serial_key → device_id)
-  // 2순위: device metadata.serial_key
-  // 3순위: 이름 기반 매칭
-  // 4순위: 온라인 기기 폴백 (device_name이 있는 시리얼 → 유일한 온라인 기기)
+  // ★ serial ↔ device 매칭: licenses 테이블만 사용 (추측 로직 없음)
   const items = useMemo(() => {
     const usedDeviceIds = new Set<string>();
     const result: { serial: UserSerial | null; device: Device | null }[] = [];
@@ -105,7 +95,6 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
     console.log("[DeviceManage] Matching serials:", serials.length, "devices:", managedDevices.length, "licenseMap:", licenseMap.size);
 
     for (const serial of serials) {
-      // 1순위: licenses 테이블의 device_id로 매칭
       const linkedDeviceId = licenseMap.get(serial.serial_key);
       if (linkedDeviceId) {
         const device = managedDevices.find(d => d.id === linkedDeviceId && !usedDeviceIds.has(d.id));
@@ -117,55 +106,12 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
         }
       }
 
-      // 2순위: device metadata에 저장된 serial_key로 매칭
-      if (serial.serial_key) {
-        const device = managedDevices.find(d =>
-          !usedDeviceIds.has(d.id) &&
-          (d.metadata as Record<string, unknown>)?.serial_key === serial.serial_key
-        );
-        if (device) {
-          usedDeviceIds.add(device.id);
-          result.push({ serial, device });
-          console.log("[DeviceManage] ✅ Metadata match:", serial.serial_key, "→", device.name);
-          continue;
-        }
-      }
-
-      // 3순위: 이름 기반 매칭 (폴백)
-      if (serial.device_name) {
-        const trimmedSerialName = serial.device_name.trim();
-        let device = managedDevices.find(d => !usedDeviceIds.has(d.id) && d.name.trim() === trimmedSerialName);
-        if (!device) {
-          device = managedDevices.find(d => !usedDeviceIds.has(d.id) && d.name.trim().toLowerCase() === trimmedSerialName.toLowerCase());
-        }
-        if (device) {
-          usedDeviceIds.add(device.id);
-          result.push({ serial, device });
-          console.log("[DeviceManage] ✅ Name match:", serial.device_name, "→", device.name);
-          continue;
-        }
-      }
-
+      // 매칭 실패 → 기기 미연결로 표시 (폴백 없음)
       result.push({ serial, device: null });
+      console.log("[DeviceManage] ⏳ No license match:", serial.serial_key);
     }
 
-    // 4순위: 온라인 기기 폴백 — device_name이 있지만 미매칭된 시리얼 → 유일한 미매칭 온라인 기기
-    const unmatchedOnlineDevices = managedDevices.filter(d =>
-      !usedDeviceIds.has(d.id) && d.status !== "offline"
-    );
-    if (unmatchedOnlineDevices.length === 1) {
-      const onlineDevice = unmatchedOnlineDevices[0];
-      const unmatchedSerialIdx = result.findIndex(r =>
-        r.device === null && r.serial?.device_name
-      );
-      if (unmatchedSerialIdx !== -1) {
-        usedDeviceIds.add(onlineDevice.id);
-        result[unmatchedSerialIdx].device = onlineDevice;
-        console.log("[DeviceManage] ✅ Online fallback:", result[unmatchedSerialIdx].serial?.serial_key, "→", onlineDevice.name);
-      }
-    }
-
-    // 남은 미매칭 기기 추가
+    // 남은 미매칭 기기 추가 (시리얼 없이 존재하는 기기)
     for (const device of managedDevices) {
       if (!usedDeviceIds.has(device.id)) {
         result.push({ serial: null, device });
