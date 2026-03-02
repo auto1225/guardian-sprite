@@ -28,46 +28,51 @@ Deno.serve(async (req) => {
 
     const normalizedSerialKey = serial_key ? String(serial_key).trim().toUpperCase() : null;
     const effectiveType = device_type || "laptop";
+    const isNonSmartphone = (t: string) => t !== "smartphone";
+    const nonSmartphoneTypes = ["laptop", "desktop", "tablet"];
 
-    // ★ device_id 결정: serial_key 기반 고유 ID 또는 override 또는 기존 로직
-    let determinedDeviceId: string | null = device_id_override || null;
-
-    if (!determinedDeviceId && normalizedSerialKey && effectiveType !== "smartphone") {
-      // 시리얼 키 기반 고유 device_id: user_id_serialkey_type
-      const sanitizedSerial = normalizedSerialKey.replace(/[^A-Z0-9]/g, "").toLowerCase();
-      determinedDeviceId = `${user_id}_${sanitizedSerial}_${effectiveType}`;
-    }
-
-    // smartphone은 기존 device_id_override 방식 유지
-    if (effectiveType === "smartphone" && !determinedDeviceId) {
-      determinedDeviceId = `${user_id}-smartphone`;
-    }
-
-    // 기존 기기 조회
+    // ★ 기존 기기 조회: device_id_override가 UUID 형식이면 직접 조회, 아니면 user_id + device_type 그룹 조회
     let existing: any = null;
 
-    if (determinedDeviceId) {
-      // 결정된 ID로 직접 조회
-      const { data } = await supabaseAdmin
-        .from("devices")
-        .select("id, name, device_type, status, metadata")
-        .eq("id", determinedDeviceId)
-        .maybeSingle();
-      existing = data;
-    } else {
-      // ID 미결정 시 user_id + device_type 그룹으로 조회 (레거시 폴백)
-      const nonSmartphoneTypes = ["laptop", "desktop", "tablet"];
-      const isNonSmartphone = effectiveType !== "smartphone";
-
-      if (isNonSmartphone) {
+    if (device_id_override) {
+      // UUID 형식 검증
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (uuidRegex.test(device_id_override)) {
         const { data } = await supabaseAdmin
           .from("devices")
           .select("id, name, device_type, status, metadata")
-          .eq("user_id", user_id)
-          .in("device_type", nonSmartphoneTypes)
-          .limit(1)
+          .eq("id", device_id_override)
           .maybeSingle();
         existing = data;
+      }
+    }
+
+    if (!existing) {
+      if (isNonSmartphone(effectiveType)) {
+        // 비스마트폰: serial_key가 있으면 metadata.serial_key로 먼저 조회
+        if (normalizedSerialKey) {
+          const { data } = await supabaseAdmin
+            .from("devices")
+            .select("id, name, device_type, status, metadata")
+            .eq("user_id", user_id)
+            .in("device_type", nonSmartphoneTypes)
+            .containedBy("metadata", { serial_key: normalizedSerialKey })
+            .limit(1)
+            .maybeSingle();
+          if (data) existing = data;
+        }
+
+        // serial_key 매칭 실패 시 user_id + device_type 그룹 조회
+        if (!existing) {
+          const { data } = await supabaseAdmin
+            .from("devices")
+            .select("id, name, device_type, status, metadata")
+            .eq("user_id", user_id)
+            .in("device_type", nonSmartphoneTypes)
+            .limit(1)
+            .maybeSingle();
+          existing = data;
+        }
       } else {
         const { data } = await supabaseAdmin
           .from("devices")
@@ -81,19 +86,18 @@ Deno.serve(async (req) => {
     }
 
     if (existing) {
-      // 기존 기기 재연결
       const currentMeta = (existing.metadata as Record<string, unknown>) || {};
       const updatePayload: Record<string, unknown> = {
         status: "online",
         last_seen_at: new Date().toISOString(),
-        device_type: effectiveType,
       };
 
+      // serial_key를 metadata에 저장 (핵심: 이것으로 DeviceManage에서 매칭)
       if (normalizedSerialKey) {
         updatePayload.metadata = { ...currentMeta, serial_key: normalizedSerialKey };
       }
 
-      // 이름이 변경된 경우 업데이트
+      // 이름 변경 시 업데이트
       if (device_name && device_name !== existing.name) {
         updatePayload.name = device_name;
       }
@@ -131,10 +135,6 @@ Deno.serve(async (req) => {
       status: "online",
       last_seen_at: new Date().toISOString(),
     };
-
-    if (determinedDeviceId) {
-      insertPayload.id = determinedDeviceId;
-    }
 
     if (normalizedSerialKey) {
       insertPayload.metadata = { serial_key: normalizedSerialKey };
