@@ -33,6 +33,7 @@ const RemoteCommandsPanel = forwardRef<HTMLDivElement, RemoteCommandsPanelProps>
           userId: effectiveUserId,
           event: "lock_command",
           payload: { device_id: device.id },
+          targetDeviceId: device.id,
         });
       }
       toast({ title: t("commands.lockSent"), description: t("commands.lockSentDesc") });
@@ -53,6 +54,7 @@ const RemoteCommandsPanel = forwardRef<HTMLDivElement, RemoteCommandsPanelProps>
           userId: effectiveUserId,
           event: "message_command",
           payload: { device_id: device.id, message: message.trim() },
+          targetDeviceId: device.id,
         });
       }
       toast({ title: t("commands.messageSent"), description: t("commands.messageSentDesc") });

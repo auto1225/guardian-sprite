@@ -252,6 +252,7 @@ export const useAlerts = (deviceId?: string | null) => {
       userId,
       event: "alarm_dismiss",
       payload: dismissPayload,
+      targetDeviceId: did,
     });
 
     // ★ user-alerts 채널에도 동시 전송 (하위 호환)
