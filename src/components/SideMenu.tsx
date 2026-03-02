@@ -1,47 +1,42 @@
-import { ChevronLeft, User, Laptop, LogOut, HelpCircle, UserCog, Globe, Lock, MapPin, Camera } from "lucide-react";
+import { useState } from "react";
+import { ChevronLeft, User, LogOut, HelpCircle, UserCog, Globe, Crown, Star, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { useDevices } from "@/hooks/useDevices";
 import { useTranslation } from "react-i18next";
 import { SUPPORTED_LANGUAGES } from "@/lib/dynamicTranslation";
-import { sortDevicesByOrder } from "@/lib/deviceSortOrder";
 import logoImage from "@/assets/meercop-character.png";
+
+const ITEMS_PER_PAGE = 5;
+
+const PLAN_BADGE: Record<string, { icon: typeof Crown; cls: string }> = {
+  free: { icon: Sparkles, cls: "text-emerald-300 bg-emerald-500/20" },
+  basic: { icon: Star, cls: "text-blue-300 bg-blue-500/20" },
+  premium: { icon: Crown, cls: "text-amber-300 bg-amber-500/20" },
+};
 
 interface SideMenuProps {
   isOpen: boolean;
   onClose: () => void;
-  onPhotoHistoryClick?: () => void;
   onHelpClick?: () => void;
-  onRemoteCommandsClick?: () => void;
-  onLocationHistoryClick?: () => void;
 }
 
-const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick, onRemoteCommandsClick, onLocationHistoryClick }: SideMenuProps) => {
+const SideMenu = ({ isOpen, onClose, onHelpClick }: SideMenuProps) => {
   const { t, i18n } = useTranslation();
-  const { user, signOut } = useAuth();
+  const { user, serials, signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { devices, selectedDeviceId, setSelectedDeviceId } = useDevices();
+  const [serialPage, setSerialPage] = useState(1);
+  const [showLangs, setShowLangs] = useState(false);
+
+  const totalPages = Math.ceil(serials.length / ITEMS_PER_PAGE);
+  const pageSerials = serials.slice((serialPage - 1) * ITEMS_PER_PAGE, serialPage * ITEMS_PER_PAGE);
 
   const handleSignOut = async () => {
-    await signOut(); // useAuth.signOut()이 시리얼 데이터도 함께 삭제
-    toast({
-      title: t("sideMenu.loggedOut"),
-      description: t("sideMenu.loggedOutDesc"),
-    });
+    await signOut();
+    toast({ title: t("sideMenu.loggedOut"), description: t("sideMenu.loggedOutDesc") });
     onClose();
     navigate("/auth");
-  };
-
-  const handleNavigate = (path: string) => {
-    navigate(path);
-    onClose();
-  };
-
-  const handleSelectDevice = (deviceId: string) => {
-    setSelectedDeviceId(deviceId);
-    onClose();
   };
 
   if (!isOpen) return null;
@@ -49,10 +44,7 @@ const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick, onRemoteC
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/50 z-40"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
 
       {/* Menu Panel */}
       <div className="fixed left-0 top-0 h-full w-[70%] max-w-[280px] bg-primary z-50 flex flex-col">
@@ -70,82 +62,81 @@ const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick, onRemoteC
           </button>
         </div>
 
-        {/* Profile Section */}
+        {/* User Info */}
         <div className="flex items-center gap-3 p-4 border-b border-white/20">
           <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
             <User className="w-6 h-6 text-primary-foreground" />
           </div>
-          <div className="flex-1">
-            <p className="text-sm font-bold text-primary-foreground">
-              {user?.email?.split('@')[0] || t("sideMenu.user")}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-primary-foreground truncate">
+              {user?.email?.split("@")[0] || t("sideMenu.user")}
             </p>
-            <p className="text-xs text-white/70">{user?.email || 'email@example.com'}</p>
-            <p className="text-xs text-white/50">{t("sideMenu.normalMember")}</p>
+            <p className="text-xs text-white/70 truncate">{user?.email || ""}</p>
           </div>
         </div>
 
-        {/* Device Section */}
+        {/* Serial List */}
         <div className="flex-1 p-4 overflow-hidden flex flex-col">
           <div className="flex items-center gap-1 mb-2">
-            <Laptop className="w-4 h-4 text-white/70" />
-            <span className="text-xs font-bold text-white/70">{t("sideMenu.targetDevices")}</span>
+            <span className="text-xs font-bold text-white/70">{t("sideMenu.mySerials")}</span>
+            <span className="text-xs text-white/40">({serials.length})</span>
           </div>
 
-          {/* Device Cards - scrollable */}
           <div className="flex-1 overflow-y-auto space-y-2 pr-1 alert-history-scroll">
-            {sortDevicesByOrder(devices?.filter(d => d.device_type !== "smartphone") || []).map((device) => (
-              <button
-                key={device.id}
-                onClick={() => handleSelectDevice(device.id)}
-                className={`w-full flex items-center justify-between p-3 rounded-xl transition-colors ${
-                  device.id === selectedDeviceId 
-                    ? 'bg-secondary' 
-                    : 'bg-white/10'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Laptop className={`w-4 h-4 ${
-                    device.id === selectedDeviceId 
-                      ? 'text-secondary-foreground' 
-                      : 'text-primary-foreground'
-                  }`} />
-                  <div className="text-left">
-                    <p className={`text-sm font-bold ${
-                      device.id === selectedDeviceId 
-                        ? 'text-secondary-foreground' 
-                        : 'text-primary-foreground'
-                    }`}>
-                      {device.name}
-                    </p>
-                    <p className={`text-xs ${
-                      device.id === selectedDeviceId 
-                        ? 'text-secondary-foreground/70' 
-                        : 'text-white/70'
-                    }`}>
-                      {device.status === 'online' ? t("common.online") : t("common.offline")}
-                      {device.battery_level && ` · ${device.battery_level}%`}
+            {pageSerials.length === 0 ? (
+              <p className="text-white/50 text-sm text-center py-4">{t("sideMenu.noSerials")}</p>
+            ) : (
+              pageSerials.map((serial) => {
+                const badge = PLAN_BADGE[serial.plan_type] || PLAN_BADGE.free;
+                const Icon = badge.icon;
+                return (
+                  <div key={serial.id} className="p-3 rounded-xl bg-white/10">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-bold tracking-wider text-white/90">
+                        {serial.serial_key}
+                      </span>
+                      <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>
+                        <Icon className="w-3 h-3" />
+                        {t(`plan.${serial.plan_type}`)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-white/50 mt-1">
+                      {serial.device_name ? `📌 ${serial.device_name}` : `⏳ ${t("sideMenu.noDeviceConnected")}`}
                     </p>
                   </div>
-                </div>
-              </button>
-            ))}
-            {devices?.filter(d => d.device_type !== "smartphone").length === 0 && (
-              <p className="text-white/50 text-sm text-center py-4">
-                {t("sideMenu.noDevices")}
-              </p>
+                );
+              })
             )}
           </div>
+
+          {/* Serial pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-1 mt-3">
+              {Array.from({ length: totalPages }, (_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setSerialPage(i + 1)}
+                  className={`w-6 h-6 rounded text-[10px] font-bold transition-colors ${
+                    serialPage === i + 1
+                      ? "bg-secondary text-secondary-foreground"
+                      : "bg-white/10 text-white/50"
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Bottom Menu */}
         <div className="border-t border-white/20">
-          <MenuItem icon={Lock} label={t("sideMenu.remoteCommands")} onClick={() => { if (onRemoteCommandsClick) { onRemoteCommandsClick(); onClose(); } }} />
-          <MenuItem icon={MapPin} label={t("sideMenu.locationHistory")} onClick={() => { if (onLocationHistoryClick) { onLocationHistoryClick(); onClose(); } }} />
-          <MenuItem icon={Camera} label={t("sideMenu.photoAlertHistory")} onClick={() => { if (onPhotoHistoryClick) { onPhotoHistoryClick(); onClose(); } }} />
-          <MenuItem icon={UserCog} label={t("sideMenu.editProfile")} onClick={() => handleNavigate("/settings")} />
+          <MenuItem icon={UserCog} label={t("sideMenu.editProfile")} onClick={() => { navigate("/settings"); onClose(); }} />
           <MenuItem icon={HelpCircle} label={t("sideMenu.helpQA")} onClick={() => { if (onHelpClick) { onHelpClick(); onClose(); } }} />
+
+          {/* Language selector */}
           <button
-            onClick={() => handleNavigate("/settings")}
+            onClick={() => setShowLangs(!showLangs)}
             className="flex items-center gap-3 w-full px-4 py-4 hover:bg-white/10 transition-colors"
           >
             <Globe className="w-5 h-5 text-primary-foreground" />
@@ -153,11 +144,28 @@ const SideMenu = ({ isOpen, onClose, onPhotoHistoryClick, onHelpClick, onRemoteC
               {SUPPORTED_LANGUAGES.find(l => l.code === i18n.language)?.label || i18n.language}
             </span>
           </button>
-          <MenuItem 
-            icon={LogOut} 
-            label={t("sideMenu.logout")} 
-            onClick={handleSignOut}
-          />
+
+          {showLangs && (
+            <div className="px-4 pb-3 max-h-40 overflow-y-auto alert-history-scroll">
+              <div className="grid grid-cols-2 gap-1">
+                {SUPPORTED_LANGUAGES.map(lang => (
+                  <button
+                    key={lang.code}
+                    onClick={() => { i18n.changeLanguage(lang.code); setShowLangs(false); toast({ title: t("settings.languageChanged") }); }}
+                    className={`text-[10px] py-1.5 px-2 rounded-lg transition-colors ${
+                      i18n.language === lang.code
+                        ? "bg-secondary text-secondary-foreground font-bold"
+                        : "bg-white/10 text-white/60 hover:bg-white/15"
+                    }`}
+                  >
+                    {lang.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <MenuItem icon={LogOut} label={t("sideMenu.logout")} onClick={handleSignOut} />
         </div>
       </div>
     </>
