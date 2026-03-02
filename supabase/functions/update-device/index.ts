@@ -55,8 +55,35 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ★ 기기명 중복 검사 (같은 user_id 내에서 동일 이름의 다른 기기가 있는지)
+    if (updates.name) {
+      // 먼저 현재 기기의 user_id를 조회
+      const { data: currentDevice } = await supabase
+        .from("devices")
+        .select("user_id")
+        .eq("id", device_id)
+        .single();
+
+      if (currentDevice) {
+        const { data: dupDevice } = await supabase
+          .from("devices")
+          .select("id")
+          .eq("user_id", currentDevice.user_id)
+          .eq("name", updates.name)
+          .neq("id", device_id)
+          .limit(1)
+          .maybeSingle();
+
+        if (dupDevice) {
+          return new Response(
+            JSON.stringify({ error: "DUPLICATE_DEVICE_NAME", message: `기기명 '${updates.name}'은(는) 이미 사용 중입니다.` }),
+            { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+    }
+
     // ★ metadata 안전 병합: 기존 metadata를 읽어서 새 값과 병합
-    // 이렇게 하면 heartbeat가 network_info만 보내도 alarm_pin 등이 보존됨
     if (updates.metadata && typeof updates.metadata === "object") {
       const { data: existing } = await supabase
         .from("devices")

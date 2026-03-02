@@ -173,10 +173,15 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
 
   const handleSaveNickname = async (name: string) => {
     try {
-      const { error } = await supabase.functions.invoke("update-device", {
+      const response = await supabase.functions.invoke("update-device", {
         body: { device_id: device.id, name },
       });
-      if (error) throw error;
+      // Edge function이 409 Conflict를 반환하면 중복 기기명
+      if (response.error || response.data?.error === "DUPLICATE_DEVICE_NAME") {
+        const msg = response.data?.message || t("settings.duplicateDeviceName");
+        toast({ title: t("common.error"), description: msg, variant: "destructive" });
+        return;
+      }
       setNickname(name);
       setShowNicknameDialog(false);
       queryClient.invalidateQueries({ queryKey: ["devices"] });

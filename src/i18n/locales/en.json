@@ -240,6 +240,7 @@
       "insensitive": "Insensitive"
     },
     "nicknameChanged": "Nickname has been changed.",
+    "duplicateDeviceName": "This device name is already in use by another device.",
     "pinChanged": "PIN has been changed.",
     "nicknameDialog": {
       "title": "Change Nickname",
