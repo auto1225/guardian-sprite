@@ -9,6 +9,7 @@ import {
   extractSdp,
   createSessionId,
 } from "@/lib/webrtc/signaling";
+import { getVideoConstraints } from "@/lib/webrtc/qualityPresets";
 import type { WebRTCBroadcasterOptions } from "@/lib/webrtc/types";
 
 interface ViewerConnection {
@@ -73,10 +74,18 @@ export const useWebRTCBroadcaster = ({
 
   // ── Re-acquire stream with video retry ──────────────────────────────────
   const acquireStreamWithVideo = useCallback(async (maxRetries = 5, delayMs = 2000): Promise<MediaStream | null> => {
+    // Fetch quality setting from device metadata
+    let quality: string | undefined;
+    try {
+      const { data } = await supabase.from("devices").select("metadata").eq("id", deviceId).single();
+      quality = (data?.metadata as Record<string, unknown>)?.streaming_quality as string | undefined;
+    } catch { /* use default */ }
+    const videoConstraints = getVideoConstraints(quality);
+
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 640, max: 640 }, height: { ideal: 480, max: 480 }, frameRate: { ideal: 15, max: 30 }, facingMode: "user" },
+          video: videoConstraints,
           audio: true,
         });
         const videoTracks = stream.getVideoTracks().filter(t => t.readyState === "live");
@@ -328,8 +337,16 @@ export const useWebRTCBroadcaster = ({
     sessionIdRef.current = createSessionId("broadcaster");
 
     try {
+      // Fetch quality setting from device metadata
+      let quality: string | undefined;
+      try {
+        const { data } = await supabase.from("devices").select("metadata").eq("id", deviceId).single();
+        quality = (data?.metadata as Record<string, unknown>)?.streaming_quality as string | undefined;
+      } catch { /* use default */ }
+      const videoConstraints = getVideoConstraints(quality);
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640, max: 640 }, height: { ideal: 480, max: 480 }, frameRate: { ideal: 15, max: 30 }, facingMode: "user" },
+        video: videoConstraints,
         audio: true,
       });
 
