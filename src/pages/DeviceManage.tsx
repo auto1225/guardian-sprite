@@ -50,14 +50,24 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
 
   const managedDevices = devices.filter(d => d.device_type !== "smartphone");
 
-  // Match serials with devices by name
+  // Match serials with devices by name (with trim + case-insensitive fallback)
   const items = useMemo(() => {
     const usedDeviceIds = new Set<string>();
     const result: { serial: UserSerial | null; device: Device | null }[] = [];
 
+    console.log("[DeviceManage] Matching serials:", serials.length, "devices:", managedDevices.length);
+    console.log("[DeviceManage] Serial names:", serials.map(s => `"${s.device_name}"`));
+    console.log("[DeviceManage] Device names:", managedDevices.map(d => `"${d.name}" (${d.id.slice(0, 8)})`));
+
     for (const serial of serials) {
       if (serial.device_name) {
-        const device = managedDevices.find(d => !usedDeviceIds.has(d.id) && d.name === serial.device_name);
+        const trimmedSerialName = serial.device_name.trim();
+        // 1차: 정확한 이름 매칭 (trim 적용)
+        let device = managedDevices.find(d => !usedDeviceIds.has(d.id) && d.name.trim() === trimmedSerialName);
+        // 2차: 대소문자 무시 매칭
+        if (!device) {
+          device = managedDevices.find(d => !usedDeviceIds.has(d.id) && d.name.trim().toLowerCase() === trimmedSerialName.toLowerCase());
+        }
         if (device) {
           usedDeviceIds.add(device.id);
           result.push({ serial, device });
@@ -67,7 +77,23 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
       result.push({ serial, device: null });
     }
 
-    // Add unmatched devices
+    // 미매칭 시리얼과 미매칭 기기가 각각 하나씩 남은 경우 자동 매칭
+    const unmatchedSerials = result.filter(r => r.device === null && r.serial?.device_name);
+    const unmatchedDevices = managedDevices.filter(d => !usedDeviceIds.has(d.id));
+    if (unmatchedSerials.length > 0 && unmatchedDevices.length > 0) {
+      // device_name이 있는 미매칭 시리얼에 대해 순서대로 미매칭 기기를 배정
+      let deviceIdx = 0;
+      for (const item of result) {
+        if (item.device === null && item.serial?.device_name && deviceIdx < unmatchedDevices.length) {
+          console.log("[DeviceManage] Fallback match:", item.serial.device_name, "→", unmatchedDevices[deviceIdx].name);
+          item.device = unmatchedDevices[deviceIdx];
+          usedDeviceIds.add(unmatchedDevices[deviceIdx].id);
+          deviceIdx++;
+        }
+      }
+    }
+
+    // Add remaining unmatched devices
     for (const device of managedDevices) {
       if (!usedDeviceIds.has(device.id)) {
         result.push({ serial: null, device });

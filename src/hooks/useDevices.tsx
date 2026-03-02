@@ -78,12 +78,20 @@ export const useDevices = () => {
       if (!effectiveUserId) return [];
       
       // 항상 Edge Function 사용 (effectiveUserId 기반, RLS 우회)
+      console.log("[useDevices] Fetching devices for userId:", effectiveUserId);
       const { data, error } = await supabase.functions.invoke("get-devices", {
         body: { user_id: effectiveUserId },
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (error) {
+        console.error("[useDevices] get-devices error:", error);
+        throw error;
+      }
+      if (data?.error) {
+        console.error("[useDevices] get-devices data error:", data.error);
+        throw new Error(data.error);
+      }
       const dbDevices = (data?.devices || []) as Device[];
+      console.log("[useDevices] Fetched", dbDevices.length, "devices:", dbDevices.map(d => ({ id: d.id.slice(0, 8), name: d.name, type: d.device_type, status: d.status })));
 
       // ★ DB 조회 결과에 Presence 확인된 온라인 상태 보존
       // DB는 랩탑의 공유DB 업데이트가 실패하면 항상 offline을 반환하므로
