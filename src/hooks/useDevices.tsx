@@ -411,12 +411,16 @@ export const useDevices = () => {
             if (!hasChanges) return d;
 
             console.log("[Presence] ✅ Updating:", d.id.slice(0, 8), "←", match.key.slice(0, 8), { status: `${d.status}→${newStatus}`, camera: `${d.is_camera_connected}→${resolvedCameraConnected}` });
+            const updatedMeta = newStatus === 'online'
+              ? { ...((d.metadata as Record<string, unknown>) || {}), logged_out: false }
+              : d.metadata;
             return {
               ...d,
               status: newStatus as Device["status"],
               is_network_connected: latest.is_network_connected ?? d.is_network_connected,
               is_camera_connected: resolvedCameraConnected,
               battery_level: latest.battery_level ?? d.battery_level,
+              metadata: updatedMeta,
             };
           });
         });
@@ -521,6 +525,7 @@ export const useDevices = () => {
           is_streaming_requested: false,
           is_camera_connected: false,
           is_network_connected: false,
+          metadata: { ...((d.metadata as Record<string, unknown>) || {}), logged_out: true },
         } : d);
       });
       // DB에서도 최신 데이터 가져오기
