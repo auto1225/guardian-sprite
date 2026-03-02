@@ -31,6 +31,14 @@ Deno.serve(async (req) => {
     const isNonSmartphone = (t: string) => t !== "smartphone";
     const nonSmartphoneTypes = ["laptop", "desktop", "tablet"];
 
+    // ★ 비스마트폰은 시리얼 키 필수
+    if (isNonSmartphone(effectiveType) && !normalizedSerialKey) {
+      return new Response(
+        JSON.stringify({ error: "SERIAL_REQUIRED", message: "시리얼 키가 필요합니다." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // ★ 기존 기기 조회: device_id_override가 UUID 형식이면 직접 조회, 아니면 user_id + device_type 그룹 조회
     let existing: any = null;
 
