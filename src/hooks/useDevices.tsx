@@ -322,18 +322,37 @@ export const useDevices = () => {
           return oldDevices.map((d) => {
             if (d.device_type === "smartphone") return d;
 
-            // 1) 공유 DB ID로 직접 매칭
+            // 1) 공유 DB ID로 직접 매칭 (Presence key === 공유 DB device ID)
             let match = allPresenceEntries.find(e => e.key === d.id && !matchedKeys.has(e.key));
 
-            // 2) 직접 매칭 실패 → 미매칭된 Presence 항목 중 랩탑 후보 찾기
-            //    (랩탑은 로컬 DB ID를 Presence 키로 사용하므로 공유 DB ID와 다름)
+            // 2) Presence 데이터의 device_id 필드로 매칭
+            //    (랩탑이 Presence payload에 shared device ID를 포함하는 경우)
+            if (!match) {
+              match = allPresenceEntries.find(e =>
+                !matchedKeys.has(e.key) &&
+                e.data.device_id === d.id
+              );
+            }
+
+            // 3) 최후 폴백: 미매칭 Presence가 정확히 1개이고, 미매칭 비-스마트폰 기기도 정확히 1개일 때만
+            //    (다수의 기기가 있을 때 잘못된 기기에 할당되는 것을 방지)
             if (!match) {
               const knownDeviceIds = new Set(oldDevices.map(od => od.id));
-              match = allPresenceEntries.find(e =>
+              const unmatchedPresence = allPresenceEntries.filter(e =>
                 !matchedKeys.has(e.key) &&
                 !knownDeviceIds.has(e.key) &&
                 e.data.status === 'online'
               );
+              const unmatchedDevices = oldDevices.filter(od =>
+                od.device_type !== 'smartphone' &&
+                !allPresenceEntries.some(e => e.key === od.id || e.data.device_id === od.id) &&
+                !matchedKeys.has(od.id)
+              );
+              // 1:1 매칭만 허용 — 다수일 때는 매칭하지 않음
+              if (unmatchedPresence.length === 1 && unmatchedDevices.length === 1 && unmatchedDevices[0].id === d.id) {
+                match = unmatchedPresence[0];
+                console.log("[Presence] 🔄 1:1 fallback match:", d.id.slice(0, 8), "←", match.key.slice(0, 8));
+              }
             }
 
             if (!match) return d;
