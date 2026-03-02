@@ -122,8 +122,16 @@ const CameraViewer = ({
     const container = containerRef.current;
     if (!container) return;
     if (!document.fullscreenElement) {
-      container.requestFullscreen().catch(err => console.warn("[CameraViewer] Fullscreen failed:", err));
+      container.requestFullscreen().then(() => {
+        // 전체화면 진입 시 가로 모드로 잠금 시도 (유튜브처럼)
+        try {
+          (screen.orientation as any)?.lock?.("landscape").catch(() => {});
+        } catch {}
+      }).catch(err => console.warn("[CameraViewer] Fullscreen failed:", err));
     } else {
+      try {
+        (screen.orientation as any)?.unlock?.();
+      } catch {}
       document.exitFullscreen();
     }
   }, []);
@@ -362,7 +370,7 @@ const CameraViewer = ({
         muted
         autoPlay
         preload="auto"
-        className={`w-full h-full object-cover ${showVideo ? "" : "hidden"}`}
+        className={`w-full h-full ${isFullscreen ? "object-contain" : "object-cover"} ${showVideo ? "" : "hidden"}`}
         onClick={handlePlayClick}
       />
 
