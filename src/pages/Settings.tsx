@@ -416,20 +416,14 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
                   <button
                     key={lang.code}
                     onClick={async () => {
-                      toast({ title: "⏳", description: lang.label });
-                      const success = await loadLanguage(lang.code);
-                      if (success) {
-                        localStorage.setItem("meercop_language", lang.code);
-                        setDeviceLanguage(lang.code);
-                        setShowLangPicker(false);
-                        try {
-                          await saveMetadata({ language: lang.code });
-                          toast({ title: t("common.saved"), description: t("settings.languageChanged") });
-                        } catch {
-                          toast({ title: t("common.error"), description: t("common.saveFailed"), variant: "destructive" });
-                        }
-                      } else {
-                        toast({ title: t("common.error"), description: "Translation failed", variant: "destructive" });
+                      // ★ 선택된 기기의 metadata.language만 변경 (스마트폰 자체 UI 언어는 변경하지 않음)
+                      setDeviceLanguage(lang.code);
+                      setShowLangPicker(false);
+                      try {
+                        await saveMetadata({ language: lang.code });
+                        toast({ title: t("common.saved"), description: `${lang.flag} ${lang.label} → ${device.name}` });
+                      } catch {
+                        toast({ title: t("common.error"), description: t("common.saveFailed"), variant: "destructive" });
                       }
                     }}
                     className={`py-1.5 px-1 rounded-lg text-[10px] font-semibold transition-all text-center leading-tight ${
