@@ -140,7 +140,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
             return (
               <div
                 key={serial?.id || device?.id || idx}
-                className="rounded-2xl p-4 bg-white/20 backdrop-blur-xl border border-white/30 shadow-lg"
+                className="rounded-2xl p-4 bg-[hsla(220,30%,25%,0.85)] backdrop-blur-xl border border-white/20 shadow-lg"
               >
                 {/* Top row: device name + actions */}
                 <div className="flex items-center justify-between mb-2">
