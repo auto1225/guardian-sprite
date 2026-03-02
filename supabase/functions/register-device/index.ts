@@ -49,31 +49,41 @@ Deno.serve(async (req) => {
 
     if (!existing) {
       if (isNonSmartphone(effectiveType)) {
-        // 비스마트폰: serial_key가 있으면 metadata.serial_key로 먼저 조회
+        // 비스마트폰: serial_key 기반으로만 기존 기기 매칭 (다중 기기 지원)
+        // ★ 폴백 그룹 조회 제거: serial_key 없이는 새 기기 생성
         if (normalizedSerialKey) {
+          // 1) metadata.serial_key로 조회
           const { data } = await supabaseAdmin
             .from("devices")
             .select("id, name, device_type, status, metadata")
             .eq("user_id", user_id)
             .in("device_type", nonSmartphoneTypes)
-            .containedBy("metadata", { serial_key: normalizedSerialKey })
+            .filter("metadata->>serial_key", "eq", normalizedSerialKey)
             .limit(1)
             .maybeSingle();
           if (data) existing = data;
-        }
 
-        // serial_key 매칭 실패 시 user_id + device_type 그룹 조회
-        if (!existing) {
-          const { data } = await supabaseAdmin
-            .from("devices")
-            .select("id, name, device_type, status, metadata")
-            .eq("user_id", user_id)
-            .in("device_type", nonSmartphoneTypes)
-            .limit(1)
-            .maybeSingle();
-          existing = data;
+          // 2) licenses 테이블에서 device_id 조회
+          if (!existing) {
+            const { data: licData } = await supabaseAdmin
+              .from("licenses")
+              .select("device_id")
+              .eq("serial_key", normalizedSerialKey)
+              .eq("user_id", user_id)
+              .maybeSingle();
+            if (licData?.device_id) {
+              const { data: devData } = await supabaseAdmin
+                .from("devices")
+                .select("id, name, device_type, status, metadata")
+                .eq("id", licData.device_id)
+                .maybeSingle();
+              if (devData) existing = devData;
+            }
+          }
         }
+        // serial_key가 없으면 폴백 없이 새 기기 생성됨
       } else {
+        // 스마트폰: 기존 로직 유지
         const { data } = await supabaseAdmin
           .from("devices")
           .select("id, name, device_type, status, metadata")
