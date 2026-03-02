@@ -57,19 +57,27 @@ Deno.serve(async (req) => {
 
     if (!existing) {
       if (isNonSmartphone(effectiveType)) {
-        // 비스마트폰: serial_key 기반으로만 기존 기기 매칭 (다중 기기 지원)
-        // ★ 폴백 그룹 조회 제거: serial_key 없이는 새 기기 생성
         if (normalizedSerialKey) {
-          // 1) metadata.serial_key로 조회
-          const { data } = await supabaseAdmin
+          // 1) metadata.serial_key로 조회 — 중복이 있을 수 있으므로 전체 조회 후 정리
+          const { data: allMatches } = await supabaseAdmin
             .from("devices")
-            .select("id, name, device_type, status, metadata")
+            .select("id, name, device_type, status, metadata, created_at")
             .eq("user_id", user_id)
             .in("device_type", nonSmartphoneTypes)
             .filter("metadata->>serial_key", "eq", normalizedSerialKey)
-            .limit(1)
-            .maybeSingle();
-          if (data) existing = data;
+            .order("created_at", { ascending: false });
+
+          if (allMatches && allMatches.length > 0) {
+            existing = allMatches[0]; // 가장 최근 것 사용
+            // ★ 중복 레코드 정리: 나머지 삭제
+            if (allMatches.length > 1) {
+              console.log(`[register-device] 🗑️ Cleaning ${allMatches.length - 1} duplicate(s) for serial ${normalizedSerialKey}`);
+              for (let i = 1; i < allMatches.length; i++) {
+                await supabaseAdmin.from("licenses").update({ device_id: null }).eq("device_id", allMatches[i].id);
+                await supabaseAdmin.from("devices").delete().eq("id", allMatches[i].id);
+              }
+            }
+          }
 
           // 2) licenses 테이블에서 device_id 조회
           if (!existing) {
@@ -89,7 +97,6 @@ Deno.serve(async (req) => {
             }
           }
         }
-        // serial_key가 없으면 폴백 없이 새 기기 생성됨
       } else {
         // 스마트폰: 기존 로직 유지
         const { data } = await supabaseAdmin

@@ -84,10 +84,48 @@ serve(async (req) => {
       }
     }
 
+    // ── 3. 같은 user_id + serial_key로 중복 등록된 기기 정리 ──
+    let duplicatesRemoved = 0;
+    try {
+      const { data: allDevices } = await supabaseAdmin
+        .from("devices")
+        .select("id, user_id, metadata, created_at")
+        .neq("device_type", "smartphone");
+
+      if (allDevices && allDevices.length > 1) {
+        // serial_key별로 그룹화
+        const groups = new Map<string, typeof allDevices>();
+        for (const d of allDevices) {
+          const sk = (d.metadata as Record<string, unknown>)?.serial_key as string | undefined;
+          if (!sk) continue;
+          const key = `${d.user_id}::${sk}`;
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key)!.push(d);
+        }
+
+        for (const [key, devs] of groups) {
+          if (devs.length <= 1) continue;
+          // 가장 최근 생성된 것만 유지, 나머지 삭제
+          devs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          const toDelete = devs.slice(1);
+          for (const dup of toDelete) {
+            // 라이선스 연결 해제
+            await supabaseAdmin.from("licenses").update({ device_id: null }).eq("device_id", dup.id);
+            await supabaseAdmin.from("devices").delete().eq("id", dup.id);
+            duplicatesRemoved++;
+            console.log(`[monitor-heartbeat] 🗑️ Duplicate removed: ${dup.id.slice(0, 8)} (key: ${key})`);
+          }
+        }
+      }
+    } catch (dupErr) {
+      console.warn("[monitor-heartbeat] Duplicate cleanup error:", dupErr);
+    }
+
     const result = {
       checked_at: now.toISOString(),
       stale_devices: staleDevices?.length ?? 0,
       stale_phones: stalePhones?.length ?? 0,
+      duplicates_removed: duplicatesRemoved,
     };
 
     console.log("[monitor-heartbeat] ✅ Check complete:", result);
