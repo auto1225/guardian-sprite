@@ -106,9 +106,23 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
         }
       }
 
-      // 매칭 실패 → 기기 미연결로 표시 (폴백 없음)
+      // 2순위: device metadata에 저장된 serial_key로 매칭
+      if (serial.serial_key) {
+        const device = managedDevices.find(d =>
+          !usedDeviceIds.has(d.id) &&
+          (d.metadata as Record<string, unknown>)?.serial_key === serial.serial_key
+        );
+        if (device) {
+          usedDeviceIds.add(device.id);
+          result.push({ serial, device });
+          console.log("[DeviceManage] ✅ Metadata match:", serial.serial_key, "→", device.name);
+          continue;
+        }
+      }
+
+      // 매칭 실패 → 기기 미연결로 표시
       result.push({ serial, device: null });
-      console.log("[DeviceManage] ⏳ No license match:", serial.serial_key);
+      console.log("[DeviceManage] ⏳ No match:", serial.serial_key);
     }
 
     // 남은 미매칭 기기 추가 (시리얼 없이 존재하는 기기)
