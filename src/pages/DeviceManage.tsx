@@ -140,7 +140,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
             return (
               <div
                 key={serial?.id || device?.id || idx}
-                className="rounded-2xl p-4 bg-white/15 backdrop-blur-xl border border-white/25 shadow-lg"
+                className="rounded-2xl p-4 bg-white/20 backdrop-blur-xl border border-white/30 shadow-lg"
               >
                 {/* Top row: device name + actions */}
                 <div className="flex items-center justify-between mb-2">
@@ -152,17 +152,17 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
                     )}
                     {device ? (
                       <>
-                        <span className="text-primary-foreground font-semibold truncate">{device.name}</span>
+                        <span className="text-white font-bold truncate drop-shadow-sm">{device.name}</span>
                         {device.battery_level !== null && (
-                          <span className="text-primary-foreground/80 text-sm shrink-0">
+                          <span className="text-white/90 text-sm font-semibold shrink-0">
                             {device.battery_level}% <span className="text-status-active">⚡</span>
                           </span>
                         )}
                       </>
                     ) : serial?.device_name ? (
-                      <span className="text-primary-foreground/60 font-medium truncate">{serial.device_name}</span>
+                      <span className="text-white/80 font-semibold truncate drop-shadow-sm">{serial.device_name}</span>
                     ) : (
-                      <span className="text-white/40 text-sm">{t("deviceManage.noDeviceConnected")}</span>
+                      <span className="text-white/70 text-sm font-medium">{t("deviceManage.noDeviceConnected")}</span>
                     )}
                   </div>
 
@@ -193,7 +193,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
                 {/* Serial info */}
                 {serial && serial.serial_key && (
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="font-mono text-xs font-bold tracking-wider" style={{ color: "hsla(52, 100%, 60%, 1)" }}>
+                    <span className="font-mono text-sm font-bold tracking-wider text-yellow-300 drop-shadow-sm">
                       {serial.serial_key}
                     </span>
                     <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${planConfig.bgClass}`}>
@@ -206,10 +206,10 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
                 {/* Remaining days */}
                 {serial && serial.remaining_days !== null && (
                   <div className="flex items-center gap-1.5 mb-3">
-                    <CalendarDays className="w-3.5 h-3.5 text-white/40" />
-                    <span className={`text-xs ${
-                      serial.remaining_days <= 3 ? "text-red-400" :
-                      serial.remaining_days <= 7 ? "text-amber-400" : "text-white/60"
+                    <CalendarDays className="w-3.5 h-3.5 text-white/60" />
+                    <span className={`text-xs font-semibold ${
+                      serial.remaining_days <= 3 ? "text-red-300" :
+                      serial.remaining_days <= 7 ? "text-amber-300" : "text-white/80"
                     }`}>
                       {serial.remaining_days}{t("plan.days")} {t("plan.remainingDays")}
                     </span>
@@ -240,7 +240,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
                 {/* No device placeholder */}
                 {!device && (
                   <div className="mt-2 py-2 text-center">
-                    <span className="text-white/40 text-xs">⏳ {t("deviceManage.noDeviceConnected")}</span>
+                    <span className="text-white/60 text-xs font-medium">⏳ {t("deviceManage.noDeviceConnected")}</span>
                   </div>
                 )}
               </div>
