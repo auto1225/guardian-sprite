@@ -62,6 +62,12 @@ const CameraViewer = ({
   const [showControls, setShowControls] = useState(true);
   const controlsTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Pinch-to-zoom state
+  const [zoomScale, setZoomScale] = useState(1);
+  const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
+  const pinchStartDistRef = useRef<number | null>(null);
+  const pinchStartScaleRef = useRef(1);
+
   // 오디오 레벨 시각화
   const [audioLevel, setAudioLevel] = useState(0);
   const [hasAudioTrack, setHasAudioTrack] = useState(false);
@@ -97,11 +103,49 @@ const CameraViewer = ({
     }
   }, [isFullscreen, isLandscape, showControls]);
 
-  const handleVideoAreaTap = useCallback(() => {
+  const handleVideoAreaTap = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (isFullscreen && isLandscape) {
       setShowControls(prev => !prev);
     }
   }, [isFullscreen, isLandscape]);
+
+  // Pinch-to-zoom handlers
+  const getTouchDistance = (touches: React.TouchList) => {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      pinchStartDistRef.current = getTouchDistance(e.touches);
+      pinchStartScaleRef.current = zoomScale;
+      // Set zoom origin to midpoint of two fingers
+      const container = containerRef.current;
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        const mx = ((e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left) / rect.width * 100;
+        const my = ((e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top) / rect.height * 100;
+        setZoomOrigin({ x: mx, y: my });
+      }
+    }
+  }, [zoomScale]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && pinchStartDistRef.current !== null) {
+      e.preventDefault();
+      const dist = getTouchDistance(e.touches);
+      const newScale = Math.min(5, Math.max(1, pinchStartScaleRef.current * (dist / pinchStartDistRef.current)));
+      setZoomScale(newScale);
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    pinchStartDistRef.current = null;
+    // Reset zoom if close to 1
+    if (zoomScale < 1.05) setZoomScale(1);
+  }, [zoomScale]);
 
   // 오디오 레벨 모니터링
   useEffect(() => {
@@ -355,6 +399,10 @@ const CameraViewer = ({
           : "flex-1 rounded-xl aspect-video"
       }`}
       onClick={handleVideoAreaTap}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{ touchAction: zoomScale > 1 ? 'none' : 'auto' }}
     >
       {/* Video area */}
       <div className={`relative flex items-center justify-center ${
@@ -369,12 +417,14 @@ const CameraViewer = ({
           autoPlay
           preload="auto"
           className={`${isFullscreen ? "max-w-full max-h-full object-contain" : "w-full h-full object-cover"} ${showVideo ? "" : "hidden"}`}
+          style={zoomScale > 1 ? { transform: `scale(${zoomScale})`, transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`, transition: pinchStartDistRef.current ? 'none' : 'transform 0.2s ease-out' } : undefined}
           onClick={(e) => { e.stopPropagation(); handlePlayClick(); }}
         />
 
         {pausedFrameUrl && isPaused && (
           <img src={pausedFrameUrl} alt="Paused frame"
             className={`absolute ${isFullscreen ? "max-w-full max-h-full object-contain" : "inset-0 w-full h-full object-cover"} z-10`}
+            style={zoomScale > 1 ? { transform: `scale(${zoomScale})`, transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%` } : undefined}
           />
         )}
 
