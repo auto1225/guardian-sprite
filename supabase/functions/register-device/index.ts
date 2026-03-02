@@ -138,9 +138,29 @@ Deno.serve(async (req) => {
     }
 
     // 새 기기 등록
+    const finalName = device_name || "My Device";
+
+    // ★ 기기명 중복 검사 (같은 user_id 내에서 동일 이름의 다른 기기가 있는지)
+    if (finalName && finalName !== "My Device") {
+      const { data: dupDevice } = await supabaseAdmin
+        .from("devices")
+        .select("id, name")
+        .eq("user_id", user_id)
+        .eq("name", finalName)
+        .limit(1)
+        .maybeSingle();
+
+      if (dupDevice) {
+        return new Response(
+          JSON.stringify({ error: "DUPLICATE_DEVICE_NAME", message: `기기명 '${finalName}'은(는) 이미 사용 중입니다.` }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const insertPayload: Record<string, unknown> = {
       user_id,
-      name: device_name || "My Device",
+      name: finalName,
       device_type: effectiveType,
       status: "online",
       last_seen_at: new Date().toISOString(),
