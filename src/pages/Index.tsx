@@ -166,6 +166,14 @@ const Index = () => {
       toast({ title: t("common.noDevice"), description: t("common.noDeviceDesc") });
       return;
     }
+    // 설정 외의 아이콘은 기기가 오프라인이면 연결 불가 알림
+    if (type !== "settings" && type !== "meercop" && selectedDevice.status === "offline") {
+      toast({
+        title: t("status.deviceOffline"),
+        description: t("status.deviceOfflineActionDesc", "컴퓨터가 로그아웃 또는 오프라인 상태이므로 연결할 수 없습니다."),
+      });
+      return;
+    }
     switch (type) {
       case "laptop":
         openPanel("locationMap");
