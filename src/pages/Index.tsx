@@ -336,10 +336,7 @@ const Index = () => {
       <SideMenu 
         isOpen={panels.sideMenu}
         onClose={() => closePanel("sideMenu")}
-        onPhotoHistoryClick={() => openPanel("photoHistory")}
         onHelpClick={() => openPanel("help")}
-        onRemoteCommandsClick={() => openPanel("remoteCommands")}
-        onLocationHistoryClick={() => openPanel("locationHistory")}
       />
 
       {/* Settings Page */}
