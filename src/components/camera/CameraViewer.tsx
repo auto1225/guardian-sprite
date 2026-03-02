@@ -1,4 +1,4 @@
-import { RefreshCw, Mic, MicOff, VideoOff, Play } from "lucide-react";
+import { RefreshCw, Mic, MicOff, VideoOff, Play, Maximize, Minimize } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 /** 마운트 즉시 play()를 시도하고, 실패 시 탭 안내를 보여주는 오버레이 */
@@ -50,7 +50,9 @@ const CameraViewer = ({
 }: CameraViewerProps) => {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const isMutedRef = useRef(isMuted);
   const isPausedRef = useRef(isPaused);
   const [pausedFrameUrl, setPausedFrameUrl] = useState<string | null>(null);
@@ -114,6 +116,23 @@ const CameraViewer = ({
   }, [remoteStream]);
 
   useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
+
+  // Fullscreen toggle
+  const toggleFullscreen = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    if (!document.fullscreenElement) {
+      container.requestFullscreen().catch(err => console.warn("[CameraViewer] Fullscreen failed:", err));
+    } else {
+      document.exitFullscreen();
+    }
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
 
   // 일시정지: 현재 프레임 캡처
   useEffect(() => {
@@ -333,7 +352,10 @@ const CameraViewer = ({
   const showDisconnectOverlay = showVideo && !isConnected && !isConnecting;
 
   return (
-    <div className="flex-1 bg-black rounded-xl flex items-center justify-center relative overflow-hidden aspect-video">
+    <div
+      ref={containerRef}
+      className={`flex-1 bg-black rounded-xl flex items-center justify-center relative overflow-hidden ${isFullscreen ? "!rounded-none" : "aspect-video"}`}
+    >
       <video
         ref={videoRef}
         playsInline
@@ -445,6 +467,15 @@ const CameraViewer = ({
           )}
         </div>
       )}
+
+      {/* Fullscreen toggle */}
+      <button
+        onClick={toggleFullscreen}
+        className="absolute bottom-3 right-3 p-2 bg-black/60 rounded-lg hover:bg-black/80 active:bg-black/90 transition-colors z-10"
+        title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+      >
+        {isFullscreen ? <Minimize size={18} className="text-white" /> : <Maximize size={18} className="text-white" />}
+      </button>
     </div>
   );
 };
