@@ -43,7 +43,7 @@ i18n
       tr: { translation: tr },
       it: { translation: it },
     },
-    fallbackLng: "ko",
+    fallbackLng: "en",
     interpolation: {
       escapeValue: false,
     },
