@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useWebRTCViewer } from "@/hooks/useWebRTCViewer";
-import { Video, VideoOff, Loader2, Circle } from "lucide-react";
+import { Video, VideoOff, Loader2, Circle, Maximize, Minimize } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { saveAlertVideo } from "@/lib/alertVideoStorage";
 
@@ -15,11 +15,13 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [showLastFrame, setShowLastFrame] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const { isConnecting, isConnected, remoteStream, connect, disconnect } = useWebRTCViewer({
     deviceId,
@@ -43,6 +45,26 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
         setShowLastFrame(true);
       }
     }
+  }, []);
+
+  // Fullscreen toggle
+  const toggleFullscreen = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    if (!document.fullscreenElement) {
+      container.requestFullscreen().catch(err => {
+        console.warn("[AlertStreaming] Fullscreen failed:", err);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  }, []);
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
   }, []);
 
   // Auto-connect on mount
@@ -231,7 +253,7 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
 
   return (
     <div className="mx-4 mb-3">
-      <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden">
+      <div ref={containerRef} className={`bg-white/12 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden ${isFullscreen ? "!rounded-none !border-0 flex flex-col h-full" : ""}`}>
         <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10">
           <Video size={16} className="text-white/80" />
           <span className="text-white font-bold text-sm">{t("streaming.title")}</span>
@@ -247,8 +269,15 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
               LIVE
             </span>
           )}
+          <button
+            onClick={toggleFullscreen}
+            className={`${isConnected ? "" : "ml-auto"} p-1 rounded hover:bg-white/20 transition-colors`}
+            title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+          >
+            {isFullscreen ? <Minimize size={14} className="text-white/80" /> : <Maximize size={14} className="text-white/80" />}
+          </button>
         </div>
-        <div className="relative aspect-video bg-black/40">
+        <div className={`relative bg-black/40 ${isFullscreen ? "flex-1" : "aspect-video"}`}>
           {isConnecting && !isConnected && !showLastFrame && (
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <Loader2 className="w-8 h-8 text-white/60 animate-spin mb-2" />
