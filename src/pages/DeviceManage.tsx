@@ -46,6 +46,14 @@ type MatchedItem = { serial: UserSerial | null; device: Device | null };
 const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory }: DeviceManagePageProps) => {
   const { devices, selectedDeviceId, setSelectedDeviceId, deleteDevice } = useDevices();
   const { serials, serialsLoading, effectiveUserId } = useAuth();
+  const queryClient2 = useQueryClient();
+
+  // 기기관리 페이지 열릴 때 최신 데이터 강제 리프레시
+  useEffect(() => {
+    if (isOpen && effectiveUserId) {
+      queryClient2.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
+    }
+  }, [isOpen, effectiveUserId]);
   const { toggleMonitoring } = useCommands();
   const queryClient = useQueryClient();
   const { toast } = useToast();

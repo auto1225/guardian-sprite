@@ -314,6 +314,7 @@ export const useDevices = () => {
           battery_level?: number;
           is_charging?: boolean;
           last_seen_at?: string;
+          serial_key?: string;
         };
         const allPresenceEntries: Array<{ key: string; data: PresenceEntry }> = [];
         for (const [key, entries] of Object.entries(state)) {
@@ -348,7 +349,21 @@ export const useDevices = () => {
               );
             }
 
-            // 3) 최후 폴백: 미매칭 Presence가 정확히 1개이고, 미매칭 비-스마트폰 기기도 정확히 1개일 때만
+            // 3) serial_key 기반 매칭: 공유 DB 기기의 serial_key와 Presence 데이터의 serial_key 비교
+            if (!match) {
+              const deviceSerialKey = (d.metadata as Record<string, unknown>)?.serial_key as string | undefined;
+              if (deviceSerialKey) {
+                match = allPresenceEntries.find(e =>
+                  !matchedKeys.has(e.key) &&
+                  (e.data as Record<string, unknown>)?.serial_key === deviceSerialKey
+                );
+                if (match) {
+                  console.log("[Presence] 🔑 Serial-key match:", d.id.slice(0, 8), "←", match.key.slice(0, 8), "serial:", deviceSerialKey);
+                }
+              }
+            }
+
+            // 4) 최후 폴백: 미매칭 Presence가 정확히 1개이고, 미매칭 비-스마트폰 기기도 정확히 1개일 때만
             //    (다수의 기기가 있을 때 잘못된 기기에 할당되는 것을 방지)
             if (!match) {
               const knownDeviceIds = new Set(oldDevices.map(od => od.id));
