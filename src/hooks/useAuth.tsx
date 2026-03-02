@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, createContext, useContext, ReactNode } fro
 import { User, Session, RealtimeChannel } from "@supabase/supabase-js";
 import { websiteSupabase, fetchUserSerials, UserSerial } from "@/lib/websiteAuth";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 // Legacy keys (cleanup on logout)
 const SERIAL_STORAGE_KEY = "meercop_serial_key";
@@ -149,6 +150,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
+    // 로그아웃 전에 공유 DB에서 내 기기들 삭제 (fire-and-forget)
+    if (effectiveUserId) {
+      try {
+        const { data: myDevices } = await supabase
+          .from("devices")
+          .select("id")
+          .eq("user_id", effectiveUserId);
+        
+        if (myDevices?.length) {
+          for (const dev of myDevices) {
+            supabase.functions.invoke("update-device", {
+              body: { device_id: dev.id, _action: "delete" },
+            }).catch(err => console.warn("[SignOut] Shared DB delete failed:", err));
+          }
+          console.log(`[SignOut] ✅ Requested deletion of ${myDevices.length} device(s) from shared DB`);
+        }
+      } catch (err) {
+        console.warn("[SignOut] ⚠️ Shared DB cleanup error:", err);
+      }
+    }
+
     localStorage.removeItem(SERIAL_STORAGE_KEY);
     localStorage.removeItem(SERIAL_DATA_KEY);
     setSerials([]);
