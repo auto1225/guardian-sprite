@@ -146,6 +146,16 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
       }
     }
 
+    // 정렬: 연결된(device 있는) 기기 먼저, 그 중 온라인 먼저
+    result.sort((a, b) => {
+      const aOnline = a.device && a.device.status !== "offline" ? 1 : 0;
+      const bOnline = b.device && b.device.status !== "offline" ? 1 : 0;
+      if (aOnline !== bOnline) return bOnline - aOnline;
+      const aHasDevice = a.device ? 1 : 0;
+      const bHasDevice = b.device ? 1 : 0;
+      return bHasDevice - aHasDevice;
+    });
+
     return result;
   }, [serials, managedDevices, licenseMap]);
 
