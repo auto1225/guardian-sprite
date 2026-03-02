@@ -505,10 +505,34 @@ export const useDevices = () => {
     const cmdChannel = existingCmdCh || supabase.channel(cmdChannelName);
     // 기존 채널이든 새 채널이든 리스너를 항상 등록
     cmdChannel.on("broadcast", { event: "name_changed" }, nameChangedHandler);
+
+    // ── device_logout 브로드캐스트 수신: 노트북 로그아웃 시 즉시 오프라인 처리 ──
+    const deviceLogoutHandler = ({ payload }: { payload: any }) => {
+      console.log("[useDevices] 🔴 device_logout received:", payload);
+      const deviceId = payload?.device_id;
+      if (!deviceId) return;
+      // 로컬 캐시 즉시 업데이트: offline + 감시/스트리밍 해제
+      queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
+        if (!oldDevices) return oldDevices;
+        return oldDevices.map(d => d.id === deviceId ? {
+          ...d,
+          status: "offline" as const,
+          is_monitoring: false,
+          is_streaming_requested: false,
+          is_camera_connected: false,
+          is_network_connected: false,
+        } : d);
+      });
+      // DB에서도 최신 데이터 가져오기
+      queryClient.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
+      console.log("[useDevices] ✅ Device", deviceId, "set to offline due to logout");
+    };
+    cmdChannel.on("broadcast", { event: "device_logout" }, deviceLogoutHandler);
+
     if (!existingCmdCh) {
       cmdChannel.subscribe((status) => {
         if (status === "SUBSCRIBED") {
-          console.log("[useDevices] ✅ user-commands channel subscribed for name_changed");
+          console.log("[useDevices] ✅ user-commands channel subscribed for name_changed + device_logout");
         }
       });
     }
