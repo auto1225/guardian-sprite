@@ -29,6 +29,12 @@ Deno.serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      // 라이선스의 device_id만 해제 (시리얼은 유지)
+      await supabase
+        .from("licenses")
+        .update({ device_id: null })
+        .eq("device_id", device_id);
+
       const { error } = await supabase.from("devices").delete().eq("id", device_id);
       if (error) {
         return new Response(
