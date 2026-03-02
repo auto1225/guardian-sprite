@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { ArrowLeft, MoreVertical, Crown, Star, Sparkles, CalendarDays, GripVertical, ChevronLeft, ChevronRight, ArrowUpDown, CheckSquare, Square } from "lucide-react";
+import { ArrowLeft, MoreVertical, Crown, Star, Sparkles, CalendarDays, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ArrowUpDown, CheckSquare, Square } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { useDevices } from "@/hooks/useDevices";
 import { useCommands } from "@/hooks/useCommands";
@@ -54,7 +54,6 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
   const [page, setPage] = useState(1);
   const [sortMode, setSortMode] = useState<SortMode>("default");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [customOrder, setCustomOrder] = useState<string[]>([]);
   const [licenseMap, setLicenseMap] = useState<Map<string, string>>(new Map());
 
@@ -216,21 +215,15 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
     toast({ title: t("deviceManage.bulkSuccess"), description: t("deviceManage.bulkSuccessDesc") });
   };
 
-  // Drag and drop
-  const handleDragStart = (idx: number) => setDragIdx(idx);
-  const handleDragOver = (e: React.DragEvent, idx: number) => {
-    e.preventDefault();
-    if (dragIdx === null || dragIdx === idx) return;
-    const globalFromIdx = (page - 1) * ITEMS_PER_PAGE + dragIdx;
-    const globalToIdx = (page - 1) * ITEMS_PER_PAGE + idx;
+  // Move item up/down for reordering
+  const handleMoveItem = (globalIdx: number, direction: "up" | "down") => {
     const keys = items.map(i => itemKey(i));
-    const [moved] = keys.splice(globalFromIdx, 1);
-    keys.splice(globalToIdx, 0, moved);
+    const targetIdx = direction === "up" ? globalIdx - 1 : globalIdx + 1;
+    if (targetIdx < 0 || targetIdx >= keys.length) return;
+    [keys[globalIdx], keys[targetIdx]] = [keys[targetIdx], keys[globalIdx]];
     setCustomOrder(keys);
     setSortMode("default");
-    setDragIdx(idx);
   };
-  const handleDragEnd = () => setDragIdx(null);
 
   // Swipe for pagination
   const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX; };
@@ -342,27 +335,29 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
             <p className="text-sm mt-2">{t("deviceManage.noDevicesHint")}</p>
           </div>
         ) : (
-          pageItems.map((item, localIdx) => (
-            <DeviceCard
-              key={itemKey(item) || localIdx}
-              item={item}
-              itemKey={itemKey(item)}
-              isSelected={selectedIds.has(itemKey(item))}
-              onToggleSelect={toggleSelect}
-              onSetAsMain={handleSetAsMain}
-              onDelete={handleDeleteDevice}
-              onViewAlertHistory={onViewAlertHistory}
-              onToggleMonitoring={toggleMonitoring}
-              managedDevices={managedDevices}
-              // Drag
-              draggable={sortMode === "default"}
-              onDragStart={() => handleDragStart(localIdx)}
-              onDragOver={(e) => handleDragOver(e, localIdx)}
-              onDragEnd={handleDragEnd}
-              isDragging={dragIdx === localIdx}
-              t={t}
-            />
-          ))
+          pageItems.map((item, localIdx) => {
+            const globalIdx = (page - 1) * ITEMS_PER_PAGE + localIdx;
+            return (
+              <DeviceCard
+                key={itemKey(item) || localIdx}
+                item={item}
+                itemKey={itemKey(item)}
+                isSelected={selectedIds.has(itemKey(item))}
+                onToggleSelect={toggleSelect}
+                onSetAsMain={handleSetAsMain}
+                onDelete={handleDeleteDevice}
+                onViewAlertHistory={onViewAlertHistory}
+                onToggleMonitoring={toggleMonitoring}
+                managedDevices={managedDevices}
+                showReorder={sortMode === "default"}
+                canMoveUp={globalIdx > 0}
+                canMoveDown={globalIdx < items.length - 1}
+                onMoveUp={() => handleMoveItem(globalIdx, "up")}
+                onMoveDown={() => handleMoveItem(globalIdx, "down")}
+                t={t}
+              />
+            );
+          })
         )}
       </div>
 
@@ -431,18 +426,18 @@ interface DeviceCardProps {
   onViewAlertHistory?: (deviceId: string) => void;
   onToggleMonitoring: (deviceId: string, enable: boolean) => void;
   managedDevices: Device[];
-  draggable: boolean;
-  onDragStart: () => void;
-  onDragOver: (e: React.DragEvent) => void;
-  onDragEnd: () => void;
-  isDragging: boolean;
+  showReorder: boolean;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
   t: (key: string) => string;
 }
 
 const DeviceCard = ({
   item, itemKey: key, isSelected, onToggleSelect,
   onSetAsMain, onDelete, onViewAlertHistory, onToggleMonitoring,
-  managedDevices, draggable, onDragStart, onDragOver, onDragEnd, isDragging, t,
+  managedDevices, showReorder, canMoveUp, canMoveDown, onMoveUp, onMoveDown, t,
 }: DeviceCardProps) => {
   const { serial, device } = item;
   const isMain = !!(device && (device.metadata as Record<string, unknown>)?.is_main);
@@ -452,13 +447,7 @@ const DeviceCard = ({
 
   return (
     <div
-      draggable={draggable}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDragEnd={onDragEnd}
-      className={`rounded-2xl p-4 bg-[hsla(220,35%,18%,0.95)] backdrop-blur-xl border shadow-xl transition-all ${
-        isDragging ? "border-secondary/60 opacity-70 scale-[0.98]" : "border-white/30"
-      } ${isSelected ? "ring-2 ring-secondary/50" : ""}`}
+      className={`rounded-2xl p-4 bg-[hsla(220,35%,18%,0.95)] backdrop-blur-xl border shadow-xl transition-all border-white/30 ${isSelected ? "ring-2 ring-secondary/50" : ""}`}
     >
       {/* Top row */}
       <div className="flex items-center justify-between mb-2">
@@ -472,9 +461,16 @@ const DeviceCard = ({
               }
             </button>
           )}
-          {/* Drag handle */}
-          {draggable && (
-            <GripVertical className="w-4 h-4 text-white/30 cursor-grab shrink-0" />
+          {/* Reorder buttons */}
+          {showReorder && (
+            <div className="flex flex-col shrink-0 -my-1">
+              <button onClick={onMoveUp} disabled={!canMoveUp} className="text-white/40 hover:text-white disabled:opacity-20 p-0.5">
+                <ChevronUp className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={onMoveDown} disabled={!canMoveDown} className="text-white/40 hover:text-white disabled:opacity-20 p-0.5">
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
           )}
           {isMain && (
             <span className="bg-status-active text-accent-foreground px-2 py-0.5 rounded text-[10px] font-bold shrink-0">
