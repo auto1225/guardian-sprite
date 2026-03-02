@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { ArrowLeft, MoreVertical, Crown, Star, Sparkles, CalendarDays } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { useDevices } from "@/hooks/useDevices";
@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 import { UserSerial } from "@/lib/websiteAuth";
+import { supabase } from "@/integrations/supabase/client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,56 +42,93 @@ interface DeviceManagePageProps {
 
 const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory }: DeviceManagePageProps) => {
   const { devices, selectedDeviceId, setSelectedDeviceId, deleteDevice } = useDevices();
-  const { serials, serialsLoading } = useAuth();
+  const { serials, serialsLoading, effectiveUserId } = useAuth();
   const { toggleMonitoring } = useCommands();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation();
   const [page, setPage] = useState(1);
+  const [licenseMap, setLicenseMap] = useState<Map<string, string>>(new Map()); // serial_key → device_id
 
   const managedDevices = devices.filter(d => d.device_type !== "smartphone");
 
-  // Match serials with devices by name (with trim + case-insensitive fallback)
+  // ★ licenses 테이블에서 serial_key → device_id 매핑 조회 (이름 기반 매칭 대신 확실한 DB 관계 사용)
+  useEffect(() => {
+    if (!effectiveUserId || serials.length === 0) return;
+
+    const fetchLicenses = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("get-devices", {
+          body: { user_id: effectiveUserId },
+        });
+        if (error || !data?.devices) return;
+
+        // licenses 테이블 직접 조회 (Edge Function 경유)
+        const serialKeys = serials.map(s => s.serial_key).filter(Boolean);
+        if (serialKeys.length === 0) return;
+
+        const { data: licData, error: licError } = await supabase
+          .from("licenses")
+          .select("serial_key, device_id")
+          .in("serial_key", serialKeys);
+
+        if (licError) {
+          console.error("[DeviceManage] License fetch error:", licError);
+          return;
+        }
+
+        const map = new Map<string, string>();
+        for (const lic of (licData || [])) {
+          if (lic.serial_key && lic.device_id) {
+            map.set(lic.serial_key, lic.device_id);
+          }
+        }
+        console.log("[DeviceManage] License map:", Object.fromEntries(map));
+        setLicenseMap(map);
+      } catch (err) {
+        console.error("[DeviceManage] License fetch failed:", err);
+      }
+    };
+
+    fetchLicenses();
+  }, [effectiveUserId, serials]);
+
+  // ★ serial ↔ device 매칭: licenses 테이블의 device_id를 우선 사용, 이름 매칭은 폴백
   const items = useMemo(() => {
     const usedDeviceIds = new Set<string>();
     const result: { serial: UserSerial | null; device: Device | null }[] = [];
 
-    console.log("[DeviceManage] Matching serials:", serials.length, "devices:", managedDevices.length);
-    console.log("[DeviceManage] Serial names:", serials.map(s => `"${s.device_name}"`));
-    console.log("[DeviceManage] Device names:", managedDevices.map(d => `"${d.name}" (${d.id.slice(0, 8)})`));
+    console.log("[DeviceManage] Matching serials:", serials.length, "devices:", managedDevices.length, "licenseMap:", licenseMap.size);
 
     for (const serial of serials) {
+      // 1순위: licenses 테이블의 device_id로 매칭
+      const linkedDeviceId = licenseMap.get(serial.serial_key);
+      if (linkedDeviceId) {
+        const device = managedDevices.find(d => d.id === linkedDeviceId && !usedDeviceIds.has(d.id));
+        if (device) {
+          usedDeviceIds.add(device.id);
+          result.push({ serial, device });
+          console.log("[DeviceManage] License match:", serial.serial_key, "→", device.name, `(${device.id.slice(0, 8)})`);
+          continue;
+        }
+      }
+
+      // 2순위: 이름 기반 매칭 (폴백)
       if (serial.device_name) {
         const trimmedSerialName = serial.device_name.trim();
-        // 1차: 정확한 이름 매칭 (trim 적용)
         let device = managedDevices.find(d => !usedDeviceIds.has(d.id) && d.name.trim() === trimmedSerialName);
-        // 2차: 대소문자 무시 매칭
         if (!device) {
           device = managedDevices.find(d => !usedDeviceIds.has(d.id) && d.name.trim().toLowerCase() === trimmedSerialName.toLowerCase());
         }
         if (device) {
           usedDeviceIds.add(device.id);
           result.push({ serial, device });
+          console.log("[DeviceManage] Name match:", serial.device_name, "→", device.name);
           continue;
         }
       }
-      result.push({ serial, device: null });
-    }
 
-    // 미매칭 시리얼과 미매칭 기기가 각각 하나씩 남은 경우 자동 매칭
-    const unmatchedSerials = result.filter(r => r.device === null && r.serial?.device_name);
-    const unmatchedDevices = managedDevices.filter(d => !usedDeviceIds.has(d.id));
-    if (unmatchedSerials.length > 0 && unmatchedDevices.length > 0) {
-      // device_name이 있는 미매칭 시리얼에 대해 순서대로 미매칭 기기를 배정
-      let deviceIdx = 0;
-      for (const item of result) {
-        if (item.device === null && item.serial?.device_name && deviceIdx < unmatchedDevices.length) {
-          console.log("[DeviceManage] Fallback match:", item.serial.device_name, "→", unmatchedDevices[deviceIdx].name);
-          item.device = unmatchedDevices[deviceIdx];
-          usedDeviceIds.add(unmatchedDevices[deviceIdx].id);
-          deviceIdx++;
-        }
-      }
+      result.push({ serial, device: null });
     }
 
     // Add remaining unmatched devices
@@ -101,7 +139,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
     }
 
     return result;
-  }, [serials, managedDevices]);
+  }, [serials, managedDevices, licenseMap]);
 
   const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
   const pageItems = items.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
