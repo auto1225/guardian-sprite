@@ -52,10 +52,17 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
     const container = containerRef.current;
     if (!container) return;
     if (!document.fullscreenElement) {
-      container.requestFullscreen().catch(err => {
+      container.requestFullscreen().then(() => {
+        try {
+          (screen.orientation as any)?.lock?.("landscape").catch(() => {});
+        } catch {}
+      }).catch(err => {
         console.warn("[AlertStreaming] Fullscreen failed:", err);
       });
     } else {
+      try {
+        (screen.orientation as any)?.unlock?.();
+      } catch {}
       document.exitFullscreen();
     }
   }, []);
@@ -307,7 +314,7 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
             autoPlay
             playsInline
             muted
-            className={`w-full h-full object-cover ${isConnected ? "" : "hidden"}`}
+            className={`w-full h-full ${isFullscreen ? "object-contain" : "object-cover"} ${isConnected ? "" : "hidden"}`}
           />
         </div>
       </div>
