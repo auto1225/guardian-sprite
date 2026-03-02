@@ -210,9 +210,11 @@ const Index = () => {
           selectedDevice?.status === "alert" 
             ? t("status.alertDetected")
             : selectedDevice?.status === "offline"
-              ? selectedDevice?.is_network_connected === false
-                ? t("status.networkDisconnected")
-                : t("status.deviceOffline")
+              ? (selectedDevice?.metadata as Record<string, unknown>)?.logged_out
+                ? t("status.deviceLoggedOut")
+                : selectedDevice?.is_network_connected === false
+                  ? t("status.networkDisconnected")
+                  : t("status.deviceOffline")
               : !selectedDevice?.is_network_connected && selectedDevice
                 ? t("status.networkLost")
                 : isMonitoring 
