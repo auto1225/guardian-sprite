@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { user_id, device_name, device_type, serial_key } = await req.json();
+    const { user_id, device_name, device_type, serial_key, device_id_override } = await req.json();
 
     if (!user_id) {
       return new Response(
@@ -28,51 +28,74 @@ Deno.serve(async (req) => {
 
     const normalizedSerialKey = serial_key ? String(serial_key).trim().toUpperCase() : null;
     const effectiveType = device_type || "laptop";
-    // laptop/desktop/tablet are treated as the same "non-smartphone" group to prevent duplicates
-    // 설정에서 기기타입을 변경해도 기존 레코드를 재사용
-    const isNonSmartphone = (t: string) => t !== "smartphone";
-    const nonSmartphoneTypes = ["laptop", "desktop", "tablet"];
 
-    // 같은 user_id + device_type 그룹으로 이미 존재하는지 확인 (이름 무관 — 중복 방지)
+    // ★ device_id 결정: serial_key 기반 고유 ID 또는 override 또는 기존 로직
+    let determinedDeviceId: string | null = device_id_override || null;
+
+    if (!determinedDeviceId && normalizedSerialKey && effectiveType !== "smartphone") {
+      // 시리얼 키 기반 고유 device_id: user_id_serialkey_type
+      const sanitizedSerial = normalizedSerialKey.replace(/[^A-Z0-9]/g, "").toLowerCase();
+      determinedDeviceId = `${user_id}_${sanitizedSerial}_${effectiveType}`;
+    }
+
+    // smartphone은 기존 device_id_override 방식 유지
+    if (effectiveType === "smartphone" && !determinedDeviceId) {
+      determinedDeviceId = `${user_id}-smartphone`;
+    }
+
+    // 기존 기기 조회
     let existing: any = null;
-    if (isNonSmartphone(effectiveType)) {
-      // 비스마트폰 그룹: laptop, desktop, tablet 중 하나라도 있으면 재사용
+
+    if (determinedDeviceId) {
+      // 결정된 ID로 직접 조회
       const { data } = await supabaseAdmin
         .from("devices")
-        .select("id, name, device_type, status")
-        .eq("user_id", user_id)
-        .in("device_type", nonSmartphoneTypes)
-        .limit(1)
+        .select("id, name, device_type, status, metadata")
+        .eq("id", determinedDeviceId)
         .maybeSingle();
       existing = data;
     } else {
-      // smartphone: 정확한 타입 매칭
-      const { data } = await supabaseAdmin
-        .from("devices")
-        .select("id, name, device_type, status")
-        .eq("user_id", user_id)
-        .eq("device_type", effectiveType)
-        .limit(1)
-        .maybeSingle();
-      existing = data;
+      // ID 미결정 시 user_id + device_type 그룹으로 조회 (레거시 폴백)
+      const nonSmartphoneTypes = ["laptop", "desktop", "tablet"];
+      const isNonSmartphone = effectiveType !== "smartphone";
+
+      if (isNonSmartphone) {
+        const { data } = await supabaseAdmin
+          .from("devices")
+          .select("id, name, device_type, status, metadata")
+          .eq("user_id", user_id)
+          .in("device_type", nonSmartphoneTypes)
+          .limit(1)
+          .maybeSingle();
+        existing = data;
+      } else {
+        const { data } = await supabaseAdmin
+          .from("devices")
+          .select("id, name, device_type, status, metadata")
+          .eq("user_id", user_id)
+          .eq("device_type", effectiveType)
+          .limit(1)
+          .maybeSingle();
+        existing = data;
+      }
     }
 
     if (existing) {
       // 기존 기기 재연결
+      const currentMeta = (existing.metadata as Record<string, unknown>) || {};
       const updatePayload: Record<string, unknown> = {
         status: "online",
         last_seen_at: new Date().toISOString(),
+        device_type: effectiveType,
       };
 
-      // serial_key가 제공되면 metadata에 저장
       if (normalizedSerialKey) {
-        const { data: currentDevice } = await supabaseAdmin
-          .from("devices")
-          .select("metadata")
-          .eq("id", existing.id)
-          .single();
-        const currentMeta = (currentDevice?.metadata as Record<string, unknown>) || {};
         updatePayload.metadata = { ...currentMeta, serial_key: normalizedSerialKey };
+      }
+
+      // 이름이 변경된 경우 업데이트
+      if (device_name && device_name !== existing.name) {
+        updatePayload.name = device_name;
       }
 
       await supabaseAdmin
@@ -80,7 +103,7 @@ Deno.serve(async (req) => {
         .update(updatePayload)
         .eq("id", existing.id);
 
-      // licenses 테이블 upsert (serial_key → device_id 매핑)
+      // licenses 테이블 upsert
       if (normalizedSerialKey) {
         await supabaseAdmin
           .from("licenses")
@@ -108,6 +131,11 @@ Deno.serve(async (req) => {
       status: "online",
       last_seen_at: new Date().toISOString(),
     };
+
+    if (determinedDeviceId) {
+      insertPayload.id = determinedDeviceId;
+    }
+
     if (normalizedSerialKey) {
       insertPayload.metadata = { serial_key: normalizedSerialKey };
     }
@@ -126,7 +154,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // licenses 테이블 upsert (serial_key → device_id 매핑)
+    // licenses 테이블 upsert
     if (normalizedSerialKey) {
       await supabaseAdmin
         .from("licenses")
