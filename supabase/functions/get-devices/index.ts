@@ -6,6 +6,42 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+async function queryWithRetry(supabaseAdmin: ReturnType<typeof createClient>, userId?: string, deviceId?: string, retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      let query = supabaseAdmin
+        .from("devices")
+        .select("*")
+        .order("created_at", { ascending: true });
+
+      if (userId) query = query.eq("user_id", userId);
+      if (deviceId) query = query.eq("id", deviceId);
+
+      const { data, error } = await query;
+
+      if (error) {
+        // Check for transient errors (502, connection issues)
+        const msg = typeof error.message === "string" ? error.message : "";
+        if (attempt < retries && (msg.includes("502") || msg.includes("Bad gateway") || msg.includes("fetch failed"))) {
+          console.warn(`[get-devices] Attempt ${attempt}/${retries} failed (transient), retrying in ${attempt * 500}ms...`);
+          await new Promise(r => setTimeout(r, attempt * 500));
+          continue;
+        }
+        throw error;
+      }
+
+      return data;
+    } catch (err) {
+      if (attempt < retries) {
+        console.warn(`[get-devices] Attempt ${attempt}/${retries} threw, retrying...`);
+        await new Promise(r => setTimeout(r, attempt * 500));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -26,27 +62,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    let query = supabaseAdmin
-      .from("devices")
-      .select("*")
-      .order("created_at", { ascending: true });
-
-    if (user_id) {
-      query = query.eq("user_id", user_id);
-    }
-    if (device_id) {
-      query = query.eq("id", device_id);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error("get-devices error:", error);
-      return new Response(
-        JSON.stringify({ error: "기기 조회에 실패했습니다." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const data = await queryWithRetry(supabaseAdmin, user_id, device_id);
 
     return new Response(
       JSON.stringify({ devices: data }),
@@ -55,7 +71,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error("get-devices error:", err);
     return new Response(
-      JSON.stringify({ error: "서버 오류가 발생했습니다." }),
+      JSON.stringify({ error: "기기 조회에 실패했습니다." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
