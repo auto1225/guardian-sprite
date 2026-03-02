@@ -98,34 +98,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
     for (const serial of serials) {
       let matched = false;
 
-      // 1순위: licenses 테이블 (serial_key → device_id)
-      const linkedDeviceId = licenseMap.get(serial.serial_key);
-      if (linkedDeviceId) {
-        const device = managedDevices.find(d => d.id === linkedDeviceId && !usedDeviceIds.has(d.id));
-        if (device) {
-          usedDeviceIds.add(device.id);
-          result.push({ serial, device });
-          console.log("[DeviceManage] ✅ License match:", serial.serial_key, "→", device.name);
-          matched = true;
-        }
-      }
-
-      // 2순위: serial_key 기반 device_id 패턴 매칭
-      if (!matched && serial.serial_key && effectiveUserId) {
-        const sanitizedSerial = serial.serial_key.replace(/[^A-Z0-9]/g, "").toLowerCase();
-        const expectedIdPrefix = `${effectiveUserId}_${sanitizedSerial}_`;
-        const device = managedDevices.find(d =>
-          !usedDeviceIds.has(d.id) && d.id.startsWith(expectedIdPrefix)
-        );
-        if (device) {
-          usedDeviceIds.add(device.id);
-          result.push({ serial, device });
-          console.log("[DeviceManage] ✅ ID pattern match:", serial.serial_key, "→", device.name);
-          matched = true;
-        }
-      }
-
-      // 3순위: device metadata.serial_key
+      // 1순위: device metadata.serial_key (가장 정확한 매칭 — 기기가 직접 보고한 시리얼)
       if (!matched && serial.serial_key) {
         const device = managedDevices.find(d =>
           !usedDeviceIds.has(d.id) &&
@@ -136,6 +109,27 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
           result.push({ serial, device });
           console.log("[DeviceManage] ✅ Metadata match:", serial.serial_key, "→", device.name);
           matched = true;
+        }
+      }
+
+      // 2순위: licenses 테이블 (serial_key → device_id)
+      // 단, 해당 device_id의 metadata.serial_key가 다른 시리얼이면 스킵 (오매칭 방지)
+      if (!matched) {
+        const linkedDeviceId = licenseMap.get(serial.serial_key);
+        if (linkedDeviceId) {
+          const device = managedDevices.find(d => d.id === linkedDeviceId && !usedDeviceIds.has(d.id));
+          if (device) {
+            const deviceSerial = (device.metadata as Record<string, unknown>)?.serial_key;
+            // 기기의 실제 serial_key가 없거나, 이 시리얼과 일치할 때만 매칭
+            if (!deviceSerial || deviceSerial === serial.serial_key) {
+              usedDeviceIds.add(device.id);
+              result.push({ serial, device });
+              console.log("[DeviceManage] ✅ License match:", serial.serial_key, "→", device.name);
+              matched = true;
+            } else {
+              console.log("[DeviceManage] ⚠️ License points to device with different serial:", serial.serial_key, "→ device has", deviceSerial);
+            }
+          }
         }
       }
 
