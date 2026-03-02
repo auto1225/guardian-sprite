@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { user_id, device_name, device_type } = await req.json();
+    const { user_id, device_name, device_type, serial_key } = await req.json();
 
     if (!user_id) {
       return new Response(
@@ -26,6 +26,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    const normalizedSerialKey = serial_key ? String(serial_key).trim().toUpperCase() : null;
     const effectiveType = device_type || "laptop";
     // laptop/desktop/tablet are treated as the same "non-smartphone" group to prevent duplicates
     // 설정에서 기기타입을 변경해도 기존 레코드를 재사용
@@ -58,13 +59,36 @@ Deno.serve(async (req) => {
 
     if (existing) {
       // 기존 기기 재연결
+      const updatePayload: Record<string, unknown> = {
+        status: "online",
+        last_seen_at: new Date().toISOString(),
+      };
+
+      // serial_key가 제공되면 metadata에 저장
+      if (normalizedSerialKey) {
+        const { data: currentDevice } = await supabaseAdmin
+          .from("devices")
+          .select("metadata")
+          .eq("id", existing.id)
+          .single();
+        const currentMeta = (currentDevice?.metadata as Record<string, unknown>) || {};
+        updatePayload.metadata = { ...currentMeta, serial_key: normalizedSerialKey };
+      }
+
       await supabaseAdmin
         .from("devices")
-        .update({
-          status: "online",
-          last_seen_at: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .eq("id", existing.id);
+
+      // licenses 테이블 upsert (serial_key → device_id 매핑)
+      if (normalizedSerialKey) {
+        await supabaseAdmin
+          .from("licenses")
+          .upsert(
+            { serial_key: normalizedSerialKey, device_id: existing.id, user_id, is_active: true },
+            { onConflict: "serial_key" }
+          );
+      }
 
       return new Response(
         JSON.stringify({
@@ -77,15 +101,20 @@ Deno.serve(async (req) => {
     }
 
     // 새 기기 등록
+    const insertPayload: Record<string, unknown> = {
+      user_id,
+      name: device_name || "My Device",
+      device_type: effectiveType,
+      status: "online",
+      last_seen_at: new Date().toISOString(),
+    };
+    if (normalizedSerialKey) {
+      insertPayload.metadata = { serial_key: normalizedSerialKey };
+    }
+
     const { data: newDevice, error } = await supabaseAdmin
       .from("devices")
-      .insert({
-        user_id,
-        name: device_name || "My Device",
-        device_type: effectiveType,
-        status: "online",
-        last_seen_at: new Date().toISOString(),
-      })
+      .insert(insertPayload)
       .select("id")
       .single();
 
@@ -95,6 +124,16 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "기기 등록에 실패했습니다." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // licenses 테이블 upsert (serial_key → device_id 매핑)
+    if (normalizedSerialKey) {
+      await supabaseAdmin
+        .from("licenses")
+        .upsert(
+          { serial_key: normalizedSerialKey, device_id: newDevice.id, user_id, is_active: true },
+          { onConflict: "serial_key" }
+        );
     }
 
     return new Response(

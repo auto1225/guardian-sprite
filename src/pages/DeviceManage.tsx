@@ -93,7 +93,11 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
     fetchLicenses();
   }, [effectiveUserId, serials]);
 
-  // ★ serial ↔ device 매칭: licenses 테이블의 device_id를 우선 사용, 이름 매칭은 폴백
+  // ★ serial ↔ device 매칭: 4단계 매칭 시스템
+  // 1순위: licenses 테이블 (serial_key → device_id)
+  // 2순위: device metadata.serial_key
+  // 3순위: 이름 기반 매칭
+  // 4순위: 온라인 기기 폴백 (device_name이 있는 시리얼 → 유일한 온라인 기기)
   const items = useMemo(() => {
     const usedDeviceIds = new Set<string>();
     const result: { serial: UserSerial | null; device: Device | null }[] = [];
@@ -108,12 +112,26 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
         if (device) {
           usedDeviceIds.add(device.id);
           result.push({ serial, device });
-          console.log("[DeviceManage] License match:", serial.serial_key, "→", device.name, `(${device.id.slice(0, 8)})`);
+          console.log("[DeviceManage] ✅ License match:", serial.serial_key, "→", device.name);
           continue;
         }
       }
 
-      // 2순위: 이름 기반 매칭 (폴백)
+      // 2순위: device metadata에 저장된 serial_key로 매칭
+      if (serial.serial_key) {
+        const device = managedDevices.find(d =>
+          !usedDeviceIds.has(d.id) &&
+          (d.metadata as Record<string, unknown>)?.serial_key === serial.serial_key
+        );
+        if (device) {
+          usedDeviceIds.add(device.id);
+          result.push({ serial, device });
+          console.log("[DeviceManage] ✅ Metadata match:", serial.serial_key, "→", device.name);
+          continue;
+        }
+      }
+
+      // 3순위: 이름 기반 매칭 (폴백)
       if (serial.device_name) {
         const trimmedSerialName = serial.device_name.trim();
         let device = managedDevices.find(d => !usedDeviceIds.has(d.id) && d.name.trim() === trimmedSerialName);
@@ -123,7 +141,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
         if (device) {
           usedDeviceIds.add(device.id);
           result.push({ serial, device });
-          console.log("[DeviceManage] Name match:", serial.device_name, "→", device.name);
+          console.log("[DeviceManage] ✅ Name match:", serial.device_name, "→", device.name);
           continue;
         }
       }
@@ -131,7 +149,23 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
       result.push({ serial, device: null });
     }
 
-    // Add remaining unmatched devices
+    // 4순위: 온라인 기기 폴백 — device_name이 있지만 미매칭된 시리얼 → 유일한 미매칭 온라인 기기
+    const unmatchedOnlineDevices = managedDevices.filter(d =>
+      !usedDeviceIds.has(d.id) && d.status !== "offline"
+    );
+    if (unmatchedOnlineDevices.length === 1) {
+      const onlineDevice = unmatchedOnlineDevices[0];
+      const unmatchedSerialIdx = result.findIndex(r =>
+        r.device === null && r.serial?.device_name
+      );
+      if (unmatchedSerialIdx !== -1) {
+        usedDeviceIds.add(onlineDevice.id);
+        result[unmatchedSerialIdx].device = onlineDevice;
+        console.log("[DeviceManage] ✅ Online fallback:", result[unmatchedSerialIdx].serial?.serial_key, "→", onlineDevice.name);
+      }
+    }
+
+    // 남은 미매칭 기기 추가
     for (const device of managedDevices) {
       if (!usedDeviceIds.has(device.id)) {
         result.push({ serial: null, device });
