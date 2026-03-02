@@ -520,6 +520,10 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
             isRecording={isRecording}
             recordingDuration={recordingDuration}
             isPaused={isPaused}
+            onToggleMute={handleToggleMute}
+            onToggleRecording={toggleRecording}
+            onTogglePause={togglePause}
+            onCapture={captureSnapshot}
           />
           {snapshotUrl && (
             <SnapshotPreview

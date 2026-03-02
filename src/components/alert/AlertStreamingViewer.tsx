@@ -52,17 +52,10 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
     const container = containerRef.current;
     if (!container) return;
     if (!document.fullscreenElement) {
-      container.requestFullscreen().then(() => {
-        try {
-          (screen.orientation as any)?.lock?.("landscape").catch(() => {});
-        } catch {}
-      }).catch(err => {
+      container.requestFullscreen().catch(err => {
         console.warn("[AlertStreaming] Fullscreen failed:", err);
       });
     } else {
-      try {
-        (screen.orientation as any)?.unlock?.();
-      } catch {}
       document.exitFullscreen();
     }
   }, []);
