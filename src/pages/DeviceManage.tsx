@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { ArrowLeft, MoreVertical, Crown, Star, Sparkles, CalendarDays, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ArrowUpDown, CheckSquare, Square } from "lucide-react";
+import { ArrowLeft, MoreVertical, Crown, Star, Sparkles, CalendarDays, GripVertical, ChevronLeft, ChevronRight, ArrowUpDown, CheckSquare, Square } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { useDevices } from "@/hooks/useDevices";
 import { useCommands } from "@/hooks/useCommands";
@@ -57,8 +57,20 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
   const [customOrder, setCustomOrder] = useState<string[]>([]);
   const [licenseMap, setLicenseMap] = useState<Map<string, string>>(new Map());
 
+  // Drag state
+  const dragState = useRef<{
+    active: boolean;
+    fromGlobalIdx: number;
+    startY: number;
+    currentOverIdx: number | null;
+  }>({ active: false, fromGlobalIdx: -1, startY: 0, currentOverIdx: null });
+  const [dragFromIdx, setDragFromIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+
   // Swipe state
   const touchStartX = useRef(0);
+  const swipeActive = useRef(false);
   const listRef = useRef<HTMLDivElement>(null);
 
   const managedDevices = devices.filter(d => d.device_type !== "smartphone");
@@ -215,24 +227,64 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
     toast({ title: t("deviceManage.bulkSuccess"), description: t("deviceManage.bulkSuccessDesc") });
   };
 
-  // Move item up/down for reordering
-  const handleMoveItem = (globalIdx: number, direction: "up" | "down") => {
-    const keys = items.map(i => itemKey(i));
-    const targetIdx = direction === "up" ? globalIdx - 1 : globalIdx + 1;
-    if (targetIdx < 0 || targetIdx >= keys.length) return;
-    [keys[globalIdx], keys[targetIdx]] = [keys[targetIdx], keys[globalIdx]];
-    setCustomOrder(keys);
-    setSortMode("default");
+  // ─── Pointer-based drag reorder ─────────────────────────
+  const handleDragPointerDown = (e: React.PointerEvent, localIdx: number) => {
+    const globalIdx = (page - 1) * ITEMS_PER_PAGE + localIdx;
+    dragState.current = { active: true, fromGlobalIdx: globalIdx, startY: e.clientY, currentOverIdx: localIdx };
+    setDragFromIdx(localIdx);
+    setDragOverIdx(localIdx);
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    e.preventDefault();
   };
 
-  // Swipe for pagination
-  const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX; };
+  const handleDragPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragState.current.active || !listRef.current) return;
+    // Find which card the pointer is over
+    const rects = cardRefs.current.map(el => el?.getBoundingClientRect());
+    for (let i = 0; i < rects.length; i++) {
+      const r = rects[i];
+      if (r && e.clientY >= r.top && e.clientY <= r.bottom) {
+        if (dragState.current.currentOverIdx !== i) {
+          dragState.current.currentOverIdx = i;
+          setDragOverIdx(i);
+        }
+        break;
+      }
+    }
+  }, []);
+
+  const handleDragPointerUp = useCallback(() => {
+    if (!dragState.current.active) return;
+    const fromLocal = dragFromIdx;
+    const toLocal = dragState.current.currentOverIdx;
+    dragState.current.active = false;
+
+    if (fromLocal !== null && toLocal !== null && fromLocal !== toLocal) {
+      const fromGlobal = (page - 1) * ITEMS_PER_PAGE + fromLocal;
+      const toGlobal = (page - 1) * ITEMS_PER_PAGE + toLocal;
+      const keys = items.map(i => itemKey(i));
+      const [moved] = keys.splice(fromGlobal, 1);
+      keys.splice(toGlobal, 0, moved);
+      setCustomOrder(keys);
+      setSortMode("default");
+    }
+    setDragFromIdx(null);
+    setDragOverIdx(null);
+  }, [dragFromIdx, page, items, itemKey]);
+
+  // Swipe for pagination (horizontal only, avoid conflict with drag)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    swipeActive.current = true;
+  };
   const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!swipeActive.current) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
     if (Math.abs(dx) > 80) {
       if (dx < 0 && page < totalPages) setPage(p => p + 1);
       if (dx > 0 && page > 1) setPage(p => p - 1);
     }
+    swipeActive.current = false;
   };
 
   // Actions
@@ -321,9 +373,11 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
       {/* List with swipe */}
       <div
         ref={listRef}
-        className="flex-1 overflow-y-auto p-4 space-y-3 alert-history-scroll"
+        className="flex-1 overflow-y-auto p-4 space-y-3 alert-history-scroll touch-pan-x"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
+        onPointerMove={handleDragPointerMove}
+        onPointerUp={handleDragPointerUp}
       >
         {serialsLoading ? (
           <div className="flex justify-center py-12">
@@ -335,11 +389,17 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
             <p className="text-sm mt-2">{t("deviceManage.noDevicesHint")}</p>
           </div>
         ) : (
-          pageItems.map((item, localIdx) => {
-            const globalIdx = (page - 1) * ITEMS_PER_PAGE + localIdx;
-            return (
+          pageItems.map((item, localIdx) => (
+            <div
+              key={itemKey(item) || localIdx}
+              ref={el => { cardRefs.current[localIdx] = el; }}
+              className={`transition-transform duration-150 ${
+                dragFromIdx !== null && dragOverIdx !== null && localIdx === dragOverIdx && localIdx !== dragFromIdx
+                  ? (dragOverIdx > dragFromIdx! ? "-translate-y-2" : "translate-y-2")
+                  : ""
+              }`}
+            >
               <DeviceCard
-                key={itemKey(item) || localIdx}
                 item={item}
                 itemKey={itemKey(item)}
                 isSelected={selectedIds.has(itemKey(item))}
@@ -348,16 +408,13 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
                 onDelete={handleDeleteDevice}
                 onViewAlertHistory={onViewAlertHistory}
                 onToggleMonitoring={toggleMonitoring}
-                managedDevices={managedDevices}
-                showReorder={sortMode === "default"}
-                canMoveUp={globalIdx > 0}
-                canMoveDown={globalIdx < items.length - 1}
-                onMoveUp={() => handleMoveItem(globalIdx, "up")}
-                onMoveDown={() => handleMoveItem(globalIdx, "down")}
+                isDragging={dragFromIdx === localIdx}
+                showHandle={sortMode === "default"}
+                onHandlePointerDown={(e) => handleDragPointerDown(e, localIdx)}
                 t={t}
               />
-            );
-          })
+            </div>
+          ))
         )}
       </div>
 
@@ -425,19 +482,16 @@ interface DeviceCardProps {
   onDelete: (deviceId: string) => void;
   onViewAlertHistory?: (deviceId: string) => void;
   onToggleMonitoring: (deviceId: string, enable: boolean) => void;
-  managedDevices: Device[];
-  showReorder: boolean;
-  canMoveUp: boolean;
-  canMoveDown: boolean;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
+  isDragging: boolean;
+  showHandle: boolean;
+  onHandlePointerDown: (e: React.PointerEvent) => void;
   t: (key: string) => string;
 }
 
 const DeviceCard = ({
   item, itemKey: key, isSelected, onToggleSelect,
   onSetAsMain, onDelete, onViewAlertHistory, onToggleMonitoring,
-  managedDevices, showReorder, canMoveUp, canMoveDown, onMoveUp, onMoveDown, t,
+  isDragging, showHandle, onHandlePointerDown, t,
 }: DeviceCardProps) => {
   const { serial, device } = item;
   const isMain = !!(device && (device.metadata as Record<string, unknown>)?.is_main);
@@ -447,11 +501,22 @@ const DeviceCard = ({
 
   return (
     <div
-      className={`rounded-2xl p-4 bg-[hsla(220,35%,18%,0.95)] backdrop-blur-xl border shadow-xl transition-all border-white/30 ${isSelected ? "ring-2 ring-secondary/50" : ""}`}
+      className={`rounded-2xl p-4 bg-[hsla(220,35%,18%,0.95)] backdrop-blur-xl border shadow-xl transition-all ${
+        isDragging ? "border-secondary/60 opacity-60 scale-[0.97]" : "border-white/30"
+      } ${isSelected ? "ring-2 ring-secondary/50" : ""}`}
     >
       {/* Top row */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2 min-w-0">
+          {/* Drag handle */}
+          {showHandle && (
+            <div
+              onPointerDown={onHandlePointerDown}
+              className="shrink-0 cursor-grab active:cursor-grabbing touch-none p-1 -ml-1"
+            >
+              <GripVertical className="w-5 h-5 text-white/40" />
+            </div>
+          )}
           {/* Checkbox */}
           {device && (
             <button onClick={() => onToggleSelect(key)} className="shrink-0">
@@ -460,17 +525,6 @@ const DeviceCard = ({
                 : <Square className="w-5 h-5 text-white/40" />
               }
             </button>
-          )}
-          {/* Reorder buttons */}
-          {showReorder && (
-            <div className="flex flex-col shrink-0 -my-1">
-              <button onClick={onMoveUp} disabled={!canMoveUp} className="text-white/40 hover:text-white disabled:opacity-20 p-0.5">
-                <ChevronUp className="w-3.5 h-3.5" />
-              </button>
-              <button onClick={onMoveDown} disabled={!canMoveDown} className="text-white/40 hover:text-white disabled:opacity-20 p-0.5">
-                <ChevronDown className="w-3.5 h-3.5" />
-              </button>
-            </div>
           )}
           {isMain && (
             <span className="bg-status-active text-accent-foreground px-2 py-0.5 rounded text-[10px] font-bold shrink-0">
