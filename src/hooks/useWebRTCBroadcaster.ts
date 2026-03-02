@@ -398,29 +398,15 @@ export const useWebRTCBroadcaster = ({
     cleanup();
   }, [deviceId, cleanup]);
 
-  // ── Apply quality constraints to live stream ─────────────────────────────
+  // ── Apply quality change by restarting stream ────────────────────────────
+  // applyConstraints() only changes the local capture resolution but does NOT
+  // renegotiate the WebRTC SDP, so the transmitted resolution stays the same.
+  // A full stream restart (recoverStream) is required to apply new quality.
   const applyQualityConstraints = useCallback(async () => {
-    const stream = streamRef.current;
-    if (!stream) return;
-
-    const videoTrack = stream.getVideoTracks().find(t => t.readyState === "live");
-    if (!videoTrack) return;
-
-    let quality: string | undefined;
-    try {
-      const { data } = await supabase.from("devices").select("metadata").eq("id", deviceId).single();
-      quality = (data?.metadata as Record<string, unknown>)?.streaming_quality as string | undefined;
-    } catch { /* use default */ }
-
-    const constraints = getVideoConstraints(quality);
-    try {
-      await videoTrack.applyConstraints(constraints);
-      console.log("[WebRTC Broadcaster] ✅ Quality constraints applied:", quality || "vga", videoTrack.getSettings());
-    } catch (err) {
-      console.warn("[WebRTC Broadcaster] ⚠️ applyConstraints failed, recovering stream:", err);
-      recoverStream();
-    }
-  }, [deviceId, recoverStream]);
+    if (!streamRef.current) return;
+    console.log("[WebRTC Broadcaster] 🎬 Quality changed, restarting stream for new resolution...");
+    recoverStream();
+  }, [recoverStream]);
 
   // Cleanup on unmount
   useEffect(() => () => { cleanup(); }, [cleanup]);
