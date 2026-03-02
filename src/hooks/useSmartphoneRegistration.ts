@@ -3,9 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 
-// 랩탑 프로젝트 DB (dmvbwyfzueywuwxkjuuy)
-const LAPTOP_DB_URL = "https://dmvbwyfzueywuwxkjuuy.supabase.co";
-const LAPTOP_DB_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtdmJ3eWZ6dWV5d3V3eGtqdXV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyOTI2ODMsImV4cCI6MjA4NTg2ODY4M30.0lDX72JHWonW5fRRPve_cdfJrNVyDMzz5nzshJ0cEuI";
+import { LAPTOP_DB_URL, LAPTOP_DB_ANON_KEY } from "@/lib/laptopDb";
 
 /**
  * 스마트폰 앱 최초 실행 시 devices 테이블에 자신을 자동 등록하는 훅
