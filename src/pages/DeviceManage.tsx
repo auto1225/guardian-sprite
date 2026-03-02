@@ -136,12 +136,35 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
     return result;
   }, [serials, managedDevices, licenseMap]);
 
-  // Sort items
+  // Sort items: first apply sort mode, then custom drag order overrides
   const items = useMemo(() => {
     const sorted = [...baseItems];
 
-    if (sortMode === "default" && customOrder.length > 0) {
-      // Apply custom drag order
+    // Step 1: Apply sort mode
+    if (sortMode === "alpha") {
+      sorted.sort((a, b) => {
+        const aName = a.device?.name || a.serial?.device_name || a.serial?.serial_key || "";
+        const bName = b.device?.name || b.serial?.device_name || b.serial?.serial_key || "";
+        return aName.localeCompare(bName);
+      });
+    } else if (sortMode === "plan") {
+      sorted.sort((a, b) => (PLAN_ORDER[a.serial?.plan_type || "free"] ?? 2) - (PLAN_ORDER[b.serial?.plan_type || "free"] ?? 2));
+    } else if (sortMode === "days") {
+      sorted.sort((a, b) => (a.serial?.remaining_days ?? 9999) - (b.serial?.remaining_days ?? 9999));
+    } else if (sortMode === "monitoring") {
+      sorted.sort((a, b) => (a.device?.is_monitoring ? 0 : 1) - (b.device?.is_monitoring ? 0 : 1));
+    } else {
+      // Default: online first, then matched
+      sorted.sort((a, b) => {
+        const aOnline = a.device && a.device.status !== "offline" ? 1 : 0;
+        const bOnline = b.device && b.device.status !== "offline" ? 1 : 0;
+        if (aOnline !== bOnline) return bOnline - aOnline;
+        return (b.device ? 1 : 0) - (a.device ? 1 : 0);
+      });
+    }
+
+    // Step 2: If custom order exists (from drag), use it instead
+    if (customOrder.length > 0) {
       sorted.sort((a, b) => {
         const aKey = a.serial?.serial_key || a.device?.id || "";
         const bKey = b.serial?.serial_key || b.device?.id || "";
@@ -151,40 +174,6 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
         if (aIdx === -1) return 1;
         if (bIdx === -1) return -1;
         return aIdx - bIdx;
-      });
-    } else if (sortMode === "alpha") {
-      sorted.sort((a, b) => {
-        const aName = a.device?.name || a.serial?.device_name || a.serial?.serial_key || "";
-        const bName = b.device?.name || b.serial?.device_name || b.serial?.serial_key || "";
-        return aName.localeCompare(bName);
-      });
-    } else if (sortMode === "plan") {
-      sorted.sort((a, b) => {
-        const aP = PLAN_ORDER[a.serial?.plan_type || "free"] ?? 2;
-        const bP = PLAN_ORDER[b.serial?.plan_type || "free"] ?? 2;
-        return aP - bP;
-      });
-    } else if (sortMode === "days") {
-      sorted.sort((a, b) => {
-        const aD = a.serial?.remaining_days ?? 9999;
-        const bD = b.serial?.remaining_days ?? 9999;
-        return aD - bD;
-      });
-    } else if (sortMode === "monitoring") {
-      sorted.sort((a, b) => {
-        const aM = a.device?.is_monitoring ? 0 : 1;
-        const bM = b.device?.is_monitoring ? 0 : 1;
-        return aM - bM;
-      });
-    } else {
-      // Default: online first, then matched
-      sorted.sort((a, b) => {
-        const aOnline = a.device && a.device.status !== "offline" ? 1 : 0;
-        const bOnline = b.device && b.device.status !== "offline" ? 1 : 0;
-        if (aOnline !== bOnline) return bOnline - aOnline;
-        const aHas = a.device ? 1 : 0;
-        const bHas = b.device ? 1 : 0;
-        return bHas - aHas;
       });
     }
 
@@ -266,7 +255,6 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
       const [moved] = keys.splice(fromGlobal, 1);
       keys.splice(toGlobal, 0, moved);
       setCustomOrder(keys);
-      setSortMode("default");
     }
     setDragFromIdx(null);
     setDragOverIdx(null);
@@ -347,7 +335,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
             {SORT_OPTIONS.map(opt => (
               <DropdownMenuItem
                 key={opt.mode}
-                onClick={() => setSortMode(opt.mode)}
+                onClick={() => { setSortMode(opt.mode); setCustomOrder([]); }}
                 className={`text-primary-foreground focus:bg-white/15 focus:text-primary-foreground ${sortMode === opt.mode ? "bg-white/10" : ""}`}
               >
                 {opt.label}
@@ -409,7 +397,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
                 onViewAlertHistory={onViewAlertHistory}
                 onToggleMonitoring={toggleMonitoring}
                 isDragging={dragFromIdx === localIdx}
-                showHandle={sortMode === "default"}
+                showHandle={true}
                 onHandlePointerDown={(e) => handleDragPointerDown(e, localIdx)}
                 t={t}
               />
