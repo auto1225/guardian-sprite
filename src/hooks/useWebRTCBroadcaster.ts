@@ -398,8 +398,32 @@ export const useWebRTCBroadcaster = ({
     cleanup();
   }, [deviceId, cleanup]);
 
+  // ── Apply quality constraints to live stream ─────────────────────────────
+  const applyQualityConstraints = useCallback(async () => {
+    const stream = streamRef.current;
+    if (!stream) return;
+
+    const videoTrack = stream.getVideoTracks().find(t => t.readyState === "live");
+    if (!videoTrack) return;
+
+    let quality: string | undefined;
+    try {
+      const { data } = await supabase.from("devices").select("metadata").eq("id", deviceId).single();
+      quality = (data?.metadata as Record<string, unknown>)?.streaming_quality as string | undefined;
+    } catch { /* use default */ }
+
+    const constraints = getVideoConstraints(quality);
+    try {
+      await videoTrack.applyConstraints(constraints);
+      console.log("[WebRTC Broadcaster] ✅ Quality constraints applied:", quality || "vga", videoTrack.getSettings());
+    } catch (err) {
+      console.warn("[WebRTC Broadcaster] ⚠️ applyConstraints failed, recovering stream:", err);
+      recoverStream();
+    }
+  }, [deviceId, recoverStream]);
+
   // Cleanup on unmount
   useEffect(() => () => { cleanup(); }, [cleanup]);
 
-  return { isBroadcasting, localStream, viewerCount, startBroadcasting, stopBroadcasting };
+  return { isBroadcasting, localStream, viewerCount, startBroadcasting, stopBroadcasting, applyQualityConstraints };
 };

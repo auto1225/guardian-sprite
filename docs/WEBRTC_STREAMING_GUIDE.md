@@ -109,11 +109,22 @@ export const AutoBroadcaster = ({ deviceId }: AutoBroadcasterProps) => {
 };
 ```
 
-### 카메라 재연결 주의사항
+### 실시간 화질 변경 반영
 
-- 카메라 재연결 시 기존 `PeerConnection`을 **완전히 닫고** `broadcaster-ready` 신호를 전송
-- 이전 세션의 잔여 `viewer-join` 방지를 위해 첫 폴링 전 **3~4초 유예 기간** 적용
-- 비디오 트랙이 stale(muted/disabled)인 경우에만 `broadcast-needs-restart` 이벤트 발생
+스마트폰에서 화질 설정(VGA/HD/FHD)을 변경하면 `settings_updated` 브로드캐스트가 전송됩니다.
+노트북 앱은 이 이벤트를 수신하여 `applyQualityConstraints()`를 호출해야 합니다.
+
+```tsx
+// user-commands 채널의 settings_updated 핸들러에서:
+if (payload.settings?.streaming_quality) {
+  broadcasterHook.applyQualityConstraints();
+}
+```
+
+이 메서드는 기존 스트림을 중단하지 않고 `track.applyConstraints()`를 사용하여 해상도를 실시간으로 변경합니다.
+`applyConstraints`가 실패하면 자동으로 `recoverStream()`을 호출하여 스트림을 재시작합니다.
+
+### 카메라 재연결 주의사항
 
 ---
 
