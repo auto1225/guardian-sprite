@@ -87,10 +87,9 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
     fetchLicenses();
   }, [effectiveUserId, serials]);
 
-  // ★ serial ↔ device 매칭: 3단계 매칭 시스템
+  // ★ serial ↔ device 매칭: 정확한 매칭만 사용 (추측/폴백 없음)
   // 1순위: licenses 테이블 (serial_key → device_id)
   // 2순위: device metadata.serial_key
-  // 3순위: 유일한 미매칭 온라인 기기 폴백
   const items = useMemo(() => {
     const usedDeviceIds = new Set<string>();
     const result: { serial: UserSerial | null; device: Device | null }[] = [];
@@ -123,24 +122,9 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
         }
       }
 
+      // 정확한 매칭 없음 → 기기 미연결
       result.push({ serial, device: null });
-      console.log("[DeviceManage] ⏳ No match:", serial.serial_key);
-    }
-
-    // 3순위: 온라인 기기 폴백 — 미매칭 시리얼 → 유일한 미매칭 온라인 기기
-    const unmatchedOnlineDevices = managedDevices.filter(d =>
-      !usedDeviceIds.has(d.id) && d.status !== "offline"
-    );
-    if (unmatchedOnlineDevices.length === 1) {
-      const onlineDevice = unmatchedOnlineDevices[0];
-      const unmatchedSerialIdx = result.findIndex(r =>
-        r.device === null && r.serial
-      );
-      if (unmatchedSerialIdx !== -1) {
-        usedDeviceIds.add(onlineDevice.id);
-        result[unmatchedSerialIdx].device = onlineDevice;
-        console.log("[DeviceManage] ✅ Online fallback:", result[unmatchedSerialIdx].serial?.serial_key, "→", onlineDevice.name);
-      }
+      console.log("[DeviceManage] ⏳ No exact match:", serial.serial_key);
     }
 
     // 남은 미매칭 기기 추가 (시리얼 없이 존재하는 기기)
