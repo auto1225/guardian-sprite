@@ -122,10 +122,11 @@ Deno.serve(async (req) => {
         updatePayload.metadata = { ...currentMeta, serial_key: normalizedSerialKey };
       }
 
-      // 이름 변경 시 업데이트
-      if (device_name && device_name !== existing.name) {
-        updatePayload.name = device_name;
-      }
+      // ★ 재접속 시 이름 덮어쓰기 금지!
+      // 이름 변경은 name_changed 브로드캐스트 + update-device를 통해서만 수행.
+      // 노트북 로컬 DB 이름이 공유 DB 이름과 다를 수 있지만,
+      // 공유 DB의 이름을 정본(Single Source of Truth)으로 취급함.
+      // 대신 현재 공유 DB 이름을 응답에 포함하여 노트북이 동기화할 수 있게 함.
 
       await supabaseAdmin
         .from("devices")
@@ -146,6 +147,7 @@ Deno.serve(async (req) => {
         JSON.stringify({
           success: true,
           device_id: existing.id,
+          device_name: existing.name, // ★ 공유 DB의 정본 이름 반환 (노트북 동기화용)
           reconnected: true,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
