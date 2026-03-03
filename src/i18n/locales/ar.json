@@ -1,5 +1,5 @@
 {
-  "plan": { "free": "تجربة مجانية", "basic": "خطة أساسية", "premium": "خطة بريميوم", "currentPlan": "الخطة الحالية", "remainingDays": "الأيام المتبقية", "days": " يوم", "expiresAt": "ينتهي" },
+  "plan": { "free": "تجربة يوم واحد", "basic": "خطة أساسية", "premium": "خطة بريميوم", "currentPlan": "الخطة الحالية", "remainingDays": "الأيام المتبقية", "days": " يوم", "expiresAt": "ينتهي" },
   "common": { "loading": "جارٍ التحميل...", "error": "خطأ", "save": "حفظ", "cancel": "إلغاء", "confirm": "تأكيد", "delete": "حذف", "close": "إغلاق", "online": "متصل", "offline": "غير متصل", "on": "تشغيل", "off": "إيقاف", "saved": "تم الحفظ", "saveFailed": "فشل الحفظ.", "settingSaveFailed": "فشل حفظ الإعدادات.", "change": "تغيير", "or": "أو", "adding": "جارٍ التسجيل...", "register": "تسجيل", "copied": "تم النسخ", "noDevice": "لا يوجد جهاز", "noDeviceDesc": "لم يتم العثور على جهاز متصل. سجّل الدخول أولاً بالرقم التسلسلي على اللابتوب." },
   "header": { "openMenu": "فتح القائمة", "manageDevices": "إدارة الأجهزة" },
   "statusIcons": { "laptop": "لابتوب", "desktop": "كمبيوتر مكتبي", "tablet": "جهاز لوحي", "network": "الشبكة", "camera": "الكاميرا", "settings": "الإعدادات" },
