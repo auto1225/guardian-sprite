@@ -53,6 +53,12 @@ const DeviceCard = ({ device, isSelected, isMain, isCharging, onSelect }: Device
             </span>
           )}
           <span className="text-white font-semibold text-sm drop-shadow-sm break-all line-clamp-2">{device.name}</span>
+          {(() => {
+            const serial = (device.metadata as Record<string, unknown>)?.serial_key as string | undefined;
+            return serial ? (
+              <span className="text-white/50 text-xs font-mono shrink-0">({serial})</span>
+            ) : null;
+          })()}
         </div>
         {device.device_type !== "smartphone" && (
           <span
