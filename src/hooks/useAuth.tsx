@@ -111,14 +111,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     prevSerialsRef.current = serials;
   }, [serials]);
 
+  const planFeaturesChannelRef = useRef<RealtimeChannel | null>(null);
+
   const subscribeRealtime = (userId: string) => {
     // Cleanup existing
     if (realtimeChannelRef.current) {
       websiteSupabase.removeChannel(realtimeChannelRef.current);
       realtimeChannelRef.current = null;
     }
+    if (planFeaturesChannelRef.current) {
+      websiteSupabase.removeChannel(planFeaturesChannelRef.current);
+      planFeaturesChannelRef.current = null;
+    }
 
-    const channel = websiteSupabase
+    // 1) serial_numbers 변경 구독
+    const serialChannel = websiteSupabase
       .channel("my-serials")
       .on(
         "postgres_changes",
@@ -135,23 +142,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           } else if (payload.eventType === "DELETE") {
             toast({ title: "❌ Serial removed", description: "A device license has been removed." });
           }
-          // For all events (INSERT, UPDATE, DELETE) — refresh serials to get latest state
           websiteSupabase.auth.getSession().then(({ data: { session: s } }) => {
             if (s?.access_token) loadSerials(s.access_token);
           });
         }
       )
       .subscribe((status) => {
-        console.log("[Auth] Realtime subscription status:", status);
+        console.log("[Auth] Realtime serial subscription:", status);
       });
 
-    realtimeChannelRef.current = channel;
+    realtimeChannelRef.current = serialChannel;
+
+    // 2) plan_features 변경 구독 — CMS에서 기능 제한 변경 시 즉시 반영
+    const planChannel = websiteSupabase
+      .channel("plan-features")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "plan_features",
+        },
+        (payload) => {
+          console.log("[Auth] 🔄 plan_features changed:", payload.eventType);
+          toast({ title: "⚙️ 기능 설정이 업데이트되었습니다", description: "최신 플랜 권한이 적용됩니다." });
+          websiteSupabase.auth.getSession().then(({ data: { session: s } }) => {
+            if (s?.access_token) loadSerials(s.access_token);
+          });
+        }
+      )
+      .subscribe((status) => {
+        console.log("[Auth] Realtime plan_features subscription:", status);
+      });
+
+    planFeaturesChannelRef.current = planChannel;
   };
 
   const unsubscribeRealtime = () => {
     if (realtimeChannelRef.current) {
       websiteSupabase.removeChannel(realtimeChannelRef.current);
       realtimeChannelRef.current = null;
+    }
+    if (planFeaturesChannelRef.current) {
+      websiteSupabase.removeChannel(planFeaturesChannelRef.current);
+      planFeaturesChannelRef.current = null;
     }
   };
 
