@@ -485,50 +485,60 @@ export const useDevices = () => {
         const timer = activeLeaveTimers.get(key);
         if (timer) { clearTimeout(timer); activeLeaveTimers.delete(key); }
       })
-      .on('presence', { event: 'leave' }, ({ key }) => {
+      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
         const existingTimer = activeLeaveTimers.get(key);
         if (existingTimer) clearTimeout(existingTimer);
 
-        // 직접 ID 매칭 여부 확인
         const currentDevices = queryClient.getQueryData<Device[]>(["devices", effectiveUserId]);
         const isDirectMatch = currentDevices?.some(d => d.id === key);
 
-        if (isDirectMatch) {
-          // 직접 매칭: 즉시 offline 처리
-          realtimeConfirmedOnline.delete(key);
-          devicePresenceData.delete(key);
+        // Cross-DB leave: leaving key의 serial_key로 공유 DB 기기 매칭
+        let crossMatchedDeviceId: string | null = null;
+        if (!isDirectMatch && currentDevices) {
+          const leftData = (leftPresences as Array<Record<string, unknown>>)?.[0];
+          const leftSerial = leftData?.serial_key as string | undefined;
+          if (leftSerial) {
+            const matched = currentDevices.find(d =>
+              d.device_type !== 'smartphone' &&
+              (d.metadata as Record<string, unknown>)?.serial_key === leftSerial
+            );
+            if (matched) crossMatchedDeviceId = matched.id;
+          }
+        }
+
+        // 즉시 offline 처리 (직접 매칭 또는 serial_key 매칭)
+        const targetId = isDirectMatch ? key : crossMatchedDeviceId;
+        if (targetId) {
+          realtimeConfirmedOnline.delete(targetId);
+          devicePresenceData.delete(targetId);
+          // 카메라 grace period 타이머도 정리
+          const camTimer = cameraDowngradeTimers.get(targetId);
+          if (camTimer) { clearTimeout(camTimer); cameraDowngradeTimers.delete(targetId); }
+          const verifyTimer = cameraVerifyTimers.get(targetId);
+          if (verifyTimer) { clearTimeout(verifyTimer); cameraVerifyTimers.delete(targetId); }
+
           queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
             if (!oldDevices) return oldDevices;
             return oldDevices.map((d) =>
-              d.id === key
+              d.id === targetId
                 ? { ...d, status: 'offline' as Device["status"], is_network_connected: false, is_camera_connected: false }
                 : d
             );
           });
-          console.log("[Presence] 🔴 Device left (direct):", key.slice(0, 8), "→ offline");
+          console.log("[Presence] 🔴 Device left:", key.slice(0, 8), targetId === key ? "(direct)" : `(cross→${targetId.slice(0, 8)})`, "→ offline");
         } else {
-          console.log("[Presence] ⏳ Device left (cross-DB):", key.slice(0, 8), "→ waiting 8s before offline");
+          console.log("[Presence] ⏳ Device left (unmatched):", key.slice(0, 8), "→ waiting 8s");
         }
 
         const timer = setTimeout(() => {
           activeLeaveTimers.delete(key);
-          // Presence 재확인: 아직 없으면 offline 처리
           const state = activePresenceChannel?.presenceState() || {};
           const stillPresent = Object.keys(state).includes(key);
           if (!stillPresent) {
-            if (!isDirectMatch) {
-              // 크로스 DB 매칭: 해당 키에 매칭된 기기만 offline 처리 (모든 기기를 제거하지 않음)
-              // Presence에 남아있는 다른 키가 있는지 확인
-              const remainingPresenceKeys = Object.keys(state);
-              const knownDeviceIds = new Set(currentDevices?.map(d => d.id) || []);
-              
-              // 현재 Presence에 아무 항목도 없는 경우에만 해당 랩탑을 offline으로 전환
-              const hasAnyLaptopPresence = remainingPresenceKeys.some(k => 
-                !knownDeviceIds.has(k) || currentDevices?.some(d => d.id === k && d.device_type !== 'smartphone')
-              );
-              
-              if (!hasAnyLaptopPresence) {
-                // 랩탑 Presence가 완전히 사라짐 → 해당 랩탑만 offline
+            if (!targetId) {
+              // 매칭 실패했던 leave: Presence에 아무도 없으면 전체 비-스마트폰 offline
+              const remainingKeys = Object.keys(state);
+              if (remainingKeys.length === 0) {
                 currentDevices?.forEach(d => {
                   if (d.device_type !== "smartphone") {
                     realtimeConfirmedOnline.delete(d.id);
@@ -539,7 +549,7 @@ export const useDevices = () => {
             }
             queryClient.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
           }
-        }, isDirectMatch ? 3000 : 8000);
+        }, targetId ? 3000 : 8000);
         activeLeaveTimers.set(key, timer);
       })
       .subscribe((status) => {
