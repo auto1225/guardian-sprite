@@ -83,6 +83,7 @@ export const useDevices = () => {
 
   const { data: devices = [], isLoading, error } = useQuery({
     queryKey: ["devices", effectiveUserId],
+    placeholderData: (prev) => prev, // ★ 리패치 중 이전 데이터 유지 → 깜빡임 방지
     queryFn: async () => {
       if (!effectiveUserId) return [];
       
@@ -229,8 +230,13 @@ export const useDevices = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
+    onSuccess: (_data, variables) => {
+      // ★ 로컬 캐시 즉시 업데이트 → invalidate 대신 setQueryData로 깜빡임 방지
+      queryClient.setQueryData(["devices", effectiveUserId], (old: Device[] | undefined) => {
+        if (!old) return old;
+        const { id, ...updates } = variables;
+        return old.map(d => d.id === id ? { ...d, ...updates } : d);
+      });
     },
   });
 

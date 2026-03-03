@@ -169,7 +169,15 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
 
   const saveMetadata = async (updates: Record<string, unknown>) => {
     await safeMetadataUpdate(device.id, updates);
-    queryClient.invalidateQueries({ queryKey: ["devices"] });
+    // ★ 로컬 캐시 즉시 업데이트 → invalidate 대신 setQueryData로 깜빡임 방지
+    queryClient.setQueryData(["devices", device.user_id], (old: Device[] | undefined) => {
+      if (!old) return old;
+      return old.map(d => {
+        if (d.id !== device.id) return d;
+        const currentMeta = (d.metadata as Record<string, unknown>) || {};
+        return { ...d, metadata: { ...currentMeta, ...updates } };
+      });
+    });
     // Broadcast to laptop so it can apply changes immediately (no RLS access to postgres_changes)
     broadcastSettingsUpdate(device.id, updates);
   };
@@ -187,7 +195,11 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
       }
       setNickname(name);
       setShowNicknameDialog(false);
-      queryClient.invalidateQueries({ queryKey: ["devices"] });
+      // ★ 로컬 캐시 즉시 업데이트 → 깜빡임 방지
+      queryClient.setQueryData(["devices", device.user_id], (old: Device[] | undefined) => {
+        if (!old) return old;
+        return old.map(d => d.id === device.id ? { ...d, name } : d);
+      });
       toast({ title: t("common.saved"), description: t("settings.nicknameChanged") });
 
       // ★ 노트북에 이름 변경 브로드캐스트 (노트북 로컬 DB도 동기화하도록)
@@ -347,8 +359,12 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
                         e.preventDefault();
                         const fromId = e.dataTransfer.getData("text/plain");
                         if (fromId && fromId !== d.id) {
-                          await reorderDevicesDirect(sorted, fromId, d.id);
-                          queryClient.invalidateQueries({ queryKey: ["devices"] });
+                          const newOrder = await reorderDevicesDirect(sorted, fromId, d.id);
+                          // ★ 로컬 캐시 즉시 업데이트 → 깜빡임 방지
+                          queryClient.setQueryData(["devices", device.user_id], (old: Device[] | undefined) => {
+                            if (!old) return old;
+                            return newOrder.map(nd => old.find(o => o.id === nd.id) || nd);
+                          });
                         }
                       }}
                       className="flex items-center gap-0.5 cursor-grab active:cursor-grabbing"

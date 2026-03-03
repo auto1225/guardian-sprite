@@ -24,7 +24,7 @@ import cameraOn from "@/assets/camera-on.png";
 import cameraOff from "@/assets/camera-off.png";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
-type SortMode = "default" | "alpha" | "plan" | "days" | "monitoring";
+type SortMode = "default" | "alpha" | "number" | "plan" | "days" | "monitoring";
 
 const ITEMS_PER_PAGE = 5;
 const PLAN_ORDER: Record<string, number> = { premium: 0, basic: 1, free: 2 };
@@ -64,6 +64,8 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [customOrder, setCustomOrder] = useState<string[]>([]);
   const [licenseMap, setLicenseMap] = useState<Map<string, string>>(new Map());
+  const [numberEditDevice, setNumberEditDevice] = useState<{ id: string; current: number | null } | null>(null);
+  const [numberInput, setNumberInput] = useState("");
 
   // Drag state
   const dragState = useRef<{
@@ -155,6 +157,13 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
         const bName = b.device?.name || b.serial?.device_name || b.serial?.serial_key || "";
         return aName.localeCompare(bName);
       });
+    } else if (sortMode === "number") {
+      // ★ 번호순: metadata.user_number 기준 정렬 (없으면 끝으로)
+      sorted.sort((a, b) => {
+        const aNum = (a.device?.metadata as Record<string, unknown>)?.user_number as number | undefined;
+        const bNum = (b.device?.metadata as Record<string, unknown>)?.user_number as number | undefined;
+        return (aNum ?? Infinity) - (bNum ?? Infinity);
+      });
     } else if (sortMode === "plan") {
       sorted.sort((a, b) => (PLAN_ORDER[a.serial?.plan_type || "free"] ?? 2) - (PLAN_ORDER[b.serial?.plan_type || "free"] ?? 2));
     } else if (sortMode === "days") {
@@ -162,12 +171,17 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
     } else if (sortMode === "monitoring") {
       sorted.sort((a, b) => (a.device?.is_monitoring ? 0 : 1) - (b.device?.is_monitoring ? 0 : 1));
     } else {
-      // Default: online first, then matched
+      // ★ Default: sort_order → created_at 순서 (안정적, 온라인 상태로 순서 바뀌지 않음)
       sorted.sort((a, b) => {
-        const aOnline = a.device && a.device.status !== "offline" ? 1 : 0;
-        const bOnline = b.device && b.device.status !== "offline" ? 1 : 0;
-        if (aOnline !== bOnline) return bOnline - aOnline;
-        return (b.device ? 1 : 0) - (a.device ? 1 : 0);
+        const aOrder = (a.device?.metadata as Record<string, unknown>)?.sort_order as number | undefined;
+        const bOrder = (b.device?.metadata as Record<string, unknown>)?.sort_order as number | undefined;
+        if (aOrder !== undefined || bOrder !== undefined) {
+          return (aOrder ?? Infinity) - (bOrder ?? Infinity);
+        }
+        // sort_order가 없으면 created_at 순
+        const aTime = a.device ? new Date(a.device.created_at).getTime() : Infinity;
+        const bTime = b.device ? new Date(b.device.created_at).getTime() : Infinity;
+        return aTime - bTime;
       });
     }
 
@@ -294,7 +308,16 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
       await safeMetadataUpdate(deviceId, { is_main: true });
       setSelectedDeviceId(deviceId);
       onSelectDevice(deviceId);
-      queryClient.invalidateQueries({ queryKey: ["devices"] });
+      // ★ 로컬 캐시 즉시 업데이트 → 깜빡임 방지
+      queryClient.setQueryData(["devices", effectiveUserId], (old: Device[] | undefined) => {
+        if (!old) return old;
+        return old.map(d => {
+          const meta = (d.metadata as Record<string, unknown>) || {};
+          if (d.id === deviceId) return { ...d, metadata: { ...meta, is_main: true } };
+          if (meta.is_main) return { ...d, metadata: { ...meta, is_main: false } };
+          return d;
+        });
+      });
       toast({ title: t("deviceManage.mainDevice"), description: t("deviceManage.mainDeviceDesc") });
     } catch {
       toast({ title: t("common.error"), description: t("deviceManage.mainDeviceFailed"), variant: "destructive" });
@@ -310,11 +333,41 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
     }
   };
 
+  const handleSetNumber = (deviceId: string) => {
+    const dev = managedDevices.find(d => d.id === deviceId);
+    const currentNum = (dev?.metadata as Record<string, unknown>)?.user_number as number | null | undefined;
+    setNumberEditDevice({ id: deviceId, current: currentNum ?? null });
+    setNumberInput(currentNum != null ? String(currentNum) : "");
+  };
+
+  const handleSaveNumber = async () => {
+    if (!numberEditDevice) return;
+    const num = numberInput.trim() === "" ? null : Number(numberInput);
+    if (num !== null && isNaN(num)) return;
+    try {
+      await safeMetadataUpdate(numberEditDevice.id, { user_number: num });
+      // ★ 로컬 캐시 즉시 업데이트
+      queryClient.setQueryData(["devices", effectiveUserId], (old: Device[] | undefined) => {
+        if (!old) return old;
+        return old.map(d => {
+          if (d.id !== numberEditDevice.id) return d;
+          const meta = (d.metadata as Record<string, unknown>) || {};
+          return { ...d, metadata: { ...meta, user_number: num } };
+        });
+      });
+      toast({ title: t("common.saved"), description: t("deviceManage.numberSaved") });
+    } catch {
+      toast({ title: t("common.error"), description: t("common.saveFailed"), variant: "destructive" });
+    }
+    setNumberEditDevice(null);
+  };
+
   if (!isOpen) return null;
 
   const SORT_OPTIONS: { mode: SortMode; label: string }[] = [
     { mode: "default", label: "Default" },
     { mode: "alpha", label: t("deviceManage.sortAlpha") },
+    { mode: "number", label: t("deviceManage.sortNumber") },
     { mode: "plan", label: t("deviceManage.sortPlan") },
     { mode: "days", label: t("deviceManage.sortDays") },
     { mode: "monitoring", label: t("deviceManage.sortMonitoring") },
@@ -401,6 +454,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
                 isSelected={selectedIds.has(itemKey(item))}
                 onToggleSelect={toggleSelect}
                 onSetAsMain={handleSetAsMain}
+                onSetNumber={handleSetNumber}
                 onDelete={handleDeleteDevice}
                 onViewAlertHistory={onViewAlertHistory}
                 onToggleMonitoring={toggleMonitoring}
@@ -464,6 +518,31 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
           </button>
         </div>
       )}
+      {/* Number edit dialog */}
+      {numberEditDevice && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={() => setNumberEditDevice(null)}>
+          <div className="bg-primary rounded-2xl p-6 mx-8 max-w-sm w-full border border-white/25 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h3 className="text-white font-bold text-lg mb-4">{t("deviceManage.setNumber")}</h3>
+            <input
+              type="number"
+              value={numberInput}
+              onChange={e => setNumberInput(e.target.value)}
+              placeholder={t("deviceManage.numberPlaceholder")}
+              className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-white/40 text-base focus:outline-none focus:border-white/50"
+              autoFocus
+              onKeyDown={e => { if (e.key === "Enter") handleSaveNumber(); }}
+            />
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => setNumberEditDevice(null)} className="flex-1 py-2.5 rounded-xl bg-white/15 text-white/80 font-semibold text-sm">
+                {t("common.cancel")}
+              </button>
+              <button onClick={handleSaveNumber} className="flex-1 py-2.5 rounded-xl bg-secondary text-secondary-foreground font-bold text-sm">
+                {t("common.save")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -475,6 +554,7 @@ interface DeviceCardProps {
   isSelected: boolean;
   onToggleSelect: (key: string) => void;
   onSetAsMain: (deviceId: string) => void;
+  onSetNumber: (deviceId: string) => void;
   onDelete: (deviceId: string) => void;
   onViewAlertHistory?: (deviceId: string) => void;
   onToggleMonitoring: (deviceId: string, enable: boolean) => void;
@@ -486,11 +566,12 @@ interface DeviceCardProps {
 
 const DeviceCard = ({
   item, itemKey: key, isSelected, onToggleSelect,
-  onSetAsMain, onDelete, onViewAlertHistory, onToggleMonitoring,
+  onSetAsMain, onSetNumber, onDelete, onViewAlertHistory, onToggleMonitoring,
   isDragging, showHandle, onHandlePointerDown, t,
 }: DeviceCardProps) => {
   const { serial, device } = item;
   const isMain = !!(device && (device.metadata as Record<string, unknown>)?.is_main);
+  const userNumber = (device?.metadata as Record<string, unknown>)?.user_number as number | undefined;
   const isOnline = device ? device.status !== "offline" : false;
   const planConfig = PLAN_CONFIG[serial?.plan_type || "free"] || PLAN_CONFIG.free;
   const PlanIcon = planConfig.icon;
@@ -529,6 +610,11 @@ const DeviceCard = ({
           )}
           {device ? (
             <>
+              {userNumber != null && (
+                <span className="bg-white/15 text-white/80 px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0">
+                  #{userNumber}
+                </span>
+              )}
               <span className="text-white font-bold truncate drop-shadow-sm">{device.name}</span>
               {device.battery_level !== null && (
                 <span className="text-white/90 text-sm font-semibold shrink-0">
@@ -556,6 +642,9 @@ const DeviceCard = ({
                   {t("deviceManage.setAsMain")}
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem onClick={() => onSetNumber(device.id)} className="text-primary-foreground focus:bg-white/15 focus:text-primary-foreground">
+                {t("deviceManage.setNumber")}
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onViewAlertHistory?.(device.id)} className="text-primary-foreground focus:bg-white/15 focus:text-primary-foreground">
                 {t("deviceManage.alertHistory")}
               </DropdownMenuItem>
