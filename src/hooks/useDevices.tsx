@@ -633,26 +633,11 @@ export const useDevices = () => {
           }
         }
 
-        // 즉시 offline 처리 (직접 매칭 또는 serial_key 매칭)
+        // ★ 즉시 offline 처리하지 않고, grace period 후에 판정
+        // Presence가 불안정하게 leave/join을 반복하므로, 즉시 전환하면 UI 깜빡임 발생
         const targetId = isDirectMatch ? key : crossMatchedDeviceId;
         if (targetId) {
-          realtimeConfirmedOnline.delete(targetId);
-          devicePresenceData.delete(targetId);
-          // 카메라 grace period 타이머도 정리
-          const camTimer = cameraDowngradeTimers.get(targetId);
-          if (camTimer) { clearTimeout(camTimer); cameraDowngradeTimers.delete(targetId); }
-          const verifyTimer = cameraVerifyTimers.get(targetId);
-          if (verifyTimer) { clearTimeout(verifyTimer); cameraVerifyTimers.delete(targetId); }
-
-          queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
-            if (!oldDevices) return oldDevices;
-            return oldDevices.map((d) =>
-              d.id === targetId
-                ? { ...d, status: 'offline' as Device["status"], is_network_connected: false, is_camera_connected: false }
-                : d
-            );
-          });
-          console.log("[Presence] 🔴 Device left:", key.slice(0, 8), targetId === key ? "(direct)" : `(cross→${targetId.slice(0, 8)})`, "→ offline");
+          console.log("[Presence] ⏳ Device leave detected:", key.slice(0, 8), targetId === key ? "(direct)" : `(cross→${targetId.slice(0, 8)})`, "→ grace period 8s");
         } else {
           console.log("[Presence] ⏳ Device left (unmatched):", key.slice(0, 8), "→ waiting 8s");
         }
@@ -661,8 +646,43 @@ export const useDevices = () => {
           activeLeaveTimers.delete(key);
           const state = activePresenceChannel?.presenceState() || {};
           const stillPresent = Object.keys(state).includes(key);
-          if (!stillPresent) {
-            if (!targetId) {
+          // ★ serial_key로도 재확인 (key가 다르지만 같은 기기가 다시 접속한 경우)
+          let stillPresentBySerial = false;
+          if (targetId && !stillPresent) {
+            const latestDevices = queryClient.getQueryData<Device[]>(["devices", effectiveUserId]);
+            const targetDevice = latestDevices?.find(d => d.id === targetId);
+            const serialKey = (targetDevice?.metadata as Record<string, unknown>)?.serial_key as string | undefined;
+            if (serialKey) {
+              for (const [, entries] of Object.entries(state)) {
+                const typedEntries = entries as Array<Record<string, unknown>>;
+                if (typedEntries?.some(e => e.serial_key === serialKey)) {
+                  stillPresentBySerial = true;
+                  break;
+                }
+              }
+            }
+          }
+
+          if (!stillPresent && !stillPresentBySerial) {
+            if (targetId) {
+              realtimeConfirmedOnline.delete(targetId);
+              devicePresenceData.delete(targetId);
+              // 카메라 grace period 타이머도 정리
+              const camTimer = cameraDowngradeTimers.get(targetId);
+              if (camTimer) { clearTimeout(camTimer); cameraDowngradeTimers.delete(targetId); }
+              const verifyTimer = cameraVerifyTimers.get(targetId);
+              if (verifyTimer) { clearTimeout(verifyTimer); cameraVerifyTimers.delete(targetId); }
+
+              queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
+                if (!oldDevices) return oldDevices;
+                return oldDevices.map((d) =>
+                  d.id === targetId
+                    ? { ...d, status: 'offline' as Device["status"], is_network_connected: false, is_camera_connected: false }
+                    : d
+                );
+              });
+              console.log("[Presence] 🔴 Device confirmed offline after grace:", targetId.slice(0, 8));
+            } else {
               // 매칭 실패했던 leave: Presence에 아무도 없으면 전체 비-스마트폰 offline
               const remainingKeys = Object.keys(state);
               if (remainingKeys.length === 0) {
@@ -675,8 +695,10 @@ export const useDevices = () => {
               }
             }
             queryClient.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
+          } else {
+            console.log("[Presence] ✅ Device still present after grace period:", key.slice(0, 8), "→ staying online");
           }
-        }, targetId ? 3000 : 8000);
+        }, 8000);
         activeLeaveTimers.set(key, timer);
       })
       .subscribe((status) => {
