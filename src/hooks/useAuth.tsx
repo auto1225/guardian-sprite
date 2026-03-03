@@ -44,6 +44,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setSerialsLoading(true);
     try {
       const result = await fetchUserSerials(accessToken);
+      console.log("[Auth] 📦 Server capabilities:", JSON.stringify(result.capabilities, null, 2));
+      console.log("[Auth] 📋 Serials:", result.serials.map(s => `${s.serial_key} (${s.plan_type}/${s.status})`));
       setSerials(result.serials);
       setCapabilities(result.capabilities);
     } catch {
