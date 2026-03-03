@@ -23,6 +23,7 @@ const cameraDowngradeTimers = new Map<string, ReturnType<typeof setTimeout>>();
 // ★ 카메라 상태 DB 재검증 타이머 (Presence 온라인 확인 후 DB 값 교차 검증)
 const cameraVerifyTimers = new Map<string, ReturnType<typeof setTimeout>>();
 let subscriberCount = 0;
+let presenceInitialSynced = false; // ★ Presence 최초 sync 완료 여부
 
 // ── 모듈 레벨 싱글톤: 기기 선택 상태 (모든 컴포넌트가 공유) ──
 const SELECTED_DEVICE_STORAGE_KEY = "meercop_selected_device_id";
@@ -70,6 +71,7 @@ function cleanupAllChannels() {
   devicePresenceNames.clear();
   activeUserId = null;
   subscriberCount = 0;
+  presenceInitialSynced = false;
 }
 
 export const useDevices = () => {
@@ -98,8 +100,7 @@ export const useDevices = () => {
       console.log("[useDevices] Fetched", dbDevices.length, "devices:", dbDevices.map(d => ({ id: d.id.slice(0, 8), name: d.name, type: d.device_type, status: d.status })));
 
       // ★ DB 조회 결과에 Presence 확인된 온라인 상태 및 이름 보존
-      // DB는 랩탑의 공유DB 업데이트가 실패하면 항상 offline/구 이름을 반환하므로
-      // Presence/Broadcast로 확인된 최신 상태를 덮어쓰지 않도록 함
+      // Presence가 이미 sync된 상태라면, Presence에 없는 기기는 offline으로 강제 전환
       return dbDevices.map(d => {
         if (d.device_type === "smartphone") return d;
         // Presence에서 확인된 최신 이름 우선 적용
@@ -113,6 +114,17 @@ export const useDevices = () => {
             status: "online" as Device["status"],
             is_network_connected: presenceData?.is_network_connected ?? true,
             is_camera_connected: presenceData?.is_camera_connected ?? d.is_camera_connected,
+          };
+        }
+        // ★ Presence가 sync 완료됐는데 이 기기가 Presence에 없으면 → offline 강제 전환
+        if (presenceInitialSynced && d.status !== "offline") {
+          console.log("[useDevices] 🔴 Force offline (not in Presence):", d.id.slice(0, 8), d.name);
+          return {
+            ...d,
+            name: resolvedName,
+            status: "offline" as Device["status"],
+            is_network_connected: false,
+            is_camera_connected: false,
           };
         }
         // 오프라인 기기도 이름은 Presence에서 받은 최신값 유지
@@ -311,6 +323,7 @@ export const useDevices = () => {
 
     activePresenceChannel
       .on('presence', { event: 'sync' }, () => {
+        presenceInitialSynced = true; // ★ Presence 최초 sync 완료
         const state = activePresenceChannel!.presenceState();
 
         // 모든 Presence 항목을 수집 (키는 랩탑 로컬 DB ID일 수 있음)
@@ -337,6 +350,9 @@ export const useDevices = () => {
           allPresenceEntries.push({ key, data: latest });
         }
 
+        // ★ Presence sync 시 DB에 stale online인 기기 추적 → DB 동기화
+        const forcedOfflineIds: string[] = [];
+
         queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
           if (!oldDevices) return oldDevices;
 
@@ -350,7 +366,6 @@ export const useDevices = () => {
             let match = allPresenceEntries.find(e => e.key === d.id && !matchedKeys.has(e.key));
 
             // 2) Presence 데이터의 device_id 필드로 매칭
-            //    (랩탑이 Presence payload에 shared device ID를 포함하는 경우)
             if (!match) {
               match = allPresenceEntries.find(e =>
                 !matchedKeys.has(e.key) &&
@@ -358,7 +373,7 @@ export const useDevices = () => {
               );
             }
 
-            // 3) serial_key 기반 매칭: 공유 DB 기기의 serial_key와 Presence 데이터의 serial_key 비교
+            // 3) serial_key 기반 매칭
             if (!match) {
               const deviceSerialKey = (d.metadata as Record<string, unknown>)?.serial_key as string | undefined;
               if (deviceSerialKey) {
@@ -372,8 +387,7 @@ export const useDevices = () => {
               }
             }
 
-            // 4) 최후 폴백: 미매칭 Presence가 정확히 1개이고, 미매칭 비-스마트폰 기기도 정확히 1개일 때만
-            //    (다수의 기기가 있을 때 잘못된 기기에 할당되는 것을 방지)
+            // 4) 최후 폴백: 1:1 매칭만 허용
             if (!match) {
               const knownDeviceIds = new Set(oldDevices.map(od => od.id));
               const unmatchedPresence = allPresenceEntries.filter(e =>
@@ -386,14 +400,28 @@ export const useDevices = () => {
                 !allPresenceEntries.some(e => e.key === od.id || e.data.device_id === od.id) &&
                 !matchedKeys.has(od.id)
               );
-              // 1:1 매칭만 허용 — 다수일 때는 매칭하지 않음
               if (unmatchedPresence.length === 1 && unmatchedDevices.length === 1 && unmatchedDevices[0].id === d.id) {
                 match = unmatchedPresence[0];
                 console.log("[Presence] 🔄 1:1 fallback match:", d.id.slice(0, 8), "←", match.key.slice(0, 8));
               }
             }
 
-            if (!match) return d;
+            if (!match) {
+              // ★ Presence에 없는 비-스마트폰 기기 → offline 강제 전환
+              if (d.status !== "offline") {
+                console.log("[Presence] 🔴 No match in Presence, forcing offline:", d.id.slice(0, 8), d.name);
+                realtimeConfirmedOnline.delete(d.id);
+                devicePresenceData.delete(d.id);
+                forcedOfflineIds.push(d.id);
+                return {
+                  ...d,
+                  status: "offline" as Device["status"],
+                  is_network_connected: false,
+                  is_camera_connected: false,
+                };
+              }
+              return d;
+            }
             matchedKeys.add(match.key);
 
             const latest = match.data;
@@ -404,7 +432,6 @@ export const useDevices = () => {
             if (latest.is_charging !== undefined) {
               deviceChargingMap.set(d.id, latest.is_charging);
             }
-            // Presence 데이터 저장
             devicePresenceData.set(d.id, {
               is_network_connected: latest.is_network_connected,
               is_camera_connected: latest.is_camera_connected,
@@ -434,22 +461,18 @@ export const useDevices = () => {
               }, 3000);
               cameraVerifyTimers.set(d.id, verifyTimer);
             }
-            // 카메라가 true로 확인되면 검증 타이머 취소
             if (latest.is_camera_connected === true && cameraVerifyTimers.has(d.id)) {
               clearTimeout(cameraVerifyTimers.get(d.id)!);
               cameraVerifyTimers.delete(d.id);
             }
 
-            // ★ 카메라 true→false: 5초 grace period (노트북 새로고침 시 일시적 false 방지)
-            // false→true 또는 변화 없음: 즉시 반영 & 기존 타이머 취소
+            // ★ 카메라 true→false: 5초 grace period
             let resolvedCameraConnected = latest.is_camera_connected ?? d.is_camera_connected;
             if (latest.is_camera_connected === false && d.is_camera_connected === true) {
-              // 이미 타이머가 없으면 생성, 있으면 기존 유지
               if (!cameraDowngradeTimers.has(d.id)) {
                 console.log("[Presence] ⏳ Camera downgrade grace period started for", d.id.slice(0, 8));
                 const timer = setTimeout(() => {
                   cameraDowngradeTimers.delete(d.id);
-                  // 5초 후에도 Presence에서 여전히 false인지 확인
                   const currentPresence = devicePresenceData.get(d.id);
                   if (currentPresence?.is_camera_connected === false) {
                     console.log("[Presence] 📷 Camera downgrade confirmed for", d.id.slice(0, 8));
@@ -461,9 +484,8 @@ export const useDevices = () => {
                 }, 5000);
                 cameraDowngradeTimers.set(d.id, timer);
               }
-              resolvedCameraConnected = true; // grace period 동안 true 유지
+              resolvedCameraConnected = true;
             } else if (latest.is_camera_connected === true) {
-              // true로 복귀 → 타이머 취소
               const existingTimer = cameraDowngradeTimers.get(d.id);
               if (existingTimer) {
                 clearTimeout(existingTimer);
@@ -472,7 +494,6 @@ export const useDevices = () => {
               }
             }
 
-            // ★ Presence에서 이름이 다르면 변경 감지
             const presenceName = latest.device_name;
             const nameChanged = presenceName && presenceName !== d.name;
 
@@ -498,6 +519,13 @@ export const useDevices = () => {
             };
           });
         });
+
+        // ★ Presence에서 강제 오프라인된 기기들의 DB 상태도 동기화 (best-effort)
+        for (const deviceId of forcedOfflineIds) {
+          supabase.functions.invoke("update-device", {
+            body: { device_id: deviceId, status: "offline", is_network_connected: false, is_camera_connected: false },
+          }).catch(() => { /* best effort */ });
+        }
       })
       .on('presence', { event: 'join' }, ({ key }) => {
         const timer = activeLeaveTimers.get(key);
