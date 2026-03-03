@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { ChevronLeft, User, LogOut, HelpCircle, UserCog, Globe, Crown, Star, Sparkles } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ChevronLeft, User, LogOut, HelpCircle, UserCog, Globe, Crown, Star, Sparkles, ExternalLink } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { SUPPORTED_LANGUAGES } from "@/lib/dynamicTranslation";
+import { supabase } from "@/integrations/supabase/client";
 import logoImage from "@/assets/meercop-character.png";
 
 const ITEMS_PER_PAGE = 5;
@@ -23,11 +24,51 @@ interface SideMenuProps {
 
 const SideMenu = ({ isOpen, onClose, onHelpClick }: SideMenuProps) => {
   const { t, i18n } = useTranslation();
-  const { user, serials, signOut } = useAuth();
+  const { user, serials, signOut, effectiveUserId } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [serialPage, setSerialPage] = useState(1);
   const [showLangs, setShowLangs] = useState(false);
+  const [deviceNameMap, setDeviceNameMap] = useState<Record<string, string>>({});
+
+  // Fetch actual device names from shared DB
+  useEffect(() => {
+    if (!isOpen || !effectiveUserId) return;
+    const fetchDeviceNames = async () => {
+      try {
+        const { data } = await supabase.functions.invoke("get-devices", {
+          body: { user_id: effectiveUserId },
+        });
+        const devices = data?.devices || [];
+        // Build serial_key → device name map via licenses
+        const { data: licenses } = await supabase.functions.invoke("get-devices", {
+          body: { user_id: effectiveUserId, include_licenses: true },
+        });
+        // Fallback: map device_id → name, then match via licenses
+        const idToName: Record<string, string> = {};
+        for (const d of devices) {
+          idToName[d.id] = d.name;
+        }
+        // Try to get licenses from shared DB
+        const { data: licenseData } = await supabase
+          .from("licenses")
+          .select("serial_key, device_id")
+          .eq("user_id", effectiveUserId);
+        const map: Record<string, string> = {};
+        if (licenseData) {
+          for (const lic of licenseData) {
+            if (lic.device_id && idToName[lic.device_id]) {
+              map[lic.serial_key] = idToName[lic.device_id];
+            }
+          }
+        }
+        setDeviceNameMap(map);
+      } catch (err) {
+        console.warn("[SideMenu] Failed to fetch device names:", err);
+      }
+    };
+    fetchDeviceNames();
+  }, [isOpen, effectiveUserId]);
 
   const totalPages = Math.ceil(serials.length / ITEMS_PER_PAGE);
   const pageSerials = serials.slice((serialPage - 1) * ITEMS_PER_PAGE, serialPage * ITEMS_PER_PAGE);
@@ -101,7 +142,9 @@ const SideMenu = ({ isOpen, onClose, onHelpClick }: SideMenuProps) => {
                       </span>
                     </div>
                     <p className="text-xs text-white/50 mt-1">
-                      {serial.device_name ? `📌 ${serial.device_name}` : `⏳ ${t("sideMenu.noDeviceConnected")}`}
+                      {(deviceNameMap[serial.serial_key] || serial.device_name)
+                        ? `📌 ${deviceNameMap[serial.serial_key] || serial.device_name}`
+                        : `⏳ ${t("sideMenu.noDeviceConnected")}`}
                     </p>
                   </div>
                 );
@@ -131,7 +174,21 @@ const SideMenu = ({ isOpen, onClose, onHelpClick }: SideMenuProps) => {
 
         {/* Bottom Menu */}
         <div className="border-t border-white/20">
-          <MenuItem icon={UserCog} label={t("sideMenu.editProfile")} onClick={() => { navigate("/settings"); onClose(); }} />
+          <div className="px-4 py-3 border-b border-white/10">
+            <div className="flex items-center gap-2 mb-1">
+              <UserCog className="w-4 h-4 text-primary-foreground" />
+              <span className="text-sm font-semibold text-primary-foreground">{t("sideMenu.editProfile")}</span>
+            </div>
+            <a
+              href="https://meercop.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-[11px] text-white/60 hover:text-white/80 transition-colors"
+            >
+              <ExternalLink className="w-3 h-3" />
+              meercop.com {t("sideMenu.editProfileNotice", "에서만 수정 가능합니다")}
+            </a>
+          </div>
           <MenuItem icon={HelpCircle} label={t("sideMenu.helpQA")} onClick={() => { if (onHelpClick) { onHelpClick(); onClose(); } }} />
 
           {/* Language selector */}
