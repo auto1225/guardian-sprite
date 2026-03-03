@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Database } from "@/integrations/supabase/types";
 import { deleteLaptopDbDevice } from "@/lib/laptopDb";
+import { websiteSupabase } from "@/lib/websiteAuth";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 type DeviceInsert = Database["public"]["Tables"]["devices"]["Insert"];
@@ -596,6 +597,21 @@ export const useDevices = () => {
         if (error) console.warn("[useDevices] ⚠️ Failed to sync name to shared DB:", error);
         else console.log("[useDevices] ✅ Name synced to shared DB:", deviceId, "→", newName);
       }).catch(() => { /* best effort */ });
+
+      // ★ 웹사이트 DB의 serial_numbers.device_name도 동기화
+      const currentDevices = queryClient.getQueryData<Device[]>(["devices", effectiveUserId]);
+      const targetDevice = currentDevices?.find(d => d.id === deviceId);
+      const serialKey = (targetDevice?.metadata as Record<string, unknown>)?.serial_key as string | undefined;
+      if (serialKey) {
+        websiteSupabase
+          .from("serial_numbers")
+          .update({ device_name: newName })
+          .eq("serial_key", serialKey)
+          .then(({ error }) => {
+            if (error) console.warn("[useDevices] ⚠️ Website DB name sync failed:", error);
+            else console.log("[useDevices] ✅ Website DB name synced:", serialKey, "→", newName);
+          });
+      }
     };
     const existingCmdCh = supabase.getChannels().find(ch => ch.topic === `realtime:${cmdChannelName}`);
     const cmdChannel = existingCmdCh || supabase.channel(cmdChannelName);
