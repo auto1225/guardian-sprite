@@ -7,9 +7,10 @@ const CHECK_INTERVAL_MS = 30 * 60 * 1000; // 30분마다 체크
 
 /**
  * 라이선스 만료를 실시간 감지하여 기능을 차단하는 훅
- * - serials의 expires_at를 주기적으로 확인
+ * - serials의 status와 expires_at를 주기적으로 확인
  * - 모든 시리얼이 만료되면 expired = true
  * - 만료 시 모니터링 자동 중지
+ * - 업그레이드 시 즉시 차단 해제
  */
 export function useLicenseGuard() {
   const { serials, serialsLoading, effectiveUserId, refreshSerials } = useAuth();
@@ -20,25 +21,34 @@ export function useLicenseGuard() {
 
   const checkExpiry = useCallback(() => {
     if (serialsLoading || serials.length === 0) {
-      // 시리얼이 아직 로딩 중이거나 없으면 체크하지 않음
       return;
     }
 
     const now = new Date();
     const allExpired = serials.every((s) => {
+      // status 필드 우선 체크
+      if (s.status === "expired") return true;
+      // expires_at 기반 체크 (fallback)
       if (!s.expires_at) return false; // 무기한은 만료되지 않음
       return new Date(s.expires_at) < now;
     });
 
+    const wasExpired = expired;
     setExpired(allExpired);
     setExpiryChecked(true);
+
+    // 만료 → 활성 전환 시 즉시 차단 해제
+    if (wasExpired && !allExpired) {
+      console.log("[LicenseGuard] ✅ License reactivated — removing block");
+      stopMonitoringRef.current = false;
+    }
 
     // 만료 시 모니터링 자동 중지
     if (allExpired && !stopMonitoringRef.current && effectiveUserId) {
       stopMonitoringRef.current = true;
       stopAllMonitoring(effectiveUserId);
     }
-  }, [serials, serialsLoading, effectiveUserId]);
+  }, [serials, serialsLoading, effectiveUserId, expired]);
 
   // 모니터링 중인 기기 모두 중지
   const stopAllMonitoring = async (userId: string) => {
@@ -73,14 +83,13 @@ export function useLicenseGuard() {
     checkExpiry();
 
     const interval = setInterval(() => {
-      // 주기적으로 시리얼 새로고침 후 체크
       refreshSerials().then(() => checkExpiry());
     }, CHECK_INTERVAL_MS);
 
     return () => clearInterval(interval);
   }, [checkExpiry, refreshSerials]);
 
-  // serials 변경 시 재체크
+  // serials 변경 시 재체크 (Realtime 업데이트 즉시 반영)
   useEffect(() => {
     checkExpiry();
   }, [serials, checkExpiry]);

@@ -5,6 +5,8 @@ interface LicenseExpiredOverlayProps {
   visible: boolean;
 }
 
+const PRICING_URL = "https://credit-sparkle-site.lovable.app/#pricing";
+
 const LicenseExpiredOverlay = ({ visible }: LicenseExpiredOverlayProps) => {
   const { t } = useTranslation();
 
@@ -34,9 +36,9 @@ const LicenseExpiredOverlay = ({ visible }: LicenseExpiredOverlayProps) => {
           {t("license.expiredDescription")}
         </p>
 
-        {/* Renew button */}
+        {/* Upgrade button */}
         <a
-          href="https://meercop.com"
+          href={PRICING_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-red-900 font-bold text-sm shadow-lg hover:bg-white/90 transition-colors"
