@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronRight, Globe, GripVertical } from "lucide-react";
+import { ArrowLeft, ChevronRight, Copy, Globe, GripVertical } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,7 +7,7 @@ import { broadcastCommand } from "@/lib/broadcastCommand";
 import { websiteSupabase } from "@/lib/websiteAuth";
 import { useAuth } from "@/hooks/useAuth";
 import { sortDevicesByOrder, reorderDevicesDirect } from "@/lib/deviceSortOrder";
-import { isMuted as isAlarmMuted, setMuted as setAlarmMuted } from "@/lib/alarmSound";
+import { isMuted as isAlarmMuted, setMuted as setAlarmMuted, setVolume as setAlarmVolume, getVolume as getAlarmVolume } from "@/lib/alarmSound";
 import { hashPin } from "@/lib/pinHash";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -94,7 +94,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
   const [showLangPicker, setShowLangPicker] = useState(false);
   // ★ 기기별 언어 상태 — metadata.language를 우선 표시
   const [deviceLanguage, setDeviceLanguage] = useState<string>(
-    (meta.language as string) || i18n.language
+    (meta.language as string) || localStorage.getItem('i18nextLng') || "en"
   );
 
   // 기기가 바뀌면 설정값 재초기화
@@ -116,28 +116,58 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
     setMotionSensitivity((m.motionSensitivity as MotionSensitivity) || "insensitive");
     setMouseSensitivity((m.mouseSensitivity as MotionSensitivity) || "sensitive");
     // ★ 기기별 언어 설정 반영
-    setDeviceLanguage((m.language as string) || i18n.language);
+    setDeviceLanguage((m.language as string) || localStorage.getItem('i18nextLng') || "en");
   }, [device?.id, device?.name, device?.metadata]);
 
-  // 초기 기본값 저장
+  // ★ 처음 한 번만 기본값 적용 (이후 사용자 설정 유지)
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !device) return;
+    const defaultsKey = `meercop_defaults_applied_${device.id}`;
+    const alreadyApplied = localStorage.getItem(defaultsKey);
+    if (alreadyApplied) return;
+
     const m = (device.metadata as Record<string, unknown>) || {};
-    if (!m.sensorSettings) {
-      const pin = (m.alarm_pin as string) || "1234";
-      hashPin(pin, device.id).then((pinHash) => {
-        saveMetadata({
-          sensorSettings: { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device.device_type as "laptop" | "desktop" | "tablet") || "laptop" },
-          alarm_pin: pin,
-          alarm_pin_hash: pinHash,
-          alarm_sound_id: (m.alarm_sound_id as string) || "whistle",
-          require_pc_pin: m.require_pc_pin ?? true,
-          motionSensitivity: (m.motionSensitivity as string) || "insensitive",
-          mouseSensitivity: (m.mouseSensitivity as string) || "sensitive",
-        });
-      });
+    // 이미 서버에 sensorSettings가 있으면 이전에 설정된 기기 → 스킵
+    if (m.sensorSettings) {
+      localStorage.setItem(defaultsKey, "1");
+      return;
     }
-  }, [isOpen, device.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const defaultPin = "1234";
+    const defaultSoundId = "whistle";
+    const defaultSensors = { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device.device_type as "laptop" | "desktop" | "tablet") || "laptop" };
+
+    // 볼륨 기본값 20% (localStorage에 아직 없을 때만)
+    if (!localStorage.getItem('meercop_alarm_volume')) {
+      setAlarmVolume(0.2);
+    }
+    // 스마트폰 경보음 기본 ON (muted = false)
+    if (!localStorage.getItem('meercop_alarm_muted')) {
+      setAlarmMuted(false);
+    }
+
+    hashPin(defaultPin, device.id).then((pinHash) => {
+      saveMetadata({
+        sensorSettings: defaultSensors,
+        alarm_pin: defaultPin,
+        alarm_pin_hash: pinHash,
+        alarm_sound_id: defaultSoundId,
+        require_pc_pin: true,
+        motionSensitivity: "insensitive",
+        mouseSensitivity: "sensitive",
+        streaming_quality: "vga",
+        language: "en",
+      }).then(() => {
+        // 언어 기본값 영어 적용 (처음만)
+        if (!localStorage.getItem('i18nextLng')) {
+          loadLanguage("en");
+          i18n.changeLanguage("en");
+          localStorage.setItem("i18nextLng", "en");
+        }
+        localStorage.setItem(defaultsKey, "1");
+      });
+    });
+  }, [isOpen, device?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const broadcastSettingsUpdate = async (deviceId: string, updates: Record<string, unknown>) => {
     const userId = device?.user_id;
@@ -422,7 +452,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
                         {!lic.is_active && ` · ${t("settings.inactive")}`}
                       </span>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-white/40 shrink-0 ml-2" />
+                    <Copy className="w-4 h-4 text-white/40 shrink-0 ml-2" />
                   </button>
                 ))
               )}
