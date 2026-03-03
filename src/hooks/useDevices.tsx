@@ -15,6 +15,7 @@ let activePresenceChannel: ReturnType<typeof supabase.channel> | null = null;
 const activeLeaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const realtimeConfirmedOnline = new Set<string>();
 const devicePresenceData = new Map<string, { is_network_connected?: boolean; is_camera_connected?: boolean }>();
+const devicePresenceNames = new Map<string, string>(); // Presence/Broadcast에서 확인된 최신 이름
 const deviceChargingMap = new Map<string, boolean>(); // Presence-only: is_charging per deviceId
 // ★ 카메라 다운그레이드 grace period 타이머
 const cameraDowngradeTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -65,6 +66,7 @@ function cleanupAllChannels() {
     activePresenceChannel = null;
   }
   realtimeConfirmedOnline.clear();
+  devicePresenceNames.clear();
   activeUserId = null;
   subscriberCount = 0;
 }
@@ -94,22 +96,26 @@ export const useDevices = () => {
       const dbDevices = (data?.devices || []) as Device[];
       console.log("[useDevices] Fetched", dbDevices.length, "devices:", dbDevices.map(d => ({ id: d.id.slice(0, 8), name: d.name, type: d.device_type, status: d.status })));
 
-      // ★ DB 조회 결과에 Presence 확인된 온라인 상태 보존
-      // DB는 랩탑의 공유DB 업데이트가 실패하면 항상 offline을 반환하므로
-      // Presence로 확인된 online 상태를 덮어쓰지 않도록 함
+      // ★ DB 조회 결과에 Presence 확인된 온라인 상태 및 이름 보존
+      // DB는 랩탑의 공유DB 업데이트가 실패하면 항상 offline/구 이름을 반환하므로
+      // Presence/Broadcast로 확인된 최신 상태를 덮어쓰지 않도록 함
       return dbDevices.map(d => {
         if (d.device_type === "smartphone") return d;
+        // Presence에서 확인된 최신 이름 우선 적용
+        const presenceName = devicePresenceNames.get(d.id);
+        const resolvedName = presenceName || d.name;
         if (realtimeConfirmedOnline.has(d.id)) {
           const presenceData = devicePresenceData.get(d.id);
           return {
             ...d,
+            name: resolvedName,
             status: "online" as Device["status"],
-            // Presence 확인된 온라인 기기: 네트워크는 반드시 연결, 카메라는 Presence 데이터 우선
             is_network_connected: presenceData?.is_network_connected ?? true,
             is_camera_connected: presenceData?.is_camera_connected ?? d.is_camera_connected,
           };
         }
-        return d;
+        // 오프라인 기기도 이름은 Presence에서 받은 최신값 유지
+        return presenceName ? { ...d, name: resolvedName } : d;
       });
     },
     enabled: !!effectiveUserId,
@@ -316,6 +322,7 @@ export const useDevices = () => {
           is_charging?: boolean;
           last_seen_at?: string;
           serial_key?: string;
+          device_name?: string;
         };
         const allPresenceEntries: Array<{ key: string; data: PresenceEntry }> = [];
         for (const [key, entries] of Object.entries(state)) {
@@ -464,15 +471,24 @@ export const useDevices = () => {
               }
             }
 
-            const hasChanges = d.is_network_connected !== latest.is_network_connected || d.is_camera_connected !== resolvedCameraConnected || d.status !== newStatus || (latest.battery_level !== undefined && d.battery_level !== latest.battery_level);
+            // ★ Presence에서 이름이 다르면 변경 감지
+            const presenceName = latest.device_name;
+            const nameChanged = presenceName && presenceName !== d.name;
+
+            const hasChanges = d.is_network_connected !== latest.is_network_connected || d.is_camera_connected !== resolvedCameraConnected || d.status !== newStatus || (latest.battery_level !== undefined && d.battery_level !== latest.battery_level) || nameChanged;
             if (!hasChanges) return d;
 
-            console.log("[Presence] ✅ Updating:", d.id.slice(0, 8), "←", match.key.slice(0, 8), { status: `${d.status}→${newStatus}`, camera: `${d.is_camera_connected}→${resolvedCameraConnected}` });
+            if (nameChanged) {
+              console.log("[Presence] 📝 Name sync:", d.name, "→", presenceName);
+              devicePresenceNames.set(d.id, presenceName!);
+            }
+            console.log("[Presence] ✅ Updating:", d.id.slice(0, 8), "←", match.key.slice(0, 8), { status: `${d.status}→${newStatus}`, camera: `${d.is_camera_connected}→${resolvedCameraConnected}`, name: nameChanged ? `${d.name}→${presenceName}` : "unchanged" });
             const updatedMeta = newStatus === 'online'
               ? { ...((d.metadata as Record<string, unknown>) || {}), logged_out: false }
               : d.metadata;
             return {
               ...d,
+              ...(nameChanged ? { name: presenceName! } : {}),
               status: newStatus as Device["status"],
               is_network_connected: latest.is_network_connected ?? d.is_network_connected,
               is_camera_connected: resolvedCameraConnected,
@@ -566,11 +582,20 @@ export const useDevices = () => {
       const newName = payload?.new_name || payload?.name;
       if (!deviceId || !newName) return;
       console.log("[useDevices] ✅ Applying name change:", deviceId, "→", newName);
+      // ★ 모듈 레벨 캐시에 저장 (DB 재조회 시에도 이름 보존)
+      devicePresenceNames.set(deviceId, newName);
+      // 로컬 캐시 즉시 업데이트 (DB 재조회 없이)
       queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
         if (!oldDevices) return oldDevices;
         return oldDevices.map(d => d.id === deviceId ? { ...d, name: newName } : d);
       });
-      queryClient.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
+      // ★ 공유 DB에도 이름 반영 (노트북이 공유 DB를 업데이트하지 못했을 수 있음)
+      supabase.functions.invoke("update-device", {
+        body: { device_id: deviceId, updates: { name: newName } },
+      }).then(({ error }) => {
+        if (error) console.warn("[useDevices] ⚠️ Failed to sync name to shared DB:", error);
+        else console.log("[useDevices] ✅ Name synced to shared DB:", deviceId, "→", newName);
+      }).catch(() => { /* best effort */ });
     };
     const existingCmdCh = supabase.getChannels().find(ch => ch.topic === `realtime:${cmdChannelName}`);
     const cmdChannel = existingCmdCh || supabase.channel(cmdChannelName);

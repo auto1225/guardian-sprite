@@ -186,6 +186,22 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
       setShowNicknameDialog(false);
       queryClient.invalidateQueries({ queryKey: ["devices"] });
       toast({ title: t("common.saved"), description: t("settings.nicknameChanged") });
+
+      // ★ 노트북에 이름 변경 브로드캐스트 (노트북 로컬 DB도 동기화하도록)
+      const userId = device.user_id;
+      if (userId) {
+        broadcastCommand({
+          userId,
+          event: "name_changed",
+          payload: {
+            device_id: device.id,
+            target_shared_device_id: device.id,
+            name,
+            new_name: name,
+          },
+          targetDeviceId: device.id,
+        }).catch(() => { /* best effort */ });
+      }
     } catch {
       toast({ title: t("common.error"), description: t("common.saveFailed"), variant: "destructive" });
     }
