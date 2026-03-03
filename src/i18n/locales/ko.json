@@ -188,7 +188,7 @@
     "unlinked": "⏳ 미연결",
     "inactive": "비활성",
     "serialCopied": "시리얼 넘버가 클립보드에 복사되었습니다.",
-    "nickname": "닉네임",
+    "nickname": "기기명",
     "alarmPin": "경보해제 비밀번호",
     "alarmSound": "경보음",
     "streamingQuality": "스트리밍 화질",
@@ -239,12 +239,12 @@
       "normal": "보통",
       "insensitive": "둔감"
     },
-    "nicknameChanged": "닉네임이 변경되었습니다.",
+    "nicknameChanged": "기기명이 변경되었습니다.",
     "duplicateDeviceName": "이미 다른 기기에서 사용 중인 기기명입니다.",
     "pinChanged": "비밀번호가 변경되었습니다.",
     "nicknameDialog": {
-      "title": "닉네임 변경",
-      "description": "변경할 닉네임을 입력해 주세요."
+      "title": "기기명 변경",
+      "description": "변경할 기기명을 입력해 주세요."
     },
     "pinDialog": {
       "title": "경보해제 비밀번호 변경",

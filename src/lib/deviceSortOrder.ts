@@ -37,3 +37,24 @@ export async function reorderDevices(
 
   return newOrder;
 }
+
+/** 드래그 앤 드롭: fromId를 toId 위치로 이동 */
+export async function reorderDevicesDirect(
+  sortedDevices: Device[],
+  fromId: string,
+  toId: string
+): Promise<Device[]> {
+  const fromIdx = sortedDevices.findIndex(d => d.id === fromId);
+  const toIdx = sortedDevices.findIndex(d => d.id === toId);
+  if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return sortedDevices;
+
+  const newOrder = [...sortedDevices];
+  const [moved] = newOrder.splice(fromIdx, 1);
+  newOrder.splice(toIdx, 0, moved);
+
+  await Promise.all(
+    newOrder.map((d, i) => safeMetadataUpdate(d.id, { sort_order: i }))
+  );
+
+  return newOrder;
+}

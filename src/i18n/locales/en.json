@@ -188,7 +188,7 @@
     "unlinked": "⏳ Unlinked",
     "inactive": "Inactive",
     "serialCopied": "Serial number copied to clipboard.",
-    "nickname": "Nickname",
+    "nickname": "Device Name",
     "alarmPin": "Alarm PIN",
     "alarmSound": "Alarm Sound",
     "streamingQuality": "Streaming Quality",
@@ -239,12 +239,12 @@
       "normal": "Normal",
       "insensitive": "Insensitive"
     },
-    "nicknameChanged": "Nickname has been changed.",
+    "nicknameChanged": "Device name has been changed.",
     "duplicateDeviceName": "This device name is already in use by another device.",
     "pinChanged": "PIN has been changed.",
     "nicknameDialog": {
-      "title": "Change Nickname",
-      "description": "Enter a new nickname."
+      "title": "Change Device Name",
+      "description": "Enter a new device name."
     },
     "pinDialog": {
       "title": "Change Alarm PIN",
