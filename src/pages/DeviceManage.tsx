@@ -64,8 +64,6 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [customOrder, setCustomOrder] = useState<string[]>([]);
   const [licenseMap, setLicenseMap] = useState<Map<string, string>>(new Map());
-  const [numberEditDevice, setNumberEditDevice] = useState<{ id: string; current: number | null } | null>(null);
-  const [numberInput, setNumberInput] = useState("");
 
   // Drag state
   const dragState = useRef<{
@@ -333,33 +331,20 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
     }
   };
 
-  const handleSetNumber = (deviceId: string) => {
-    const dev = managedDevices.find(d => d.id === deviceId);
-    const currentNum = (dev?.metadata as Record<string, unknown>)?.user_number as number | null | undefined;
-    setNumberEditDevice({ id: deviceId, current: currentNum ?? null });
-    setNumberInput(currentNum != null ? String(currentNum) : "");
-  };
-
-  const handleSaveNumber = async () => {
-    if (!numberEditDevice) return;
-    const num = numberInput.trim() === "" ? null : Number(numberInput);
-    if (num !== null && isNaN(num)) return;
+  const handleSaveNumber = async (deviceId: string, num: number | null) => {
     try {
-      await safeMetadataUpdate(numberEditDevice.id, { user_number: num });
-      // ★ 로컬 캐시 즉시 업데이트
+      await safeMetadataUpdate(deviceId, { user_number: num });
       queryClient.setQueryData(["devices", effectiveUserId], (old: Device[] | undefined) => {
         if (!old) return old;
         return old.map(d => {
-          if (d.id !== numberEditDevice.id) return d;
+          if (d.id !== deviceId) return d;
           const meta = (d.metadata as Record<string, unknown>) || {};
           return { ...d, metadata: { ...meta, user_number: num } };
         });
       });
-      toast({ title: t("common.saved"), description: t("deviceManage.numberSaved") });
     } catch {
       toast({ title: t("common.error"), description: t("common.saveFailed"), variant: "destructive" });
     }
-    setNumberEditDevice(null);
   };
 
   if (!isOpen) return null;
@@ -454,7 +439,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
                 isSelected={selectedIds.has(itemKey(item))}
                 onToggleSelect={toggleSelect}
                 onSetAsMain={handleSetAsMain}
-                onSetNumber={handleSetNumber}
+                onNumberChange={handleSaveNumber}
                 onDelete={handleDeleteDevice}
                 onViewAlertHistory={onViewAlertHistory}
                 onToggleMonitoring={toggleMonitoring}
@@ -518,31 +503,6 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
           </button>
         </div>
       )}
-      {/* Number edit dialog */}
-      {numberEditDevice && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={() => setNumberEditDevice(null)}>
-          <div className="bg-primary rounded-2xl p-6 mx-8 max-w-sm w-full border border-white/25 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-white font-bold text-lg mb-4">{t("deviceManage.setNumber")}</h3>
-            <input
-              type="number"
-              value={numberInput}
-              onChange={e => setNumberInput(e.target.value)}
-              placeholder={t("deviceManage.numberPlaceholder")}
-              className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-white/40 text-base focus:outline-none focus:border-white/50"
-              autoFocus
-              onKeyDown={e => { if (e.key === "Enter") handleSaveNumber(); }}
-            />
-            <div className="flex gap-3 mt-4">
-              <button onClick={() => setNumberEditDevice(null)} className="flex-1 py-2.5 rounded-xl bg-white/15 text-white/80 font-semibold text-sm">
-                {t("common.cancel")}
-              </button>
-              <button onClick={handleSaveNumber} className="flex-1 py-2.5 rounded-xl bg-secondary text-secondary-foreground font-bold text-sm">
-                {t("common.save")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -554,7 +514,7 @@ interface DeviceCardProps {
   isSelected: boolean;
   onToggleSelect: (key: string) => void;
   onSetAsMain: (deviceId: string) => void;
-  onSetNumber: (deviceId: string) => void;
+  onNumberChange: (deviceId: string, num: number | null) => void;
   onDelete: (deviceId: string) => void;
   onViewAlertHistory?: (deviceId: string) => void;
   onToggleMonitoring: (deviceId: string, enable: boolean) => void;
@@ -566,15 +526,33 @@ interface DeviceCardProps {
 
 const DeviceCard = ({
   item, itemKey: key, isSelected, onToggleSelect,
-  onSetAsMain, onSetNumber, onDelete, onViewAlertHistory, onToggleMonitoring,
+  onSetAsMain, onNumberChange, onDelete, onViewAlertHistory, onToggleMonitoring,
   isDragging, showHandle, onHandlePointerDown, t,
 }: DeviceCardProps) => {
   const { serial, device } = item;
   const isMain = !!(device && (device.metadata as Record<string, unknown>)?.is_main);
-  const userNumber = (device?.metadata as Record<string, unknown>)?.user_number as number | undefined;
+  const userNumber = ((device || serial ? (device?.metadata as Record<string, unknown>) : null))?.user_number as number | undefined;
   const isOnline = device ? device.status !== "offline" : false;
   const planConfig = PLAN_CONFIG[serial?.plan_type || "free"] || PLAN_CONFIG.free;
   const PlanIcon = planConfig.icon;
+
+  const [localNum, setLocalNum] = useState(userNumber != null ? String(userNumber) : "");
+  
+  // 외부 데이터 변경 시 로컬 상태 동기화
+  useEffect(() => {
+    setLocalNum(userNumber != null ? String(userNumber) : "");
+  }, [userNumber]);
+
+  const handleNumBlur = () => {
+    const parsed = localNum.trim() === "" ? null : parseInt(localNum, 10);
+    if (parsed === (userNumber ?? null)) return; // 변경 없음
+    if (parsed !== null && (isNaN(parsed) || parsed < 1)) {
+      setLocalNum(userNumber != null ? String(userNumber) : "");
+      return;
+    }
+    const targetId = device?.id;
+    if (targetId) onNumberChange(targetId, parsed);
+  };
 
   return (
     <div
@@ -582,9 +560,9 @@ const DeviceCard = ({
         isDragging ? "border-secondary/60 opacity-60 scale-[0.97]" : "border-white/30"
       } ${isSelected ? "ring-2 ring-secondary/50" : ""}`}
     >
-      {/* Top row */}
+      {/* Top row: name + number input + menu */}
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           {/* Drag handle */}
           {showHandle && (
             <div
@@ -609,19 +587,7 @@ const DeviceCard = ({
             </span>
           )}
           {device ? (
-            <>
-              {userNumber != null && (
-                <span className="bg-white/15 text-white/80 px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0">
-                  #{userNumber}
-                </span>
-              )}
-              <span className="text-white font-bold truncate drop-shadow-sm">{device.name}</span>
-              {device.battery_level !== null && (
-                <span className="text-white/90 text-sm font-semibold shrink-0">
-                  {device.battery_level}% <span className="text-status-active">⚡</span>
-                </span>
-              )}
-            </>
+            <span className="text-white font-bold truncate drop-shadow-sm">{device.name}</span>
           ) : serial?.device_name ? (
             <span className="text-white/80 font-semibold truncate drop-shadow-sm">{serial.device_name}</span>
           ) : (
@@ -629,31 +595,41 @@ const DeviceCard = ({
           )}
         </div>
 
-        {device && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="text-primary-foreground p-1 shrink-0">
-                <MoreVertical className="w-5 h-5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-primary/90 backdrop-blur-xl border border-white/25 z-[100]">
-              {!isMain && (
-                <DropdownMenuItem onClick={() => onSetAsMain(device.id)} className="text-primary-foreground focus:bg-white/15 focus:text-primary-foreground">
-                  {t("deviceManage.setAsMain")}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Inline number input */}
+          <input
+            type="number"
+            min={1}
+            value={localNum}
+            onChange={e => setLocalNum(e.target.value)}
+            onBlur={handleNumBlur}
+            onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+            placeholder="#"
+            className="w-10 h-7 rounded-lg bg-white/10 border border-white/20 text-white text-center text-xs font-bold placeholder:text-white/30 focus:outline-none focus:border-white/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+          {device && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="text-primary-foreground p-1 shrink-0">
+                  <MoreVertical className="w-5 h-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-primary/90 backdrop-blur-xl border border-white/25 z-[100]">
+                {!isMain && (
+                  <DropdownMenuItem onClick={() => onSetAsMain(device.id)} className="text-primary-foreground focus:bg-white/15 focus:text-primary-foreground">
+                    {t("deviceManage.setAsMain")}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => onViewAlertHistory?.(device.id)} className="text-primary-foreground focus:bg-white/15 focus:text-primary-foreground">
+                  {t("deviceManage.alertHistory")}
                 </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onClick={() => onSetNumber(device.id)} className="text-primary-foreground focus:bg-white/15 focus:text-primary-foreground">
-                {t("deviceManage.setNumber")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onViewAlertHistory?.(device.id)} className="text-primary-foreground focus:bg-white/15 focus:text-primary-foreground">
-                {t("deviceManage.alertHistory")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onDelete(device.id)} className="text-destructive focus:bg-white/15 focus:text-destructive">
-                {t("common.delete")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+                <DropdownMenuItem onClick={() => onDelete(device.id)} className="text-destructive focus:bg-white/15 focus:text-destructive">
+                  {t("common.delete")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
 
       {/* Serial info */}
