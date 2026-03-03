@@ -1,5 +1,5 @@
 {
-  "plan": { "free": "ทดลองฟรี", "basic": "แพ็กเกจเบสิก", "premium": "แพ็กเกจพรีเมียม", "currentPlan": "แพ็กเกจปัจจุบัน", "remainingDays": "วันที่เหลือ", "days": " วัน", "expiresAt": "หมดอายุ" },
+  "plan": { "free": "ทดลอง 1 วัน", "basic": "แพ็กเกจเบสิก", "premium": "แพ็กเกจพรีเมียม", "currentPlan": "แพ็กเกจปัจจุบัน", "remainingDays": "วันที่เหลือ", "days": " วัน", "expiresAt": "หมดอายุ" },
   "common": { "loading": "กำลังโหลด...", "error": "ข้อผิดพลาด", "save": "บันทึก", "cancel": "ยกเลิก", "confirm": "ยืนยัน", "delete": "ลบ", "close": "ปิด", "online": "ออนไลน์", "offline": "ออฟไลน์", "on": "เปิด", "off": "ปิด", "saved": "บันทึกแล้ว", "saveFailed": "บันทึกไม่สำเร็จ", "settingSaveFailed": "บันทึกการตั้งค่าไม่สำเร็จ", "change": "เปลี่ยน", "or": "หรือ", "adding": "กำลังลงทะเบียน...", "register": "ลงทะเบียน", "copied": "คัดลอกแล้ว", "noDevice": "ไม่มีอุปกรณ์", "noDeviceDesc": "ไม่พบอุปกรณ์ที่เชื่อมต่อ กรุณาเข้าสู่ระบบด้วยซีเรียลบนแล็ปท็อปก่อน" },
   "header": { "openMenu": "เปิดเมนู", "manageDevices": "จัดการอุปกรณ์" },
   "statusIcons": { "laptop": "แล็ปท็อป", "desktop": "เดสก์ท็อป", "tablet": "แท็บเล็ต", "network": "เครือข่าย", "camera": "กล้อง", "settings": "การตั้งค่า" },

@@ -1,5 +1,5 @@
 {
-  "plan": { "free": "Dùng thử", "basic": "Gói Cơ bản", "premium": "Gói Cao cấp", "currentPlan": "Gói hiện tại", "remainingDays": "Ngày còn lại", "days": " ngày", "expiresAt": "Hết hạn" },
+  "plan": { "free": "Dùng thử 1 ngày", "basic": "Gói Cơ bản", "premium": "Gói Cao cấp", "currentPlan": "Gói hiện tại", "remainingDays": "Ngày còn lại", "days": " ngày", "expiresAt": "Hết hạn" },
   "common": { "loading": "Đang tải...", "error": "Lỗi", "save": "Lưu", "cancel": "Hủy", "confirm": "Xác nhận", "delete": "Xóa", "close": "Đóng", "online": "Trực tuyến", "offline": "Ngoại tuyến", "on": "BẬT", "off": "TẮT", "saved": "Đã lưu", "saveFailed": "Lưu thất bại.", "settingSaveFailed": "Lưu cài đặt thất bại.", "change": "Thay đổi", "or": "hoặc", "adding": "Đang đăng ký...", "register": "Đăng ký", "copied": "Đã sao chép", "noDevice": "Không có thiết bị", "noDeviceDesc": "Không tìm thấy thiết bị kết nối. Hãy đăng nhập bằng serial trên laptop trước." },
   "header": { "openMenu": "Mở menu", "manageDevices": "Quản lý thiết bị" },
   "statusIcons": { "laptop": "Laptop", "desktop": "Máy tính bàn", "tablet": "Máy tính bảng", "network": "Mạng", "camera": "Camera", "settings": "Cài đặt" },

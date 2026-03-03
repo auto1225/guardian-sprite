@@ -1,5 +1,5 @@
 {
-  "plan": { "free": "Пробный период", "basic": "Базовый план", "premium": "Премиум план", "currentPlan": "Текущий план", "remainingDays": "Осталось", "days": " дн.", "expiresAt": "Истекает" },
+  "plan": { "free": "1 день пробный", "basic": "Базовый план", "premium": "Премиум план", "currentPlan": "Текущий план", "remainingDays": "Осталось", "days": " дн.", "expiresAt": "Истекает" },
   "common": { "loading": "Загрузка...", "error": "Ошибка", "save": "Сохранить", "cancel": "Отмена", "confirm": "Подтвердить", "delete": "Удалить", "close": "Закрыть", "online": "Онлайн", "offline": "Оффлайн", "on": "ВКЛ", "off": "ВЫКЛ", "saved": "Сохранено", "saveFailed": "Не удалось сохранить.", "settingSaveFailed": "Не удалось сохранить настройки.", "change": "Изменить", "or": "или", "adding": "Регистрация...", "register": "Зарегистрировать", "copied": "Скопировано", "noDevice": "Нет устройства", "noDeviceDesc": "Подключённое устройство не найдено. Сначала войдите с серийным номером на ноутбуке." },
   "header": { "openMenu": "Открыть меню", "manageDevices": "Управление устройствами" },
   "statusIcons": { "laptop": "Ноутбук", "desktop": "Настольный ПК", "tablet": "Планшет", "network": "Сеть", "camera": "Камера", "settings": "Настройки" },

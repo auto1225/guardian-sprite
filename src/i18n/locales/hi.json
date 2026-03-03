@@ -1,5 +1,5 @@
 {
-  "plan": { "free": "मुफ़्त ट्रायल", "basic": "बेसिक प्लान", "premium": "प्रीमियम प्लान", "currentPlan": "वर्तमान प्लान", "remainingDays": "शेष दिन", "days": " दिन", "expiresAt": "समाप्ति" },
+  "plan": { "free": "1-दिन ट्रायल", "basic": "बेसिक प्लान", "premium": "प्रीमियम प्लान", "currentPlan": "वर्तमान प्लान", "remainingDays": "शेष दिन", "days": " दिन", "expiresAt": "समाप्ति" },
   "common": { "loading": "लोड हो रहा है...", "error": "त्रुटि", "save": "सहेजें", "cancel": "रद्द करें", "confirm": "पुष्टि करें", "delete": "हटाएं", "close": "बंद करें", "online": "ऑनलाइन", "offline": "ऑफ़लाइन", "on": "चालू", "off": "बंद", "saved": "सहेजा गया", "saveFailed": "सहेजने में विफल।", "settingSaveFailed": "सेटिंग्स सहेजने में विफल।", "change": "बदलें", "or": "या", "adding": "पंजीकरण हो रहा है...", "register": "पंजीकरण", "copied": "कॉपी किया गया", "noDevice": "कोई डिवाइस नहीं", "noDeviceDesc": "कोई जुड़ा डिवाइस नहीं मिला। पहले लैपटॉप पर सीरियल से लॉग इन करें।" },
   "header": { "openMenu": "मेनू खोलें", "manageDevices": "डिवाइस प्रबंधन" },
   "statusIcons": { "laptop": "लैपटॉप", "desktop": "डेस्कटॉप", "tablet": "टैबलेट", "network": "नेटवर्क", "camera": "कैमरा", "settings": "सेटिंग्स" },

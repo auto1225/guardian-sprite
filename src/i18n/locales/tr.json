@@ -1,5 +1,5 @@
 {
-  "plan": { "free": "Ücretsiz deneme", "basic": "Temel Plan", "premium": "Premium Plan", "currentPlan": "Mevcut plan", "remainingDays": "Kalan gün", "days": " gün", "expiresAt": "Bitiş" },
+  "plan": { "free": "1 günlük deneme", "basic": "Temel Plan", "premium": "Premium Plan", "currentPlan": "Mevcut plan", "remainingDays": "Kalan gün", "days": " gün", "expiresAt": "Bitiş" },
   "common": { "loading": "Yükleniyor...", "error": "Hata", "save": "Kaydet", "cancel": "İptal", "confirm": "Onayla", "delete": "Sil", "close": "Kapat", "online": "Çevrimiçi", "offline": "Çevrimdışı", "on": "AÇIK", "off": "KAPALI", "saved": "Kaydedildi", "saveFailed": "Kaydetme başarısız.", "settingSaveFailed": "Ayarlar kaydedilemedi.", "change": "Değiştir", "or": "veya", "adding": "Kaydediliyor...", "register": "Kayıt", "copied": "Kopyalandı", "noDevice": "Cihaz yok", "noDeviceDesc": "Bağlı cihaz bulunamadı. Önce dizüstüde seri ile giriş yapın." },
   "header": { "openMenu": "Menüyü aç", "manageDevices": "Cihaz yönetimi" },
   "statusIcons": { "laptop": "Dizüstü", "desktop": "Masaüstü", "tablet": "Tablet", "network": "Ağ", "camera": "Kamera", "settings": "Ayarlar" },

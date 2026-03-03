@@ -1,5 +1,5 @@
 {
-  "plan": { "free": "Uji coba gratis", "basic": "Paket Dasar", "premium": "Paket Premium", "currentPlan": "Paket saat ini", "remainingDays": "Sisa hari", "days": " hari", "expiresAt": "Kedaluwarsa" },
+  "plan": { "free": "Uji coba 1 hari", "basic": "Paket Dasar", "premium": "Paket Premium", "currentPlan": "Paket saat ini", "remainingDays": "Sisa hari", "days": " hari", "expiresAt": "Kedaluwarsa" },
   "common": { "loading": "Memuat...", "error": "Kesalahan", "save": "Simpan", "cancel": "Batal", "confirm": "Konfirmasi", "delete": "Hapus", "close": "Tutup", "online": "Online", "offline": "Offline", "on": "HIDUP", "off": "MATI", "saved": "Tersimpan", "saveFailed": "Gagal menyimpan.", "settingSaveFailed": "Gagal menyimpan pengaturan.", "change": "Ubah", "or": "atau", "adding": "Mendaftar...", "register": "Daftar", "copied": "Disalin", "noDevice": "Tidak ada perangkat", "noDeviceDesc": "Tidak ditemukan perangkat yang terhubung. Masuk dengan serial di laptop terlebih dahulu." },
   "header": { "openMenu": "Buka menu", "manageDevices": "Kelola perangkat" },
   "statusIcons": { "laptop": "Laptop", "desktop": "Desktop", "tablet": "Tablet", "network": "Jaringan", "camera": "Kamera", "settings": "Pengaturan" },

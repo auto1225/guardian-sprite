@@ -1,5 +1,5 @@
 {
-  "plan": { "free": "Prova gratuita", "basic": "Piano Base", "premium": "Piano Premium", "currentPlan": "Piano attuale", "remainingDays": "Giorni rimanenti", "days": " giorni", "expiresAt": "Scadenza" },
+  "plan": { "free": "Prova 1 giorno", "basic": "Piano Base", "premium": "Piano Premium", "currentPlan": "Piano attuale", "remainingDays": "Giorni rimanenti", "days": " giorni", "expiresAt": "Scadenza" },
   "common": { "loading": "Caricamento...", "error": "Errore", "save": "Salva", "cancel": "Annulla", "confirm": "Conferma", "delete": "Elimina", "close": "Chiudi", "online": "Online", "offline": "Offline", "on": "ACCESO", "off": "SPENTO", "saved": "Salvato", "saveFailed": "Salvataggio fallito.", "settingSaveFailed": "Impossibile salvare le impostazioni.", "change": "Modifica", "or": "o", "adding": "Registrazione...", "register": "Registra", "copied": "Copiato", "noDevice": "Nessun dispositivo", "noDeviceDesc": "Nessun dispositivo connesso trovato. Accedi prima con il seriale sul portatile." },
   "header": { "openMenu": "Apri menu", "manageDevices": "Gestisci dispositivi" },
   "statusIcons": { "laptop": "Portatile", "desktop": "Desktop", "tablet": "Tablet", "network": "Rete", "camera": "Fotocamera", "settings": "Impostazioni" },
