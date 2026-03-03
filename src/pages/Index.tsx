@@ -36,6 +36,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { broadcastCommand } from "@/lib/broadcastCommand";
 import { useLicenseGuard } from "@/hooks/useLicenseGuard";
 import LicenseExpiredOverlay from "@/components/LicenseExpiredOverlay";
+import { useCapabilityGuard } from "@/hooks/useCapabilityGuard";
 
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -45,6 +46,7 @@ const Index = () => {
   const { t } = useTranslation();
   const { effectiveUserId } = useAuth();
   const { expired: licenseExpired } = useLicenseGuard();
+  const { guard } = useCapabilityGuard();
 
 
   // 스마트폰 자동 등록
@@ -136,6 +138,7 @@ const Index = () => {
 
   const handleToggleMonitoring = async () => {
     if (!selectedDevice) return;
+    if (!guard("monitoring_toggle")) return;
     const newVal = !isMonitoring;
     
     // 즉시 로컬 캐시 업데이트 (UI 반응성)
@@ -179,9 +182,11 @@ const Index = () => {
     }
     switch (type) {
       case "laptop":
+        if (!guard("location_map")) return;
         openPanel("locationMap");
         break;
       case "camera":
+        if (!guard("camera_view")) return;
         openPanel("camera");
         break;
       case "meercop":
@@ -189,6 +194,7 @@ const Index = () => {
         openPanel("settings");
         break;
       case "network":
+        if (!guard("network_info")) return;
         openPanel("networkInfo");
         break;
     }
@@ -302,6 +308,7 @@ const Index = () => {
           onToggle={handleToggleMonitoring}
           isCamouflage={!!(selectedDevice?.metadata as Record<string, unknown>)?.camouflage_mode}
           onCamouflageToggle={selectedDevice ? async () => {
+            if (!guard("camouflage_mode")) return;
             const currentMeta = (selectedDevice.metadata as Record<string, unknown>) || {};
             const newVal = !currentMeta.camouflage_mode;
             try {

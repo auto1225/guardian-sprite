@@ -7,6 +7,7 @@ import { broadcastCommand } from "@/lib/broadcastCommand";
 import { websiteSupabase } from "@/lib/websiteAuth";
 import { useAuth } from "@/hooks/useAuth";
 import { sortDevicesByOrder, reorderDevicesDirect } from "@/lib/deviceSortOrder";
+import { useCapabilityGuard } from "@/hooks/useCapabilityGuard";
 import { isMuted as isAlarmMuted, setMuted as setAlarmMuted, setVolume as setAlarmVolume, getVolume as getAlarmVolume } from "@/lib/alarmSound";
 import { hashPin } from "@/lib/pinHash";
 import { useQueryClient } from "@tanstack/react-query";
@@ -44,6 +45,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
   const { toast } = useToast();
   const { t } = useTranslation();
   const { refreshSerials } = useAuth();
+  const { guard } = useCapabilityGuard();
   const [licenses, setLicenses] = useState<{ serial_key: string; device_id: string | null; is_active: boolean }[]>([]);
   const [settingsDeviceId, setSettingsDeviceId] = useState(initialDeviceId);
 
@@ -319,7 +321,19 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
     reader.readAsDataURL(file);
   };
 
+  // Capability key mapping for sensor toggles
+  const sensorCapabilityMap: Record<string, string> = {
+    camera: "sensor_camera_motion",
+    keyboard: "sensor_keyboard",
+    mouse: "sensor_mouse",
+    usb: "sensor_usb",
+    power: "sensor_power",
+    lidClosed: "sensor_lid",
+  };
+
   const handleSensorToggle = async (key: keyof SensorSettings, value: boolean) => {
+    const capKey = sensorCapabilityMap[key];
+    if (capKey && value && !guard(capKey)) return; // only gate when enabling
     const updated = { ...sensorSettings, [key]: value };
     setSensorSettings(updated);
     try {
