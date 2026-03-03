@@ -557,5 +557,11 @@
     "noHistory": "没有位置记录",
     "latest": "最新",
     "records": "{{count}}条位置记录"
+  },
+  "license": {
+    "expiredTitle": "许可证已过期",
+    "expiredDescription": "您的试用期已结束。请续订以继续使用 MeerCOP。",
+    "renewButton": "在 meercop.com 续订",
+    "renewNotice": "续订后请重新启动应用。"
   }
 }

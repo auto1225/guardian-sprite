@@ -557,5 +557,11 @@
     "noHistory": "No hay historial de ubicaciones",
     "latest": "Más reciente",
     "records": "{{count}} registros de ubicación"
+  },
+  "license": {
+    "expiredTitle": "Licencia expirada",
+    "expiredDescription": "Tu período de prueba ha terminado. Renueva tu suscripción para seguir usando MeerCOP.",
+    "renewButton": "Renovar en meercop.com",
+    "renewNotice": "Después de renovar, reinicia la app."
   }
 }

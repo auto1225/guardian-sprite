@@ -27,5 +27,6 @@
   "streaming": { "title": "🎥 สตรีมสด", "connecting": "กำลังเชื่อมต่อ...", "cameraNotDetected": "ไม่พบกล้อง" },
   "alertLocation": { "title": "📍 ตำแหน่งแล็ปท็อป", "alertLocation": "📍 ตำแหน่งเมื่อเตือนภัย", "loadingAddress": "กำลังค้นหาที่อยู่...", "latitude": "ละติจูด", "longitude": "ลองจิจูด", "wifiWarning": "⚠️ ตำแหน่ง Wi-Fi/IP อาจมีความคลาดเคลื่อน" },
   "commands": { "title": "คำสั่งรีโมท", "lockTitle": "ล็อกหน้าจอ", "lockDesc": "ล็อกหน้าจอแล็ปท็อประยะไกล", "lockButton": "ล็อกหน้าจอ", "lockSent": "ส่งคำสั่งล็อกแล้ว", "lockSentDesc": "ส่งคำสั่งล็อกไปยังแล็ปท็อปแล้ว", "lockFailed": "ส่งคำสั่งล็อกไม่สำเร็จ", "messageTitle": "ส่งข้อความ", "messageDesc": "แสดงข้อความบนหน้าจอแล็ปท็อป", "messagePlaceholder": "กรอกข้อความ...", "sendButton": "ส่ง", "messageSent": "ส่งข้อความแล้ว", "messageSentDesc": "ส่งข้อความไปยังแล็ปท็อปแล้ว", "messageFailed": "ส่งข้อความไม่สำเร็จ", "deviceOffline": "⚠️ อุปกรณ์ออฟไลน์ ไม่สามารถส่งคำสั่งได้" },
-  "locationHistory": { "title": "ประวัติตำแหน่ง", "noHistory": "ไม่มีประวัติ", "latest": "ล่าสุด", "records": "{{count}} รายการ" }
+  "locationHistory": { "title": "ประวัติตำแหน่ง", "noHistory": "ไม่มีประวัติ", "latest": "ล่าสุด", "records": "{{count}} รายการ" },
+  "license": { "expiredTitle": "ใบอนุญาตหมดอายุ", "expiredDescription": "ระยะเวลาทดลองใช้สิ้นสุดแล้ว กรุณาต่ออายุสมาชิกเพื่อใช้งาน MeerCOP ต่อ", "renewButton": "ต่ออายุที่ meercop.com", "renewNotice": "หลังต่ออายุ ให้รีสตาร์ทแอป" }
 }

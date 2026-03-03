@@ -557,5 +557,11 @@
     "noHistory": "沒有位置紀錄",
     "latest": "最新",
     "records": "{{count}}筆位置紀錄"
+  },
+  "license": {
+    "expiredTitle": "授權已過期",
+    "expiredDescription": "您的試用期已結束。請續訂以繼續使用 MeerCOP。",
+    "renewButton": "在 meercop.com 續訂",
+    "renewNotice": "續訂後請重新啟動應用程式。"
   }
 }

@@ -27,5 +27,6 @@
   "streaming": { "title": "🎥 بث مباشر", "connecting": "جارٍ الاتصال...", "cameraNotDetected": "الكاميرا غير مكتشفة" },
   "alertLocation": { "title": "📍 موقع اللابتوب", "alertLocation": "📍 موقع اللابتوب عند التنبيه", "loadingAddress": "جارٍ البحث عن العنوان...", "latitude": "خط العرض", "longitude": "خط الطول", "wifiWarning": "⚠️ موقع Wi-Fi/IP. قد يكون هناك انحراف." },
   "commands": { "title": "الأوامر عن بعد", "lockTitle": "قفل الشاشة", "lockDesc": "قفل شاشة اللابتوب عن بعد", "lockButton": "قفل الشاشة", "lockSent": "تم إرسال أمر القفل", "lockSentDesc": "تم إرسال أمر القفل للابتوب.", "lockFailed": "فشل إرسال أمر القفل.", "messageTitle": "إرسال رسالة", "messageDesc": "عرض رسالة على شاشة اللابتوب", "messagePlaceholder": "أدخل الرسالة...", "sendButton": "إرسال", "messageSent": "تم إرسال الرسالة", "messageSentDesc": "تم إرسال الرسالة للابتوب.", "messageFailed": "فشل إرسال الرسالة.", "deviceOffline": "⚠️ الجهاز غير متصل. لا يمكن إرسال الأوامر." },
-  "locationHistory": { "title": "سجل المواقع", "noHistory": "لا يوجد سجل", "latest": "الأحدث", "records": "{{count}} سجلات" }
+  "locationHistory": { "title": "سجل المواقع", "noHistory": "لا يوجد سجل", "latest": "الأحدث", "records": "{{count}} سجلات" },
+  "license": { "expiredTitle": "انتهت صلاحية الترخيص", "expiredDescription": "انتهت فترة التجربة. يرجى تجديد اشتراكك لمواصلة استخدام MeerCOP.", "renewButton": "التجديد في meercop.com", "renewNotice": "بعد التجديد، أعد تشغيل التطبيق للتفعيل." }
 }

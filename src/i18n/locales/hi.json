@@ -27,5 +27,6 @@
   "streaming": { "title": "🎥 लाइव स्ट्रीमिंग", "connecting": "कनेक्ट हो रहा है...", "cameraNotDetected": "कैमरा नहीं मिला" },
   "alertLocation": { "title": "📍 लैपटॉप स्थान", "alertLocation": "📍 अलर्ट पर लैपटॉप स्थान", "loadingAddress": "पता खोजा जा रहा है...", "latitude": "अक्षांश", "longitude": "देशांतर", "wifiWarning": "⚠️ Wi-Fi/IP स्थान। विचलन हो सकता है।" },
   "commands": { "title": "रिमोट कमांड", "lockTitle": "स्क्रीन लॉक", "lockDesc": "लैपटॉप स्क्रीन रिमोट लॉक", "lockButton": "स्क्रीन लॉक", "lockSent": "लॉक कमांड भेजा गया", "lockSentDesc": "लैपटॉप को लॉक कमांड भेजा गया।", "lockFailed": "लॉक कमांड विफल।", "messageTitle": "संदेश भेजें", "messageDesc": "लैपटॉप स्क्रीन पर संदेश दिखाएं", "messagePlaceholder": "संदेश दर्ज करें...", "sendButton": "भेजें", "messageSent": "संदेश भेजा गया", "messageSentDesc": "लैपटॉप को संदेश भेजा गया।", "messageFailed": "संदेश भेजने में विफल।", "deviceOffline": "⚠️ डिवाइस ऑफ़लाइन। कमांड नहीं भेज सकते।" },
-  "locationHistory": { "title": "स्थान इतिहास", "noHistory": "कोई इतिहास नहीं", "latest": "नवीनतम", "records": "{{count}} रिकॉर्ड" }
+  "locationHistory": { "title": "स्थान इतिहास", "noHistory": "कोई इतिहास नहीं", "latest": "नवीनतम", "records": "{{count}} रिकॉर्ड" },
+  "license": { "expiredTitle": "लाइसेंस समाप्त", "expiredDescription": "आपकी ट्रायल अवधि समाप्त हो गई है। MeerCOP का उपयोग जारी रखने के लिए कृपया सदस्यता नवीनीकृत करें।", "renewButton": "meercop.com पर नवीनीकरण", "renewNotice": "नवीनीकरण के बाद ऐप पुनः आरंभ करें।" }
 }

@@ -564,5 +564,11 @@
     "noHistory": "위치 이력이 없습니다",
     "latest": "최신",
     "records": "{{count}}건의 위치 기록"
+  },
+  "license": {
+    "expiredTitle": "이용 기간 만료",
+    "expiredDescription": "체험 기간이 종료되었습니다. MeerCOP을 계속 사용하시려면 구독을 갱신해 주세요.",
+    "renewButton": "meercop.com에서 갱신",
+    "renewNotice": "갱신 후 앱을 재시작하면 활성화됩니다."
   }
 }

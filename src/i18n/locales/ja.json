@@ -557,5 +557,11 @@
     "noHistory": "位置履歴がありません",
     "latest": "最新",
     "records": "{{count}}件の位置記録"
+  },
+  "license": {
+    "expiredTitle": "ライセンス期限切れ",
+    "expiredDescription": "お試し期間が終了しました。MeerCOPを引き続きご利用いただくには、サブスクリプションを更新してください。",
+    "renewButton": "meercop.comで更新",
+    "renewNotice": "更新後、アプリを再起動してください。"
   }
 }
