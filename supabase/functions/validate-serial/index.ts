@@ -105,11 +105,22 @@ Deno.serve(async (req) => {
 
     // 이미 기기가 연결된 시리얼인지 확인
     if (license.device_id) {
+      // ★ 기존 기기 이름 조회 (재접속 시 이름 덮어쓰기 방지)
+      const { data: existingDevice } = await supabaseAdmin
+        .from("devices")
+        .select("name")
+        .eq("id", license.device_id)
+        .maybeSingle();
+
+      const existingName = existingDevice?.name;
+      const isDefaultName = !existingName || existingName === "My Device" || existingName === "Laptop";
+
       const updatePayload: Record<string, unknown> = {
         status: "online",
         last_seen_at: new Date().toISOString(),
       };
-      if (device_name) updatePayload.name = device_name;
+      // ★ 기존 이름이 기본값일 때만 덮어쓰기 허용 (register-device와 동일한 정책)
+      if (device_name && isDefaultName) updatePayload.name = device_name;
       if (device_type) updatePayload.device_type = device_type;
 
       await supabaseAdmin
