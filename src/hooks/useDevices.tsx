@@ -138,9 +138,16 @@ export const useDevices = () => {
             is_camera_connected: presenceData?.is_camera_connected ?? d.is_camera_connected,
           };
         }
-        // ★ Presence가 sync 완료됐는데 이 기기가 Presence에 없으면 → offline 강제 전환
+        // ★ Presence가 sync 완료됐는데 이 기기가 Presence에 없으면 → DB heartbeat 폴백 확인
         if (presenceInitialSynced && d.status !== "offline") {
-          console.log("[useDevices] 🔴 Force offline (not in Presence):", d.id.slice(0, 8), d.name);
+          const lastSeen = d.last_seen_at ? new Date(d.last_seen_at).getTime() : 0;
+          const isRecentlyActive = Date.now() - lastSeen < 5 * 60 * 1000; // 5분 이내
+          if (isRecentlyActive) {
+            // DB heartbeat가 최근이므로 DB 상태를 신뢰 (Presence 크로스 프로젝트 지연 허용)
+            console.log("[useDevices] 🟡 Not in Presence but DB active (", Math.round((Date.now() - lastSeen) / 1000), "s ago):", d.id.slice(0, 8), d.name);
+            return { ...d, name: resolvedName };
+          }
+          console.log("[useDevices] 🔴 Force offline (not in Presence, DB stale):", d.id.slice(0, 8), d.name);
           return {
             ...d,
             name: resolvedName,
@@ -472,9 +479,16 @@ export const useDevices = () => {
             }
 
             if (!match) {
-              // ★ Presence에 없는 비-스마트폰 기기 → offline 강제 전환
+              // ★ Presence에 없는 비-스마트폰 기기 → DB heartbeat 폴백 확인
               if (d.status !== "offline") {
-                console.log("[Presence] 🔴 No match in Presence, forcing offline:", d.id.slice(0, 8), d.name);
+                const lastSeen = d.last_seen_at ? new Date(d.last_seen_at).getTime() : 0;
+                const isRecentlyActive = Date.now() - lastSeen < 5 * 60 * 1000;
+                if (isRecentlyActive) {
+                  // DB가 최근 활동 → offline 강제 전환 안 함
+                  console.log("[Presence] 🟡 No Presence match but DB active (", Math.round((Date.now() - lastSeen) / 1000), "s ago):", d.id.slice(0, 8), d.name);
+                  return d;
+                }
+                console.log("[Presence] 🔴 No match in Presence, DB stale → forcing offline:", d.id.slice(0, 8), d.name);
                 realtimeConfirmedOnline.delete(d.id);
                 devicePresenceData.delete(d.id);
                 forcedOfflineIds.push(d.id);
