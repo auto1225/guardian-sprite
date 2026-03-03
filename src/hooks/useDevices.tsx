@@ -161,7 +161,7 @@ export const useDevices = () => {
       });
     },
     enabled: !!effectiveUserId,
-    refetchInterval: 30_000, // ★ 30초 주기 폴링: Realtime 누락 시에도 DB 상태 반영
+    refetchInterval: 10_000, // ★ 10초 주기 폴링: Realtime 누락 시에도 DB 상태 반영
     refetchIntervalInBackground: false,
     retry: 3,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
