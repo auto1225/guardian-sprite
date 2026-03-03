@@ -16,6 +16,8 @@ let activePresenceChannel: ReturnType<typeof supabase.channel> | null = null;
 const activeLeaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const realtimeConfirmedOnline = new Set<string>();
 const devicePresenceData = new Map<string, { is_network_connected?: boolean; is_camera_connected?: boolean }>();
+// ★ serial_key → Presence 데이터 인덱스 (queryFn에서 cross-DB 매칭용)
+const presenceBySerialKey = new Map<string, { is_network_connected?: boolean; is_camera_connected?: boolean; device_name?: string }>();
 const devicePresenceNames = new Map<string, string>(); // Presence/Broadcast에서 확인된 최신 이름
 const deviceChargingMap = new Map<string, boolean>(); // Presence-only: is_charging per deviceId
 // ★ 카메라 다운그레이드 grace period 타이머
@@ -69,6 +71,7 @@ function cleanupAllChannels() {
   }
   realtimeConfirmedOnline.clear();
   devicePresenceNames.clear();
+  presenceBySerialKey.clear();
   activeUserId = null;
   subscriberCount = 0;
   presenceInitialSynced = false;
@@ -106,11 +109,30 @@ export const useDevices = () => {
         // Presence에서 확인된 최신 이름 우선 적용
         const presenceName = devicePresenceNames.get(d.id);
         const resolvedName = presenceName || d.name;
-        if (realtimeConfirmedOnline.has(d.id)) {
-          const presenceData = devicePresenceData.get(d.id);
+
+        // ★ realtimeConfirmedOnline 매칭: 직접 ID 또는 serial_key 기반 폴백
+        let isConfirmedOnline = realtimeConfirmedOnline.has(d.id);
+        let presenceData = devicePresenceData.get(d.id);
+
+        if (!isConfirmedOnline) {
+          // serial_key로 Presence 데이터 탐색
+          const deviceSerialKey = (d.metadata as Record<string, unknown>)?.serial_key as string | undefined;
+          if (deviceSerialKey && presenceBySerialKey.has(deviceSerialKey)) {
+            isConfirmedOnline = true;
+            const serialData = presenceBySerialKey.get(deviceSerialKey)!;
+            presenceData = { is_network_connected: serialData.is_network_connected, is_camera_connected: serialData.is_camera_connected };
+            // 매칭된 기기 ID를 realtimeConfirmedOnline에 등록 (이후 sync에서도 사용)
+            realtimeConfirmedOnline.add(d.id);
+            devicePresenceData.set(d.id, presenceData);
+            if (serialData.device_name) devicePresenceNames.set(d.id, serialData.device_name);
+            console.log("[useDevices] 🔑 Serial-key match in queryFn:", d.id.slice(0, 8), "serial:", deviceSerialKey);
+          }
+        }
+
+        if (isConfirmedOnline) {
           return {
             ...d,
-            name: resolvedName,
+            name: devicePresenceNames.get(d.id) || resolvedName,
             status: "online" as Device["status"],
             is_network_connected: presenceData?.is_network_connected ?? true,
             is_camera_connected: presenceData?.is_camera_connected ?? d.is_camera_connected,
@@ -323,6 +345,7 @@ export const useDevices = () => {
 
     activePresenceChannel
       .on('presence', { event: 'sync' }, () => {
+        const wasAlreadySynced = presenceInitialSynced;
         presenceInitialSynced = true; // ★ Presence 최초 sync 완료
         const state = activePresenceChannel!.presenceState();
 
@@ -353,8 +376,50 @@ export const useDevices = () => {
         // ★ Presence sync 시 DB에 stale online인 기기 추적 → DB 동기화
         const forcedOfflineIds: string[] = [];
 
+        // ★ oldDevices 존재 여부와 무관하게, Presence에서 온라인 기기 ID를 미리 수집
+        // (queryFn이 나중에 실행될 때 realtimeConfirmedOnline을 참조할 수 있도록)
+        presenceBySerialKey.clear();
+        for (const entry of allPresenceEntries) {
+          if (entry.data.status === 'online') {
+            // device_id가 있으면 직접 등록
+            if (entry.data.device_id) {
+              realtimeConfirmedOnline.add(entry.data.device_id);
+              devicePresenceData.set(entry.data.device_id, {
+                is_network_connected: entry.data.is_network_connected,
+                is_camera_connected: entry.data.is_camera_connected,
+              });
+              if (entry.data.device_name) {
+                devicePresenceNames.set(entry.data.device_id, entry.data.device_name);
+              }
+            }
+            // Presence key 자체도 등록 (직접 매칭용)
+            realtimeConfirmedOnline.add(entry.key);
+            devicePresenceData.set(entry.key, {
+              is_network_connected: entry.data.is_network_connected,
+              is_camera_connected: entry.data.is_camera_connected,
+            });
+            // ★ serial_key 인덱스 등록 (queryFn에서 cross-DB 매칭용)
+            if (entry.data.serial_key) {
+              presenceBySerialKey.set(entry.data.serial_key, {
+                is_network_connected: entry.data.is_network_connected,
+                is_camera_connected: entry.data.is_camera_connected,
+                device_name: entry.data.device_name,
+              });
+            }
+          }
+        }
+
         queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
-          if (!oldDevices) return oldDevices;
+          if (!oldDevices) {
+            // ★ 쿼리가 아직 완료되지 않음 → invalidate로 재실행 트리거
+            if (!wasAlreadySynced) {
+              console.log("[Presence] ⏳ Query not ready yet, will invalidate after query completes");
+              setTimeout(() => {
+                queryClient.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
+              }, 100);
+            }
+            return oldDevices;
+          }
 
           // 매칭된 Presence 키 추적 (중복 매칭 방지)
           const matchedKeys = new Set<string>();
