@@ -153,18 +153,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     realtimeChannelRef.current = serialChannel;
 
-    // 2) plan_features 변경 구독 — CMS에서 기능 제한 변경 시 즉시 반영
+    // 2) plan_features 변경 구독 — Broadcast 방식 (CMS에서 이벤트 전송)
     const planChannel = websiteSupabase
-      .channel("plan-features")
+      .channel("plan-features-broadcast")
       .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "plan_features",
-        },
+        "broadcast",
+        { event: "capabilities_updated" },
         (payload) => {
-          console.log("[Auth] 🔄 plan_features changed:", payload.eventType);
+          console.log("[Auth] 🔄 Broadcast: capabilities_updated", payload);
           toast({ title: "⚙️ 기능 설정이 업데이트되었습니다", description: "최신 플랜 권한이 적용됩니다." });
           websiteSupabase.auth.getSession().then(({ data: { session: s } }) => {
             if (s?.access_token) loadSerials(s.access_token);
@@ -172,7 +168,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       )
       .subscribe((status) => {
-        console.log("[Auth] Realtime plan_features subscription:", status);
+        console.log("[Auth] Broadcast plan-features subscription:", status);
       });
 
     planFeaturesChannelRef.current = planChannel;
