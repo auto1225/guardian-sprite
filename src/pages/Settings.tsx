@@ -45,7 +45,6 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
   const { toast } = useToast();
   const { t } = useTranslation();
   const { refreshSerials } = useAuth();
-  const { guard } = useCapabilityGuard();
   const [licenses, setLicenses] = useState<{ serial_key: string; device_id: string | null; is_active: boolean }[]>([]);
   const [settingsDeviceId, setSettingsDeviceId] = useState(initialDeviceId);
 
@@ -54,6 +53,8 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
   }, [isOpen, initialDeviceId]);
 
   const device = devices.find(d => d.id === settingsDeviceId) || devices[0];
+  const deviceSerialKey = device?.metadata ? (device.metadata as Record<string, unknown>)?.serial_key as string | undefined : undefined;
+  const { guard } = useCapabilityGuard(deviceSerialKey);
 
   useEffect(() => {
     if (!isOpen || !device) return;

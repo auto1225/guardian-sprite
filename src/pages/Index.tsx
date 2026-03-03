@@ -46,7 +46,6 @@ const Index = () => {
   const { t } = useTranslation();
   const { effectiveUserId } = useAuth();
   const { expired: licenseExpired } = useLicenseGuard();
-  const { guard } = useCapabilityGuard();
 
 
   // 스마트폰 자동 등록
@@ -58,6 +57,8 @@ const Index = () => {
   const { alerts, activeAlert, unreadCount, dismissRemoteAlarm, dismissAll } = useAlerts(selectedDeviceId);
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, subscribe: subscribePush } = usePushSubscription(selectedDeviceId);
   const isMonitoring = selectedDevice?.is_monitoring ?? false;
+  const selectedSerialKey = selectedDevice?.metadata ? (selectedDevice.metadata as Record<string, unknown>)?.serial_key as string | undefined : undefined;
+  const { guard } = useCapabilityGuard(selectedSerialKey);
   const { toggleMonitoring } = useCommands();
   const { toast } = useToast();
   const queryClient = useQueryClient();

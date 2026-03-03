@@ -27,9 +27,13 @@ export interface UserSerial {
 /** Server-driven capabilities — flat JSONB with boolean/number values */
 export type ServerCapabilities = Record<string, boolean | number>;
 
+/** Per-plan capabilities map: { free: {...}, basic: {...}, premium: {...} } */
+export type PlanCapabilitiesMap = Record<string, ServerCapabilities>;
+
 export interface FetchSerialsResult {
   serials: UserSerial[];
   capabilities: ServerCapabilities;
+  plan_capabilities: PlanCapabilitiesMap;
 }
 
 export async function fetchUserSerials(accessToken: string): Promise<FetchSerialsResult> {
@@ -43,13 +47,14 @@ export async function fetchUserSerials(accessToken: string): Promise<FetchSerial
       },
       body: JSON.stringify({ action: "get_user_serials" }),
     });
-    if (!res.ok) return { serials: [], capabilities: {} };
+    if (!res.ok) return { serials: [], capabilities: {}, plan_capabilities: {} };
     const data = await res.json();
     return {
       serials: data.serials || [],
       capabilities: data.capabilities || {},
+      plan_capabilities: data.plan_capabilities || {},
     };
   } catch {
-    return { serials: [], capabilities: {} };
+    return { serials: [], capabilities: {}, plan_capabilities: {} };
   }
 }

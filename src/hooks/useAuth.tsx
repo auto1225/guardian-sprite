@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, createContext, useContext, ReactNode } from "react";
 import { User, Session, RealtimeChannel } from "@supabase/supabase-js";
-import { websiteSupabase, fetchUserSerials, UserSerial, ServerCapabilities } from "@/lib/websiteAuth";
+import { websiteSupabase, fetchUserSerials, UserSerial, ServerCapabilities, PlanCapabilitiesMap } from "@/lib/websiteAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { clearCapabilitiesCache } from "@/hooks/usePlanCapabilities";
@@ -16,6 +16,7 @@ interface AuthContextType {
   serials: UserSerial[];
   serialsLoading: boolean;
   capabilities: ServerCapabilities;
+  planCapabilities: PlanCapabilitiesMap;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -35,6 +36,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [serials, setSerials] = useState<UserSerial[]>([]);
   const [capabilities, setCapabilities] = useState<ServerCapabilities>({});
+  const [planCapabilities, setPlanCapabilities] = useState<PlanCapabilitiesMap>({});
   const [serialsLoading, setSerialsLoading] = useState(false);
   const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
   const prevSerialsRef = useRef<UserSerial[]>([]);
@@ -45,12 +47,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const result = await fetchUserSerials(accessToken);
       console.log("[Auth] 📦 Server capabilities:", JSON.stringify(result.capabilities, null, 2));
+      console.log("[Auth] 📦 Plan capabilities:", JSON.stringify(result.plan_capabilities, null, 2));
       console.log("[Auth] 📋 Serials:", result.serials.map(s => `${s.serial_key} (${s.plan_type}/${s.status})`));
       setSerials(result.serials);
       setCapabilities(result.capabilities);
+      setPlanCapabilities(result.plan_capabilities);
     } catch {
       setSerials([]);
       setCapabilities({});
+      setPlanCapabilities({});
     } finally {
       setSerialsLoading(false);
     }
@@ -229,6 +234,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     clearCapabilitiesCache();
     setSerials([]);
     setCapabilities({});
+    setPlanCapabilities({});
     prevSerialsRef.current = [];
     unsubscribeRealtime();
     await websiteSupabase.auth.signOut();
@@ -249,7 +255,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider value={{
-      user, session, loading, serials, serialsLoading, capabilities,
+      user, session, loading, serials, serialsLoading, capabilities, planCapabilities,
       signIn, signUp, signOut, effectiveUserId, refreshSerials,
       serialUserId: null, serialSession: null,
     }}>
