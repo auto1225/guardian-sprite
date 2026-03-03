@@ -492,8 +492,8 @@ const Index = () => {
         deviceName={selectedDevice?.name ?? ""}
       />
 
-      {/* License expired overlay */}
-      <LicenseExpiredOverlay visible={licenseExpired} />
+      {/* License expired overlay — PREVIEW: force visible */}
+      <LicenseExpiredOverlay visible={true} />
     </div>
   );
 };
