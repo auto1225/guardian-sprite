@@ -497,12 +497,17 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
                   <button
                     key={lang.code}
                     onClick={async () => {
-                      // ★ 선택된 기기의 metadata.language만 변경 (스마트폰 자체 UI 언어는 변경하지 않음)
+                      // ★ 기기 + 스마트폰 UI 언어 모두 변경
                       setDeviceLanguage(lang.code);
                       setShowLangPicker(false);
                       try {
+                        // 스마트폰 UI 언어 변경
+                        await loadLanguage(lang.code);
+                        i18n.changeLanguage(lang.code);
+                        localStorage.setItem("i18nextLng", lang.code);
+                        // 기기 metadata.language 변경
                         await saveMetadata({ language: lang.code });
-                        toast({ title: t("common.saved"), description: `${lang.flag} ${lang.label} → ${device.name}` });
+                        toast({ title: t("common.saved"), description: `${lang.flag} ${lang.label}` });
                       } catch {
                         toast({ title: t("common.error"), description: t("common.saveFailed"), variant: "destructive" });
                       }
