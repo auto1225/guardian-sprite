@@ -10,7 +10,6 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Install from "./pages/Install";
-import ProfileEdit from "./pages/ProfileEdit";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,14 +38,6 @@ const App = () => (
               <Routes>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/install" element={<Install />} />
-                <Route
-                  path="/settings"
-                  element={
-                    <ProtectedRoute>
-                      <ProfileEdit />
-                    </ProtectedRoute>
-                  }
-                />
                 <Route
                   path="/"
                   element={
