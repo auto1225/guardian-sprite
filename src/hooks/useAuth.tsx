@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, createContext, useContext, ReactNode } from "react";
 import { User, Session, RealtimeChannel } from "@supabase/supabase-js";
-import { websiteSupabase, fetchUserSerials, UserSerial } from "@/lib/websiteAuth";
+import { websiteSupabase, fetchUserSerials, UserSerial, ServerCapabilities } from "@/lib/websiteAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { clearCapabilitiesCache } from "@/hooks/usePlanCapabilities";
 
 // Legacy keys (cleanup on logout)
 const SERIAL_STORAGE_KEY = "meercop_serial_key";
@@ -14,6 +15,7 @@ interface AuthContextType {
   loading: boolean;
   serials: UserSerial[];
   serialsLoading: boolean;
+  capabilities: ServerCapabilities;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -32,6 +34,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [serials, setSerials] = useState<UserSerial[]>([]);
+  const [capabilities, setCapabilities] = useState<ServerCapabilities>({});
   const [serialsLoading, setSerialsLoading] = useState(false);
   const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
   const prevSerialsRef = useRef<UserSerial[]>([]);
@@ -40,10 +43,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const loadSerials = async (accessToken: string) => {
     setSerialsLoading(true);
     try {
-      const data = await fetchUserSerials(accessToken);
-      setSerials(data);
+      const result = await fetchUserSerials(accessToken);
+      setSerials(result.serials);
+      setCapabilities(result.capabilities);
     } catch {
       setSerials([]);
+      setCapabilities({});
     } finally {
       setSerialsLoading(false);
     }
@@ -219,7 +224,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     localStorage.removeItem(SERIAL_STORAGE_KEY);
     localStorage.removeItem(SERIAL_DATA_KEY);
+    clearCapabilitiesCache();
     setSerials([]);
+    setCapabilities({});
     prevSerialsRef.current = [];
     unsubscribeRealtime();
     await websiteSupabase.auth.signOut();
@@ -240,7 +247,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider value={{
-      user, session, loading, serials, serialsLoading,
+      user, session, loading, serials, serialsLoading, capabilities,
       signIn, signUp, signOut, effectiveUserId, refreshSerials,
       serialUserId: null, serialSession: null,
     }}>

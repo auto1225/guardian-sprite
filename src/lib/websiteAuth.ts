@@ -24,7 +24,15 @@ export interface UserSerial {
   expires_at: string | null;
 }
 
-export async function fetchUserSerials(accessToken: string): Promise<UserSerial[]> {
+/** Server-driven capabilities — flat JSONB with boolean/number values */
+export type ServerCapabilities = Record<string, boolean | number>;
+
+export interface FetchSerialsResult {
+  serials: UserSerial[];
+  capabilities: ServerCapabilities;
+}
+
+export async function fetchUserSerials(accessToken: string): Promise<FetchSerialsResult> {
   try {
     const res = await fetch(`${WEBSITE_SUPABASE_URL}/functions/v1/verify-serial`, {
       method: "POST",
@@ -35,10 +43,13 @@ export async function fetchUserSerials(accessToken: string): Promise<UserSerial[
       },
       body: JSON.stringify({ action: "get_user_serials" }),
     });
-    if (!res.ok) return [];
+    if (!res.ok) return { serials: [], capabilities: {} };
     const data = await res.json();
-    return data.serials || [];
+    return {
+      serials: data.serials || [],
+      capabilities: data.capabilities || {},
+    };
   } catch {
-    return [];
+    return { serials: [], capabilities: {} };
   }
 }
