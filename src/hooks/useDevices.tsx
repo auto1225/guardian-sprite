@@ -123,7 +123,7 @@ export const useDevices = () => {
     setGlobalSelectedDeviceId(id);
   }, []);
 
-  // 자동 선택: 유효한 기기가 선택되지 않았을 때만
+  // 자동 선택: 유효한 비-스마트폰 기기가 선택되지 않았을 때 재선택
   useEffect(() => {
     if (devices.length === 0) return;
     const nonSmartphones = devices.filter(d => d.device_type !== "smartphone");
@@ -134,17 +134,17 @@ export const useDevices = () => {
         _selectionInitialized = true;
         return;
       }
+      // 선택된 ID가 스마트폰이거나 삭제된 기기 → 재선택 필요
+      console.log("[useDevices] Selected device not found in non-smartphones, re-selecting...");
     }
     
-    if (!_selectionInitialized || !_selectedDeviceId) {
-      const mainDevice = nonSmartphones.find(d => (d.metadata as Record<string, unknown>)?.is_main);
-      // online 기기 우선 선택
-      const onlineDevice = nonSmartphones.find(d => d.status === "online" || d.status === "monitoring" || d.status === "alert");
-      const target = mainDevice || onlineDevice || nonSmartphones[0];
-      if (target) {
-        setGlobalSelectedDeviceId(target.id);
-        _selectionInitialized = true;
-      }
+    // 유효한 비-스마트폰 기기가 선택되지 않았으면 항상 재선택
+    const mainDevice = nonSmartphones.find(d => (d.metadata as Record<string, unknown>)?.is_main);
+    const onlineDevice = nonSmartphones.find(d => d.status === "online" || d.status === "monitoring" || d.status === "alert");
+    const target = mainDevice || onlineDevice || nonSmartphones[0];
+    if (target) {
+      setGlobalSelectedDeviceId(target.id);
+      _selectionInitialized = true;
     }
   }, [devices]);
 
