@@ -3,29 +3,40 @@ import { useToast } from "@/hooks/use-toast";
 import { usePlanCapabilities } from "@/hooks/usePlanCapabilities";
 import { useCallback } from "react";
 
+const PLAN_LABELS: Record<string, string> = {
+  free: "Free Trial",
+  basic: "Basic",
+  premium: "Premium",
+};
+
 /**
  * Hook that wraps capability checks with upgrade toast notifications.
- * Returns a guard function: guard("capability_key") → true if allowed, false + toast if blocked.
+ * When serialKey is provided, checks that specific serial's plan capabilities.
  */
-export function useCapabilityGuard() {
-  const { can, limit, hasCapabilities } = usePlanCapabilities();
+export function useCapabilityGuard(serialKey?: string) {
+  const { can, limit, hasCapabilities, planType } = usePlanCapabilities(serialKey);
   const { toast } = useToast();
   const { t } = useTranslation();
 
+  const planLabel = planType ? (PLAN_LABELS[planType] || planType) : undefined;
+
   const guard = useCallback(
     (key: string): boolean => {
-      // If no capabilities loaded (first load / offline without cache), allow everything
       if (!hasCapabilities) return true;
       if (can(key)) return true;
 
+      const planMsg = planLabel
+        ? t("upgrade.planRestricted", "🔒 {{plan}} 플랜에서는 이 기능을 사용할 수 없습니다. 업그레이드가 필요합니다.", { plan: planLabel })
+        : t("upgrade.featureLocked", "이 기능은 현재 플랜에서 사용할 수 없습니다. 웹사이트에서 플랜을 업그레이드해주세요.");
+
       toast({
         title: t("upgrade.required", "🔒 업그레이드 필요"),
-        description: t("upgrade.featureLocked", "이 기능은 현재 플랜에서 사용할 수 없습니다. 웹사이트에서 플랜을 업그레이드해주세요."),
+        description: planMsg,
         variant: "destructive",
       });
       return false;
     },
-    [can, hasCapabilities, toast, t]
+    [can, hasCapabilities, toast, t, planLabel]
   );
 
   const guardLimit = useCallback(
