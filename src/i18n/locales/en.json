@@ -570,5 +570,11 @@
     "expiredDescription": "Your trial period has ended. Please renew your subscription to continue using MeerCOP.",
     "renewButton": "Renew at meercop.com",
     "renewNotice": "After renewing, restart the app to activate."
+  },
+  "upgrade": {
+    "required": "🔒 Upgrade Required",
+    "featureLocked": "This feature is not available on your current plan. Please upgrade on the website.",
+    "limitReached": "🔒 Limit Reached",
+    "maxDevicesReached": "You have reached the maximum number of devices. Please upgrade to add more."
   }
 }
