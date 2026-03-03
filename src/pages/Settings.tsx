@@ -4,6 +4,8 @@ import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 import { broadcastCommand } from "@/lib/broadcastCommand";
+import { websiteSupabase } from "@/lib/websiteAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { sortDevicesByOrder, reorderDevicesDirect } from "@/lib/deviceSortOrder";
 import { isMuted as isAlarmMuted, setMuted as setAlarmMuted } from "@/lib/alarmSound";
 import { hashPin } from "@/lib/pinHash";
@@ -41,6 +43,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { refreshSerials } = useAuth();
   const [licenses, setLicenses] = useState<{ serial_key: string; device_id: string | null; is_active: boolean }[]>([]);
   const [settingsDeviceId, setSettingsDeviceId] = useState(initialDeviceId);
 
@@ -201,6 +204,22 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
           },
           targetDeviceId: device.id,
         }).catch(() => { /* best effort */ });
+      }
+
+      // ★ 웹사이트 DB의 serial_numbers.device_name도 동기화
+      const serialKey = (device.metadata as Record<string, unknown>)?.serial_key as string | undefined;
+      if (serialKey) {
+        websiteSupabase
+          .from("serial_numbers")
+          .update({ device_name: name })
+          .eq("serial_key", serialKey)
+          .then(({ error }) => {
+            if (error) console.warn("[Settings] ⚠️ Website DB name sync failed:", error);
+            else {
+              console.log("[Settings] ✅ Website DB name synced:", serialKey, "→", name);
+              refreshSerials(); // 사이드 메뉴 시리얼 목록 새로고침
+            }
+          });
       }
     } catch {
       toast({ title: t("common.error"), description: t("common.saveFailed"), variant: "destructive" });
