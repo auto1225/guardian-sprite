@@ -182,7 +182,7 @@ const Index = () => {
     }
     switch (type) {
       case "laptop":
-        if (!guard("location_map")) return;
+        if (!guard("location_tracking")) return;
         openPanel("locationMap");
         break;
       case "camera":

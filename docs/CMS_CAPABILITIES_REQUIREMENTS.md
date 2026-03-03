@@ -12,13 +12,15 @@ CMS의 `plan_features` 테이블에 아래 키들이 **모든 플랜(free, basic
 |---|---|---|---|---|
 | `monitoring_toggle` | 감시 모드 ON/OFF | ✅ true | ✅ true | ✅ true |
 | `camouflage_mode` | 위장 모드 (감시 중 화면 숨김) | ❌ false | ✅ true | ✅ true |
-| `location_map` | 위치 지도 보기 | ❌ false | ✅ true | ✅ true |
+| `location_tracking` | 위치 지도 보기 | ❌ false | ✅ true | ✅ true |
 | `network_info` | 네트워크 정보 보기 | ❌ false | ✅ true | ✅ true |
 | `camera_view` | 카메라 뷰어 (스냅샷) | ❌ false | ✅ true | ✅ true |
-| `live_streaming` | 실시간 스트리밍 (WebRTC) | ❌ false | ❌ false | ✅ true |
-| `photo_capture` | 원격 사진 촬영 | ❌ false | ✅ true | ✅ true |
-| `remote_lock` | 원격 잠금 | ❌ false | ❌ false | ✅ true |
-| `remote_message` | 원격 메시지 전송 | ❌ false | ✅ true | ✅ true |
+| `alert_video_streaming` | 실시간 스트리밍 (WebRTC) | ❌ false | ❌ false | ✅ true |
+| `alert_photo_capture` | 원격 사진 촬영 | ❌ false | ✅ true | ✅ true |
+| `alert_history` | 알림 기록 보기 | ❌ false | ✅ true | ✅ true |
+| `alert_location` | 알림 위치 보기 | ❌ false | ✅ true | ✅ true |
+| `laptop_location_request` | 노트북 위치 요청 | ❌ false | ✅ true | ✅ true |
+| `multi_device` | 다중 기기 관리 | ❌ false | ✅ true | ✅ true |
 | `sensor_camera_motion` | 센서: 카메라 모션 감지 | ❌ false | ✅ true | ✅ true |
 | `sensor_keyboard` | 센서: 키보드 감지 | ✅ true | ✅ true | ✅ true |
 | `sensor_mouse` | 센서: 마우스 감지 | ❌ false | ✅ true | ✅ true |
