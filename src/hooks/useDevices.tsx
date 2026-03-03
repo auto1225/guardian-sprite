@@ -20,6 +20,7 @@ const devicePresenceData = new Map<string, { is_network_connected?: boolean; is_
 const presenceBySerialKey = new Map<string, { is_network_connected?: boolean; is_camera_connected?: boolean; device_name?: string }>();
 const devicePresenceNames = new Map<string, string>(); // Presence/Broadcast에서 확인된 최신 이름
 const deviceChargingMap = new Map<string, boolean>(); // Presence-only: is_charging per deviceId
+const cameraDbVerified = new Map<string, number>(); // DB에서 camera=true 확인된 시각 (30초간 Presence 무시)
 // ★ 카메라 다운그레이드 grace period 타이머
 const cameraDowngradeTimers = new Map<string, ReturnType<typeof setTimeout>>();
 // ★ 카메라 상태 DB 재검증 타이머 (Presence 온라인 확인 후 DB 값 교차 검증)
@@ -524,8 +525,12 @@ export const useDevices = () => {
               is_camera_connected: latest.is_camera_connected,
             });
 
+            // ★ DB에서 camera=true 확인 후 30초간은 Presence의 camera=false를 무시
+            const dbVerifiedAt = cameraDbVerified.get(d.id);
+            const isDbVerifiedRecent = dbVerifiedAt && (Date.now() - dbVerifiedAt < 30000);
+
             // ★ Presence에서 온라인인데 카메라 상태가 undefined/false → DB 재검증 예약
-            if (newStatus === 'online' && !latest.is_camera_connected && !cameraVerifyTimers.has(d.id)) {
+            if (newStatus === 'online' && !latest.is_camera_connected && !isDbVerifiedRecent && !cameraVerifyTimers.has(d.id)) {
               const verifyTimer = setTimeout(async () => {
                 cameraVerifyTimers.delete(d.id);
                 try {
@@ -535,6 +540,7 @@ export const useDevices = () => {
                   const dbDevice = data?.devices?.[0];
                   if (dbDevice?.is_camera_connected === true) {
                     console.log("[Presence] 🔄 Camera verified via DB for", d.id.slice(0, 8));
+                    cameraDbVerified.set(d.id, Date.now()); // 30초간 Presence camera=false 무시
                     devicePresenceData.set(d.id, {
                       ...devicePresenceData.get(d.id),
                       is_camera_connected: true,
@@ -548,14 +554,21 @@ export const useDevices = () => {
               }, 3000);
               cameraVerifyTimers.set(d.id, verifyTimer);
             }
-            if (latest.is_camera_connected === true && cameraVerifyTimers.has(d.id)) {
-              clearTimeout(cameraVerifyTimers.get(d.id)!);
-              cameraVerifyTimers.delete(d.id);
+            if (latest.is_camera_connected === true) {
+              if (cameraVerifyTimers.has(d.id)) {
+                clearTimeout(cameraVerifyTimers.get(d.id)!);
+                cameraVerifyTimers.delete(d.id);
+              }
+              // Presence가 직접 camera=true 보고 → DB 검증 플래그 갱신
+              cameraDbVerified.set(d.id, Date.now());
             }
 
-            // ★ 카메라 true→false: 5초 grace period
+            // ★ 카메라 true→false: 5초 grace period (DB 검증 후 30초간은 무시)
             let resolvedCameraConnected = latest.is_camera_connected ?? d.is_camera_connected;
-            if (latest.is_camera_connected === false && d.is_camera_connected === true) {
+            if (isDbVerifiedRecent && latest.is_camera_connected === false) {
+              // DB에서 최근 camera=true 확인 → Presence의 false 무시
+              resolvedCameraConnected = true;
+            } else if (latest.is_camera_connected === false && d.is_camera_connected === true) {
               if (!cameraDowngradeTimers.has(d.id)) {
                 console.log("[Presence] ⏳ Camera downgrade grace period started for", d.id.slice(0, 8));
                 const timer = setTimeout(() => {
