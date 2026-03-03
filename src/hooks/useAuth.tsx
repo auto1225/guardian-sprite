@@ -34,6 +34,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [serials, setSerials] = useState<UserSerial[]>([]);
   const [serialsLoading, setSerialsLoading] = useState(false);
   const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
+  const prevSerialsRef = useRef<UserSerial[]>([]);
   const { toast } = useToast();
 
   const loadSerials = async (accessToken: string) => {
@@ -47,6 +48,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSerialsLoading(false);
     }
   };
+
+  // Detect plan/status changes and show appropriate toasts
+  const detectPlanChanges = (oldSerials: UserSerial[], newSerials: UserSerial[]) => {
+    for (const newSerial of newSerials) {
+      const oldSerial = oldSerials.find((s) => s.id === newSerial.id);
+      if (!oldSerial) continue;
+
+      // Status change: expired → active (upgrade detected)
+      if (oldSerial.status === "expired" && newSerial.status === "active") {
+        const planLabel = newSerial.plan_type === "premium" ? "Premium" : newSerial.plan_type === "basic" ? "Basic" : "Free";
+        toast({
+          title: "🎉 플랜이 업그레이드되었습니다!",
+          description: `${planLabel} 플랜이 활성화되었습니다. 모든 기능을 이용하세요!`,
+        });
+        console.log("[Auth] ✅ Plan upgraded:", oldSerial.plan_type, "→", newSerial.plan_type, "status:", newSerial.status);
+      }
+
+      // Plan type change (while active)
+      if (oldSerial.plan_type !== newSerial.plan_type && newSerial.status === "active") {
+        const oldLabel = oldSerial.plan_type === "premium" ? "Premium" : oldSerial.plan_type === "basic" ? "Basic" : "Free";
+        const newLabel = newSerial.plan_type === "premium" ? "Premium" : newSerial.plan_type === "basic" ? "Basic" : "Free";
+        // Only show if not already shown by upgrade toast
+        if (oldSerial.status !== "expired") {
+          toast({
+            title: "📦 플랜이 변경되었습니다",
+            description: `${oldLabel} → ${newLabel}`,
+          });
+          console.log("[Auth] 📦 Plan changed:", oldLabel, "→", newLabel);
+        }
+      }
+
+      // Status change: active → expired
+      if (oldSerial.status === "active" && newSerial.status === "expired") {
+        toast({
+          title: "⚠️ 플랜이 만료되었습니다",
+          description: "웹사이트에서 플랜을 갱신해주세요.",
+          variant: "destructive",
+        });
+        console.log("[Auth] ⚠️ Plan expired for serial:", newSerial.serial_key);
+      }
+    }
+  };
+
+  // Track serial changes
+  useEffect(() => {
+    if (serials.length > 0 && prevSerialsRef.current.length > 0) {
+      detectPlanChanges(prevSerialsRef.current, serials);
+    }
+    prevSerialsRef.current = serials;
+  }, [serials]);
 
   const subscribeRealtime = (userId: string) => {
     // Cleanup existing
@@ -69,15 +120,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.log("[Auth] Realtime serial change:", payload.eventType);
           if (payload.eventType === "INSERT") {
             toast({ title: "🆕 New serial added", description: "A new device license has been added to your account." });
-          } else if (payload.eventType === "UPDATE") {
-            const newData = payload.new as Record<string, unknown>;
-            if (newData.device_name) {
-              toast({ title: "📱 Device connected", description: `${newData.device_name} has been linked.` });
-            }
           } else if (payload.eventType === "DELETE") {
             toast({ title: "❌ Serial removed", description: "A device license has been removed." });
           }
-          // Refresh serials list
+          // For all events (INSERT, UPDATE, DELETE) — refresh serials to get latest state
           websiteSupabase.auth.getSession().then(({ data: { session: s } }) => {
             if (s?.access_token) loadSerials(s.access_token);
           });
@@ -174,6 +220,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem(SERIAL_STORAGE_KEY);
     localStorage.removeItem(SERIAL_DATA_KEY);
     setSerials([]);
+    prevSerialsRef.current = [];
     unsubscribeRealtime();
     await websiteSupabase.auth.signOut();
   };
