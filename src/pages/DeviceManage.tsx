@@ -65,6 +65,15 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
   const [customOrder, setCustomOrder] = useState<string[]>([]);
   const [licenseMap, setLicenseMap] = useState<Map<string, string>>(new Map());
 
+  // ★ 시리얼별 번호를 localStorage에 저장
+  const SERIAL_NUM_STORAGE_KEY = "meercop_serial_numbers";
+  const getSerialNumbers = useCallback((): Record<string, number> => {
+    try {
+      return JSON.parse(localStorage.getItem(SERIAL_NUM_STORAGE_KEY) || "{}");
+    } catch { return {}; }
+  }, []);
+  const [serialNumbers, setSerialNumbers] = useState<Record<string, number>>(() => getSerialNumbers());
+
   // Drag state
   const dragState = useRef<{
     active: boolean;
@@ -156,10 +165,12 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
         return aName.localeCompare(bName);
       });
     } else if (sortMode === "number") {
-      // ★ 번호순: metadata.user_number 기준 정렬 (없으면 끝으로)
+      // ★ 번호순: localStorage의 시리얼별 번호 기준 정렬
       sorted.sort((a, b) => {
-        const aNum = (a.device?.metadata as Record<string, unknown>)?.user_number as number | undefined;
-        const bNum = (b.device?.metadata as Record<string, unknown>)?.user_number as number | undefined;
+        const aKey = a.serial?.serial_key;
+        const bKey = b.serial?.serial_key;
+        const aNum = aKey ? serialNumbers[aKey] : undefined;
+        const bNum = bKey ? serialNumbers[bKey] : undefined;
         return (aNum ?? Infinity) - (bNum ?? Infinity);
       });
     } else if (sortMode === "plan") {
@@ -331,20 +342,13 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
     }
   };
 
-  const handleSaveNumber = async (deviceId: string, num: number | null) => {
-    try {
-      await safeMetadataUpdate(deviceId, { user_number: num });
-      queryClient.setQueryData(["devices", effectiveUserId], (old: Device[] | undefined) => {
-        if (!old) return old;
-        return old.map(d => {
-          if (d.id !== deviceId) return d;
-          const meta = (d.metadata as Record<string, unknown>) || {};
-          return { ...d, metadata: { ...meta, user_number: num } };
-        });
-      });
-    } catch {
-      toast({ title: t("common.error"), description: t("common.saveFailed"), variant: "destructive" });
-    }
+  const handleSaveNumber = (serialKey: string, num: number | null) => {
+    setSerialNumbers(prev => {
+      const next = { ...prev };
+      if (num === null) { delete next[serialKey]; } else { next[serialKey] = num; }
+      localStorage.setItem(SERIAL_NUM_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
   };
 
   if (!isOpen) return null;
@@ -437,6 +441,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
                 item={item}
                 itemKey={itemKey(item)}
                 isSelected={selectedIds.has(itemKey(item))}
+                serialNumber={item.serial?.serial_key ? serialNumbers[item.serial.serial_key] : undefined}
                 onToggleSelect={toggleSelect}
                 onSetAsMain={handleSetAsMain}
                 onNumberChange={handleSaveNumber}
@@ -512,9 +517,10 @@ interface DeviceCardProps {
   item: MatchedItem;
   itemKey: string;
   isSelected: boolean;
+  serialNumber?: number;
   onToggleSelect: (key: string) => void;
   onSetAsMain: (deviceId: string) => void;
-  onNumberChange: (deviceId: string, num: number | null) => void;
+  onNumberChange: (serialKey: string, num: number | null) => void;
   onDelete: (deviceId: string) => void;
   onViewAlertHistory?: (deviceId: string) => void;
   onToggleMonitoring: (deviceId: string, enable: boolean) => void;
@@ -525,34 +531,33 @@ interface DeviceCardProps {
 }
 
 const DeviceCard = ({
-  item, itemKey: key, isSelected, onToggleSelect,
+  item, itemKey: key, isSelected, serialNumber, onToggleSelect,
   onSetAsMain, onNumberChange, onDelete, onViewAlertHistory, onToggleMonitoring,
   isDragging, showHandle, onHandlePointerDown, t,
 }: DeviceCardProps) => {
   const { serial, device } = item;
   const isMain = !!(device && (device.metadata as Record<string, unknown>)?.is_main);
-  const userNumber = ((device || serial ? (device?.metadata as Record<string, unknown>) : null))?.user_number as number | undefined;
   const isOnline = device ? device.status !== "offline" : false;
   const planConfig = PLAN_CONFIG[serial?.plan_type || "free"] || PLAN_CONFIG.free;
   const PlanIcon = planConfig.icon;
 
-  const [localNum, setLocalNum] = useState(userNumber != null ? String(userNumber) : "");
+  const [localNum, setLocalNum] = useState(serialNumber != null ? String(serialNumber) : "");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // 외부 데이터 변경 시 로컬 상태 동기화
   useEffect(() => {
-    setLocalNum(userNumber != null ? String(userNumber) : "");
-  }, [userNumber]);
+    setLocalNum(serialNumber != null ? String(serialNumber) : "");
+  }, [serialNumber]);
 
-  // ★ 자동저장: 입력 후 800ms 디바운스
+  // ★ 자동저장: 입력 후 800ms 디바운스 (시리얼 키 기준)
   useEffect(() => {
+    if (!serial?.serial_key) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       const parsed = localNum.trim() === "" ? null : parseInt(localNum, 10);
-      if (parsed === (userNumber ?? null)) return;
+      if (parsed === (serialNumber ?? null)) return;
       if (parsed !== null && (isNaN(parsed) || parsed < 1)) return;
-      const targetId = device?.id;
-      if (targetId) onNumberChange(targetId, parsed);
+      onNumberChange(serial.serial_key, parsed);
     }, 800);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [localNum]);
@@ -599,16 +604,18 @@ const DeviceCard = ({
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* Inline number input */}
-          <input
-            type="number"
-            min={1}
-            value={localNum}
-            onChange={e => setLocalNum(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-            placeholder="#"
-            className="w-10 h-7 rounded-lg bg-white/10 border border-white/20 text-white text-center text-xs font-bold placeholder:text-white/30 focus:outline-none focus:border-white/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          />
+          {/* Inline number input - 시리얼이 있을 때만 표시 */}
+          {serial && (
+            <input
+              type="number"
+              min={1}
+              value={localNum}
+              onChange={e => setLocalNum(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+              placeholder="#"
+              className="w-10 h-7 rounded-lg bg-white/10 border border-white/20 text-white text-center text-xs font-bold placeholder:text-white/30 focus:outline-none focus:border-white/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+          )}
           {device && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
