@@ -537,22 +537,25 @@ const DeviceCard = ({
   const PlanIcon = planConfig.icon;
 
   const [localNum, setLocalNum] = useState(userNumber != null ? String(userNumber) : "");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // 외부 데이터 변경 시 로컬 상태 동기화
   useEffect(() => {
     setLocalNum(userNumber != null ? String(userNumber) : "");
   }, [userNumber]);
 
-  const handleNumBlur = () => {
-    const parsed = localNum.trim() === "" ? null : parseInt(localNum, 10);
-    if (parsed === (userNumber ?? null)) return; // 변경 없음
-    if (parsed !== null && (isNaN(parsed) || parsed < 1)) {
-      setLocalNum(userNumber != null ? String(userNumber) : "");
-      return;
-    }
-    const targetId = device?.id;
-    if (targetId) onNumberChange(targetId, parsed);
-  };
+  // ★ 자동저장: 입력 후 800ms 디바운스
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      const parsed = localNum.trim() === "" ? null : parseInt(localNum, 10);
+      if (parsed === (userNumber ?? null)) return;
+      if (parsed !== null && (isNaN(parsed) || parsed < 1)) return;
+      const targetId = device?.id;
+      if (targetId) onNumberChange(targetId, parsed);
+    }, 800);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [localNum]);
 
   return (
     <div
@@ -602,7 +605,6 @@ const DeviceCard = ({
             min={1}
             value={localNum}
             onChange={e => setLocalNum(e.target.value)}
-            onBlur={handleNumBlur}
             onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
             placeholder="#"
             className="w-10 h-7 rounded-lg bg-white/10 border border-white/20 text-white text-center text-xs font-bold placeholder:text-white/30 focus:outline-none focus:border-white/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
