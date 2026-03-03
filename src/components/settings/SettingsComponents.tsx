@@ -42,7 +42,7 @@ export const DEFAULT_SENSOR_SETTINGS: SensorSettings = {
   lidClosed: false,
   camera: false,
   microphone: false,
-  keyboard: false,
+  keyboard: true,
   keyboardType: "wired",
   mouse: false,
   mouseType: "wired",

@@ -386,8 +386,8 @@ export function getLastStoppedAt(): number { return getState().lastStoppedAt || 
 export function getVolume(): number {
   try {
     const v = localStorage.getItem('meercop_alarm_volume');
-    return v ? Math.max(0, Math.min(1, parseFloat(v))) : 0.4;
-  } catch { return 0.4; }
+    return v ? Math.max(0, Math.min(1, parseFloat(v))) : 0.2;
+  } catch { return 0.2; }
 }
 
 export function setVolume(vol: number) {
