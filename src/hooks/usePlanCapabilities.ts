@@ -1,73 +1,60 @@
-import { useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import type { ServerCapabilities } from "@/lib/websiteAuth";
 
-export interface PlanCapabilities {
-  /** Current best active plan: free | basic | premium */
-  activePlan: string;
-  /** Whether any serial is active (not expired) */
-  isActive: boolean;
-  /** Feature flags derived from plan */
-  canUseCamera: boolean;
-  canUseStealth: boolean;
-  canUseRemoteAlarm: boolean;
-  canUseLocationTracking: boolean;
-  canUsePeripheralMonitoring: boolean;
-  canUseLiveStreaming: boolean;
-  canUsePhotoCapture: boolean;
-  maxDevices: number;
-}
-
-const PLAN_HIERARCHY: Record<string, number> = {
-  free: 0,
-  basic: 1,
-  premium: 2,
-};
+const CAPS_CACHE_KEY = "meercop_capabilities";
 
 /**
- * Derives feature capabilities from the user's active serials.
- * No hardcoding — all features are gated by the best active plan_type.
+ * Server-driven plan capabilities hook.
+ *
+ * - All feature flags come from the server's `capabilities` JSONB object.
+ * - Missing boolean keys → false, missing number keys → 0.
+ * - Cached in localStorage for offline fallback.
+ * - No hardcoded plan-to-feature mapping in the app.
  */
-export function usePlanCapabilities(): PlanCapabilities {
-  const { serials } = useAuth();
+export function usePlanCapabilities() {
+  const { capabilities } = useAuth();
 
-  return useMemo(() => {
-    const now = new Date();
+  // Use server caps, falling back to localStorage cache
+  const caps: ServerCapabilities =
+    Object.keys(capabilities).length > 0
+      ? capabilities
+      : loadCachedCapabilities();
 
-    // Find the best active plan among all serials
-    const activeSerials = serials.filter((s) => {
-      if (s.status === "expired") return false;
-      if (s.expires_at && new Date(s.expires_at) < now) return false;
-      return true;
-    });
-
-    const isActive = activeSerials.length > 0;
-
-    // Get highest plan tier
-    let bestPlan = "free";
-    for (const s of activeSerials) {
-      const tier = PLAN_HIERARCHY[s.plan_type] ?? 0;
-      if (tier > (PLAN_HIERARCHY[bestPlan] ?? 0)) {
-        bestPlan = s.plan_type;
-      }
+  // Cache whenever we get fresh server data
+  if (Object.keys(capabilities).length > 0) {
+    try {
+      localStorage.setItem(CAPS_CACHE_KEY, JSON.stringify(capabilities));
+    } catch {
+      // storage full — ignore
     }
+  }
 
-    const isBasicOrAbove = (PLAN_HIERARCHY[bestPlan] ?? 0) >= 1;
-    const isPremium = (PLAN_HIERARCHY[bestPlan] ?? 0) >= 2;
+  return {
+    /** Raw capabilities object from server */
+    raw: caps,
+    /** Check a boolean capability (missing = false) */
+    can: (key: string): boolean => caps[key] === true,
+    /** Get a numeric capability (missing = 0) */
+    limit: (key: string): number => {
+      const v = caps[key];
+      return typeof v === "number" ? v : 0;
+    },
+    /** Whether any capabilities were loaded (server or cache) */
+    hasCapabilities: Object.keys(caps).length > 0,
+  };
+}
 
-    return {
-      activePlan: bestPlan,
-      isActive,
-      // Free: basic monitoring only
-      canUseLocationTracking: isActive,
-      canUseRemoteAlarm: isActive,
-      // Basic+: stealth mode, peripheral monitoring
-      canUseStealth: isBasicOrAbove,
-      canUsePeripheralMonitoring: isBasicOrAbove,
-      // Premium: camera, live streaming, photo capture
-      canUseCamera: isPremium,
-      canUseLiveStreaming: isPremium,
-      canUsePhotoCapture: isPremium,
-      maxDevices: isPremium ? 10 : isBasicOrAbove ? 3 : 1,
-    };
-  }, [serials]);
+function loadCachedCapabilities(): ServerCapabilities {
+  try {
+    const cached = localStorage.getItem(CAPS_CACHE_KEY);
+    if (cached) return JSON.parse(cached);
+  } catch {
+    // corrupted — ignore
+  }
+  return {};
+}
+
+/** Clear cached capabilities (call on sign-out) */
+export function clearCapabilitiesCache() {
+  localStorage.removeItem(CAPS_CACHE_KEY);
 }
