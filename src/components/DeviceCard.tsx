@@ -56,7 +56,7 @@ const DeviceCard = ({ device, isSelected, isMain, isCharging, onSelect }: Device
           {(() => {
             const serial = (device.metadata as Record<string, unknown>)?.serial_key as string | undefined;
             return serial ? (
-              <span className="text-white/50 text-xs font-mono shrink-0">({serial})</span>
+              <span className="text-white/80 text-xs font-mono shrink-0">({serial})</span>
             ) : null;
           })()}
         </div>
@@ -77,9 +77,6 @@ const DeviceCard = ({ device, isSelected, isMain, isCharging, onSelect }: Device
       <div className="flex items-center justify-between mt-2">
         <div className="flex items-center gap-1">
           <StatusIcon active={device.status !== "offline"} label={device.device_type === "desktop" ? "Desktop" : device.device_type === "tablet" ? "Tablet" : "Laptop"} />
-          {device.device_type !== "smartphone" && (
-            <StatusIcon active={device.is_monitoring} label="MeerCOP" isMeerCOP />
-          )}
           <StatusIcon active={device.status !== "offline" && device.is_network_connected} label="Network" isNetwork />
           <StatusIcon active={device.status !== "offline" && device.is_camera_connected} label="Camera" isCamera />
         </div>
@@ -99,12 +96,11 @@ const DeviceCard = ({ device, isSelected, isMain, isCharging, onSelect }: Device
 interface StatusIconProps {
   active: boolean;
   label: string;
-  isMeerCOP?: boolean;
   isNetwork?: boolean;
   isCamera?: boolean;
 }
 
-const StatusIcon = ({ active, isMeerCOP, isNetwork, isCamera }: StatusIconProps) => {
+const StatusIcon = ({ active, isNetwork, isCamera }: StatusIconProps) => {
   const baseClass = "w-6 h-6 rounded-full flex items-center justify-center shadow-sm";
   const activeClass = active
     ? "bg-status-active/90 shadow-[0_0_6px_rgba(76,175,80,0.3)]"
@@ -112,9 +108,7 @@ const StatusIcon = ({ active, isMeerCOP, isNetwork, isCamera }: StatusIconProps)
 
   return (
     <div className={`${baseClass} ${activeClass}`}>
-      {isMeerCOP ? (
-        <span className="text-white text-xs font-bold">M</span>
-      ) : isNetwork ? (
+      {isNetwork ? (
         <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 3C7.5 3 3.5 5 1 8l1.5 1.5C4.5 7.5 8 6 12 6s7.5 1.5 9.5 3.5L23 8c-2.5-3-6.5-5-11-5zm0 6c-3 0-5.5 1.5-7 3.5L6.5 14c1-1.5 3-2.5 5.5-2.5s4.5 1 5.5 2.5l1.5-1.5c-1.5-2-4-3.5-7-3.5zm0 6c-1.5 0-3 .5-4 1.5L12 21l4-4.5c-1-.5-2.5-1.5-4-1.5z" />
         </svg>

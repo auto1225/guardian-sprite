@@ -1,7 +1,9 @@
+import { useMemo } from "react";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { useDevices } from "@/hooks/useDevices";
 import { useTranslation } from "react-i18next";
 import DeviceCard from "./DeviceCard";
+import { sortDevicesByOrder } from "@/lib/deviceSortOrder";
 import { Database } from "@/integrations/supabase/types";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
@@ -17,7 +19,10 @@ interface DeviceListProps {
 const DeviceList = ({ isExpanded, onToggle, selectedDeviceId, selectedDevice, onSelectDevice }: DeviceListProps) => {
   const { t } = useTranslation();
   const { devices: allDevices, getDeviceCharging } = useDevices();
-  const devices = allDevices.filter(d => d.device_type !== "smartphone");
+  const devices = useMemo(
+    () => sortDevicesByOrder(allDevices.filter(d => d.device_type !== "smartphone")),
+    [allDevices]
+  );
 
   if (!selectedDevice || selectedDevice.device_type === "smartphone") {
     return (
