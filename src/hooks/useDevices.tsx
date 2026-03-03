@@ -123,32 +123,33 @@ export const useDevices = () => {
     setGlobalSelectedDeviceId(id);
   }, []);
 
-  // 자동 선택: 유효한 비-스마트폰 기기가 선택되지 않았을 때 재선택
-  useEffect(() => {
-    if (devices.length === 0) return;
-    const nonSmartphones = devices.filter(d => d.device_type !== "smartphone");
-    
-    if (_selectedDeviceId) {
-      const currentDevice = nonSmartphones.find(d => d.id === _selectedDeviceId);
-      if (currentDevice) {
-        _selectionInitialized = true;
-        return;
-      }
-      // 선택된 ID가 스마트폰이거나 삭제된 기기 → 재선택 필요
-      console.log("[useDevices] Selected device not found in non-smartphones, re-selecting...");
+  // ── 비-스마트폰 기기 목록 (렌더링 중 즉시 계산) ──
+  const nonSmartphones = devices.filter(d => d.device_type !== "smartphone");
+
+  // ── 자동 선택: 동기적으로 유효한 기기를 선택 ──
+  // useEffect 대신 렌더링 중 즉시 계산하여 "기기 연결 대기 중" 깜빡임 방지
+  const resolvedDeviceId = (() => {
+    if (selectedDeviceId) {
+      const found = nonSmartphones.find(d => d.id === selectedDeviceId);
+      if (found) return selectedDeviceId;
     }
-    
-    // 유효한 비-스마트폰 기기가 선택되지 않았으면 항상 재선택
+    // 현재 선택이 유효하지 않음 → 재선택
     const mainDevice = nonSmartphones.find(d => (d.metadata as Record<string, unknown>)?.is_main);
     const onlineDevice = nonSmartphones.find(d => d.status === "online" || d.status === "monitoring" || d.status === "alert");
     const target = mainDevice || onlineDevice || nonSmartphones[0];
-    if (target) {
-      setGlobalSelectedDeviceId(target.id);
+    return target?.id || null;
+  })();
+
+  // 전역 상태와 동기화 (비동기적으로, 다음 렌더링에 반영)
+  useEffect(() => {
+    if (resolvedDeviceId && resolvedDeviceId !== _selectedDeviceId) {
+      console.log("[useDevices] Auto-selecting device:", resolvedDeviceId.slice(0, 8));
+      setGlobalSelectedDeviceId(resolvedDeviceId);
       _selectionInitialized = true;
     }
-  }, [devices]);
+  }, [resolvedDeviceId]);
 
-  const selectedDevice = devices.find((d) => d.id === selectedDeviceId) || null;
+  const selectedDevice = devices.find((d) => d.id === resolvedDeviceId) || null;
 
   const addDevice = useMutation({
     mutationFn: async (device: Omit<DeviceInsert, "user_id">) => {
@@ -637,7 +638,7 @@ export const useDevices = () => {
     isLoading,
     error,
     selectedDevice,
-    selectedDeviceId,
+    selectedDeviceId: resolvedDeviceId,
     setSelectedDeviceId,
     addDevice,
     updateDevice,
