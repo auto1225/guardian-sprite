@@ -27,5 +27,6 @@
   "streaming": { "title": "🎥 Phát trực tiếp", "connecting": "Đang kết nối...", "cameraNotDetected": "Không phát hiện camera" },
   "alertLocation": { "title": "📍 Vị trí laptop", "alertLocation": "📍 Vị trí laptop khi cảnh báo", "loadingAddress": "Đang tìm địa chỉ...", "latitude": "Vĩ độ", "longitude": "Kinh độ", "wifiWarning": "⚠️ Vị trí Wi-Fi/IP. Có thể sai lệch." },
   "commands": { "title": "Lệnh từ xa", "lockTitle": "Khóa màn hình", "lockDesc": "Khóa màn hình laptop từ xa", "lockButton": "Khóa màn hình", "lockSent": "Đã gửi lệnh khóa", "lockSentDesc": "Đã gửi lệnh khóa đến laptop.", "lockFailed": "Gửi lệnh khóa thất bại.", "messageTitle": "Gửi tin nhắn", "messageDesc": "Hiển thị tin nhắn trên màn hình laptop", "messagePlaceholder": "Nhập tin nhắn...", "sendButton": "Gửi", "messageSent": "Đã gửi tin nhắn", "messageSentDesc": "Đã gửi tin nhắn đến laptop.", "messageFailed": "Gửi tin nhắn thất bại.", "deviceOffline": "⚠️ Thiết bị ngoại tuyến. Không thể gửi lệnh." },
-  "locationHistory": { "title": "Lịch sử vị trí", "noHistory": "Không có lịch sử", "latest": "Mới nhất", "records": "{{count}} bản ghi" }
+  "locationHistory": { "title": "Lịch sử vị trí", "noHistory": "Không có lịch sử", "latest": "Mới nhất", "records": "{{count}} bản ghi" },
+  "license": { "expiredTitle": "Giấy phép đã hết hạn", "expiredDescription": "Thời gian dùng thử đã kết thúc. Vui lòng gia hạn đăng ký để tiếp tục sử dụng MeerCOP.", "renewButton": "Gia hạn tại meercop.com", "renewNotice": "Sau khi gia hạn, khởi động lại ứng dụng." }
 }

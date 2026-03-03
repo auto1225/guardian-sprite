@@ -557,5 +557,11 @@
     "noHistory": "Kein Standortverlauf",
     "latest": "Aktuell",
     "records": "{{count}} Standorteinträge"
+  },
+  "license": {
+    "expiredTitle": "Lizenz abgelaufen",
+    "expiredDescription": "Ihre Testphase ist abgelaufen. Bitte erneuern Sie Ihr Abonnement, um MeerCOP weiter zu nutzen.",
+    "renewButton": "Auf meercop.com erneuern",
+    "renewNotice": "Nach der Erneuerung starten Sie die App neu."
   }
 }

@@ -34,6 +34,8 @@ import { useAppStabilizer } from "@/hooks/useAppStabilizer";
 import { useSmartphoneRegistration } from "@/hooks/useSmartphoneRegistration";
 import { useAuth } from "@/hooks/useAuth";
 import { broadcastCommand } from "@/lib/broadcastCommand";
+import { useLicenseGuard } from "@/hooks/useLicenseGuard";
+import LicenseExpiredOverlay from "@/components/LicenseExpiredOverlay";
 
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -42,6 +44,7 @@ import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 const Index = () => {
   const { t } = useTranslation();
   const { effectiveUserId } = useAuth();
+  const { expired: licenseExpired } = useLicenseGuard();
 
 
   // 스마트폰 자동 등록
@@ -488,6 +491,9 @@ const Index = () => {
         deviceId={selectedDeviceId}
         deviceName={selectedDevice?.name ?? ""}
       />
+
+      {/* License expired overlay */}
+      <LicenseExpiredOverlay visible={licenseExpired} />
     </div>
   );
 };

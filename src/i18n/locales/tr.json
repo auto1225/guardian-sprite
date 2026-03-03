@@ -27,5 +27,6 @@
   "streaming": { "title": "🎥 Canlı yayın", "connecting": "Bağlanıyor...", "cameraNotDetected": "Kamera algılanmadı" },
   "alertLocation": { "title": "📍 Dizüstü konumu", "alertLocation": "📍 Uyarı anında dizüstü konumu", "loadingAddress": "Adres aranıyor...", "latitude": "Enlem", "longitude": "Boylam", "wifiWarning": "⚠️ Wi-Fi/IP konum. Sapma olabilir." },
   "commands": { "title": "Uzak komutlar", "lockTitle": "Ekran kilidi", "lockDesc": "Dizüstü ekranını uzaktan kilitle", "lockButton": "Ekranı kilitle", "lockSent": "Kilit komutu gönderildi", "lockSentDesc": "Dizüstüne kilit komutu gönderildi.", "lockFailed": "Kilit komutu gönderilemedi.", "messageTitle": "Mesaj gönder", "messageDesc": "Dizüstü ekranında mesaj göster", "messagePlaceholder": "Mesaj girin...", "sendButton": "Gönder", "messageSent": "Mesaj gönderildi", "messageSentDesc": "Dizüstüne mesaj gönderildi.", "messageFailed": "Mesaj gönderilemedi.", "deviceOffline": "⚠️ Cihaz çevrimdışı. Komut gönderilemiyor." },
-  "locationHistory": { "title": "Konum geçmişi", "noHistory": "Geçmiş yok", "latest": "En son", "records": "{{count}} kayıt" }
+  "locationHistory": { "title": "Konum geçmişi", "noHistory": "Geçmiş yok", "latest": "En son", "records": "{{count}} kayıt" },
+  "license": { "expiredTitle": "Lisans Süresi Doldu", "expiredDescription": "Deneme süreniz sona erdi. MeerCOP'u kullanmaya devam etmek için aboneliğinizi yenileyin.", "renewButton": "meercop.com'da yenile", "renewNotice": "Yeniledikten sonra uygulamayı yeniden başlatın." }
 }

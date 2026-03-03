@@ -564,5 +564,11 @@
     "noHistory": "No location history",
     "latest": "Latest",
     "records": "{{count}} location records"
+  },
+  "license": {
+    "expiredTitle": "License Expired",
+    "expiredDescription": "Your trial period has ended. Please renew your subscription to continue using MeerCOP.",
+    "renewButton": "Renew at meercop.com",
+    "renewNotice": "After renewing, restart the app to activate."
   }
 }

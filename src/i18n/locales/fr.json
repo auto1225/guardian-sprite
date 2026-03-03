@@ -557,5 +557,11 @@
     "noHistory": "Aucun historique de position",
     "latest": "Plus récent",
     "records": "{{count}} enregistrements de position"
+  },
+  "license": {
+    "expiredTitle": "Licence expirée",
+    "expiredDescription": "Votre période d'essai est terminée. Veuillez renouveler votre abonnement pour continuer à utiliser MeerCOP.",
+    "renewButton": "Renouveler sur meercop.com",
+    "renewNotice": "Après le renouvellement, redémarrez l'application."
   }
 }

@@ -27,5 +27,6 @@
   "streaming": { "title": "🎥 Streaming langsung", "connecting": "Menghubungkan...", "cameraNotDetected": "Kamera tidak terdeteksi" },
   "alertLocation": { "title": "📍 Lokasi laptop", "alertLocation": "📍 Lokasi laptop saat peringatan", "loadingAddress": "Mencari alamat...", "latitude": "Lintang", "longitude": "Bujur", "wifiWarning": "⚠️ Lokasi Wi-Fi/IP. Mungkin tidak akurat." },
   "commands": { "title": "Perintah jarak jauh", "lockTitle": "Kunci layar", "lockDesc": "Kunci layar laptop jarak jauh", "lockButton": "Kunci layar", "lockSent": "Perintah kunci terkirim", "lockSentDesc": "Perintah kunci dikirim ke laptop.", "lockFailed": "Gagal mengirim perintah kunci.", "messageTitle": "Kirim pesan", "messageDesc": "Tampilkan pesan di layar laptop", "messagePlaceholder": "Masukkan pesan...", "sendButton": "Kirim", "messageSent": "Pesan terkirim", "messageSentDesc": "Pesan dikirim ke laptop.", "messageFailed": "Gagal mengirim pesan.", "deviceOffline": "⚠️ Perangkat offline. Tidak dapat mengirim perintah." },
-  "locationHistory": { "title": "Riwayat lokasi", "noHistory": "Tidak ada riwayat", "latest": "Terbaru", "records": "{{count}} catatan" }
+  "locationHistory": { "title": "Riwayat lokasi", "noHistory": "Tidak ada riwayat", "latest": "Terbaru", "records": "{{count}} catatan" },
+  "license": { "expiredTitle": "Lisensi Kedaluwarsa", "expiredDescription": "Masa uji coba Anda telah berakhir. Silakan perbarui langganan untuk terus menggunakan MeerCOP.", "renewButton": "Perbarui di meercop.com", "renewNotice": "Setelah memperbarui, mulai ulang aplikasi." }
 }
