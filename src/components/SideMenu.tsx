@@ -110,7 +110,7 @@ const SideMenu = ({ isOpen, onClose, onHelpClick }: SideMenuProps) => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-primary-foreground truncate">
-              {user?.email?.split("@")[0] || t("sideMenu.user")}
+              {user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split("@")[0] || t("sideMenu.user")}
             </p>
             <p className="text-xs text-white/70 truncate">{user?.email || ""}</p>
           </div>
