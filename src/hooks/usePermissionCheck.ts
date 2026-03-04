@@ -18,17 +18,15 @@ export interface PermissionItem {
 }
 
 const DISMISSED_KEY = "meercop_permissions_dismissed";
-const DISMISSED_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7일
 
-function getDismissedAt(): number | null {
+function isDismissed(): boolean {
   try {
-    const val = localStorage.getItem(DISMISSED_KEY);
-    return val ? Number(val) : null;
-  } catch { return null; }
+    return localStorage.getItem(DISMISSED_KEY) === "true";
+  } catch { return false; }
 }
 
-function setDismissedAt() {
-  try { localStorage.setItem(DISMISSED_KEY, String(Date.now())); } catch {}
+function setDismissed() {
+  try { localStorage.setItem(DISMISSED_KEY, "true"); } catch {}
 }
 
 function clearDismissed() {
