@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { ArrowLeft, MoreVertical, Crown, Star, Sparkles, CalendarDays, GripVertical, ChevronLeft, ChevronRight, ArrowUpDown, CheckSquare, Square, Monitor } from "lucide-react";
+import { ArrowLeft, MoreVertical, Crown, Star, Sparkles, CalendarDays, GripVertical, ChevronLeft, ChevronRight, ArrowUpDown, CheckSquare, Square, Monitor, Settings } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { useDevices } from "@/hooks/useDevices";
 import { useCommands } from "@/hooks/useCommands";
@@ -14,6 +14,7 @@ import { broadcastCommand } from "@/lib/broadcastCommand";
 import LocationMapModal from "@/components/LocationMapModal";
 import NetworkInfoModal from "@/components/NetworkInfoModal";
 import CameraPage from "@/pages/Camera";
+import SettingsPage from "@/pages/Settings";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,6 +72,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
   const [customOrder, setCustomOrder] = useState<string[]>([]);
   const [licenseMap, setLicenseMap] = useState<Map<string, string>>(new Map());
   const [iconPanel, setIconPanel] = useState<{ type: "locationMap" | "camera" | "networkInfo"; deviceId: string } | null>(null);
+  const [settingsDeviceId, setSettingsDeviceId] = useState<string | null>(null);
 
   // ★ 시리얼별 번호를 localStorage에 저장
   const SERIAL_NUM_STORAGE_KEY = "meercop_serial_numbers";
@@ -563,6 +565,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
                 onToggleMonitoring={toggleMonitoring}
                 onToggleCamouflage={handleCamouflageToggle}
                 onIconClick={handleIconClick}
+                onSettingsClick={(deviceId) => setSettingsDeviceId(deviceId)}
                 isDragging={dragFromIdx === localIdx}
                 showHandle={true}
                 onHandlePointerDown={(e) => handleDragPointerDown(e, localIdx)}
@@ -655,6 +658,17 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
           </>
         );
       })()}
+
+      {/* Settings modal */}
+      {settingsDeviceId && (
+        <SettingsPage
+          devices={managedDevices}
+          initialDeviceId={settingsDeviceId}
+          isOpen={true}
+          onClose={() => setSettingsDeviceId(null)}
+          onDeviceChange={(id) => setSettingsDeviceId(id)}
+        />
+      )}
     </div>
   );
 };
@@ -673,6 +687,7 @@ interface DeviceCardProps {
   onToggleMonitoring: (deviceId: string, enable: boolean) => void;
   onToggleCamouflage: (deviceId: string) => void;
   onIconClick?: (deviceId: string, type: "laptop" | "network" | "camera") => void;
+  onSettingsClick?: (deviceId: string) => void;
   isDragging: boolean;
   showHandle: boolean;
   onHandlePointerDown: (e: React.PointerEvent) => void;
@@ -682,7 +697,7 @@ interface DeviceCardProps {
 const DeviceCard = ({
   item, itemKey: key, isSelected, serialNumber, onToggleSelect,
   onSetAsMain, onNumberChange, onDelete, onViewAlertHistory, onToggleMonitoring,
-  onToggleCamouflage, onIconClick, isDragging, showHandle, onHandlePointerDown, t,
+  onToggleCamouflage, onIconClick, onSettingsClick, isDragging, showHandle, onHandlePointerDown, t,
 }: DeviceCardProps) => {
   const { serial, device } = item;
   const isMain = !!(device && (device.metadata as Record<string, unknown>)?.is_main);
@@ -817,6 +832,12 @@ const DeviceCard = ({
             <StatusIcon iconOn={laptopOn} iconOff={laptopOff} active={isOnline} label={device.device_type === "desktop" ? "Desktop" : device.device_type === "tablet" ? "Tablet" : "Laptop"} onClick={() => onIconClick?.(device.id, "laptop")} />
             <StatusIcon iconOn={wifiOn} iconOff={wifiOff} active={isOnline && device.is_network_connected} label="Network" onClick={() => onIconClick?.(device.id, "network")} />
             <StatusIcon iconOn={cameraOn} iconOff={cameraOff} active={isOnline && device.is_camera_connected} label="Camera" onClick={() => onIconClick?.(device.id, "camera")} />
+            <button onClick={() => onSettingsClick?.(device.id)} className="flex flex-col items-center gap-0.5 active:scale-95 transition-transform">
+              <div className="w-8 h-8 flex items-center justify-center">
+                <Settings className="w-6 h-6 text-white/70" />
+              </div>
+              <span className="text-primary-foreground text-[9px] font-medium">{t("nav.settings")}</span>
+            </button>
           </div>
           <div className="flex items-center gap-1.5">
             <button
