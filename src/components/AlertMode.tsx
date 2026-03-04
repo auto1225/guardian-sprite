@@ -54,25 +54,25 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
 
   return (
     <div className="fixed inset-0 bg-red-800/60 backdrop-blur-2xl z-50 flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-white font-black text-xl shrink-0">{t("alert.securityAlert")}</span>
-          <span className="text-yellow-200/90 text-xs font-bold bg-black/20 px-2 py-0.5 rounded-md truncate">
-            {device.name}
-            {(device.metadata as Record<string, unknown>)?.serial_key && (
-              <span className="ml-1 font-mono opacity-80">
-                {String((device.metadata as Record<string, unknown>).serial_key)}
-              </span>
-            )}
-          </span>
+      {/* Header - 2줄: 보안경보 + 기기명 */}
+      <div className="p-4 shrink-0">
+        <div className="flex items-center justify-between">
+          <span className="text-white font-black text-xl">{t("alert.securityAlert")}</span>
+          <button
+            onClick={handleForceClose}
+            className="text-white/70 text-sm font-bold px-3 py-1.5 rounded-full bg-white/10 active:bg-white/20 shrink-0"
+          >
+            ✕
+          </button>
         </div>
-        <button
-          onClick={handleForceClose}
-          className="text-white/70 text-sm font-bold px-3 py-1.5 rounded-full bg-white/10 active:bg-white/20 shrink-0"
-        >
-          ✕
-        </button>
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-yellow-200 font-black text-xl">{device.name}</span>
+          {(device.metadata as Record<string, unknown>)?.serial_key && (
+            <span className="text-yellow-200/70 text-sm font-mono">
+              {String((device.metadata as Record<string, unknown>).serial_key)}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Scrollable content area */}
