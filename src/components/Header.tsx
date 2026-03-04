@@ -1,7 +1,9 @@
-import { Menu, Plus } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Menu, Plus, Volume2, VolumeX } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AlertPanel from "@/components/AlertPanel";
 import { PhotoAlert } from "@/lib/photoAlertStorage";
+import * as Alarm from "@/lib/alarmSound";
 import logo from "@/assets/logo.png";
 
 interface HeaderProps {
@@ -14,6 +16,21 @@ interface HeaderProps {
 
 const Header = ({ onMenuClick, onDeviceManageClick, unreadCount = 0, deviceId, onViewPhoto }: HeaderProps) => {
   const { t } = useTranslation();
+  const [muted, setMuted] = useState(Alarm.isMuted());
+
+  // localStorage 변경 감지 (다른 탭 등)
+  useEffect(() => {
+    const check = () => setMuted(Alarm.isMuted());
+    window.addEventListener('storage', check);
+    return () => window.removeEventListener('storage', check);
+  }, []);
+
+  const toggleMute = () => {
+    const next = !muted;
+    Alarm.setMuted(next);
+    setMuted(next);
+  };
+
   return (
     <header className="flex items-center justify-between px-4 py-4">
       <button className="p-1 text-primary-foreground" onClick={onMenuClick} aria-label={t("header.openMenu")}>
@@ -24,6 +41,17 @@ const Header = ({ onMenuClick, onDeviceManageClick, unreadCount = 0, deviceId, o
       
       <div className="flex items-center gap-1">
         <AlertPanel deviceId={deviceId || null} onViewPhoto={onViewPhoto} />
+        <button
+          className={`w-8 h-8 rounded-full flex items-center justify-center border backdrop-blur-sm shadow-lg active:scale-95 transition-all ${
+            muted
+              ? "border-red-400/50 bg-red-500/20 text-red-300"
+              : "border-white/30 bg-white/15 text-primary-foreground"
+          }`}
+          onClick={toggleMute}
+          aria-label={muted ? t("alarm.unmute") : t("alarm.mute")}
+        >
+          {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+        </button>
         <button
           className="w-8 h-8 rounded-full flex items-center justify-center border border-white/30 bg-white/15 backdrop-blur-sm text-primary-foreground shadow-lg hover:bg-white/25 active:scale-95 transition-all"
           onClick={onDeviceManageClick}
