@@ -658,6 +658,17 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
           </>
         );
       })()}
+
+      {/* Settings modal */}
+      {settingsDeviceId && (
+        <SettingsPage
+          devices={managedDevices}
+          initialDeviceId={settingsDeviceId}
+          isOpen={true}
+          onClose={() => setSettingsDeviceId(null)}
+          onDeviceChange={(id) => setSettingsDeviceId(id)}
+        />
+      )}
     </div>
   );
 };
