@@ -827,6 +827,7 @@ const DeviceCard = ({
               </div>
               <span className="text-primary-foreground text-[9px] font-medium">{t("nav.settings")}</span>
             </button>
+          </div>
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => onToggleCamouflage(device.id)}
