@@ -89,7 +89,8 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
     fromGlobalIdx: number;
     startY: number;
     currentOverIdx: number | null;
-  }>({ active: false, fromGlobalIdx: -1, startY: 0, currentOverIdx: null });
+    crossPageTriggered: boolean;
+  }>({ active: false, fromGlobalIdx: -1, startY: 0, currentOverIdx: null, crossPageTriggered: false });
   const [dragFromIdx, setDragFromIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
