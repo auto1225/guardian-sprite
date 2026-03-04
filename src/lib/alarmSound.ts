@@ -438,17 +438,14 @@ function killAllSources() {
     refs.customAudio = null;
   }
 
-  // 4. GainNode 무음
+  // 4. GainNode 무음 (AudioContext는 재사용을 위해 유지)
   if (refs.gain) {
     try { refs.gain.gain.value = 0; } catch {}
   }
 
-  // 5. AudioContext 완전 파기
-  if (refs.ctx && refs.ctx.state !== 'closed') {
-    try { refs.ctx.close().catch(() => {}); } catch {}
-  }
-  refs.ctx = null;
-  refs.gain = null;
+  // 5. AudioContext는 파기하지 않음 — 모바일에서 새 AudioContext가
+  //    suspended 상태로 생성되어 소리가 나지 않는 문제 방지
+  //    refs.ctx, refs.gain 유지
 
   // 6. ★ 추적된 AudioContext는 WebRTC 등 외부 모듈의 것이므로 건드리지 않음
   // 알람 자체 AudioContext(refs.ctx)는 위 4-5단계에서 이미 파기됨
@@ -486,6 +483,56 @@ function playSoundCycle(soundConfig: { freq: number[]; pattern: number[] }) {
 
 // ══════════════════════════════════════
 // Custom Sound Playback
+// ══════════════════════════════════════
+// Fallback Beep (HTMLAudioElement) — 모바일 AudioContext suspended 대응
+// ══════════════════════════════════════
+function createFallbackBeep(volume: number): HTMLAudioElement | null {
+  try {
+    // WAV 헤더 + 간단한 사인파 비프음 생성 (1초, 880Hz)
+    const sampleRate = 22050;
+    const duration = 1;
+    const numSamples = sampleRate * duration;
+    const buffer = new ArrayBuffer(44 + numSamples * 2);
+    const view = new DataView(buffer);
+    
+    // WAV 헤더
+    const writeString = (offset: number, str: string) => {
+      for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+    };
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + numSamples * 2, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(36, 'data');
+    view.setUint32(40, numSamples * 2, true);
+    
+    // 사인파 데이터 (880Hz 비프 + 패턴)
+    for (let i = 0; i < numSamples; i++) {
+      const t = i / sampleRate;
+      const freq = t % 0.6 < 0.3 ? 880 : 660; // 교대 주파수
+      const envelope = t % 0.6 < 0.5 ? 1 : 0; // 간헐적 비프
+      const sample = Math.sin(2 * Math.PI * freq * t) * 0.3 * envelope;
+      view.setInt16(44 + i * 2, sample * 32767, true);
+    }
+    
+    const blob = new Blob([buffer], { type: 'audio/wav' });
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.volume = Math.min(1, volume * 1.5); // 약간 더 크게
+    return audio;
+  } catch (err) {
+    console.warn("[AlarmSound] createFallbackBeep failed:", err);
+    return null;
+  }
+}
+
 // ══════════════════════════════════════
 function playCustomSound(volume: number): boolean {
   let dataUrl: string | null = null;
@@ -568,26 +615,36 @@ export async function play(_deviceId?: string) {
   // 볼륨 설정
   refs.gain.gain.value = volume;
 
-  // 브라우저 정책 대응
+  // 브라우저 정책 대응 — 모바일에서 AudioContext가 suspended일 때
   if (refs.ctx.state === 'suspended') {
-    if (!s.unlocked) {
-      console.warn("[AlarmSound] AudioContext suspended, no unlock — queuing");
-      s.isAlarming = false;
-      s.pendingPlayGen = myGen;
-      return;
-    }
     try {
       await refs.ctx.resume();
-      if (refs.ctx.state === 'suspended') {
-        console.warn("[AlarmSound] Still suspended — queuing");
+    } catch {}
+    
+    // resume 실패 시 HTMLAudioElement 폴백 (모바일 필수)
+    if (refs.ctx.state === 'suspended') {
+      console.warn("[AlarmSound] AudioContext still suspended — trying HTMLAudio fallback");
+      s.pendingPlayGen = myGen; // 터치 시 재시도용
+      
+      // HTMLAudioElement 기반 폴백 비프음 생성
+      try {
+        const fallbackAudio = createFallbackBeep(volume);
+        if (fallbackAudio) {
+          refs.customAudio = fallbackAudio;
+          fallbackAudio.loop = true;
+          await fallbackAudio.play();
+          console.log("[AlarmSound] 🔊 Fallback HTMLAudio playing");
+          return; // 폴백 성공 — AudioContext 기반은 스킵
+        }
+      } catch (fallbackErr) {
+        console.warn("[AlarmSound] Fallback audio also failed:", fallbackErr);
+      }
+      
+      // 모든 시도 실패
+      if (!s.unlocked) {
         s.isAlarming = false;
-        s.pendingPlayGen = myGen;
         return;
       }
-    } catch {
-      s.isAlarming = false;
-      s.pendingPlayGen = myGen;
-      return;
     }
   }
 
