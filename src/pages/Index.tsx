@@ -503,6 +503,9 @@ const Index = () => {
 
       {/* License expired overlay */}
       <LicenseExpiredOverlay visible={licenseExpired} />
+
+      {/* Permission Request Popup */}
+      <PermissionRequestPopup />
     </div>
   );
 };
