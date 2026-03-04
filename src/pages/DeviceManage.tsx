@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { ArrowLeft, MoreVertical, Crown, Star, Sparkles, CalendarDays, GripVertical, ChevronLeft, ChevronRight, ArrowUpDown, CheckSquare, Square } from "lucide-react";
+import { ArrowLeft, MoreVertical, Crown, Star, Sparkles, CalendarDays, GripVertical, ChevronLeft, ChevronRight, ArrowUpDown, CheckSquare, Square, Monitor } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { useDevices } from "@/hooks/useDevices";
 import { useCommands } from "@/hooks/useCommands";
@@ -10,6 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 import { UserSerial } from "@/lib/websiteAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { broadcastCommand } from "@/lib/broadcastCommand";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -404,6 +405,38 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
     }
   };
 
+  const handleCamouflageToggle = async (deviceId: string) => {
+    const device = managedDevices.find(d => d.id === deviceId);
+    if (!device) return;
+    const currentMeta = (device.metadata as Record<string, unknown>) || {};
+    const newVal = !currentMeta.camouflage_mode;
+    try {
+      await safeMetadataUpdate(deviceId, { camouflage_mode: newVal });
+      queryClient.setQueryData(["devices", effectiveUserId], (old: Device[] | undefined) => {
+        if (!old) return old;
+        return old.map(d =>
+          d.id === deviceId
+            ? { ...d, metadata: { ...((d.metadata as Record<string, unknown>) || {}), camouflage_mode: newVal } }
+            : d
+        );
+      });
+      if (effectiveUserId) {
+        await broadcastCommand({
+          userId: effectiveUserId,
+          event: "camouflage_toggle",
+          payload: { device_id: deviceId, camouflage_mode: newVal },
+          targetDeviceId: deviceId,
+        });
+      }
+      toast({
+        title: newVal ? t("camouflage.onTitle") : t("camouflage.offTitle"),
+        description: newVal ? t("camouflage.onDesc") : t("camouflage.offDesc"),
+      });
+    } catch {
+      toast({ title: t("common.error"), description: t("camouflage.changeFailed"), variant: "destructive" });
+    }
+  };
+
   const handleSaveNumber = (serialKey: string, num: number | null) => {
     setSerialNumbers(prev => {
       const next = { ...prev };
@@ -510,6 +543,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
                 onDelete={handleDeleteDevice}
                 onViewAlertHistory={onViewAlertHistory}
                 onToggleMonitoring={toggleMonitoring}
+                onToggleCamouflage={handleCamouflageToggle}
                 isDragging={dragFromIdx === localIdx}
                 showHandle={true}
                 onHandlePointerDown={(e) => handleDragPointerDown(e, localIdx)}
@@ -586,6 +620,7 @@ interface DeviceCardProps {
   onDelete: (deviceId: string) => void;
   onViewAlertHistory?: (deviceId: string) => void;
   onToggleMonitoring: (deviceId: string, enable: boolean) => void;
+  onToggleCamouflage: (deviceId: string) => void;
   isDragging: boolean;
   showHandle: boolean;
   onHandlePointerDown: (e: React.PointerEvent) => void;
@@ -595,11 +630,12 @@ interface DeviceCardProps {
 const DeviceCard = ({
   item, itemKey: key, isSelected, serialNumber, onToggleSelect,
   onSetAsMain, onNumberChange, onDelete, onViewAlertHistory, onToggleMonitoring,
-  isDragging, showHandle, onHandlePointerDown, t,
+  onToggleCamouflage, isDragging, showHandle, onHandlePointerDown, t,
 }: DeviceCardProps) => {
   const { serial, device } = item;
   const isMain = !!(device && (device.metadata as Record<string, unknown>)?.is_main);
   const isOnline = device ? device.status !== "offline" : false;
+  const isCamouflage = !!(device && (device.metadata as Record<string, unknown>)?.camouflage_mode);
   const planConfig = PLAN_CONFIG[serial?.plan_type || "free"] || PLAN_CONFIG.free;
   const PlanIcon = planConfig.icon;
 
@@ -730,16 +766,29 @@ const DeviceCard = ({
             <StatusIcon iconOn={wifiOn} iconOff={wifiOff} active={isOnline && device.is_network_connected} label="Network" />
             <StatusIcon iconOn={cameraOn} iconOff={cameraOff} active={isOnline && device.is_camera_connected} label="Camera" />
           </div>
-          <button
-            onClick={() => onToggleMonitoring(device.id, !device.is_monitoring)}
-            className={`px-5 py-1.5 rounded-lg text-sm font-bold transition-all ${
-              device.is_monitoring
-                ? "bg-status-active text-accent-foreground shadow-[0_0_12px_hsla(48,100%,55%,0.4)]"
-                : "bg-white/20 text-primary-foreground/70"
-            }`}
-          >
-            {device.is_monitoring ? t("common.on") : t("common.off")}
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => onToggleCamouflage(device.id)}
+              className={`p-1.5 rounded-lg transition-all ${
+                isCamouflage
+                  ? "bg-blue-500/30 border border-blue-400/50"
+                  : "bg-white/10 border border-white/15"
+              }`}
+              title={isCamouflage ? t("toggle.camouflageOff") : t("toggle.camouflageOn")}
+            >
+              <Monitor className={`w-4 h-4 ${isCamouflage ? "text-blue-300" : "text-white/40"}`} />
+            </button>
+            <button
+              onClick={() => onToggleMonitoring(device.id, !device.is_monitoring)}
+              className={`px-5 py-1.5 rounded-lg text-sm font-bold transition-all ${
+                device.is_monitoring
+                  ? "bg-status-active text-accent-foreground shadow-[0_0_12px_hsla(48,100%,55%,0.4)]"
+                  : "bg-white/20 text-primary-foreground/70"
+              }`}
+            >
+              {device.is_monitoring ? t("common.on") : t("common.off")}
+            </button>
+          </div>
         </div>
       )}
 
