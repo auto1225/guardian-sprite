@@ -64,18 +64,10 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
     <div className="fixed inset-0 bg-red-800/60 backdrop-blur-2xl z-50 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-4 shrink-0">
-        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          <span className="text-white font-black text-xl shrink-0">{t("alert.securityAlert")}</span>
-          <span className="text-yellow-200 font-bold text-sm shrink-0">{fixedDeviceInfo.name}</span>
-          {fixedDeviceInfo.serial && (
-            <span className="text-yellow-200/60 text-[10px] font-mono shrink-0">
-              {fixedDeviceInfo.serial}
-            </span>
-          )}
-        </div>
+        <span className="text-white font-black text-xl">{t("alert.securityAlert")}</span>
         <button
           onClick={handleForceClose}
-          className="text-white/70 text-sm font-bold px-3 py-1.5 rounded-full bg-white/10 active:bg-white/20 shrink-0 ml-2"
+          className="text-white/70 text-sm font-bold px-3 py-1.5 rounded-full bg-white/10 active:bg-white/20 shrink-0"
         >
           ✕
         </button>
@@ -84,14 +76,22 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
       {/* Scrollable content area */}
       <div className="flex-1 overflow-y-auto alert-glass-scroll">
 
-        {/* Alert message */}
-        <div className="px-4 pb-3">
-          <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl p-4">
-            <p className="text-white font-bold text-lg">{activeAlert.title}</p>
-            {activeAlert.message && (
-              <p className="text-white/70 text-sm mt-1">{activeAlert.message}</p>
+        {/* 기기 카드 + 경보 카드 (한 줄) */}
+        <div className="px-4 pb-3 flex gap-2">
+          {/* 기기 식별 카드 */}
+          <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl p-3 shrink-0 flex flex-col justify-center">
+            <p className="text-yellow-200 font-black text-base leading-tight">{fixedDeviceInfo.name}</p>
+            {fixedDeviceInfo.serial && (
+              <p className="text-yellow-200/60 text-[10px] font-mono mt-0.5">{fixedDeviceInfo.serial}</p>
             )}
-            <p className="text-white/70 text-sm mt-1">
+          </div>
+          {/* 경보 내용 카드 */}
+          <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl p-3 flex-1 min-w-0">
+            <p className="text-white font-bold text-sm truncate">{activeAlert.title}</p>
+            {activeAlert.message && (
+              <p className="text-white/70 text-xs mt-0.5 truncate">{activeAlert.message}</p>
+            )}
+            <p className="text-white/70 text-[11px] mt-0.5">
               {new Date(activeAlert.created_at).toLocaleString("ko-KR")}
             </p>
           </div>
