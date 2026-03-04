@@ -581,6 +581,8 @@
     "later": "稍後",
     "retry": "重試",
     "deniedWarning": "⚠ {{features}}將無法使用。",
-    "deniedHelp": "請到瀏覽器設定中重新啟用此權限。"
+    "deniedHelp": "請到瀏覽器設定中重新啟用此權限。",
+    "confirm": "確認",
+    "uncheckedWarning": "{{features}}將無法使用。"
   }
 }

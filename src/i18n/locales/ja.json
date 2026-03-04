@@ -581,6 +581,8 @@
     "later": "後で",
     "retry": "再試行",
     "deniedWarning": "⚠ {{features}}が利用できません。",
-    "deniedHelp": "ブラウザの設定から権限を再有効化してください。"
+    "deniedHelp": "ブラウザの設定から権限を再有効化してください。",
+    "confirm": "確認",
+    "uncheckedWarning": "{{features}}が利用できません。"
   }
 }
