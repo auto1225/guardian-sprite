@@ -565,6 +565,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
                 onToggleMonitoring={toggleMonitoring}
                 onToggleCamouflage={handleCamouflageToggle}
                 onIconClick={handleIconClick}
+                onSettingsClick={(deviceId) => setSettingsDeviceId(deviceId)}
                 isDragging={dragFromIdx === localIdx}
                 showHandle={true}
                 onHandlePointerDown={(e) => handleDragPointerDown(e, localIdx)}
