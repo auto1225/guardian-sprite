@@ -256,13 +256,33 @@ export const SoundDialog = ({ open, onOpenChange, selectedSoundId, customSoundNa
 }) => {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const synthRef = useRef<{ stop: () => void } | null>(null);
   const [playingSoundId, setPlayingSoundId] = useState<string | null>(null);
   const [volumePercent, setVolumePercent] = useState(() => Math.round(getAlarmVolume() * 100));
 
+  // ★ 모바일 핵심: 다이얼로그가 열릴 때 Audio 요소를 미리 생성하여
+  // unlockAudio()가 user gesture를 소비한 후에도 src 변경만으로 재생 가능
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  useEffect(() => {
+    if (open) {
+      const audio = new Audio();
+      audio.preload = 'auto';
+      previewAudioRef.current = audio;
+    }
+    return () => {
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause();
+        previewAudioRef.current.src = '';
+        previewAudioRef.current = null;
+      }
+    };
+  }, [open]);
+
   const stopAllSounds = () => {
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      previewAudioRef.current.currentTime = 0;
+    }
     if (synthRef.current) { synthRef.current.stop(); synthRef.current = null; }
     setPlayingSoundId(null);
   };
@@ -272,17 +292,24 @@ export const SoundDialog = ({ open, onOpenChange, selectedSoundId, customSoundNa
     if (playingSoundId === soundId) return;
     setPlayingSoundId(soundId);
 
+    const audio = previewAudioRef.current;
+    if (!audio) return;
+
+    audio.volume = Math.min(1, (volumePercent / 100) * 2);
+
     if (soundId === "custom" && customSoundDataUrl) {
-      const audio = new Audio();
-      audio.volume = volumePercent / 100;
       audio.src = customSoundDataUrl;
-      audioRef.current = audio;
-      audio.play().catch((e) => console.warn("Custom sound play failed:", e));
+      audio.play().catch((e) => console.warn("[Preview] Custom play failed:", e));
       setTimeout(() => { audio.pause(); setPlayingSoundId(null); }, 2000);
     } else {
       const sound = ALARM_SOUNDS.find((s) => s.id === soundId);
       if (sound) {
-        synthRef.current = playBuiltinSound(sound, 2, volumePercent / 100);
+        const wavUrl = createPreviewWav(sound, 2, volumePercent / 100);
+        audio.src = wavUrl;
+        audio.play().catch((e) => console.warn("[Preview] Builtin play failed:", e));
+        synthRef.current = {
+          stop: () => { audio.pause(); URL.revokeObjectURL(wavUrl); }
+        };
         setTimeout(() => stopAllSounds(), 2000);
       }
     }
