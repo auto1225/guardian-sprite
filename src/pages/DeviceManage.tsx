@@ -473,7 +473,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
       {/* List with swipe */}
       <div
         ref={listRef}
-        className="flex-1 overflow-y-auto p-4 space-y-3 alert-history-scroll touch-pan-x"
+        className="flex-1 overflow-y-auto p-4 space-y-3 alert-history-scroll touch-pan-y"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onPointerMove={handleDragPointerMove}
