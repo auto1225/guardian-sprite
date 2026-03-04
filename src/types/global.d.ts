@@ -19,3 +19,6 @@ interface BatteryManager extends EventTarget {
 interface Window {
   showDirectoryPicker?: (options?: { mode?: "read" | "readwrite" }) => Promise<FileSystemDirectoryHandle>;
 }
+
+/** Build-time constants */
+declare const __BUILD_TIME__: string;

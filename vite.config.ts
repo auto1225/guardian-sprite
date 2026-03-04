@@ -5,7 +5,9 @@ import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }) => {
+  const buildTime = new Date().toISOString().slice(0, 16).replace('T', ' ');
+  return ({
   server: {
     host: "::",
     port: 8080,
@@ -79,10 +81,14 @@ export default defineConfig(({ mode }) => ({
       },
     },
   },
+  define: {
+    __BUILD_TIME__: JSON.stringify(buildTime),
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
     dedupe: ["react", "react-dom"],
   },
-}));
+});
+});
