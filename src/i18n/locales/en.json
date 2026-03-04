@@ -576,5 +576,23 @@
     "featureLocked": "This feature is not available on your current plan. Please upgrade on the website.",
     "limitReached": "🔒 Limit Reached",
     "maxDevicesReached": "You have reached the maximum number of devices. Please upgrade to add more."
+  },
+  "permissions": {
+    "title": "Permissions Required",
+    "subtitle": "MeerCOP needs the following permissions to provide full security features.",
+    "notification": "Notifications",
+    "notificationDesc": "Receive alert sounds and push notifications when threats are detected.",
+    "notificationFeatures": "Alert sounds, push notifications",
+    "camera": "Camera",
+    "cameraDesc": "View real-time camera feed from your monitored device.",
+    "cameraFeatures": "Live streaming, photo capture",
+    "location": "Location",
+    "locationDesc": "Track the location of your monitored device.",
+    "locationFeatures": "Location tracking, location history",
+    "allow": "Allow",
+    "allowAll": "Allow All",
+    "later": "Later",
+    "deniedWarning": "⚠ {{features}} will not be available.",
+    "deniedHelp": "Go to browser settings to re-enable this permission."
   }
 }

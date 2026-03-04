@@ -37,6 +37,7 @@ import { broadcastCommand } from "@/lib/broadcastCommand";
 import { useLicenseGuard } from "@/hooks/useLicenseGuard";
 import LicenseExpiredOverlay from "@/components/LicenseExpiredOverlay";
 import { useCapabilityGuard } from "@/hooks/useCapabilityGuard";
+import PermissionRequestPopup from "@/components/PermissionRequestPopup";
 
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
