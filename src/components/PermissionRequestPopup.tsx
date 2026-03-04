@@ -96,15 +96,20 @@ export default function PermissionRequestPopup() {
   };
 
   const handleRequest = async (item: PermissionItem) => {
-    await item.request();
-    refresh();
+    const result = await item.request();
+    if (result === "granted") {
+      refresh();
+    } else {
+      refresh();
+    }
   };
 
   const handleAllowAll = async () => {
     for (const item of nonGranted) {
       await item.request();
     }
-    refresh();
+    // 모두 처리 후 팝업 닫기
+    handleClose();
   };
 
   return (
