@@ -525,7 +525,76 @@ serve(async (req) => {
         console.log(`[push-notifications] Round ${round + 1}/${maxRepeat} done, sent to ${subs.length} subs`);
       }
 
-      return jsonResponse({ sent: totalSent, rounds: maxRepeat, total_subs: subs.length, errors: allErrors });
+    return jsonResponse({ sent: totalSent, rounds: maxRepeat, total_subs: subs.length, errors: allErrors });
+    }
+
+    // ── 서버 측 푸시 전송 (JWT 불필요 — 노트북/외부 프로젝트에서 호출) ──
+    // 노트북이 경보 감지 시 이 엔드포인트를 호출하여 스마트폰에 OS 레벨 푸시 알림 전송
+    if (action === "send-server") {
+      const { user_id, device_id, device_name, title, body: msgBody, tag } = body;
+      if (!user_id) return jsonResponse({ error: "user_id required" }, 400);
+
+      // 해당 사용자의 모든 푸시 구독 조회
+      const { data: subs } = await supabaseAdmin
+        .from("push_subscriptions")
+        .select("*")
+        .eq("user_id", user_id);
+
+      if (!subs || subs.length === 0) {
+        return jsonResponse({ sent: 0, message: "No subscriptions found" });
+      }
+
+      const vapidKeys = await getOrCreateVapidKeysV2(supabaseAdmin);
+
+      // 기기 이름 조회 (device_name이 없으면 DB에서 조회)
+      let resolvedDeviceName = device_name;
+      if (!resolvedDeviceName && device_id) {
+        const { data: device } = await supabaseAdmin
+          .from("devices")
+          .select("name")
+          .eq("id", device_id)
+          .single();
+        resolvedDeviceName = device?.name;
+      }
+      resolvedDeviceName = resolvedDeviceName || "알 수 없는 기기";
+
+      const defaultTitle = title || `🚨 ${resolvedDeviceName}에서 경보 발생`;
+      const defaultBody = msgBody || `${resolvedDeviceName}에서 새로운 경보가 감지되었습니다!`;
+
+      const payload = JSON.stringify({
+        title: defaultTitle,
+        body: defaultBody,
+        tag: tag || `meercop-alert-${device_id || "unknown"}`,
+        icon: "/pwa-192x192.png",
+        device_id,
+        device_name: resolvedDeviceName,
+      });
+
+      let sent = 0;
+      const errors: string[] = [];
+
+      for (const sub of subs) {
+        try {
+          await sendPushNotification(
+            { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+            payload,
+            vapidKeys
+          );
+          sent++;
+        } catch (err: any) {
+          console.error("[push-notifications] send-server error:", err);
+          if (err?.statusCode === 410 || err?.statusCode === 404) {
+            await supabaseAdmin
+              .from("push_subscriptions")
+              .delete()
+              .eq("endpoint", sub.endpoint);
+          }
+          errors.push(err?.message || String(err));
+        }
+      }
+
+      console.log(`[push-notifications] send-server: sent=${sent}/${subs.length} for user=${user_id.slice(0,8)}`);
+      return jsonResponse({ sent, total_subs: subs.length, errors });
     }
 
     return jsonResponse({ error: "Unknown action" }, 400);

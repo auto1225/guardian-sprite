@@ -149,8 +149,24 @@ export const useAlerts = (deviceId?: string | null) => {
       console.log("[useAlerts] ⏭ Alarm already playing or muted, skipping play");
     }
 
-    // ★ 항상 선택된 기기 ID(DB 기준)로 저장 — Presence key(크로스 프로젝트 ID)가 아닌 공유 DB의 기기 ID 사용
+    // ★ OS 레벨 푸시 알림도 함께 전송 — 사용자가 앱을 떠나도 알림음+배지 표시
+    const userId = userIdRef.current;
     const logDeviceId = deviceIdRef.current || fromDeviceId;
+    if (userId && logDeviceId) {
+      supabase.functions.invoke("push-notifications", {
+        body: {
+          action: "send-server",
+          user_id: userId,
+          device_id: logDeviceId,
+          title: alert.title,
+          body: alert.message,
+        },
+      }).then(res => {
+        if (res.error) console.warn("[useAlerts] Push send failed:", res.error);
+        else console.log("[useAlerts] 📲 Push notification triggered");
+      }).catch(err => console.warn("[useAlerts] Push send error:", err));
+    }
+
     if (logDeviceId) {
       try {
         // 처리 완료 등록 — 이후 Presence sync에서 재생성 차단
