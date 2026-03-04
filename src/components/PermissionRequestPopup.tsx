@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { usePermissionCheck, PermissionItem } from "@/hooks/usePermissionCheck";
-import { Bell, Camera, MapPin, ShieldAlert, ShieldCheck, X, AlertTriangle } from "lucide-react";
+import { Bell, Camera, MapPin, ShieldAlert, ShieldCheck, X, AlertTriangle, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -20,6 +20,7 @@ const PermissionRow = ({
   const { t } = useTranslation();
   const isGranted = item.status === "granted";
   const isDenied = item.status === "denied";
+  const isPrompt = item.status === "prompt";
 
   return (
     <div className={cn(
@@ -45,20 +46,31 @@ const PermissionRow = ({
         <p className="text-xs text-white/60 mt-0.5">{t(item.description)}</p>
         {isDenied && (
           <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" />
+            <AlertTriangle className="w-3 h-3 shrink-0" />
             {t("permissions.deniedWarning", { features: t(item.affectedFeatures) })}
           </p>
         )}
-        {!isGranted && !isDenied && (
+        {/* 허용 버튼: prompt 상태 */}
+        {isPrompt && (
           <button
             onClick={() => onRequest(item)}
-            className="mt-2 px-3 py-1 text-xs font-semibold bg-accent/80 text-accent-foreground rounded-lg hover:bg-accent active:scale-95 transition-all"
+            className="mt-2 px-3 py-1.5 text-xs font-semibold bg-accent/80 text-accent-foreground rounded-lg hover:bg-accent active:scale-95 transition-all"
           >
             {t("permissions.allow")}
           </button>
         )}
+        {/* 재시도 버튼: denied 상태 */}
         {isDenied && (
-          <p className="text-[10px] text-white/40 mt-1">{t("permissions.deniedHelp")}</p>
+          <div className="mt-1.5">
+            <button
+              onClick={() => onRequest(item)}
+              className="px-3 py-1.5 text-xs font-semibold bg-white/10 text-white/80 rounded-lg hover:bg-white/15 active:scale-95 transition-all flex items-center gap-1"
+            >
+              <RotateCcw className="w-3 h-3" />
+              {t("permissions.retry")}
+            </button>
+            <p className="text-[10px] text-white/40 mt-1">{t("permissions.deniedHelp")}</p>
+          </div>
         )}
       </div>
     </div>
@@ -73,7 +85,7 @@ export default function PermissionRequestPopup() {
   if (!shouldShow) return null;
 
   const nonGranted = permissions.filter(p => p.status !== "granted");
-  const allGranted = nonGranted.length === 0;
+  const hasPrompt = nonGranted.some(p => p.status === "prompt");
 
   const handleClose = () => {
     setClosing(true);
@@ -90,9 +102,7 @@ export default function PermissionRequestPopup() {
 
   const handleAllowAll = async () => {
     for (const item of nonGranted) {
-      if (item.status === "prompt") {
-        await item.request();
-      }
+      await item.request();
     }
     refresh();
   };
@@ -138,10 +148,15 @@ export default function PermissionRequestPopup() {
 
         {/* Footer */}
         <div className="px-5 py-4 mt-2 flex gap-2">
-          {!allGranted && nonGranted.some(p => p.status === "prompt") && (
+          {nonGranted.length > 0 && (
             <button
               onClick={handleAllowAll}
-              className="flex-1 py-2.5 bg-accent text-accent-foreground font-bold text-sm rounded-xl active:scale-95 transition-transform"
+              className={cn(
+                "flex-1 py-2.5 font-bold text-sm rounded-xl active:scale-95 transition-transform",
+                hasPrompt
+                  ? "bg-accent text-accent-foreground"
+                  : "bg-white/15 text-white/80"
+              )}
             >
               {t("permissions.allowAll")}
             </button>
