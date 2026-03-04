@@ -104,7 +104,8 @@ export default function PermissionRequestPopup() {
     for (const item of nonGranted) {
       await item.request();
     }
-    refresh();
+    // 모두 처리 후 팝업 닫기
+    handleClose();
   };
 
   return (
