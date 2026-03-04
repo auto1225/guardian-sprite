@@ -124,12 +124,11 @@ const Index = () => {
   // ★ 경보 발생 시 기기 정보를 ref에 캡처 — 이후 selectedDevice가 변해도 유지
   const alertDeviceInfoRef = useRef<{ name: string; serial: string | null } | null>(null);
 
-  // 경보 해제 상태 리셋 + 기기 정보 캡처
+  // 경보 발생 시 기기 정보 캡처 — ref 초기화는 명시적 dismiss에서만 수행
   useEffect(() => {
     if (activeAlert) {
       setRemoteAlarmDismissed(false);
       setShowFallbackAlarmButtons(false);
-      // 기기 정보가 아직 캡처되지 않았을 때만 저장
       if (!alertDeviceInfoRef.current && selectedDevice) {
         const meta = selectedDevice.metadata as Record<string, unknown> | null;
         alertDeviceInfoRef.current = {
@@ -137,9 +136,6 @@ const Index = () => {
           serial: meta?.serial_key ? String(meta.serial_key) : null,
         };
       }
-    } else {
-      setShowFallbackAlarmButtons(false);
-      alertDeviceInfoRef.current = null; // 경보 해제 시 초기화
     }
   }, [activeAlert, selectedDevice]);
 
