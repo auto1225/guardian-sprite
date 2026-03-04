@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { ArrowLeft, MoreVertical, Crown, Star, Sparkles, CalendarDays, GripVertical, ChevronLeft, ChevronRight, ArrowUpDown, CheckSquare, Square, Monitor } from "lucide-react";
+import { ArrowLeft, MoreVertical, Crown, Star, Sparkles, CalendarDays, GripVertical, ChevronLeft, ChevronRight, ArrowUpDown, CheckSquare, Square, Monitor, Settings } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { useDevices } from "@/hooks/useDevices";
 import { useCommands } from "@/hooks/useCommands";
@@ -14,6 +14,7 @@ import { broadcastCommand } from "@/lib/broadcastCommand";
 import LocationMapModal from "@/components/LocationMapModal";
 import NetworkInfoModal from "@/components/NetworkInfoModal";
 import CameraPage from "@/pages/Camera";
+import SettingsPage from "@/pages/Settings";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,6 +72,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
   const [customOrder, setCustomOrder] = useState<string[]>([]);
   const [licenseMap, setLicenseMap] = useState<Map<string, string>>(new Map());
   const [iconPanel, setIconPanel] = useState<{ type: "locationMap" | "camera" | "networkInfo"; deviceId: string } | null>(null);
+  const [settingsDeviceId, setSettingsDeviceId] = useState<string | null>(null);
 
   // ★ 시리얼별 번호를 localStorage에 저장
   const SERIAL_NUM_STORAGE_KEY = "meercop_serial_numbers";
