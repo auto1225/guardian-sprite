@@ -473,7 +473,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
       {/* List with swipe */}
       <div
         ref={listRef}
-        className="flex-1 overflow-y-auto p-4 space-y-3 alert-history-scroll touch-pan-y"
+        className="flex-1 overflow-y-auto p-3 space-y-2 alert-history-scroll touch-pan-y"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onPointerMove={handleDragPointerMove}
@@ -626,47 +626,44 @@ const DeviceCard = ({
 
   return (
     <div
-      className={`rounded-2xl p-4 bg-[hsla(220,35%,18%,0.95)] backdrop-blur-xl border shadow-xl transition-all ${
+      className={`rounded-xl px-3 py-2.5 bg-[hsla(220,35%,18%,0.95)] backdrop-blur-xl border shadow-xl transition-all ${
         isDragging ? "border-secondary/60 opacity-60 scale-[0.97]" : "border-white/30"
       } ${isSelected ? "ring-2 ring-secondary/50" : ""}`}
     >
       {/* Top row: name + number input + menu */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          {/* Drag handle */}
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
           {showHandle && (
             <div
               onPointerDown={onHandlePointerDown}
-              className="shrink-0 cursor-grab active:cursor-grabbing touch-none p-1 -ml-1"
+              className="shrink-0 cursor-grab active:cursor-grabbing touch-none p-0.5 -ml-0.5"
             >
-              <GripVertical className="w-5 h-5 text-white/40" />
+              <GripVertical className="w-4 h-4 text-white/40" />
             </div>
           )}
-          {/* Checkbox */}
           {device && (
             <button onClick={() => onToggleSelect(key)} className="shrink-0">
               {isSelected
-                ? <CheckSquare className="w-5 h-5 text-secondary" />
-                : <Square className="w-5 h-5 text-white/40" />
+                ? <CheckSquare className="w-4 h-4 text-secondary" />
+                : <Square className="w-4 h-4 text-white/40" />
               }
             </button>
           )}
           {isMain && (
-            <span className="bg-status-active text-accent-foreground px-2 py-0.5 rounded text-[10px] font-bold shrink-0">
+            <span className="bg-status-active text-accent-foreground px-1.5 py-0.5 rounded text-[9px] font-bold shrink-0">
               MAIN
             </span>
           )}
           {device ? (
-            <span className="text-white font-bold truncate drop-shadow-sm">{device.name}</span>
+            <span className="text-white font-bold text-sm truncate drop-shadow-sm">{device.name}</span>
           ) : serial?.device_name ? (
-            <span className="text-white/80 font-semibold truncate drop-shadow-sm">{serial.device_name}</span>
+            <span className="text-white/80 font-semibold text-sm truncate drop-shadow-sm">{serial.device_name}</span>
           ) : (
-            <span className="text-white/70 text-sm font-medium">{t("deviceManage.noDeviceConnected")}</span>
+            <span className="text-white/70 text-xs font-medium">{t("deviceManage.noDeviceConnected")}</span>
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          {/* Inline number input - 시리얼이 있을 때만 표시 */}
+        <div className="flex items-center gap-1 shrink-0">
           {serial && (
             <input
               type="number"
@@ -675,14 +672,14 @@ const DeviceCard = ({
               onChange={e => setLocalNum(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
               placeholder="#"
-              className="w-10 h-7 rounded-lg bg-white/10 border border-white/20 text-white text-center text-xs font-bold placeholder:text-white/30 focus:outline-none focus:border-white/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="w-9 h-6 rounded-md bg-white/10 border border-white/20 text-white text-center text-xs font-bold placeholder:text-white/30 focus:outline-none focus:border-white/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
           )}
           {device && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="text-primary-foreground p-1 shrink-0">
-                  <MoreVertical className="w-5 h-5" />
+                <button className="text-primary-foreground p-0.5 shrink-0">
+                  <MoreVertical className="w-4 h-4" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-primary/90 backdrop-blur-xl border border-white/25 z-[100]">
@@ -703,43 +700,39 @@ const DeviceCard = ({
         </div>
       </div>
 
-      {/* Serial info */}
+      {/* Serial info + remaining days (same row) */}
       {serial && serial.serial_key && (
-        <div className="flex items-center gap-2 mb-2">
-          <span className="font-mono text-sm font-bold tracking-wider text-yellow-300 drop-shadow-sm">
+        <div className="flex items-center gap-1.5 flex-wrap mb-1">
+          <span className="font-mono text-xs font-bold tracking-wider text-yellow-300 drop-shadow-sm">
             {serial.serial_key}
           </span>
-          <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${planConfig.bgClass}`}>
-            <PlanIcon className={`w-3 h-3 ${planConfig.colorClass}`} />
+          <span className={`flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${planConfig.bgClass}`}>
+            <PlanIcon className={`w-2.5 h-2.5 ${planConfig.colorClass}`} />
             <span className={planConfig.colorClass}>{t(`plan.${serial.plan_type}`)}</span>
           </span>
-        </div>
-      )}
-
-      {/* Remaining days */}
-      {serial && serial.remaining_days !== null && (
-        <div className="flex items-center gap-1.5 mb-3">
-          <CalendarDays className="w-3.5 h-3.5 text-white/60" />
-          <span className={`text-xs font-semibold ${
-            serial.remaining_days <= 3 ? "text-red-300" :
-            serial.remaining_days <= 7 ? "text-amber-300" : "text-white/80"
-          }`}>
-            {serial.remaining_days}{t("plan.days")} {t("plan.remainingDays")}
-          </span>
+          {serial.remaining_days !== null && (
+            <span className={`flex items-center gap-0.5 text-[10px] font-semibold ${
+              serial.remaining_days <= 3 ? "text-red-300" :
+              serial.remaining_days <= 7 ? "text-amber-300" : "text-white/60"
+            }`}>
+              <CalendarDays className="w-3 h-3" />
+              {serial.remaining_days}{t("plan.days")}
+            </span>
+          )}
         </div>
       )}
 
       {/* Status icons + monitoring toggle */}
       {device && (
-        <div className="flex items-center justify-between mt-2">
-          <div className="flex items-center gap-6">
+        <div className="flex items-center justify-between mt-1">
+          <div className="flex items-center gap-4">
             <StatusIcon iconOn={laptopOn} iconOff={laptopOff} active={isOnline} label={device.device_type === "desktop" ? "Desktop" : device.device_type === "tablet" ? "Tablet" : "Laptop"} />
             <StatusIcon iconOn={wifiOn} iconOff={wifiOff} active={isOnline && device.is_network_connected} label="Network" />
             <StatusIcon iconOn={cameraOn} iconOff={cameraOff} active={isOnline && device.is_camera_connected} label="Camera" />
           </div>
           <button
             onClick={() => onToggleMonitoring(device.id, !device.is_monitoring)}
-            className={`px-6 py-2 rounded-lg text-base font-bold transition-all ${
+            className={`px-5 py-1.5 rounded-lg text-sm font-bold transition-all ${
               device.is_monitoring
                 ? "bg-status-active text-accent-foreground shadow-[0_0_12px_hsla(48,100%,55%,0.4)]"
                 : "bg-white/20 text-primary-foreground/70"
@@ -751,7 +744,7 @@ const DeviceCard = ({
       )}
 
       {!device && (
-        <div className="mt-2 py-2 text-center">
+        <div className="mt-1 py-1 text-center">
           <span className="text-white/60 text-xs font-medium">⏳ {t("deviceManage.noDeviceConnected")}</span>
         </div>
       )}
@@ -761,9 +754,9 @@ const DeviceCard = ({
 
 // ─── StatusIcon ───────────────────────────────────────────
 const StatusIcon = ({ iconOn, iconOff, active, label }: { iconOn: string; iconOff: string; active: boolean; label: string }) => (
-  <div className="flex flex-col items-center gap-1">
-    <img src={active ? iconOn : iconOff} alt={label} className="w-10 h-10 object-contain" />
-    <span className="text-primary-foreground text-[10px] font-medium">{label}</span>
+  <div className="flex flex-col items-center gap-0.5">
+    <img src={active ? iconOn : iconOff} alt={label} className="w-8 h-8 object-contain" />
+    <span className="text-primary-foreground text-[9px] font-medium">{label}</span>
   </div>
 );
 
