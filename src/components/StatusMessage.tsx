@@ -23,7 +23,7 @@ const StatusMessage = ({ deviceName, isMonitoring, status }: StatusMessageProps)
       <div className={`rounded-xl px-4 py-2 shadow-lg ${
         status === "alert" ? "bg-destructive" : "bg-card/95"
       }`}>
-        <p className={`text-center font-medium text-sm ${
+        <p className={`text-center font-bold text-base ${
           status === "alert" ? "text-destructive-foreground" : "text-card-foreground"
         }`}>
           {getMessage()}
