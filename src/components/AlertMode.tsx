@@ -70,20 +70,20 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff, alert
       {/* Scrollable content area */}
       <div className="flex-1 overflow-y-auto alert-glass-scroll">
 
-        {/* 기기 카드 + 경보 카드 (한 줄) */}
-        <div className="px-4 pb-3 flex gap-2">
-          {/* 기기 식별 카드 — alertDeviceName/Serial은 부모 ref에서 온 불변값 */}
-          <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl p-3 shrink-0 flex flex-col justify-center">
-            <p className="text-yellow-200 font-black text-base leading-tight">{alertDeviceName}</p>
-            {alertDeviceSerial && (
-              <p className="text-yellow-200/60 text-[10px] font-mono mt-0.5">{alertDeviceSerial}</p>
-            )}
-          </div>
-          {/* 경보 내용 카드 */}
-          <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl p-3 flex-1 min-w-0">
-            <p className="text-white font-bold text-sm truncate">{activeAlert.title}</p>
+        {/* 경보 카드 — 기기명 + 경보 내용을 한 카드 안에 */}
+        <div className="px-4 pb-3">
+          <div className="bg-white/15 backdrop-blur-md border border-white/20 rounded-xl p-3">
+            {/* 기기명 + 시리얼 */}
+            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/10">
+              <span className="text-yellow-200 font-black text-base leading-tight">{alertDeviceName}</span>
+              {alertDeviceSerial && (
+                <span className="text-yellow-200/60 text-[10px] font-mono">({alertDeviceSerial})</span>
+              )}
+            </div>
+            {/* 경보 내용 */}
+            <p className="text-white font-bold text-sm">{activeAlert.title}</p>
             {activeAlert.message && (
-              <p className="text-white/70 text-xs mt-0.5 truncate">{activeAlert.message}</p>
+              <p className="text-white/70 text-xs mt-0.5">{activeAlert.message}</p>
             )}
             <p className="text-white/70 text-[11px] mt-0.5">
               {new Date(activeAlert.created_at).toLocaleString("ko-KR")}
