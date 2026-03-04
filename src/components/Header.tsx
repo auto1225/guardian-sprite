@@ -33,8 +33,8 @@ const Header = ({ onMenuClick, onDeviceManageClick, unreadCount = 0, deviceId, o
 
   return (
     <header className="flex items-center justify-between px-4 py-4">
-      <button className="p-1 text-primary-foreground" onClick={onMenuClick} aria-label={t("header.openMenu")}>
-        <Menu className="w-6 h-6" />
+      <button className="w-8 h-8 rounded-full flex items-center justify-center border border-white/30 bg-white/15 backdrop-blur-sm text-primary-foreground shadow-lg hover:bg-white/25 active:scale-95 transition-all" onClick={onMenuClick} aria-label={t("header.openMenu")}>
+        <Menu className="w-4 h-4" />
       </button>
       
       <img src={logo} alt="MeerCOP" className="h-10 object-contain absolute left-1/2 -translate-x-1/2" />
