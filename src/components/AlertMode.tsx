@@ -54,14 +54,14 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
 
   return (
     <div className="fixed inset-0 bg-red-800/60 backdrop-blur-2xl z-50 flex flex-col overflow-hidden">
-      {/* Header - 한 줄: 보안경보 + 기기명 + 시리얼 */}
+      {/* Header */}
       <div className="flex items-center justify-between p-4 shrink-0">
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
           <span className="text-white font-black text-xl shrink-0">{t("alert.securityAlert")}</span>
-          <span className="text-yellow-200 font-black text-xl shrink-0">{deviceName}</span>
-          {deviceSerial && (
+          <span className="text-yellow-200 font-bold text-sm shrink-0">{device.name}</span>
+          {(device.metadata as Record<string, unknown>)?.serial_key && (
             <span className="text-yellow-200/60 text-[10px] font-mono shrink-0">
-              {deviceSerial}
+              {String((device.metadata as Record<string, unknown>).serial_key)}
             </span>
           )}
         </div>
