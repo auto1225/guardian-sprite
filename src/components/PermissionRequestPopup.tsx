@@ -96,8 +96,12 @@ export default function PermissionRequestPopup() {
   };
 
   const handleRequest = async (item: PermissionItem) => {
-    await item.request();
-    refresh();
+    const result = await item.request();
+    if (result === "granted") {
+      refresh();
+    } else {
+      refresh();
+    }
   };
 
   const handleAllowAll = async () => {
