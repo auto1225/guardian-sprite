@@ -194,8 +194,8 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
   return (
     <Sheet open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (open) { setRefreshKey(k => k + 1); setSelectedIds(new Set()); setIsSelectMode(false); } }}>
       <SheetTrigger asChild>
-        <button className="relative p-2 text-primary-foreground">
-          <Bell className="w-6 h-6" />
+        <button className="relative w-8 h-8 rounded-full flex items-center justify-center border border-white/30 bg-white/15 backdrop-blur-sm text-primary-foreground shadow-lg hover:bg-white/25 active:scale-95 transition-all">
+          <Bell className="w-4 h-4" />
           {totalUnread > 0 && (
             <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
               {totalUnread > 99 ? "99+" : totalUnread}
