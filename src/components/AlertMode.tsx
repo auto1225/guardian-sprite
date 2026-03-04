@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
 import { ActiveAlert, stopAlertSound } from "@/hooks/useAlerts";
@@ -21,16 +21,6 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
   const { t } = useTranslation();
   const { toast } = useToast();
   const [phoneDismissed, setPhoneDismissed] = useState(false);
-
-  // ★ 마운트 시점의 기기 정보를 고정 — 리렌더링으로 사라지지 않도록
-  const deviceSnapshotRef = useRef({
-    name: device.name,
-    serial: (device.metadata as Record<string, unknown>)?.serial_key
-      ? String((device.metadata as Record<string, unknown>).serial_key)
-      : null,
-  });
-  const deviceName = deviceSnapshotRef.current.name;
-  const deviceSerial = deviceSnapshotRef.current.serial;
 
   const handleDismissRemoteAlarm = async () => {
     // 항상 로컬 해제를 먼저 수행 (원격 실패해도 오버레이는 닫힘)
@@ -64,14 +54,14 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
 
   return (
     <div className="fixed inset-0 bg-red-800/60 backdrop-blur-2xl z-50 flex flex-col overflow-hidden">
-      {/* Header - 한 줄: 보안경보 + 기기명 + 시리얼 */}
+      {/* Header */}
       <div className="flex items-center justify-between p-4 shrink-0">
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
           <span className="text-white font-black text-xl shrink-0">{t("alert.securityAlert")}</span>
-          <span className="text-yellow-200 font-black text-xl shrink-0">{deviceName}</span>
-          {deviceSerial && (
+          <span className="text-yellow-200 font-bold text-sm shrink-0">{device.name}</span>
+          {(device.metadata as Record<string, unknown>)?.serial_key && (
             <span className="text-yellow-200/60 text-[10px] font-mono shrink-0">
-              {deviceSerial}
+              {String((device.metadata as Record<string, unknown>).serial_key)}
             </span>
           )}
         </div>
