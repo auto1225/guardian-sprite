@@ -331,11 +331,23 @@ export const useDevices = () => {
             console.log("[Realtime] Device updated:", { id: updatedDevice.id, status: updatedDevice.status });
             queryClient.setQueryData(["devices", effectiveUserId], (oldDevices: Device[] | undefined) => {
               if (!oldDevices) return oldDevices;
-              return oldDevices.map((device) =>
-                device.id === updatedDevice.id
-                  ? { ...device, ...updatedDevice, is_camera_connected: updatedDevice.is_camera_connected ?? device.is_camera_connected }
-                  : device
-              );
+              return oldDevices.map((device) => {
+                if (device.id !== updatedDevice.id) return device;
+                // ★ 이름이 이미 동일하고 주요 필드에 변화가 없으면 동일 참조 유지 (깜빡임 방지)
+                const presenceName = devicePresenceNames.get(device.id);
+                const effectiveName = presenceName || updatedDevice.name;
+                if (
+                  device.name === effectiveName &&
+                  device.status === updatedDevice.status &&
+                  device.is_monitoring === updatedDevice.is_monitoring &&
+                  device.is_network_connected === updatedDevice.is_network_connected &&
+                  device.is_camera_connected === (updatedDevice.is_camera_connected ?? device.is_camera_connected) &&
+                  device.battery_level === updatedDevice.battery_level
+                ) {
+                  return device; // 동일 참조 반환 → React.memo가 리렌더 스킵
+                }
+                return { ...device, ...updatedDevice, name: effectiveName, is_camera_connected: updatedDevice.is_camera_connected ?? device.is_camera_connected };
+              });
             });
           }
         )
