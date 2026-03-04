@@ -22,6 +22,14 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
   const { toast } = useToast();
   const [phoneDismissed, setPhoneDismissed] = useState(false);
 
+  // ★ 최초 마운트 시 기기 정보를 state로 고정 — 리렌더/언마운트-리마운트에도 유지
+  const [fixedDeviceInfo] = useState(() => ({
+    name: device.name,
+    serial: (device.metadata as Record<string, unknown>)?.serial_key
+      ? String((device.metadata as Record<string, unknown>).serial_key)
+      : null,
+  }));
+
   const handleDismissRemoteAlarm = async () => {
     // 항상 로컬 해제를 먼저 수행 (원격 실패해도 오버레이는 닫힘)
     stopAlertSound();
@@ -58,10 +66,10 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
       <div className="flex items-center justify-between p-4 shrink-0">
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
           <span className="text-white font-black text-xl shrink-0">{t("alert.securityAlert")}</span>
-          <span className="text-yellow-200 font-bold text-sm shrink-0">{device.name}</span>
-          {(device.metadata as Record<string, unknown>)?.serial_key && (
+          <span className="text-yellow-200 font-bold text-sm shrink-0">{fixedDeviceInfo.name}</span>
+          {fixedDeviceInfo.serial && (
             <span className="text-yellow-200/60 text-[10px] font-mono shrink-0">
-              {String((device.metadata as Record<string, unknown>).serial_key)}
+              {fixedDeviceInfo.serial}
             </span>
           )}
         </div>
