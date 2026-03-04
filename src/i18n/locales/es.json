@@ -579,6 +579,7 @@
     "allow": "Permitir",
     "allowAll": "Permitir todo",
     "later": "Más tarde",
+    "retry": "Reintentar",
     "deniedWarning": "⚠ {{features}} no estará disponible.",
     "deniedHelp": "Ve a la configuración del navegador para reactivar este permiso."
   }

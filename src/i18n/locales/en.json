@@ -592,6 +592,7 @@
     "allow": "Allow",
     "allowAll": "Allow All",
     "later": "Later",
+    "retry": "Retry",
     "deniedWarning": "⚠ {{features}} will not be available.",
     "deniedHelp": "Go to browser settings to re-enable this permission."
   }
