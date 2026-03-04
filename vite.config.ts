@@ -79,8 +79,9 @@ export default defineConfig(({ mode }) => {
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: true,
         drop_debugger: true,
+        // drop_console 일시 비활성화 — 모바일 오디오 디버깅용
+        // drop_console: true,
       },
     },
   },
