@@ -409,20 +409,22 @@ const Index = () => {
         }}
       />
 
-      {/* Alert Mode Overlay */}
-      {activeAlert && !latestPhotoAlert && !viewingPhotoAlert && (
-        <AlertMode
-          device={selectedDevice!}
-          activeAlert={activeAlert}
-          onDismiss={() => {
-            dismissAll();
-            setShowFallbackAlarmButtons(false);
-          }}
-          onSendRemoteAlarmOff={async () => {
-            await dismissRemoteAlarm();
-            setRemoteAlarmDismissed(true);
-          }}
-        />
+      {/* Alert Mode Overlay — 사진 오버레이와 독립적으로 유지 */}
+      {activeAlert && (
+        <div style={{ display: (latestPhotoAlert || viewingPhotoAlert) ? 'none' : undefined }}>
+          <AlertMode
+            device={selectedDevice!}
+            activeAlert={activeAlert}
+            onDismiss={() => {
+              dismissAll();
+              setShowFallbackAlarmButtons(false);
+            }}
+            onSendRemoteAlarmOff={async () => {
+              await dismissRemoteAlarm();
+              setRemoteAlarmDismissed(true);
+            }}
+          />
+        </div>
       )}
 
       {/* Photo Alert Overlay */}
