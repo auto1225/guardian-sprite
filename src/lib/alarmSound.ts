@@ -296,10 +296,127 @@ function initAudio() {
 }
 
 // ══════════════════════════════════════
+// ★ Warm Audio — 모바일 핵심 전략
+// 사용자 제스처 시 무음 오디오를 미리 재생하여
+// WebSocket으로 경보 도착 시 제스처 없이 소리 전환 가능
+// ══════════════════════════════════════
+const WARM_AUDIO_KEY = '__meercop_warm_audio';
+
+function createSilentWav(): string {
+  const sampleRate = 22050;
+  const numSamples = sampleRate; // 1초 무음
+  const buffer = new ArrayBuffer(44 + numSamples * 2);
+  const view = new DataView(buffer);
+  const w = (offset: number, str: string) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
+  w(0, 'RIFF'); view.setUint32(4, 36 + numSamples * 2, true);
+  w(8, 'WAVE'); w(12, 'fmt '); view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+  w(36, 'data'); view.setUint32(40, numSamples * 2, true);
+  // 모든 샘플 = 0 (무음)
+  const blob = new Blob([buffer], { type: 'audio/wav' });
+  return URL.createObjectURL(blob);
+}
+
+function createAlarmWav(volume: number, soundId?: string): string {
+  const sampleRate = 22050;
+  const duration = 2; // 2초 경보음
+  const numSamples = sampleRate * duration;
+  const buffer = new ArrayBuffer(44 + numSamples * 2);
+  const view = new DataView(buffer);
+  const w = (offset: number, str: string) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
+  w(0, 'RIFF'); view.setUint32(4, 36 + numSamples * 2, true);
+  w(8, 'WAVE'); w(12, 'fmt '); view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+  w(36, 'data'); view.setUint32(40, numSamples * 2, true);
+
+  const config = ALARM_SOUND_CONFIGS[soundId || 'whistle'] || ALARM_SOUND_CONFIGS.whistle;
+  const totalPattern = config.pattern.reduce((a, b) => a + b, 0) + config.pattern.length * 0.05;
+
+  for (let i = 0; i < numSamples; i++) {
+    const t = i / sampleRate;
+    const cycleT = t % (totalPattern * 2 + 0.2);
+    let freq = config.freq[0];
+    let acc = 0;
+    for (let fi = 0; fi < config.freq.length; fi++) {
+      acc += config.pattern[fi] + 0.05;
+      if (cycleT < acc) { freq = config.freq[fi]; break; }
+      if (fi === config.freq.length - 1) freq = config.freq[0];
+    }
+    const gap = cycleT % (config.pattern[0] + 0.05);
+    const envelope = gap < config.pattern[0] ? 1 : 0;
+    const sample = Math.sin(2 * Math.PI * freq * t) * 0.4 * volume * envelope;
+    view.setInt16(44 + i * 2, Math.max(-32767, Math.min(32767, sample * 32767)), true);
+  }
+
+  const blob = new Blob([buffer], { type: 'audio/wav' });
+  return URL.createObjectURL(blob);
+}
+
+function getWarmAudio(): HTMLAudioElement | null {
+  return (window as unknown as Record<string, HTMLAudioElement | null>)[WARM_AUDIO_KEY] || null;
+}
+
+function setWarmAudio(audio: HTMLAudioElement | null) {
+  (window as unknown as Record<string, HTMLAudioElement | null>)[WARM_AUDIO_KEY] = audio;
+}
+
+/** warm audio를 경보음으로 전환 */
+function switchWarmToAlarm(): boolean {
+  const warm = getWarmAudio();
+  if (!warm) return false;
+  try {
+    const volume = getVolume();
+    const soundId = getSelectedSoundId();
+    const alarmUrl = createAlarmWav(volume, soundId);
+    warm.src = alarmUrl;
+    warm.volume = Math.min(1, volume * 2);
+    warm.loop = true;
+    warm.play().catch(() => {});
+    console.log("[AlarmSound] 🔊 Warm audio switched to alarm sound");
+    return true;
+  } catch (err) {
+    console.warn("[AlarmSound] switchWarmToAlarm failed:", err);
+    return false;
+  }
+}
+
+/** warm audio를 무음으로 되돌림 */
+function switchWarmToSilent() {
+  const warm = getWarmAudio();
+  if (!warm) return;
+  try {
+    warm.pause();
+    // 새 무음 소스로 교체하되 재생은 하지 않음 (배터리 절약)
+    console.log("[AlarmSound] 🔇 Warm audio paused (silent)");
+  } catch {}
+}
+
+// ══════════════════════════════════════
 // AudioContext Unlock — 모바일 핵심
 // ══════════════════════════════════════
 export function unlockAudio() {
   const s = getState();
+
+  // ★ Warm Audio 생성 — 이미 존재하지 않으면 무음 오디오 시작
+  if (!getWarmAudio()) {
+    try {
+      const silentUrl = createSilentWav();
+      const audio = new Audio(silentUrl);
+      audio.loop = true;
+      audio.volume = 0.01; // 거의 무음이지만 0이 아님 (일부 브라우저가 0이면 최적화로 중단)
+      audio.play().then(() => {
+        setWarmAudio(audio);
+        console.log("[AlarmSound] 🔥 Warm audio started (silent loop)");
+      }).catch(() => {
+        console.warn("[AlarmSound] Warm audio play failed — will retry on next gesture");
+      });
+    } catch {}
+  }
+
   if (s.unlocked) {
     if (s.pendingPlayGen > 0 && s.pendingPlayGen === s.gen) {
       s.pendingPlayGen = 0;
@@ -615,18 +732,23 @@ export async function play(_deviceId?: string) {
   // 볼륨 설정
   refs.gain.gain.value = volume;
 
+  // ★★ 모바일 핵심: Warm Audio 우선 사용
+  // WebSocket으로 경보 도착 시 사용자 제스처 없이도 소리 가능
+  if (switchWarmToAlarm()) {
+    console.log("[AlarmSound] 🔊 Playing via warm audio (mobile-safe)");
+    return;
+  }
+
   // 브라우저 정책 대응 — 모바일에서 AudioContext가 suspended일 때
   if (refs.ctx.state === 'suspended') {
     try {
       await refs.ctx.resume();
     } catch {}
     
-    // resume 실패 시 HTMLAudioElement 폴백 (모바일 필수)
     if (refs.ctx.state === 'suspended') {
       console.warn("[AlarmSound] AudioContext still suspended — trying HTMLAudio fallback");
-      s.pendingPlayGen = myGen; // 터치 시 재시도용
+      s.pendingPlayGen = myGen;
       
-      // HTMLAudioElement 기반 폴백 비프음 생성
       try {
         const fallbackAudio = createFallbackBeep(volume);
         if (fallbackAudio) {
@@ -634,13 +756,12 @@ export async function play(_deviceId?: string) {
           fallbackAudio.loop = true;
           await fallbackAudio.play();
           console.log("[AlarmSound] 🔊 Fallback HTMLAudio playing");
-          return; // 폴백 성공 — AudioContext 기반은 스킵
+          return;
         }
       } catch (fallbackErr) {
         console.warn("[AlarmSound] Fallback audio also failed:", fallbackErr);
       }
       
-      // 모든 시도 실패
       if (!s.unlocked) {
         s.isAlarming = false;
         return;
@@ -695,6 +816,9 @@ export function stop() {
   if (s.suppressUntil < minSuppressUntil) {
     s.suppressUntil = minSuppressUntil;
   }
+
+  // ★ Warm Audio도 무음으로 전환
+  switchWarmToSilent();
 
   // 모든 소스를 동기적으로 즉시 정지
   killAllSources();
