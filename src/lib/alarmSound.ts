@@ -302,8 +302,18 @@ function initAudio() {
 // ══════════════════════════════════════
 const WARM_AUDIO_KEY = '__meercop_warm_audio';
 
+/** ArrayBuffer → base64 data URL (모바일에서 blob URL보다 확실히 동작) */
+function arrayBufferToDataUrl(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return 'data:audio/wav;base64,' + btoa(binary);
+}
+
 function createSilentWav(): string {
-  const sampleRate = 22050;
+  const sampleRate = 8000;
   const numSamples = sampleRate; // 1초 무음
   const buffer = new ArrayBuffer(44 + numSamples * 2);
   const view = new DataView(buffer);
@@ -314,9 +324,7 @@ function createSilentWav(): string {
   view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true);
   view.setUint16(32, 2, true); view.setUint16(34, 16, true);
   w(36, 'data'); view.setUint32(40, numSamples * 2, true);
-  // 모든 샘플 = 0 (무음)
-  const blob = new Blob([buffer], { type: 'audio/wav' });
-  return URL.createObjectURL(blob);
+  return arrayBufferToDataUrl(buffer);
 }
 
 function createAlarmWav(volume: number, soundId?: string): string {
@@ -352,8 +360,7 @@ function createAlarmWav(volume: number, soundId?: string): string {
     view.setInt16(44 + i * 2, Math.max(-32767, Math.min(32767, sample * 32767)), true);
   }
 
-  const blob = new Blob([buffer], { type: 'audio/wav' });
-  return URL.createObjectURL(blob);
+  return arrayBufferToDataUrl(buffer);
 }
 
 function getWarmAudio(): HTMLAudioElement | null {
@@ -639,8 +646,7 @@ function createFallbackBeep(volume: number): HTMLAudioElement | null {
       view.setInt16(44 + i * 2, sample * 32767, true);
     }
     
-    const blob = new Blob([buffer], { type: 'audio/wav' });
-    const url = URL.createObjectURL(blob);
+    const url = arrayBufferToDataUrl(buffer);
     const audio = new Audio(url);
     audio.volume = Math.min(1, volume * 1.5); // 약간 더 크게
     return audio;
@@ -1009,8 +1015,7 @@ function tryFallbackPreview(soundId: string, volume: number) {
       const sample = Math.sin(2 * Math.PI * freq * t) * 0.5 * volume * envelope;
       view.setInt16(44 + i * 2, Math.max(-32767, Math.min(32767, sample * 32767)), true);
     }
-    const blob = new Blob([buffer], { type: 'audio/wav' });
-    const url = URL.createObjectURL(blob);
+    const url = arrayBufferToDataUrl(buffer);
     previewAudio = new Audio(url);
     previewAudio.volume = Math.min(1, volume * 2);
     previewAudio.play().then(() => {
