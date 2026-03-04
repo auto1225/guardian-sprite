@@ -563,5 +563,23 @@
     "expiredDescription": "Seu período de teste terminou. Renove sua assinatura para continuar usando o MeerCOP.",
     "renewButton": "Renovar em meercop.com",
     "renewNotice": "Após renovar, reinicie o aplicativo."
+  },
+  "permissions": {
+    "title": "Permissões necessárias",
+    "subtitle": "O MeerCOP precisa das seguintes permissões para funções de segurança.",
+    "notification": "Notificações",
+    "notificationDesc": "Receber alarmes e notificações push ao detectar ameaças.",
+    "notificationFeatures": "Som de alarme, notificações push",
+    "camera": "Câmera",
+    "cameraDesc": "Ver a transmissão ao vivo da câmera do dispositivo monitorado.",
+    "cameraFeatures": "Streaming ao vivo, captura de fotos",
+    "location": "Localização",
+    "locationDesc": "Rastrear a localização do dispositivo monitorado.",
+    "locationFeatures": "Rastreamento de localização, histórico de localização",
+    "allow": "Permitir",
+    "allowAll": "Permitir tudo",
+    "later": "Mais tarde",
+    "deniedWarning": "⚠ {{features}} não estará disponível.",
+    "deniedHelp": "Vá para as configurações do navegador para reativar esta permissão."
   }
 }

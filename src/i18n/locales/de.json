@@ -563,5 +563,23 @@
     "expiredDescription": "Ihre Testphase ist abgelaufen. Bitte erneuern Sie Ihr Abonnement, um MeerCOP weiter zu nutzen.",
     "renewButton": "Auf meercop.com erneuern",
     "renewNotice": "Nach der Erneuerung starten Sie die App neu."
+  },
+  "permissions": {
+    "title": "Berechtigungen erforderlich",
+    "subtitle": "MeerCOP benötigt die folgenden Berechtigungen für Sicherheitsfunktionen.",
+    "notification": "Benachrichtigungen",
+    "notificationDesc": "Alarmsignale und Push-Benachrichtigungen bei Bedrohungserkennung erhalten.",
+    "notificationFeatures": "Alarmton, Push-Benachrichtigungen",
+    "camera": "Kamera",
+    "cameraDesc": "Live-Kamerabild des überwachten Geräts anzeigen.",
+    "cameraFeatures": "Live-Streaming, Fotoaufnahme",
+    "location": "Standort",
+    "locationDesc": "Standort des überwachten Geräts verfolgen.",
+    "locationFeatures": "Standortverfolgung, Standortverlauf",
+    "allow": "Erlauben",
+    "allowAll": "Alle erlauben",
+    "later": "Später",
+    "deniedWarning": "⚠ {{features}} wird nicht verfügbar sein.",
+    "deniedHelp": "Gehen Sie zu den Browsereinstellungen, um diese Berechtigung zu aktivieren."
   }
 }

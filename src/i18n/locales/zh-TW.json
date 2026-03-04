@@ -563,5 +563,23 @@
     "expiredDescription": "您的試用期已結束。請續訂以繼續使用 MeerCOP。",
     "renewButton": "在 meercop.com 續訂",
     "renewNotice": "續訂後請重新啟動應用程式。"
+  },
+  "permissions": {
+    "title": "需要權限設定",
+    "subtitle": "MeerCOP需要以下權限來提供安全功能。",
+    "notification": "通知",
+    "notificationDesc": "偵測到威脅時接收警報聲和推送通知。",
+    "notificationFeatures": "警報聲、推送通知",
+    "camera": "攝影機",
+    "cameraDesc": "查看監控裝置的即時攝影機畫面。",
+    "cameraFeatures": "即時串流、拍照",
+    "location": "位置",
+    "locationDesc": "追蹤監控裝置的位置。",
+    "locationFeatures": "位置追蹤、位置記錄",
+    "allow": "允許",
+    "allowAll": "全部允許",
+    "later": "稍後",
+    "deniedWarning": "⚠ {{features}}將無法使用。",
+    "deniedHelp": "請到瀏覽器設定中重新啟用此權限。"
   }
 }
