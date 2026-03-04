@@ -562,7 +562,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
                     }`}
                     style={deviceLanguage === lang.code ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
                   >
-                    <span className="block text-sm">{lang.flag}</span>
+                    <span className="block text-[11px]">{lang.flag} {lang.short}</span>
                     <span className="block mt-0.5 truncate">{lang.label}</span>
                   </button>
                 ))}
