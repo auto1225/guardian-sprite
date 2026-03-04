@@ -273,7 +273,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
     }
   }, []);
 
-  const handleDragPointerUp = useCallback(() => {
+  const handleDragPointerUp = useCallback(async () => {
     if (!dragState.current.active) return;
     const fromLocal = dragFromIdx;
     const toLocal = dragState.current.currentOverIdx;
@@ -286,10 +286,32 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
       const [moved] = keys.splice(fromGlobal, 1);
       keys.splice(toGlobal, 0, moved);
       setCustomOrder(keys);
+
+      // ★ DB에 sort_order 영구 저장
+      const reorderedItems = keys.map(k => items.find(i => itemKey(i) === k)).filter(Boolean) as MatchedItem[];
+      const updatePromises = reorderedItems
+        .map((item, idx) => item.device ? safeMetadataUpdate(item.device.id, { sort_order: idx }) : null)
+        .filter(Boolean);
+      try {
+        await Promise.all(updatePromises);
+        // 로컬 캐시도 업데이트
+        queryClient.setQueryData(["devices", effectiveUserId], (old: Device[] | undefined) => {
+          if (!old) return old;
+          return old.map(d => {
+            const globalIdx = reorderedItems.findIndex(ri => ri.device?.id === d.id);
+            if (globalIdx >= 0) {
+              return { ...d, metadata: { ...((d.metadata as Record<string, unknown>) || {}), sort_order: globalIdx } };
+            }
+            return d;
+          });
+        });
+      } catch {
+        console.error("[DeviceManage] Failed to save sort order");
+      }
     }
     setDragFromIdx(null);
     setDragOverIdx(null);
-  }, [dragFromIdx, page, items, itemKey]);
+  }, [dragFromIdx, page, items, itemKey, queryClient, effectiveUserId]);
 
   // Swipe for pagination (horizontal only, avoid conflict with drag)
   const handleTouchStart = (e: React.TouchEvent) => {
