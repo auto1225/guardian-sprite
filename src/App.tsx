@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { usePWAUpdate } from "@/hooks/usePWAUpdate";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Install from "./pages/Install";
@@ -23,6 +24,7 @@ const GlobalErrorGuard = ({ children }: { children: React.ReactNode }) => {
     window.addEventListener("unhandledrejection", handler);
     return () => window.removeEventListener("unhandledrejection", handler);
   }, []);
+  usePWAUpdate();
   return <>{children}</>;
 };
 
