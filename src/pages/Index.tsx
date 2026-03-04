@@ -409,11 +409,12 @@ const Index = () => {
         }}
       />
 
-      {/* Alert Mode Overlay — 사진 오버레이와 독립적으로 유지 */}
-      {activeAlert && (
+      {/* Alert Mode Overlay — key 고정으로 리마운트 방지 */}
+      {activeAlert && selectedDevice && (
         <div style={{ display: (latestPhotoAlert || viewingPhotoAlert) ? 'none' : undefined }}>
           <AlertMode
-            device={selectedDevice!}
+            key={activeAlert.id}
+            device={selectedDevice}
             activeAlert={activeAlert}
             onDismiss={() => {
               dismissAll();
