@@ -769,14 +769,15 @@ const DeviceCard = ({
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => onToggleCamouflage(device.id)}
-              className={`p-1.5 rounded-lg transition-all ${
+              className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
                 isCamouflage
-                  ? "bg-blue-500/30 border border-blue-400/50"
-                  : "bg-white/10 border border-white/15"
+                  ? "bg-blue-500/30 border border-blue-400/50 text-blue-300"
+                  : "bg-white/10 border border-white/15 text-white/40"
               }`}
               title={isCamouflage ? t("toggle.camouflageOff") : t("toggle.camouflageOn")}
             >
-              <Monitor className={`w-4 h-4 ${isCamouflage ? "text-blue-300" : "text-white/40"}`} />
+              <Monitor className="w-3.5 h-3.5" />
+              <span>{isCamouflage ? "ON" : "OFF"}</span>
             </button>
             <button
               onClick={() => onToggleMonitoring(device.id, !device.is_monitoring)}
