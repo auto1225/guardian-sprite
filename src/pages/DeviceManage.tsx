@@ -11,6 +11,9 @@ import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 import { UserSerial } from "@/lib/websiteAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { broadcastCommand } from "@/lib/broadcastCommand";
+import LocationMapModal from "@/components/LocationMapModal";
+import NetworkInfoModal from "@/components/NetworkInfoModal";
+import CameraPage from "@/pages/Camera";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,12 +43,11 @@ interface DeviceManagePageProps {
   onClose: () => void;
   onSelectDevice: (deviceId: string) => void;
   onViewAlertHistory?: (deviceId: string) => void;
-  onIconClick?: (deviceId: string, type: "laptop" | "network" | "camera") => void;
 }
 
 type MatchedItem = { serial: UserSerial | null; device: Device | null };
 
-const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory, onIconClick }: DeviceManagePageProps) => {
+const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory }: DeviceManagePageProps) => {
   const { devices, selectedDeviceId, setSelectedDeviceId, deleteDevice } = useDevices();
   const { serials, serialsLoading, effectiveUserId } = useAuth();
   const queryClient2 = useQueryClient();
@@ -68,6 +70,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory,
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [customOrder, setCustomOrder] = useState<string[]>([]);
   const [licenseMap, setLicenseMap] = useState<Map<string, string>>(new Map());
+  const [iconPanel, setIconPanel] = useState<{ type: "locationMap" | "camera" | "networkInfo"; deviceId: string } | null>(null);
 
   // ★ 시리얼별 번호를 localStorage에 저장
   const SERIAL_NUM_STORAGE_KEY = "meercop_serial_numbers";
@@ -447,6 +450,20 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory,
     });
   };
 
+  const handleIconClick = useCallback((deviceId: string, type: "laptop" | "network" | "camera") => {
+    const device = managedDevices.find(d => d.id === deviceId);
+    if (!device) return;
+    if (device.status === "offline") {
+      toast({
+        title: t("status.deviceOffline"),
+        description: t("status.deviceOfflineActionDesc", "컴퓨터가 로그아웃 또는 오프라인 상태이므로 연결할 수 없습니다."),
+      });
+      return;
+    }
+    const panelType = type === "laptop" ? "locationMap" : type === "camera" ? "camera" : "networkInfo";
+    setIconPanel({ type: panelType, deviceId });
+  }, [managedDevices, toast, t]);
+
   if (!isOpen) return null;
 
   const SORT_OPTIONS: { mode: SortMode; label: string }[] = [
@@ -545,7 +562,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory,
                 onViewAlertHistory={onViewAlertHistory}
                 onToggleMonitoring={toggleMonitoring}
                 onToggleCamouflage={handleCamouflageToggle}
-                onIconClick={onIconClick}
+                onIconClick={handleIconClick}
                 isDragging={dragFromIdx === localIdx}
                 showHandle={true}
                 onHandlePointerDown={(e) => handleDragPointerDown(e, localIdx)}
@@ -606,6 +623,38 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory,
           </button>
         </div>
       )}
+
+      {/* Icon modals rendered inside DeviceManage */}
+      {iconPanel && (() => {
+        const panelDevice = managedDevices.find(d => d.id === iconPanel.deviceId);
+        return (
+          <>
+            {iconPanel.type === "locationMap" && (
+              <LocationMapModal
+                isOpen={true}
+                onClose={() => setIconPanel(null)}
+                deviceId={iconPanel.deviceId}
+                deviceName={panelDevice?.name ?? ""}
+              />
+            )}
+            {iconPanel.type === "networkInfo" && (
+              <NetworkInfoModal
+                isOpen={true}
+                onClose={() => setIconPanel(null)}
+                deviceId={iconPanel.deviceId}
+                deviceName={panelDevice?.name ?? ""}
+              />
+            )}
+            {iconPanel.type === "camera" && panelDevice && (
+              <CameraPage
+                device={panelDevice}
+                isOpen={true}
+                onClose={() => setIconPanel(null)}
+              />
+            )}
+          </>
+        );
+      })()}
     </div>
   );
 };
