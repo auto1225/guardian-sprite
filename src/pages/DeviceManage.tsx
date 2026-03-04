@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef, memo } from "react";
 import { ArrowLeft, MoreVertical, Crown, Star, Sparkles, CalendarDays, GripVertical, ChevronLeft, ChevronRight, ArrowUpDown, CheckSquare, Square, Monitor, Settings } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { useDevices } from "@/hooks/useDevices";
@@ -741,7 +741,7 @@ interface DeviceCardProps {
   t: (key: string) => string;
 }
 
-const DeviceCard = ({
+const DeviceCard = memo(({
   item, itemKey: key, isSelected, serialNumber, onToggleSelect,
   onSetAsMain, onNumberChange, onDelete, onViewAlertHistory, onToggleMonitoring,
   onToggleCamouflage, onIconClick, onSettingsClick, isDragging, showHandle, onHandlePointerDown, t,
@@ -920,7 +920,33 @@ const DeviceCard = ({
       )}
     </div>
   );
-};
+}, (prev, next) => {
+  // Custom shallow comparison to avoid unnecessary re-renders
+  if (prev.isDragging !== next.isDragging) return false;
+  if (prev.isSelected !== next.isSelected) return false;
+  if (prev.serialNumber !== next.serialNumber) return false;
+  if (prev.showHandle !== next.showHandle) return false;
+  // Compare item data by value (not reference)
+  const pDev = prev.item.device;
+  const nDev = next.item.device;
+  if (pDev?.name !== nDev?.name) return false;
+  if (pDev?.status !== nDev?.status) return false;
+  if (pDev?.is_monitoring !== nDev?.is_monitoring) return false;
+  if (pDev?.is_network_connected !== nDev?.is_network_connected) return false;
+  if (pDev?.is_camera_connected !== nDev?.is_camera_connected) return false;
+  if (pDev?.id !== nDev?.id) return false;
+  const pMeta = pDev?.metadata as Record<string, unknown> | null;
+  const nMeta = nDev?.metadata as Record<string, unknown> | null;
+  if (pMeta?.is_main !== nMeta?.is_main) return false;
+  if (pMeta?.camouflage_mode !== nMeta?.camouflage_mode) return false;
+  const pSerial = prev.item.serial;
+  const nSerial = next.item.serial;
+  if (pSerial?.serial_key !== nSerial?.serial_key) return false;
+  if (pSerial?.plan_type !== nSerial?.plan_type) return false;
+  if (pSerial?.remaining_days !== nSerial?.remaining_days) return false;
+  if (pSerial?.device_name !== nSerial?.device_name) return false;
+  return true;
+});
 
 // ─── StatusIcon ───────────────────────────────────────────
 const StatusIcon = ({ iconOn, iconOff, active, label, onClick }: { iconOn: string; iconOff: string; active: boolean; label: string; onClick?: () => void }) => (
