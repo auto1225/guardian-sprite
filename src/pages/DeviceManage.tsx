@@ -60,7 +60,9 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
   const { t } = useTranslation();
 
   const [page, setPage] = useState(1);
-  const [sortMode, setSortMode] = useState<SortMode>("default");
+  const [sortMode, setSortMode] = useState<SortMode>(() => {
+    try { return (localStorage.getItem("meercop_sort_mode") as SortMode) || "default"; } catch { return "default"; }
+  });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [customOrder, setCustomOrder] = useState<string[]>([]);
   const [licenseMap, setLicenseMap] = useState<Map<string, string>>(new Map());
@@ -153,6 +155,28 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
     return result;
   }, [serials, managedDevices, licenseMap]);
 
+  // ★ 정렬 결과를 DB에 sort_order로 영구 저장
+  const persistSortOrder = useCallback(async (sortedItems: MatchedItem[]) => {
+    const updatePromises = sortedItems
+      .map((item, idx) => item.device ? safeMetadataUpdate(item.device.id, { sort_order: idx }) : null)
+      .filter(Boolean);
+    try {
+      await Promise.all(updatePromises);
+      queryClient.setQueryData(["devices", effectiveUserId], (old: Device[] | undefined) => {
+        if (!old) return old;
+        return old.map(d => {
+          const globalIdx = sortedItems.findIndex(ri => ri.device?.id === d.id);
+          if (globalIdx >= 0) {
+            return { ...d, metadata: { ...((d.metadata as Record<string, unknown>) || {}), sort_order: globalIdx } };
+          }
+          return d;
+        });
+      });
+    } catch {
+      console.error("[DeviceManage] Failed to save sort order");
+    }
+  }, [queryClient, effectiveUserId]);
+
   // Sort items: first apply sort mode, then custom drag order overrides
   const items = useMemo(() => {
     const sorted = [...baseItems];
@@ -165,7 +189,6 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
         return aName.localeCompare(bName);
       });
     } else if (sortMode === "number") {
-      // ★ 번호순: localStorage의 시리얼별 번호 기준 정렬
       sorted.sort((a, b) => {
         const aKey = a.serial?.serial_key;
         const bKey = b.serial?.serial_key;
@@ -180,14 +203,12 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
     } else if (sortMode === "monitoring") {
       sorted.sort((a, b) => (a.device?.is_monitoring ? 0 : 1) - (b.device?.is_monitoring ? 0 : 1));
     } else {
-      // ★ Default: sort_order → created_at 순서 (안정적, 온라인 상태로 순서 바뀌지 않음)
       sorted.sort((a, b) => {
         const aOrder = (a.device?.metadata as Record<string, unknown>)?.sort_order as number | undefined;
         const bOrder = (b.device?.metadata as Record<string, unknown>)?.sort_order as number | undefined;
         if (aOrder !== undefined || bOrder !== undefined) {
           return (aOrder ?? Infinity) - (bOrder ?? Infinity);
         }
-        // sort_order가 없으면 created_at 순
         const aTime = a.device ? new Date(a.device.created_at).getTime() : Infinity;
         const bTime = b.device ? new Date(b.device.created_at).getTime() : Infinity;
         return aTime - bTime;
@@ -210,6 +231,25 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
 
     return sorted;
   }, [baseItems, sortMode, customOrder]);
+
+  // ★ 정렬 모드 변경 시 sort_order를 DB에 저장
+  const handleSortModeChange = useCallback((mode: SortMode) => {
+    setSortMode(mode);
+    setCustomOrder([]);
+    localStorage.setItem("meercop_sort_mode", mode);
+  }, []);
+
+  // ★ items가 정렬 모드 변경으로 업데이트되면 DB에 저장
+  const lastPersistedRef = useRef<string>("");
+  useEffect(() => {
+    if (items.length === 0) return;
+    const key = items.map(i => itemKey(i)).join(",");
+    if (key === lastPersistedRef.current) return;
+    lastPersistedRef.current = key;
+    // default 모드에서 customOrder 없을 때는 이미 DB 순서이므로 저장 불필요
+    if (sortMode === "default" && customOrder.length === 0) return;
+    persistSortOrder(items);
+  }, [items, sortMode, customOrder]);
 
   const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
   const pageItems = items.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
@@ -407,7 +447,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
             {SORT_OPTIONS.map(opt => (
               <DropdownMenuItem
                 key={opt.mode}
-                onClick={() => { setSortMode(opt.mode); setCustomOrder([]); }}
+                onClick={() => handleSortModeChange(opt.mode)}
                 className={`text-primary-foreground focus:bg-white/15 focus:text-primary-foreground ${sortMode === opt.mode ? "bg-white/10" : ""}`}
               >
                 {opt.label}
