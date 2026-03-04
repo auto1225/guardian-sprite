@@ -925,6 +925,127 @@ export function emergencyKillAll(): string[] {
 // ══════════════════════════════════════
 // re-export for compatibility
 // ══════════════════════════════════════
+// ══════════════════════════════════════
+// ★ Preview — 설정 화면 미리듣기 전용
+// 알람 모듈의 모바일 호환 인프라를 그대로 활용하되,
+// mute/suppress 체크를 건너뛰고 제한 시간 후 자동 정지
+// ══════════════════════════════════════
+let previewTimeout: ReturnType<typeof setTimeout> | null = null;
+let previewAudio: HTMLAudioElement | null = null;
+
+export function preview(soundId?: string, durationMs = 2000, volumeOverride?: number): void {
+  // 기존 미리듣기 정지
+  stopPreview();
+
+  const volume = volumeOverride ?? getVolume();
+  const resolvedSoundId = soundId || getSelectedSoundId();
+
+  console.log("[AlarmSound] 🎵 Preview start:", resolvedSoundId, "vol:", volume);
+
+  // ① warm audio가 있으면 최우선 사용 (모바일에서 가장 확실)
+  const warm = getWarmAudio();
+  if (warm) {
+    try {
+      const wavUrl = createAlarmWav(volume, resolvedSoundId);
+      warm.src = wavUrl;
+      warm.volume = Math.min(1, volume * 2);
+      warm.loop = false;
+      warm.play().then(() => {
+        console.log("[AlarmSound] 🔊 Preview via warm audio");
+      }).catch(() => {
+        console.warn("[AlarmSound] Warm audio preview failed, trying fallback");
+        tryFallbackPreview(resolvedSoundId, volume);
+      });
+      previewTimeout = setTimeout(() => stopPreview(), durationMs);
+      return;
+    } catch {}
+  }
+
+  // ② AudioContext 방식
+  initAudio();
+  const refs = getAudioRefs();
+  if (refs.ctx && refs.ctx.state !== 'closed' && refs.ctx.state !== 'suspended' && refs.gain) {
+    refs.gain.gain.value = volume;
+    const config = ALARM_SOUND_CONFIGS[resolvedSoundId] || ALARM_SOUND_CONFIGS.whistle;
+    playSoundCycle(config);
+    previewTimeout = setTimeout(() => stopPreview(), durationMs);
+    console.log("[AlarmSound] 🔊 Preview via AudioContext");
+    return;
+  }
+
+  // ③ HTMLAudioElement fallback (Blob WAV)
+  tryFallbackPreview(resolvedSoundId, volume);
+  previewTimeout = setTimeout(() => stopPreview(), durationMs);
+}
+
+function tryFallbackPreview(soundId: string, volume: number) {
+  try {
+    const config = ALARM_SOUND_CONFIGS[soundId] || ALARM_SOUND_CONFIGS.whistle;
+    const sampleRate = 22050;
+    const duration = 2;
+    const numSamples = sampleRate * duration;
+    const buffer = new ArrayBuffer(44 + numSamples * 2);
+    const view = new DataView(buffer);
+    const w = (offset: number, str: string) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
+    w(0, 'RIFF'); view.setUint32(4, 36 + numSamples * 2, true);
+    w(8, 'WAVE'); w(12, 'fmt '); view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+    w(36, 'data'); view.setUint32(40, numSamples * 2, true);
+    const totalPattern = config.pattern.reduce((a, b) => a + b, 0) + config.pattern.length * 0.05;
+    for (let i = 0; i < numSamples; i++) {
+      const t = i / sampleRate;
+      const cycleT = t % (totalPattern * 2 + 0.2);
+      let freq = config.freq[0];
+      let acc = 0;
+      for (let fi = 0; fi < config.freq.length; fi++) {
+        acc += config.pattern[fi] + 0.05;
+        if (cycleT < acc) { freq = config.freq[fi]; break; }
+        if (fi === config.freq.length - 1) freq = config.freq[0];
+      }
+      const gap = cycleT % (config.pattern[0] + 0.05);
+      const envelope = gap < config.pattern[0] ? 1 : 0;
+      const sample = Math.sin(2 * Math.PI * freq * t) * 0.5 * volume * envelope;
+      view.setInt16(44 + i * 2, Math.max(-32767, Math.min(32767, sample * 32767)), true);
+    }
+    const blob = new Blob([buffer], { type: 'audio/wav' });
+    const url = URL.createObjectURL(blob);
+    previewAudio = new Audio(url);
+    previewAudio.volume = Math.min(1, volume * 2);
+    previewAudio.play().then(() => {
+      console.log("[AlarmSound] 🔊 Preview via fallback HTMLAudio");
+    }).catch(err => {
+      console.warn("[AlarmSound] Fallback preview also failed:", err);
+    });
+  } catch (err) {
+    console.warn("[AlarmSound] tryFallbackPreview error:", err);
+  }
+}
+
+export function stopPreview(): void {
+  if (previewTimeout) { clearTimeout(previewTimeout); previewTimeout = null; }
+  // warm audio → 정지 후 무음 복원
+  const warm = getWarmAudio();
+  if (warm) {
+    warm.pause();
+    warm.loop = true; // 원래 루프 모드로 복원
+  }
+  // fallback audio 정지
+  if (previewAudio) {
+    previewAudio.pause();
+    previewAudio.src = '';
+    previewAudio = null;
+  }
+  // AudioContext 오실레이터도 정지
+  const refs = getAudioRefs();
+  for (const osc of refs.oscillators) {
+    try { osc.stop(); } catch {}
+    try { osc.disconnect(); } catch {}
+  }
+  refs.oscillators = [];
+}
+
 export type { AlarmState };
 
 // ══════════════════════════════════════

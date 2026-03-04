@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
-import { getVolume as getAlarmVolume, setVolume as setAlarmVolume } from "@/lib/alarmSound";
+import { getVolume as getAlarmVolume, setVolume as setAlarmVolume, preview as alarmPreview, stopPreview as alarmStopPreview } from "@/lib/alarmSound";
 
 // ── Types ──
 
@@ -90,58 +90,7 @@ export const SensorToggle = ({ label, description, checked, onChange }: {
   );
 };
 
-// ── Audio Helpers ──
-
-/** WAV 기반 미리듣기 — 모바일에서도 확실히 재생됨 (AudioContext monkey-patch 영향 없음) */
-function createPreviewWav(sound: typeof ALARM_SOUNDS[number], duration: number, volume: number): string {
-  const sampleRate = 22050;
-  const numSamples = sampleRate * duration;
-  const buffer = new ArrayBuffer(44 + numSamples * 2);
-  const view = new DataView(buffer);
-  const w = (offset: number, str: string) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
-  w(0, 'RIFF'); view.setUint32(4, 36 + numSamples * 2, true);
-  w(8, 'WAVE'); w(12, 'fmt '); view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true); view.setUint16(22, 1, true);
-  view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true); view.setUint16(34, 16, true);
-  w(36, 'data'); view.setUint32(40, numSamples * 2, true);
-
-  const totalPattern = sound.pattern.reduce((a, b) => a + b, 0) + sound.pattern.length * 0.05;
-
-  for (let i = 0; i < numSamples; i++) {
-    const t = i / sampleRate;
-    const cycleT = t % (totalPattern * 2 + 0.2);
-    let freq = sound.freq[0];
-    let acc = 0;
-    for (let fi = 0; fi < sound.freq.length; fi++) {
-      acc += sound.pattern[fi] + 0.05;
-      if (cycleT < acc) { freq = sound.freq[fi]; break; }
-      if (fi === sound.freq.length - 1) freq = sound.freq[0];
-    }
-    const gap = cycleT % (sound.pattern[0] + 0.05);
-    const envelope = gap < sound.pattern[0] ? 1 : 0;
-    const sample = Math.sin(2 * Math.PI * freq * t) * 0.5 * volume * envelope;
-    view.setInt16(44 + i * 2, Math.max(-32767, Math.min(32767, sample * 32767)), true);
-  }
-
-  const blob = new Blob([buffer], { type: 'audio/wav' });
-  return URL.createObjectURL(blob);
-}
-
-export function playBuiltinSound(sound: typeof ALARM_SOUNDS[number], duration = 2, volume?: number): { stop: () => void } {
-  const vol = volume ?? getAlarmVolume();
-  const wavUrl = createPreviewWav(sound, duration, vol);
-  const audio = new Audio(wavUrl);
-  audio.volume = Math.min(1, vol * 2);
-  audio.play().catch((e) => console.warn("[Preview] play failed:", e));
-  return {
-    stop: () => {
-      audio.pause();
-      audio.src = '';
-      URL.revokeObjectURL(wavUrl);
-    },
-  };
-}
+// ── Audio Helpers ── (미리듣기는 alarmSound 모듈의 preview() 사용)
 
 // ── Nickname Dialog ──
 
@@ -256,34 +205,13 @@ export const SoundDialog = ({ open, onOpenChange, selectedSoundId, customSoundNa
 }) => {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const synthRef = useRef<{ stop: () => void } | null>(null);
   const [playingSoundId, setPlayingSoundId] = useState<string | null>(null);
   const [volumePercent, setVolumePercent] = useState(() => Math.round(getAlarmVolume() * 100));
-
-  // ★ 모바일 핵심: 다이얼로그가 열릴 때 Audio 요소를 미리 생성하여
-  // unlockAudio()가 user gesture를 소비한 후에도 src 변경만으로 재생 가능
-  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
-  useEffect(() => {
-    if (open) {
-      const audio = new Audio();
-      audio.preload = 'auto';
-      previewAudioRef.current = audio;
-    }
-    return () => {
-      if (previewAudioRef.current) {
-        previewAudioRef.current.pause();
-        previewAudioRef.current.src = '';
-        previewAudioRef.current = null;
-      }
-    };
-  }, [open]);
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const stopAllSounds = () => {
-    if (previewAudioRef.current) {
-      previewAudioRef.current.pause();
-      previewAudioRef.current.currentTime = 0;
-    }
-    if (synthRef.current) { synthRef.current.stop(); synthRef.current = null; }
+    alarmStopPreview();
+    if (previewTimerRef.current) { clearTimeout(previewTimerRef.current); previewTimerRef.current = null; }
     setPlayingSoundId(null);
   };
 
@@ -292,27 +220,9 @@ export const SoundDialog = ({ open, onOpenChange, selectedSoundId, customSoundNa
     if (playingSoundId === soundId) return;
     setPlayingSoundId(soundId);
 
-    const audio = previewAudioRef.current;
-    if (!audio) return;
-
-    audio.volume = Math.min(1, (volumePercent / 100) * 2);
-
-    if (soundId === "custom" && customSoundDataUrl) {
-      audio.src = customSoundDataUrl;
-      audio.play().catch((e) => console.warn("[Preview] Custom play failed:", e));
-      setTimeout(() => { audio.pause(); setPlayingSoundId(null); }, 2000);
-    } else {
-      const sound = ALARM_SOUNDS.find((s) => s.id === soundId);
-      if (sound) {
-        const wavUrl = createPreviewWav(sound, 2, volumePercent / 100);
-        audio.src = wavUrl;
-        audio.play().catch((e) => console.warn("[Preview] Builtin play failed:", e));
-        synthRef.current = {
-          stop: () => { audio.pause(); URL.revokeObjectURL(wavUrl); }
-        };
-        setTimeout(() => stopAllSounds(), 2000);
-      }
-    }
+    // ★ 알람 모듈의 preview 사용 — warm audio, AudioContext, fallback 모두 활용
+    alarmPreview(soundId, 2000, volumePercent / 100);
+    previewTimerRef.current = setTimeout(() => setPlayingSoundId(null), 2000);
   };
 
   const getSoundLabel = (id: string) => {
