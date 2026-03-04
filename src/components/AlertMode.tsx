@@ -69,19 +69,22 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
 
       {/* Scrollable content area */}
       <div className="flex-1 overflow-y-auto alert-glass-scroll">
+        {/* 기기 식별 배지 */}
+        <div className="px-4 pb-2">
+          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-xl px-4 py-2.5">
+            <span className="text-lg">💻</span>
+            <span className="text-white font-black text-base">{device.name}</span>
+            {(device.metadata as Record<string, unknown>)?.serial_key && (
+              <span className="text-yellow-200/90 text-xs font-mono bg-black/20 px-2 py-0.5 rounded-md">
+                {String((device.metadata as Record<string, unknown>).serial_key)}
+              </span>
+            )}
+          </div>
+        </div>
+
         {/* Alert message */}
         <div className="px-4 pb-3">
           <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl p-4">
-            {/* 기기 식별 정보 */}
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-lg">💻</span>
-              <span className="text-white font-black text-base">{device.name}</span>
-              {(device.metadata as Record<string, unknown>)?.serial_key && (
-                <span className="text-white/60 text-xs font-mono bg-white/10 px-2 py-0.5 rounded-md">
-                  {String((device.metadata as Record<string, unknown>).serial_key)}
-                </span>
-              )}
-            </div>
             <p className="text-white font-bold text-lg">{activeAlert.title}</p>
             {activeAlert.message && (
               <p className="text-white/70 text-sm mt-1">{activeAlert.message}</p>
