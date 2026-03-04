@@ -48,10 +48,12 @@ export default defineConfig(({ mode }) => ({
           },
         ],
       },
-      workbox: {
+    workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         importScripts: ["/push-handler.js"],
         navigateFallbackDenylist: [/^\/~oauth/],
+        skipWaiting: true,
+        clientsClaim: true,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
