@@ -734,6 +734,13 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
             </SensorSection>
           </div>
 
+          {/* 앱 버전 표시 */}
+          <div className="px-4 py-3 text-center">
+            <span className="text-white/40 text-xs font-mono">
+              Build: {typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : 'dev'}
+            </span>
+          </div>
+
           <div className="h-10" />
         </div>
       </div>
