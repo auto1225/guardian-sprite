@@ -570,5 +570,23 @@
     "expiredDescription": "체험 기간이 종료되었습니다. MeerCOP을 계속 사용하시려면 구독을 갱신해 주세요.",
     "renewButton": "meercop.com에서 갱신",
     "renewNotice": "갱신 후 앱을 재시작하면 활성화됩니다."
+  },
+  "permissions": {
+    "title": "권한 설정 필요",
+    "subtitle": "MeerCOP의 보안 기능을 위해 아래 권한이 필요합니다.",
+    "notification": "알림",
+    "notificationDesc": "위협 감지 시 경보음과 푸시 알림을 수신합니다.",
+    "notificationFeatures": "경보음, 푸시 알림",
+    "camera": "카메라",
+    "cameraDesc": "감시 기기의 실시간 카메라 영상을 확인합니다.",
+    "cameraFeatures": "실시간 스트리밍, 사진 촬영",
+    "location": "위치",
+    "locationDesc": "감시 기기의 위치를 추적합니다.",
+    "locationFeatures": "위치 추적, 위치 기록",
+    "allow": "허용",
+    "allowAll": "모두 허용",
+    "later": "나중에",
+    "deniedWarning": "⚠ {{features}} 기능을 사용할 수 없습니다.",
+    "deniedHelp": "브라우저 설정에서 권한을 다시 활성화하세요."
   }
 }
