@@ -579,6 +579,7 @@
     "allow": "Erlauben",
     "allowAll": "Alle erlauben",
     "later": "Später",
+    "retry": "Erneut versuchen",
     "deniedWarning": "⚠ {{features}} wird nicht verfügbar sein.",
     "deniedHelp": "Gehen Sie zu den Browsereinstellungen, um diese Berechtigung zu aktivieren."
   }

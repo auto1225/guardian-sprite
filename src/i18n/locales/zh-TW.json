@@ -579,6 +579,7 @@
     "allow": "允許",
     "allowAll": "全部允許",
     "later": "稍後",
+    "retry": "重試",
     "deniedWarning": "⚠ {{features}}將無法使用。",
     "deniedHelp": "請到瀏覽器設定中重新啟用此權限。"
   }
