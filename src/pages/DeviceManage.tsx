@@ -40,11 +40,12 @@ interface DeviceManagePageProps {
   onClose: () => void;
   onSelectDevice: (deviceId: string) => void;
   onViewAlertHistory?: (deviceId: string) => void;
+  onIconClick?: (deviceId: string, type: "laptop" | "network" | "camera") => void;
 }
 
 type MatchedItem = { serial: UserSerial | null; device: Device | null };
 
-const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory }: DeviceManagePageProps) => {
+const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory, onIconClick }: DeviceManagePageProps) => {
   const { devices, selectedDeviceId, setSelectedDeviceId, deleteDevice } = useDevices();
   const { serials, serialsLoading, effectiveUserId } = useAuth();
   const queryClient2 = useQueryClient();
@@ -544,6 +545,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
                 onViewAlertHistory={onViewAlertHistory}
                 onToggleMonitoring={toggleMonitoring}
                 onToggleCamouflage={handleCamouflageToggle}
+                onIconClick={onIconClick}
                 isDragging={dragFromIdx === localIdx}
                 showHandle={true}
                 onHandlePointerDown={(e) => handleDragPointerDown(e, localIdx)}
@@ -621,6 +623,7 @@ interface DeviceCardProps {
   onViewAlertHistory?: (deviceId: string) => void;
   onToggleMonitoring: (deviceId: string, enable: boolean) => void;
   onToggleCamouflage: (deviceId: string) => void;
+  onIconClick?: (deviceId: string, type: "laptop" | "network" | "camera") => void;
   isDragging: boolean;
   showHandle: boolean;
   onHandlePointerDown: (e: React.PointerEvent) => void;
@@ -630,7 +633,7 @@ interface DeviceCardProps {
 const DeviceCard = ({
   item, itemKey: key, isSelected, serialNumber, onToggleSelect,
   onSetAsMain, onNumberChange, onDelete, onViewAlertHistory, onToggleMonitoring,
-  onToggleCamouflage, isDragging, showHandle, onHandlePointerDown, t,
+  onToggleCamouflage, onIconClick, isDragging, showHandle, onHandlePointerDown, t,
 }: DeviceCardProps) => {
   const { serial, device } = item;
   const isMain = !!(device && (device.metadata as Record<string, unknown>)?.is_main);
@@ -762,9 +765,9 @@ const DeviceCard = ({
       {device && (
         <div className="flex items-center justify-between mt-1">
           <div className="flex items-center gap-4">
-            <StatusIcon iconOn={laptopOn} iconOff={laptopOff} active={isOnline} label={device.device_type === "desktop" ? "Desktop" : device.device_type === "tablet" ? "Tablet" : "Laptop"} />
-            <StatusIcon iconOn={wifiOn} iconOff={wifiOff} active={isOnline && device.is_network_connected} label="Network" />
-            <StatusIcon iconOn={cameraOn} iconOff={cameraOff} active={isOnline && device.is_camera_connected} label="Camera" />
+            <StatusIcon iconOn={laptopOn} iconOff={laptopOff} active={isOnline} label={device.device_type === "desktop" ? "Desktop" : device.device_type === "tablet" ? "Tablet" : "Laptop"} onClick={() => onIconClick?.(device.id, "laptop")} />
+            <StatusIcon iconOn={wifiOn} iconOff={wifiOff} active={isOnline && device.is_network_connected} label="Network" onClick={() => onIconClick?.(device.id, "network")} />
+            <StatusIcon iconOn={cameraOn} iconOff={cameraOff} active={isOnline && device.is_camera_connected} label="Camera" onClick={() => onIconClick?.(device.id, "camera")} />
           </div>
           <div className="flex items-center gap-1.5">
             <button
@@ -803,11 +806,11 @@ const DeviceCard = ({
 };
 
 // ─── StatusIcon ───────────────────────────────────────────
-const StatusIcon = ({ iconOn, iconOff, active, label }: { iconOn: string; iconOff: string; active: boolean; label: string }) => (
-  <div className="flex flex-col items-center gap-0.5">
+const StatusIcon = ({ iconOn, iconOff, active, label, onClick }: { iconOn: string; iconOff: string; active: boolean; label: string; onClick?: () => void }) => (
+  <button onClick={onClick} className="flex flex-col items-center gap-0.5 active:scale-95 transition-transform">
     <img src={active ? iconOn : iconOff} alt={label} className="w-8 h-8 object-contain" />
     <span className="text-primary-foreground text-[9px] font-medium">{label}</span>
-  </div>
+  </button>
 );
 
 export default DeviceManagePage;
