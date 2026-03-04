@@ -132,12 +132,19 @@ export const useDevices = () => {
         }
 
         if (isConfirmedOnline) {
+          // ★ DB 검증 후 30초간은 Presence의 camera=false를 무시
+          const dbVerifiedAt = cameraDbVerified.get(d.id);
+          const isDbCameraVerified = dbVerifiedAt && (Date.now() - dbVerifiedAt < 30000);
+          let resolvedCamera = presenceData?.is_camera_connected ?? d.is_camera_connected;
+          if (isDbCameraVerified && presenceData?.is_camera_connected === false) {
+            resolvedCamera = true;
+          }
           return {
             ...d,
             name: devicePresenceNames.get(d.id) || resolvedName,
             status: "online" as Device["status"],
             is_network_connected: presenceData?.is_network_connected ?? true,
-            is_camera_connected: presenceData?.is_camera_connected ?? d.is_camera_connected,
+            is_camera_connected: resolvedCamera,
           };
         }
         // ★ Presence가 sync 완료됐는데 이 기기가 Presence에 없으면 → DB heartbeat 폴백 확인
