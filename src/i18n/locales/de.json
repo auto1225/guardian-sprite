@@ -581,6 +581,8 @@
     "later": "Später",
     "retry": "Erneut versuchen",
     "deniedWarning": "⚠ {{features}} wird nicht verfügbar sein.",
-    "deniedHelp": "Gehen Sie zu den Browsereinstellungen, um diese Berechtigung zu aktivieren."
+    "deniedHelp": "Gehen Sie zu den Browsereinstellungen, um diese Berechtigung zu aktivieren.",
+    "confirm": "Bestätigen",
+    "uncheckedWarning": "{{features}} wird nicht verfügbar sein."
   }
 }

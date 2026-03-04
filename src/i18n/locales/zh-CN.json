@@ -581,6 +581,8 @@
     "later": "稍后",
     "retry": "重试",
     "deniedWarning": "⚠ {{features}}将无法使用。",
-    "deniedHelp": "请到浏览器设置中重新启用此权限。"
+    "deniedHelp": "请到浏览器设置中重新启用此权限。",
+    "confirm": "确认",
+    "uncheckedWarning": "{{features}}将无法使用。"
   }
 }

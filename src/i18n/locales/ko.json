@@ -588,6 +588,8 @@
     "later": "나중에",
     "retry": "재시도",
     "deniedWarning": "⚠ {{features}} 기능을 사용할 수 없습니다.",
-    "deniedHelp": "브라우저 설정에서 권한을 다시 활성화하세요."
+    "deniedHelp": "브라우저 설정에서 권한을 다시 활성화하세요.",
+    "confirm": "승인",
+    "uncheckedWarning": "{{features}} 기능을 사용할 수 없습니다."
   }
 }
