@@ -298,7 +298,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
   // ─── Pointer-based drag reorder ─────────────────────────
   const handleDragPointerDown = (e: React.PointerEvent, localIdx: number) => {
     const globalIdx = (page - 1) * ITEMS_PER_PAGE + localIdx;
-    dragState.current = { active: true, fromGlobalIdx: globalIdx, startY: e.clientY, currentOverIdx: localIdx };
+    dragState.current = { active: true, fromGlobalIdx: globalIdx, startY: e.clientY, currentOverIdx: localIdx, crossPageTriggered: false };
     setDragFromIdx(localIdx);
     setDragOverIdx(localIdx);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
@@ -307,8 +307,54 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
 
   const handleDragPointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragState.current.active || !listRef.current) return;
-    // Find which card the pointer is over
     const rects = cardRefs.current.map(el => el?.getBoundingClientRect());
+    const listRect = listRef.current.getBoundingClientRect();
+
+    // ★ Cross-page detection: dragging above first card → previous page
+    const firstRect = rects[0];
+    if (firstRect && e.clientY < firstRect.top - 30 && page > 1 && !dragState.current.crossPageTriggered) {
+      dragState.current.crossPageTriggered = true;
+      // Move item to last position of previous page in global array
+      const fromGlobal = dragState.current.fromGlobalIdx;
+      const targetGlobal = (page - 2) * ITEMS_PER_PAGE + ITEMS_PER_PAGE - 1;
+      if (fromGlobal !== targetGlobal) {
+        const keys = items.map(i => itemKey(i));
+        const [moved] = keys.splice(fromGlobal, 1);
+        keys.splice(Math.min(targetGlobal, keys.length), 0, moved);
+        setCustomOrder(keys);
+        const reorderedItems = keys.map(k => items.find(i => itemKey(i) === k)).filter(Boolean) as MatchedItem[];
+        persistSortOrder(reorderedItems);
+      }
+      // Navigate to previous page and end drag
+      setPage(p => p - 1);
+      dragState.current.active = false;
+      setDragFromIdx(null);
+      setDragOverIdx(null);
+      return;
+    }
+
+    // ★ Cross-page detection: dragging below last card → next page
+    const lastRect = rects[rects.length - 1];
+    if (lastRect && e.clientY > lastRect.bottom + 30 && page < totalPages && !dragState.current.crossPageTriggered) {
+      dragState.current.crossPageTriggered = true;
+      const fromGlobal = dragState.current.fromGlobalIdx;
+      const targetGlobal = page * ITEMS_PER_PAGE; // first position of next page
+      if (fromGlobal !== targetGlobal) {
+        const keys = items.map(i => itemKey(i));
+        const [moved] = keys.splice(fromGlobal, 1);
+        keys.splice(Math.min(targetGlobal, keys.length), 0, moved);
+        setCustomOrder(keys);
+        const reorderedItems = keys.map(k => items.find(i => itemKey(i) === k)).filter(Boolean) as MatchedItem[];
+        persistSortOrder(reorderedItems);
+      }
+      setPage(p => p + 1);
+      dragState.current.active = false;
+      setDragFromIdx(null);
+      setDragOverIdx(null);
+      return;
+    }
+
+    // Normal within-page hover detection
     for (let i = 0; i < rects.length; i++) {
       const r = rects[i];
       if (r && e.clientY >= r.top && e.clientY <= r.bottom) {
@@ -319,7 +365,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
         break;
       }
     }
-  }, []);
+  }, [page, totalPages, items, itemKey, persistSortOrder]);
 
   const handleDragPointerUp = useCallback(async () => {
     if (!dragState.current.active) return;
