@@ -821,7 +821,12 @@ const DeviceCard = ({
             <StatusIcon iconOn={laptopOn} iconOff={laptopOff} active={isOnline} label={device.device_type === "desktop" ? "Desktop" : device.device_type === "tablet" ? "Tablet" : "Laptop"} onClick={() => onIconClick?.(device.id, "laptop")} />
             <StatusIcon iconOn={wifiOn} iconOff={wifiOff} active={isOnline && device.is_network_connected} label="Network" onClick={() => onIconClick?.(device.id, "network")} />
             <StatusIcon iconOn={cameraOn} iconOff={cameraOff} active={isOnline && device.is_camera_connected} label="Camera" onClick={() => onIconClick?.(device.id, "camera")} />
-          </div>
+            <button onClick={() => onSettingsClick?.(device.id)} className="flex flex-col items-center gap-0.5 active:scale-95 transition-transform">
+              <div className="w-8 h-8 flex items-center justify-center">
+                <Settings className="w-6 h-6 text-white/70" />
+              </div>
+              <span className="text-primary-foreground text-[9px] font-medium">{t("nav.settings")}</span>
+            </button>
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => onToggleCamouflage(device.id)}
