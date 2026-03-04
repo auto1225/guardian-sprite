@@ -92,33 +92,53 @@ export const SensorToggle = ({ label, description, checked, onChange }: {
 
 // ── Audio Helpers ──
 
-export async function playBuiltinSound(sound: typeof ALARM_SOUNDS[number], duration = 2, volume?: number): Promise<{ stop: () => void }> {
-  const ctx = new AudioContext();
-  await ctx.resume();
-  const vol = volume ?? getAlarmVolume();
-  
-  let t = 0;
-  const nodes: OscillatorNode[] = [];
-  while (t < duration) {
-    for (let i = 0; i < sound.freq.length; i++) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = sound.freq[i];
-      osc.type = "square";
-      gain.gain.value = vol;
-      osc.start(ctx.currentTime + t);
-      osc.stop(ctx.currentTime + t + sound.pattern[i]);
-      nodes.push(osc);
-      t += sound.pattern[i] + 0.05;
-      if (t >= duration) break;
+/** WAV 기반 미리듣기 — 모바일에서도 확실히 재생됨 (AudioContext monkey-patch 영향 없음) */
+function createPreviewWav(sound: typeof ALARM_SOUNDS[number], duration: number, volume: number): string {
+  const sampleRate = 22050;
+  const numSamples = sampleRate * duration;
+  const buffer = new ArrayBuffer(44 + numSamples * 2);
+  const view = new DataView(buffer);
+  const w = (offset: number, str: string) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
+  w(0, 'RIFF'); view.setUint32(4, 36 + numSamples * 2, true);
+  w(8, 'WAVE'); w(12, 'fmt '); view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+  w(36, 'data'); view.setUint32(40, numSamples * 2, true);
+
+  const totalPattern = sound.pattern.reduce((a, b) => a + b, 0) + sound.pattern.length * 0.05;
+
+  for (let i = 0; i < numSamples; i++) {
+    const t = i / sampleRate;
+    const cycleT = t % (totalPattern * 2 + 0.2);
+    let freq = sound.freq[0];
+    let acc = 0;
+    for (let fi = 0; fi < sound.freq.length; fi++) {
+      acc += sound.pattern[fi] + 0.05;
+      if (cycleT < acc) { freq = sound.freq[fi]; break; }
+      if (fi === sound.freq.length - 1) freq = sound.freq[0];
     }
+    const gap = cycleT % (sound.pattern[0] + 0.05);
+    const envelope = gap < sound.pattern[0] ? 1 : 0;
+    const sample = Math.sin(2 * Math.PI * freq * t) * 0.5 * volume * envelope;
+    view.setInt16(44 + i * 2, Math.max(-32767, Math.min(32767, sample * 32767)), true);
   }
+
+  const blob = new Blob([buffer], { type: 'audio/wav' });
+  return URL.createObjectURL(blob);
+}
+
+export function playBuiltinSound(sound: typeof ALARM_SOUNDS[number], duration = 2, volume?: number): { stop: () => void } {
+  const vol = volume ?? getAlarmVolume();
+  const wavUrl = createPreviewWav(sound, duration, vol);
+  const audio = new Audio(wavUrl);
+  audio.volume = Math.min(1, vol * 2);
+  audio.play().catch((e) => console.warn("[Preview] play failed:", e));
   return {
     stop: () => {
-      nodes.forEach((n) => { try { n.stop(); } catch {} });
-      ctx.close();
+      audio.pause();
+      audio.src = '';
+      URL.revokeObjectURL(wavUrl);
     },
   };
 }
@@ -247,7 +267,7 @@ export const SoundDialog = ({ open, onOpenChange, selectedSoundId, customSoundNa
     setPlayingSoundId(null);
   };
 
-  const previewSound = async (soundId: string) => {
+  const previewSound = (soundId: string) => {
     stopAllSounds();
     if (playingSoundId === soundId) return;
     setPlayingSoundId(soundId);
@@ -257,12 +277,12 @@ export const SoundDialog = ({ open, onOpenChange, selectedSoundId, customSoundNa
       audio.volume = volumePercent / 100;
       audio.src = customSoundDataUrl;
       audioRef.current = audio;
-      try { await audio.play(); } catch (e) { console.warn("Custom sound play failed:", e); }
+      audio.play().catch((e) => console.warn("Custom sound play failed:", e));
       setTimeout(() => { audio.pause(); setPlayingSoundId(null); }, 2000);
     } else {
       const sound = ALARM_SOUNDS.find((s) => s.id === soundId);
       if (sound) {
-        synthRef.current = await playBuiltinSound(sound, 2);
+        synthRef.current = playBuiltinSound(sound, 2, volumePercent / 100);
         setTimeout(() => stopAllSounds(), 2000);
       }
     }
