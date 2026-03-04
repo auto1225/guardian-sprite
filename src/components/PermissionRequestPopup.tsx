@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { usePermissionCheck, PermissionItem } from "@/hooks/usePermissionCheck";
-import { Bell, Camera, MapPin, ShieldAlert, ShieldCheck, X, AlertTriangle, RotateCcw } from "lucide-react";
+import { Bell, Camera, MapPin, ShieldAlert, ShieldCheck, X, AlertTriangle, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -12,68 +12,75 @@ const iconMap: Record<string, React.ReactNode> = {
 
 const PermissionRow = ({
   item,
-  onRequest,
+  checked,
+  onToggle,
 }: {
   item: PermissionItem;
-  onRequest: (item: PermissionItem) => void;
+  checked: boolean;
+  onToggle: () => void;
 }) => {
   const { t } = useTranslation();
   const isGranted = item.status === "granted";
   const isDenied = item.status === "denied";
-  const isPrompt = item.status === "prompt";
 
   return (
-    <div className={cn(
-      "flex items-start gap-3 p-3 rounded-xl transition-all",
-      isGranted
-        ? "bg-emerald-500/10 border border-emerald-500/20"
-        : isDenied
-          ? "bg-red-500/10 border border-red-500/20"
-          : "bg-white/5 border border-white/10"
-    )}>
+    <button
+      type="button"
+      onClick={isGranted ? undefined : onToggle}
+      className={cn(
+        "flex items-start gap-3 p-3 rounded-xl transition-all w-full text-left",
+        isGranted
+          ? "bg-emerald-500/10 border border-emerald-500/20"
+          : isDenied
+            ? checked
+              ? "bg-red-500/10 border border-red-500/20"
+              : "bg-white/5 border border-white/10 opacity-50"
+            : checked
+              ? "bg-white/5 border border-white/10"
+              : "bg-white/5 border border-white/10 opacity-50"
+      )}
+    >
+      {/* 체크박스 */}
       <div className={cn(
-        "mt-0.5 p-1.5 rounded-lg",
+        "mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all",
+        isGranted
+          ? "bg-emerald-500 border-emerald-500"
+          : checked
+            ? "bg-accent border-accent"
+            : "border-white/30 bg-transparent"
+      )}>
+        {(isGranted || checked) && <Check className="w-3 h-3 text-white" />}
+      </div>
+
+      {/* 아이콘 */}
+      <div className={cn(
+        "mt-0.5 p-1.5 rounded-lg shrink-0",
         isGranted ? "text-emerald-400 bg-emerald-500/20" : isDenied ? "text-red-400 bg-red-500/20" : "text-yellow-400 bg-yellow-500/20"
       )}>
         {iconMap[item.key] || <ShieldAlert className="w-5 h-5" />}
       </div>
+
+      {/* 내용 */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-white">{t(item.name)}</span>
           {isGranted && <ShieldCheck className="w-4 h-4 text-emerald-400" />}
-          {isDenied && <AlertTriangle className="w-4 h-4 text-red-400" />}
+          {isDenied && checked && <AlertTriangle className="w-4 h-4 text-red-400" />}
         </div>
         <p className="text-xs text-white/60 mt-0.5">{t(item.description)}</p>
-        {isDenied && (
+        {isDenied && checked && (
           <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
             <AlertTriangle className="w-3 h-3 shrink-0" />
             {t("permissions.deniedWarning", { features: t(item.affectedFeatures) })}
           </p>
         )}
-        {/* 허용 버튼: prompt 상태 */}
-        {isPrompt && (
-          <button
-            onClick={() => onRequest(item)}
-            className="mt-2 px-3 py-1.5 text-xs font-semibold bg-accent/80 text-accent-foreground rounded-lg hover:bg-accent active:scale-95 transition-all"
-          >
-            {t("permissions.allow")}
-          </button>
-        )}
-        {/* 재시도 버튼: denied 상태 */}
-        {isDenied && (
-          <div className="mt-1.5">
-            <button
-              onClick={() => onRequest(item)}
-              className="px-3 py-1.5 text-xs font-semibold bg-white/10 text-white/80 rounded-lg hover:bg-white/15 active:scale-95 transition-all flex items-center gap-1"
-            >
-              <RotateCcw className="w-3 h-3" />
-              {t("permissions.retry")}
-            </button>
-            <p className="text-[10px] text-white/40 mt-1">{t("permissions.deniedHelp")}</p>
-          </div>
+        {!isGranted && !checked && (
+          <p className="text-xs text-white/40 mt-1">
+            {t("permissions.uncheckedWarning", { features: t(item.affectedFeatures) })}
+          </p>
         )}
       </div>
-    </div>
+    </button>
   );
 };
 
@@ -81,11 +88,21 @@ export default function PermissionRequestPopup() {
   const { t } = useTranslation();
   const { permissions, shouldShow, dismiss, refresh } = usePermissionCheck();
   const [closing, setClosing] = useState(false);
+  const [checkedMap, setCheckedMap] = useState<Record<string, boolean>>({});
+
+  // 기본값: 모두 체크됨
+  useEffect(() => {
+    const initial: Record<string, boolean> = {};
+    permissions.forEach(p => {
+      initial[p.key] = true; // 기본 체크
+    });
+    setCheckedMap(initial);
+  }, [permissions]);
 
   if (!shouldShow) return null;
 
   const nonGranted = permissions.filter(p => p.status !== "granted");
-  const hasPrompt = nonGranted.some(p => p.status === "prompt");
+  const checkedItems = nonGranted.filter(p => checkedMap[p.key]);
 
   const handleClose = () => {
     setClosing(true);
@@ -95,20 +112,15 @@ export default function PermissionRequestPopup() {
     }, 200);
   };
 
-  const handleRequest = async (item: PermissionItem) => {
-    const result = await item.request();
-    if (result === "granted") {
-      refresh();
-    } else {
-      refresh();
-    }
+  const toggleCheck = (key: string) => {
+    setCheckedMap(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleAllowAll = async () => {
-    for (const item of nonGranted) {
+  const handleConfirm = async () => {
+    // 체크된 항목만 권한 요청
+    for (const item of checkedItems) {
       await item.request();
     }
-    // 모두 처리 후 팝업 닫기
     handleClose();
   };
 
@@ -147,28 +159,31 @@ export default function PermissionRequestPopup() {
         {/* Permission List */}
         <div className="px-5 space-y-2 max-h-[50vh] overflow-y-auto">
           {permissions.map((item) => (
-            <PermissionRow key={item.key} item={item} onRequest={handleRequest} />
+            <PermissionRow
+              key={item.key}
+              item={item}
+              checked={checkedMap[item.key] ?? true}
+              onToggle={() => toggleCheck(item.key)}
+            />
           ))}
         </div>
 
         {/* Footer */}
         <div className="px-5 py-4 mt-2 flex gap-2">
-          {nonGranted.length > 0 && (
+          {checkedItems.length > 0 && (
             <button
-              onClick={handleAllowAll}
-              className={cn(
-                "flex-1 py-2.5 font-bold text-sm rounded-xl active:scale-95 transition-transform",
-                hasPrompt
-                  ? "bg-accent text-accent-foreground"
-                  : "bg-white/15 text-white/80"
-              )}
+              onClick={handleConfirm}
+              className="flex-1 py-2.5 bg-accent text-accent-foreground font-bold text-sm rounded-xl active:scale-95 transition-transform"
             >
-              {t("permissions.allowAll")}
+              {t("permissions.confirm")}
             </button>
           )}
           <button
             onClick={handleClose}
-            className="flex-1 py-2.5 bg-white/10 text-white/70 font-medium text-sm rounded-xl hover:bg-white/15 active:scale-95 transition-all"
+            className={cn(
+              "py-2.5 bg-white/10 text-white/70 font-medium text-sm rounded-xl hover:bg-white/15 active:scale-95 transition-all",
+              checkedItems.length > 0 ? "flex-1" : "flex-1"
+            )}
           >
             {t("permissions.later")}
           </button>
