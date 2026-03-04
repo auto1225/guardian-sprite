@@ -563,5 +563,23 @@
     "expiredDescription": "お試し期間が終了しました。MeerCOPを引き続きご利用いただくには、サブスクリプションを更新してください。",
     "renewButton": "meercop.comで更新",
     "renewNotice": "更新後、アプリを再起動してください。"
+  },
+  "permissions": {
+    "title": "権限設定が必要です",
+    "subtitle": "MeerCOPのセキュリティ機能には以下の権限が必要です。",
+    "notification": "通知",
+    "notificationDesc": "脅威検知時にアラーム音とプッシュ通知を受信します。",
+    "notificationFeatures": "アラーム音、プッシュ通知",
+    "camera": "カメラ",
+    "cameraDesc": "監視デバイスのリアルタイムカメラ映像を確認します。",
+    "cameraFeatures": "ライブストリーミング、写真撮影",
+    "location": "位置情報",
+    "locationDesc": "監視デバイスの位置を追跡します。",
+    "locationFeatures": "位置追跡、位置履歴",
+    "allow": "許可",
+    "allowAll": "すべて許可",
+    "later": "後で",
+    "deniedWarning": "⚠ {{features}}が利用できません。",
+    "deniedHelp": "ブラウザの設定から権限を再有効化してください。"
   }
 }
