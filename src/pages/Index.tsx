@@ -428,6 +428,8 @@ const Index = () => {
             key={activeAlert.id}
             device={selectedDevice}
             activeAlert={activeAlert}
+            alertDeviceName={alertDeviceInfoRef.current?.name || selectedDevice.name}
+            alertDeviceSerial={alertDeviceInfoRef.current?.serial || ((selectedDevice.metadata as Record<string, unknown>)?.serial_key ? String((selectedDevice.metadata as Record<string, unknown>).serial_key) : null)}
             onDismiss={() => {
               dismissAll();
               setShowFallbackAlarmButtons(false);
