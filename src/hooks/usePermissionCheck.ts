@@ -18,17 +18,15 @@ export interface PermissionItem {
 }
 
 const DISMISSED_KEY = "meercop_permissions_dismissed";
-const DISMISSED_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7일
 
-function getDismissedAt(): number | null {
+function isDismissed(): boolean {
   try {
-    const val = localStorage.getItem(DISMISSED_KEY);
-    return val ? Number(val) : null;
-  } catch { return null; }
+    return localStorage.getItem(DISMISSED_KEY) === "true";
+  } catch { return false; }
 }
 
-function setDismissedAt() {
-  try { localStorage.setItem(DISMISSED_KEY, String(Date.now())); } catch {}
+function setDismissed() {
+  try { localStorage.setItem(DISMISSED_KEY, "true"); } catch {}
 }
 
 function clearDismissed() {
@@ -138,17 +136,10 @@ export function usePermissionCheck() {
     const needsAttention = items.some(p => p.status !== "granted");
     
     if (needsAttention) {
-      const dismissedAt = getDismissedAt();
-      if (dismissedAt && (Date.now() - dismissedAt) < DISMISSED_EXPIRY_MS) {
-        // 7일 내 닫았으면 표시하지 않음
-        // 단, denied 항목이 있으면 항상 표시
-        const hasDenied = items.some(p => p.status === "denied");
-        setShouldShow(hasDenied);
-      } else {
-        clearDismissed();
-        setShouldShow(true);
-      }
+      // 한 번이라도 승인/닫기 했으면 다시 표시하지 않음
+      setShouldShow(!isDismissed());
     } else {
+      // 모든 권한이 granted — 팝업 불필요
       setShouldShow(false);
     }
 
@@ -160,7 +151,7 @@ export function usePermissionCheck() {
   }, [checkPermissions]);
 
   const dismiss = useCallback(() => {
-    setDismissedAt();
+    setDismissed();
     setShouldShow(false);
   }, []);
 
