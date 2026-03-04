@@ -72,6 +72,16 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff }: Ale
         {/* Alert message */}
         <div className="px-4 pb-3">
           <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl p-4">
+            {/* 기기 식별 정보 */}
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-lg">💻</span>
+              <span className="text-white font-black text-base">{device.name}</span>
+              {(device.metadata as Record<string, unknown>)?.serial_key && (
+                <span className="text-white/60 text-xs font-mono bg-white/10 px-2 py-0.5 rounded-md">
+                  {String((device.metadata as Record<string, unknown>).serial_key)}
+                </span>
+              )}
+            </div>
             <p className="text-white font-bold text-lg">{activeAlert.title}</p>
             {activeAlert.message && (
               <p className="text-white/70 text-sm mt-1">{activeAlert.message}</p>
