@@ -406,23 +406,6 @@ const Index = () => {
           closePanel("deviceManage");
           openPanel("photoHistory");
         }}
-        onIconClick={(deviceId, type) => {
-          setSelectedDeviceId(deviceId);
-          closePanel("deviceManage");
-          const device = devices.find(d => d.id === deviceId);
-          if (device && device.status === "offline" && type !== "laptop") {
-            toast({
-              title: t("status.deviceOffline"),
-              description: t("status.deviceOfflineActionDesc", "컴퓨터가 로그아웃 또는 오프라인 상태이므로 연결할 수 없습니다."),
-            });
-            return;
-          }
-          switch (type) {
-            case "laptop": openPanel("locationMap"); break;
-            case "camera": openPanel("camera"); break;
-            case "network": openPanel("networkInfo"); break;
-          }
-        }}
       />
 
       {/* Alert Mode Overlay */}
