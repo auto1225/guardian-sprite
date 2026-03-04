@@ -6,7 +6,10 @@ import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  const buildTime = new Date().toISOString().slice(0, 16).replace('T', ' ');
+  // KST (UTC+9) 기준 빌드 시간
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const buildTime = kst.toISOString().slice(0, 16).replace('T', ' ');
   return ({
   server: {
     host: "::",
