@@ -193,15 +193,11 @@ export const PinDialog = ({ open, onOpenChange, onSave }: {
 
 // ── Sound Dialog ──
 
-export const SoundDialog = ({ open, onOpenChange, selectedSoundId, customSoundName, customSoundDataUrl, onSelectSound, onCustomUpload, deviceId }: {
+export const SoundDialog = ({ open, onOpenChange, selectedSoundId, onSelectSound }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedSoundId: string;
-  customSoundName: string;
-  customSoundDataUrl: string;
   onSelectSound: (soundId: string) => void;
-  onCustomUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  deviceId: string;
 }) => {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
