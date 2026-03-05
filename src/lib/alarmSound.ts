@@ -395,22 +395,21 @@ async function switchWarmToAlarm(): Promise<boolean> {
   }
 }
 
-/** warm audio를 무음으로 되돌림 — pause하지 않고 무음 WAV 유지 (모바일 제스처 보존) */
+/** warm audio를 무음으로 되돌림 — src 변경 없이 볼륨만 조절 (모바일 제스처 보존) */
 function switchWarmToSilent() {
   const warm = getWarmAudio();
   if (!warm) return;
   try {
-    // ★ 핵심: pause()하면 모바일에서 제스처 blessing을 잃으므로
-    //   무음 WAV로 src를 교체하고 계속 재생 유지
-    const silentUrl = createSilentWav();
-    warm.src = silentUrl;
-    warm.volume = 0.01;
-    warm.loop = true;
-    warm.play().catch(() => {
-      // play 실패 시에도 warm 참조는 유지 — 다음 제스처에서 복원 가능
-      console.warn("[AlarmSound] switchWarmToSilent: play failed, warm audio may need re-blessing");
-    });
-    console.log("[AlarmSound] 🔇 Warm audio switched to silent (STILL PLAYING — gesture preserved)");
+    // ★ 핵심 변경: src를 교체하면 일부 기기에서 gesture blessing을 잃으므로
+    //   볼륨만 0에 가깝게 낮추고 계속 재생 유지 (src 변경 X)
+    warm.volume = 0.001;
+    // paused 상태라면 재생 시도 (blessing 복원)
+    if (warm.paused) {
+      warm.play().catch(() => {
+        console.warn("[AlarmSound] switchWarmToSilent: play failed, warm audio may need re-blessing");
+      });
+    }
+    console.log("[AlarmSound] 🔇 Warm audio muted (volume=0.001, src preserved — gesture safe)");
   } catch {}
 }
 
