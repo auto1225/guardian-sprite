@@ -419,13 +419,22 @@ function switchWarmToSilent() {
 export function unlockAudio() {
   const s = getState();
 
-  // ★ Warm Audio 생성 — 이미 존재하지 않으면 무음 오디오 시작
-  if (!getWarmAudio()) {
+  // ★ Warm Audio 생성 또는 re-blessing
+  const existingWarm = getWarmAudio();
+  if (existingWarm) {
+    // 이미 존재하지만 paused 상태면 re-bless
+    if (existingWarm.paused) {
+      existingWarm.volume = 0.001;
+      existingWarm.play().then(() => {
+        console.log("[AlarmSound] 🔥 Warm audio re-blessed (was paused)");
+      }).catch(() => {});
+    }
+  } else {
     try {
       const silentUrl = createSilentWav();
       const audio = new Audio(silentUrl);
       audio.loop = true;
-      audio.volume = 0.01; // 거의 무음이지만 0이 아님 (일부 브라우저가 0이면 최적화로 중단)
+      audio.volume = 0.001;
       audio.play().then(() => {
         setWarmAudio(audio);
         console.log("[AlarmSound] 🔥 Warm audio started (silent loop)");
