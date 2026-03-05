@@ -752,10 +752,12 @@ export async function play(_deviceId?: string) {
 
   // ★★ 모바일 핵심: Warm Audio 우선 사용
   // WebSocket으로 경보 도착 시 사용자 제스처 없이도 소리 가능
-  if (switchWarmToAlarm()) {
-    console.log("[AlarmSound] 🔊 Playing via warm audio (mobile-safe)");
+  const warmSuccess = await switchWarmToAlarm();
+  if (warmSuccess) {
+    console.log("[AlarmSound] 🔊 Playing via warm audio (mobile-safe) ✅");
     return;
   }
+  console.log("[AlarmSound] ⚠️ Warm audio failed, trying AudioContext/fallback...");
 
   // 브라우저 정책 대응 — 모바일에서 AudioContext가 suspended일 때
   if (refs.ctx.state === 'suspended') {
