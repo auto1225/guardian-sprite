@@ -761,11 +761,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
         open={showSoundDialog}
         onOpenChange={setShowSoundDialog}
         selectedSoundId={selectedSoundId}
-        customSoundName={customSoundName}
-        customSoundDataUrl={customSoundDataUrl}
         onSelectSound={handleSelectSound}
-        onCustomUpload={handleCustomSoundUpload}
-        deviceId={device.id}
       />
     </>
   );
