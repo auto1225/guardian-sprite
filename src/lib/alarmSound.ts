@@ -371,10 +371,13 @@ function setWarmAudio(audio: HTMLAudioElement | null) {
   (window as unknown as Record<string, HTMLAudioElement | null>)[WARM_AUDIO_KEY] = audio;
 }
 
-/** warm audio를 경보음으로 전환 */
-function switchWarmToAlarm(): boolean {
+/** warm audio를 경보음으로 전환 (async — play 결과를 확인) */
+async function switchWarmToAlarm(): Promise<boolean> {
   const warm = getWarmAudio();
-  if (!warm) return false;
+  if (!warm) {
+    console.log("[AlarmSound] switchWarmToAlarm: no warm audio element");
+    return false;
+  }
   try {
     const volume = getVolume();
     const soundId = getSelectedSoundId();
@@ -382,23 +385,32 @@ function switchWarmToAlarm(): boolean {
     warm.src = alarmUrl;
     warm.volume = Math.min(1, volume * 2);
     warm.loop = true;
-    warm.play().catch(() => {});
-    console.log("[AlarmSound] 🔊 Warm audio switched to alarm sound");
+    console.log("[AlarmSound] 🔊 switchWarmToAlarm: src set, paused=", warm.paused, "calling play()...");
+    await warm.play();
+    console.log("[AlarmSound] 🔊 Warm audio switched to alarm sound ✅ (playing)");
     return true;
   } catch (err) {
-    console.warn("[AlarmSound] switchWarmToAlarm failed:", err);
+    console.warn("[AlarmSound] switchWarmToAlarm FAILED (will use fallback):", err);
     return false;
   }
 }
 
-/** warm audio를 무음으로 되돌림 */
+/** warm audio를 무음으로 되돌림 — pause하지 않고 무음 WAV 유지 (모바일 제스처 보존) */
 function switchWarmToSilent() {
   const warm = getWarmAudio();
   if (!warm) return;
   try {
-    warm.pause();
-    // 새 무음 소스로 교체하되 재생은 하지 않음 (배터리 절약)
-    console.log("[AlarmSound] 🔇 Warm audio paused (silent)");
+    // ★ 핵심: pause()하면 모바일에서 제스처 blessing을 잃으므로
+    //   무음 WAV로 src를 교체하고 계속 재생 유지
+    const silentUrl = createSilentWav();
+    warm.src = silentUrl;
+    warm.volume = 0.01;
+    warm.loop = true;
+    warm.play().catch(() => {
+      // play 실패 시에도 warm 참조는 유지 — 다음 제스처에서 복원 가능
+      console.warn("[AlarmSound] switchWarmToSilent: play failed, warm audio may need re-blessing");
+    });
+    console.log("[AlarmSound] 🔇 Warm audio switched to silent (STILL PLAYING — gesture preserved)");
   } catch {}
 }
 
@@ -740,10 +752,12 @@ export async function play(_deviceId?: string) {
 
   // ★★ 모바일 핵심: Warm Audio 우선 사용
   // WebSocket으로 경보 도착 시 사용자 제스처 없이도 소리 가능
-  if (switchWarmToAlarm()) {
-    console.log("[AlarmSound] 🔊 Playing via warm audio (mobile-safe)");
+  const warmSuccess = await switchWarmToAlarm();
+  if (warmSuccess) {
+    console.log("[AlarmSound] 🔊 Playing via warm audio (mobile-safe) ✅");
     return;
   }
+  console.log("[AlarmSound] ⚠️ Warm audio failed, trying AudioContext/fallback...");
 
   // 브라우저 정책 대응 — 모바일에서 AudioContext가 suspended일 때
   if (refs.ctx.state === 'suspended') {
