@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Database } from "@/integrations/supabase/types";
 import { deleteLaptopDbDevice } from "@/lib/laptopDb";
 import { websiteSupabase } from "@/lib/websiteAuth";
+import { invokeWithRetry } from "@/lib/invokeWithRetry";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 type DeviceInsert = Database["public"]["Tables"]["devices"]["Insert"];
@@ -232,7 +233,7 @@ export const useDevices = () => {
 
   const updateDevice = useMutation({
     mutationFn: async ({ id, ...updates }: { id: string } & Partial<Device>) => {
-      const { data, error } = await supabase.functions.invoke("update-device", {
+      const { data, error } = await invokeWithRetry("update-device", {
         body: { device_id: id, ...updates },
       });
       if (error) throw error;
@@ -256,7 +257,7 @@ export const useDevices = () => {
       const serialKey = (targetDevice?.metadata as Record<string, unknown>)?.serial_key as string | undefined;
 
       // 1) 공유 DB에서 삭제
-      const { error } = await supabase.functions.invoke("update-device", {
+      const { error } = await invokeWithRetry("update-device", {
         body: { device_id: id, _action: "delete" },
       });
       if (error) throw error;
@@ -641,7 +642,7 @@ export const useDevices = () => {
 
         // ★ Presence에서 강제 오프라인된 기기들의 DB 상태도 동기화 (best-effort)
         for (const deviceId of forcedOfflineIds) {
-          supabase.functions.invoke("update-device", {
+          invokeWithRetry("update-device", {
             body: { device_id: deviceId, status: "offline", is_network_connected: false, is_camera_connected: false },
           }).catch(() => { /* best effort */ });
         }
@@ -760,7 +761,7 @@ export const useDevices = () => {
         return oldDevices.map(d => d.id === deviceId ? { ...d, name: newName } : d);
       });
       // ★ 공유 DB에도 이름 반영 (노트북이 공유 DB를 업데이트하지 못했을 수 있음)
-      supabase.functions.invoke("update-device", {
+      invokeWithRetry("update-device", {
         body: { device_id: deviceId, updates: { name: newName } },
       }).then(({ error }) => {
         if (error) console.warn("[useDevices] ⚠️ Failed to sync name to shared DB:", error);

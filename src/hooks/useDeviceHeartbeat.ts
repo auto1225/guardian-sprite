@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeWithRetry } from "@/lib/invokeWithRetry";
 import { HEARTBEAT_INTERVAL_MS } from "@/lib/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { useDevices } from "@/hooks/useDevices";
@@ -40,7 +41,7 @@ export function useDeviceHeartbeat() {
     const setOnline = async () => {
       try {
         const { level } = await getBatteryInfo();
-        await supabase.functions.invoke("update-device", {
+        await invokeWithRetry("update-device", {
           body: {
             device_id: deviceId,
             status: "online",
@@ -56,7 +57,7 @@ export function useDeviceHeartbeat() {
 
     const setOffline = async () => {
       try {
-        await supabase.functions.invoke("update-device", {
+        await invokeWithRetry("update-device", {
           body: { device_id: deviceId, status: "offline" },
         });
         // 모든 기기 감시 OFF (스마트폰 앱 종료 시 감시 해제)
@@ -69,7 +70,7 @@ export function useDeviceHeartbeat() {
             (d: { device_type: string; id: string }) => d.device_type !== "smartphone"
           );
           for (const d of otherDevices) {
-            await supabase.functions.invoke("update-device", {
+            await invokeWithRetry("update-device", {
               body: { device_id: d.id, is_monitoring: false },
             });
           }
@@ -83,7 +84,7 @@ export function useDeviceHeartbeat() {
     const sendHeartbeat = async () => {
       try {
         const { level } = await getBatteryInfo();
-        await supabase.functions.invoke("update-device", {
+        await invokeWithRetry("update-device", {
           body: {
             device_id: deviceId,
             last_seen_at: new Date().toISOString(),

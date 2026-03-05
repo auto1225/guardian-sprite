@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { invokeWithRetry } from "@/lib/invokeWithRetry";
 
 /**
  * DB에서 최신 metadata를 읽은 후 안전하게 병합하여 업데이트합니다.
@@ -24,8 +25,8 @@ export async function safeMetadataUpdate(
   // 2. 안전하게 병합
   const merged = { ...currentMeta, ...updates };
 
-  // 3. Edge Function으로 업데이트 (RLS 우회)
-  const { error } = await supabase.functions.invoke("update-device", {
+  // 3. Edge Function으로 업데이트 (RLS 우회, 재시도 포함)
+  const { error } = await invokeWithRetry("update-device", {
     body: {
       device_id: deviceId,
       metadata: merged,

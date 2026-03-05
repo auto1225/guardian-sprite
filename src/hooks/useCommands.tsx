@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import { broadcastCommand } from "@/lib/broadcastCommand";
+import { invokeWithRetry } from "@/lib/invokeWithRetry";
 
 type CommandType = Database["public"]["Enums"]["command_type"];
 type Json = Database["public"]["Tables"]["commands"]["Insert"]["payload"];
@@ -43,7 +44,7 @@ export const useCommands = () => {
   const toggleMonitoring = async (deviceId: string, enable: boolean) => {
     console.log("[useCommands] toggleMonitoring called:", deviceId, "enable:", enable);
     
-    const { error } = await supabase.functions.invoke("update-device", {
+    const { error } = await invokeWithRetry("update-device", {
       body: { device_id: deviceId, is_monitoring: enable },
     });
     
