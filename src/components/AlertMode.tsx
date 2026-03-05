@@ -3,10 +3,11 @@ import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
 import { ActiveAlert, stopAlertSound } from "@/hooks/useAlerts";
 import * as Alarm from "@/lib/alarmSound";
-import { Video, VideoOff, MapPin } from "lucide-react";
+import { Video, VideoOff, MapPin, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AlertStreamingViewer from "@/components/alert/AlertStreamingViewer";
 import AlertLocationMap from "@/components/alert/AlertLocationMap";
+import { useAlertLocation } from "@/hooks/useAlertLocation";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 
@@ -52,7 +53,15 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff, alert
   };
 
   const hasCamera = device?.is_camera_connected;
-  const hasLocation = device?.latitude != null && device?.longitude != null;
+
+  // 위치 정보 신뢰성 강화 — 폴링 + DB fallback
+  const alertLocation = useAlertLocation(
+    device?.id,
+    device?.latitude,
+    device?.longitude,
+    true
+  );
+  const hasLocation = alertLocation != null;
 
   return (
     <div className="fixed inset-0 bg-red-800/60 backdrop-blur-2xl z-50 flex flex-col overflow-hidden">
@@ -110,8 +119,25 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff, alert
         )}
 
         {/* 위치 지도 */}
-        {hasLocation ? (
-          <AlertLocationMap latitude={device.latitude!} longitude={device.longitude!} locationSource={undefined} />
+        {hasLocation && alertLocation ? (
+          <AlertLocationMap
+            latitude={alertLocation.latitude}
+            longitude={alertLocation.longitude}
+            locationSource={alertLocation.locationSource}
+          />
+        ) : !hasLocation && alertLocation === null ? (
+          <div className="mx-4 mb-3 shrink-0">
+            <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10">
+                <MapPin size={16} className="text-white/80" />
+                <span className="text-white font-bold text-sm">{t("alert.laptopLocation")}</span>
+              </div>
+              <div className="h-48 bg-black/40 flex flex-col items-center justify-center">
+                <Loader2 className="w-8 h-8 text-white/40 mb-2 animate-spin" />
+                <span className="text-sm text-white/60">{t("alertLocation.loadingAddress", "위치 정보 확인 중...")}</span>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="mx-4 mb-3 shrink-0">
             <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden">
