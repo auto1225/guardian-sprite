@@ -958,7 +958,7 @@ let previewOscillators: OscillatorNode[] = [];
 let previewGain: GainNode | null = null;
 let previewInterval: ReturnType<typeof setInterval> | null = null;
 
-export function preview(soundId?: string, durationMs = 2000, volumeOverride?: number): void {
+export async function preview(soundId?: string, durationMs = 2000, volumeOverride?: number): Promise<void> {
   // 기존 미리듣기 정지
   stopPreview();
 
@@ -968,35 +968,47 @@ export function preview(soundId?: string, durationMs = 2000, volumeOverride?: nu
   console.log("[AlarmSound] 🎵 Preview start:", resolvedSoundId, "vol:", volume, "gesture context");
 
   // ★ 최우선: AudioContext + OscillatorNode (사용자 제스처 컨텍스트에서 가장 확실)
-  // 모바일에서 data URL이나 Blob 없이 직접 합성 → 100% 동작
   try {
     const OrigAC = ((window as unknown as Record<string, unknown>).__meercop_OriginalAudioContext as typeof AudioContext) || AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (OrigAC) {
       previewCtx = new OrigAC();
-      // ★ 핵심: 사용자 제스처 내에서 resume() → suspended 해제 보장
+      console.log("[AlarmSound] Preview AudioContext created, state:", previewCtx.state);
+      
+      // ★ 핵심: await resume() — 모바일에서 suspended→running 전환을 보장
       if (previewCtx.state === 'suspended') {
-        previewCtx.resume().catch(() => {});
-      }
-      previewGain = previewCtx.createGain();
-      previewGain.connect(previewCtx.destination);
-      previewGain.gain.value = Math.min(1, volume * 2);
-
-      const config = ALARM_SOUND_CONFIGS[resolvedSoundId] || ALARM_SOUND_CONFIGS.whistle;
-      
-      // 즉시 사운드 사이클 재생
-      playPreviewCycle(config);
-      
-      // 반복 재생
-      const cycleMs = config.pattern.reduce((a, b) => a + b + 0.05, 0) * 2000 + 300;
-      previewInterval = setInterval(() => {
-        if (previewCtx && previewCtx.state !== 'closed') {
-          playPreviewCycle(config);
+        try {
+          await previewCtx.resume();
+          console.log("[AlarmSound] Preview AudioContext resumed, state:", previewCtx.state);
+        } catch (e) {
+          console.warn("[AlarmSound] Preview resume failed:", e);
         }
-      }, cycleMs);
+      }
       
-      previewTimeout = setTimeout(() => stopPreview(), durationMs);
-      console.log("[AlarmSound] 🔊 Preview via direct AudioContext+Oscillator (most reliable on mobile)");
-      return;
+      // resume 후에도 suspended이면 이 방법은 포기
+      if (previewCtx.state === 'running') {
+        previewGain = previewCtx.createGain();
+        previewGain.connect(previewCtx.destination);
+        previewGain.gain.value = Math.min(1, volume * 2);
+
+        const config = ALARM_SOUND_CONFIGS[resolvedSoundId] || ALARM_SOUND_CONFIGS.whistle;
+        
+        playPreviewCycle(config);
+        
+        const cycleMs = config.pattern.reduce((a, b) => a + b + 0.05, 0) * 2000 + 300;
+        previewInterval = setInterval(() => {
+          if (previewCtx && previewCtx.state !== 'closed') {
+            playPreviewCycle(config);
+          }
+        }, cycleMs);
+        
+        previewTimeout = setTimeout(() => stopPreview(), durationMs);
+        console.log("[AlarmSound] 🔊 Preview via AudioContext+Oscillator ✅ state:", previewCtx.state);
+        return;
+      } else {
+        console.warn("[AlarmSound] AudioContext still", previewCtx.state, "after resume, trying fallback");
+        try { previewCtx.close().catch(() => {}); } catch {}
+        previewCtx = null;
+      }
     }
   } catch (err) {
     console.warn("[AlarmSound] Preview AudioContext failed:", err);
