@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeWithRetry } from "@/lib/invokeWithRetry";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -65,7 +66,7 @@ export function useSmartphoneRegistration() {
 
         // 앱 시작 시 감시 OFF 리셋
         if (deviceId) {
-          await supabase.functions.invoke("update-device", {
+          await invokeWithRetry("update-device", {
             body: { device_id: deviceId, updates: { is_monitoring: false, status: "online" } },
           });
         }
@@ -80,7 +81,7 @@ export function useSmartphoneRegistration() {
         );
 
         for (const laptop of laptopDevices) {
-          await supabase.functions.invoke("update-device", {
+          await invokeWithRetry("update-device", {
             body: { device_id: laptop.id, updates: { is_monitoring: false } },
           });
 
