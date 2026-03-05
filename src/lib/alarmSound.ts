@@ -1104,7 +1104,6 @@ export function stopPreview(): void {
   
   // ★ warm audio는 건드리지 않음! — pause하면 제스처 blessing이 파괴됨
 }
-}
 
 export type { AlarmState };
 
