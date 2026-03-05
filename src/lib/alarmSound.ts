@@ -946,12 +946,17 @@ export function emergencyKillAll(): string[] {
 // re-export for compatibility
 // ══════════════════════════════════════
 // ══════════════════════════════════════
-// ★ Preview — 설정 화면 미리듣기 전용
-// 알람 모듈의 모바일 호환 인프라를 그대로 활용하되,
-// mute/suppress 체크를 건너뛰고 제한 시간 후 자동 정지
+// ★ Preview — 설정 화면 미리듣기 전용 (v2)
+// 모바일 핵심: 사용자 제스처 컨텍스트에서 호출되므로
+// AudioContext.resume()이 확실히 동작함
+// → OscillatorNode 직접 합성을 최우선 사용 (data URL/Blob 불필요)
 // ══════════════════════════════════════
 let previewTimeout: ReturnType<typeof setTimeout> | null = null;
 let previewAudio: HTMLAudioElement | null = null;
+let previewCtx: AudioContext | null = null;
+let previewOscillators: OscillatorNode[] = [];
+let previewGain: GainNode | null = null;
+let previewInterval: ReturnType<typeof setInterval> | null = null;
 
 export function preview(soundId?: string, durationMs = 2000, volumeOverride?: number): void {
   // 기존 미리듣기 정지
@@ -960,49 +965,48 @@ export function preview(soundId?: string, durationMs = 2000, volumeOverride?: nu
   const volume = volumeOverride ?? getVolume();
   const resolvedSoundId = soundId || getSelectedSoundId();
 
-  console.log("[AlarmSound] 🎵 Preview start:", resolvedSoundId, "vol:", volume);
+  console.log("[AlarmSound] 🎵 Preview start:", resolvedSoundId, "vol:", volume, "gesture context");
 
-  // ① warm audio가 있으면 최우선 사용 (모바일에서 가장 확실)
-  const warm = getWarmAudio();
-  if (warm) {
-    try {
-      const wavUrl = createAlarmWav(volume, resolvedSoundId);
-      warm.src = wavUrl;
-      warm.volume = Math.min(1, volume * 2);
-      warm.loop = false;
-      warm.play().then(() => {
-        console.log("[AlarmSound] 🔊 Preview via warm audio");
-      }).catch(() => {
-        console.warn("[AlarmSound] Warm audio preview failed, trying fallback");
-        tryFallbackPreview(resolvedSoundId, volume);
-      });
-      previewTimeout = setTimeout(() => stopPreview(), durationMs);
-      return;
-    } catch {}
-  }
-
-  // ② AudioContext 방식
-  initAudio();
-  const refs = getAudioRefs();
-  if (refs.ctx && refs.ctx.state !== 'closed' && refs.ctx.state !== 'suspended' && refs.gain) {
-    refs.gain.gain.value = volume;
-    const config = ALARM_SOUND_CONFIGS[resolvedSoundId] || ALARM_SOUND_CONFIGS.whistle;
-    playSoundCycle(config);
-    previewTimeout = setTimeout(() => stopPreview(), durationMs);
-    console.log("[AlarmSound] 🔊 Preview via AudioContext");
-    return;
-  }
-
-  // ③ HTMLAudioElement fallback (Blob WAV)
-  tryFallbackPreview(resolvedSoundId, volume);
-  previewTimeout = setTimeout(() => stopPreview(), durationMs);
-}
-
-function tryFallbackPreview(soundId: string, volume: number) {
+  // ★ 최우선: AudioContext + OscillatorNode (사용자 제스처 컨텍스트에서 가장 확실)
+  // 모바일에서 data URL이나 Blob 없이 직접 합성 → 100% 동작
   try {
-    const config = ALARM_SOUND_CONFIGS[soundId] || ALARM_SOUND_CONFIGS.whistle;
-    const sampleRate = 22050;
-    const duration = 2;
+    const OrigAC = ((window as unknown as Record<string, unknown>).__meercop_OriginalAudioContext as typeof AudioContext) || AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (OrigAC) {
+      previewCtx = new OrigAC();
+      // ★ 핵심: 사용자 제스처 내에서 resume() → suspended 해제 보장
+      if (previewCtx.state === 'suspended') {
+        previewCtx.resume().catch(() => {});
+      }
+      previewGain = previewCtx.createGain();
+      previewGain.connect(previewCtx.destination);
+      previewGain.gain.value = Math.min(1, volume * 2);
+
+      const config = ALARM_SOUND_CONFIGS[resolvedSoundId] || ALARM_SOUND_CONFIGS.whistle;
+      
+      // 즉시 사운드 사이클 재생
+      playPreviewCycle(config);
+      
+      // 반복 재생
+      const cycleMs = config.pattern.reduce((a, b) => a + b + 0.05, 0) * 2000 + 300;
+      previewInterval = setInterval(() => {
+        if (previewCtx && previewCtx.state !== 'closed') {
+          playPreviewCycle(config);
+        }
+      }, cycleMs);
+      
+      previewTimeout = setTimeout(() => stopPreview(), durationMs);
+      console.log("[AlarmSound] 🔊 Preview via direct AudioContext+Oscillator (most reliable on mobile)");
+      return;
+    }
+  } catch (err) {
+    console.warn("[AlarmSound] Preview AudioContext failed:", err);
+  }
+
+  // ★ Fallback: HTMLAudioElement (짧은 WAV — 1초만, data URL 크기 최소화)
+  try {
+    const config = ALARM_SOUND_CONFIGS[resolvedSoundId] || ALARM_SOUND_CONFIGS.whistle;
+    const sampleRate = 8000; // 최소 샘플레이트 → 작은 data URL
+    const duration = 1;
     const numSamples = sampleRate * duration;
     const buffer = new ArrayBuffer(44 + numSamples * 2);
     const view = new DataView(buffer);
@@ -1033,36 +1037,72 @@ function tryFallbackPreview(soundId: string, volume: number) {
     previewAudio = new Audio(url);
     previewAudio.volume = Math.min(1, volume * 2);
     previewAudio.play().then(() => {
-      console.log("[AlarmSound] 🔊 Preview via fallback HTMLAudio");
+      console.log("[AlarmSound] 🔊 Preview via fallback HTMLAudio (small WAV)");
     }).catch(err => {
       console.warn("[AlarmSound] Fallback preview also failed:", err);
     });
+    previewTimeout = setTimeout(() => stopPreview(), durationMs);
   } catch (err) {
-    console.warn("[AlarmSound] tryFallbackPreview error:", err);
+    console.warn("[AlarmSound] All preview methods failed:", err);
+  }
+}
+
+function playPreviewCycle(soundConfig: { freq: number[]; pattern: number[] }) {
+  if (!previewCtx || previewCtx.state === 'closed' || !previewGain) return;
+  
+  let t = 0;
+  for (let repeat = 0; repeat < 2; repeat++) {
+    for (let i = 0; i < soundConfig.freq.length; i++) {
+      try {
+        const osc = previewCtx.createOscillator();
+        osc.type = 'square';
+        osc.frequency.value = soundConfig.freq[i];
+        osc.connect(previewGain);
+        osc.start(previewCtx.currentTime + t);
+        osc.stop(previewCtx.currentTime + t + soundConfig.pattern[i]);
+        previewOscillators.push(osc);
+        osc.onended = () => {
+          const idx = previewOscillators.indexOf(osc);
+          if (idx >= 0) previewOscillators.splice(idx, 1);
+        };
+      } catch {}
+      t += soundConfig.pattern[i] + 0.05;
+    }
+    t += 0.1;
   }
 }
 
 export function stopPreview(): void {
   if (previewTimeout) { clearTimeout(previewTimeout); previewTimeout = null; }
-  // warm audio → 정지 후 무음 복원
-  const warm = getWarmAudio();
-  if (warm) {
-    warm.pause();
-    warm.loop = true; // 원래 루프 모드로 복원
+  if (previewInterval) { clearInterval(previewInterval); previewInterval = null; }
+  
+  // preview 전용 AudioContext 오실레이터 정지
+  for (const osc of previewOscillators) {
+    try { osc.stop(); } catch {}
+    try { osc.disconnect(); } catch {}
   }
+  previewOscillators = [];
+  
+  // preview 전용 GainNode 정리
+  if (previewGain) {
+    try { previewGain.gain.value = 0; } catch {}
+    previewGain = null;
+  }
+  
+  // preview 전용 AudioContext 닫기
+  if (previewCtx) {
+    try { if (previewCtx.state !== 'closed') previewCtx.close().catch(() => {}); } catch {}
+    previewCtx = null;
+  }
+  
   // fallback audio 정지
   if (previewAudio) {
     previewAudio.pause();
     previewAudio.src = '';
     previewAudio = null;
   }
-  // AudioContext 오실레이터도 정지
-  const refs = getAudioRefs();
-  for (const osc of refs.oscillators) {
-    try { osc.stop(); } catch {}
-    try { osc.disconnect(); } catch {}
-  }
-  refs.oscillators = [];
+  
+  // ★ warm audio는 건드리지 않음! — pause하면 제스처 blessing이 파괴됨
 }
 
 export type { AlarmState };
