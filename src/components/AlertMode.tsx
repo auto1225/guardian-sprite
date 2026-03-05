@@ -3,10 +3,11 @@ import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
 import { ActiveAlert, stopAlertSound } from "@/hooks/useAlerts";
 import * as Alarm from "@/lib/alarmSound";
-import { Video, VideoOff, MapPin } from "lucide-react";
+import { Video, VideoOff, MapPin, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AlertStreamingViewer from "@/components/alert/AlertStreamingViewer";
 import AlertLocationMap from "@/components/alert/AlertLocationMap";
+import { useAlertLocation } from "@/hooks/useAlertLocation";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 
