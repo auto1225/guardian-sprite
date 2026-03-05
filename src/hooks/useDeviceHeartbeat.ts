@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeWithRetry } from "@/lib/invokeWithRetry";
 import { HEARTBEAT_INTERVAL_MS } from "@/lib/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { useDevices } from "@/hooks/useDevices";
