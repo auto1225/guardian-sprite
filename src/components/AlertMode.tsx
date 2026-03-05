@@ -53,7 +53,15 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff, alert
   };
 
   const hasCamera = device?.is_camera_connected;
-  const hasLocation = device?.latitude != null && device?.longitude != null;
+
+  // 위치 정보 신뢰성 강화 — 폴링 + DB fallback
+  const alertLocation = useAlertLocation(
+    device?.id,
+    device?.latitude,
+    device?.longitude,
+    true
+  );
+  const hasLocation = alertLocation != null;
 
   return (
     <div className="fixed inset-0 bg-red-800/60 backdrop-blur-2xl z-50 flex flex-col overflow-hidden">
