@@ -371,10 +371,13 @@ function setWarmAudio(audio: HTMLAudioElement | null) {
   (window as unknown as Record<string, HTMLAudioElement | null>)[WARM_AUDIO_KEY] = audio;
 }
 
-/** warm audio를 경보음으로 전환 */
-function switchWarmToAlarm(): boolean {
+/** warm audio를 경보음으로 전환 (async — play 결과를 확인) */
+async function switchWarmToAlarm(): Promise<boolean> {
   const warm = getWarmAudio();
-  if (!warm) return false;
+  if (!warm) {
+    console.log("[AlarmSound] switchWarmToAlarm: no warm audio element");
+    return false;
+  }
   try {
     const volume = getVolume();
     const soundId = getSelectedSoundId();
@@ -382,11 +385,12 @@ function switchWarmToAlarm(): boolean {
     warm.src = alarmUrl;
     warm.volume = Math.min(1, volume * 2);
     warm.loop = true;
-    warm.play().catch(() => {});
-    console.log("[AlarmSound] 🔊 Warm audio switched to alarm sound");
+    console.log("[AlarmSound] 🔊 switchWarmToAlarm: src set, paused=", warm.paused, "calling play()...");
+    await warm.play();
+    console.log("[AlarmSound] 🔊 Warm audio switched to alarm sound ✅ (playing)");
     return true;
   } catch (err) {
-    console.warn("[AlarmSound] switchWarmToAlarm failed:", err);
+    console.warn("[AlarmSound] switchWarmToAlarm FAILED (will use fallback):", err);
     return false;
   }
 }
