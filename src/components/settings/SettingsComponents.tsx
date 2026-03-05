@@ -1,4 +1,4 @@
-import { ChevronRight, Play, Square, Upload, VolumeX, Volume2 } from "lucide-react";
+import { ChevronRight, Play, Square, VolumeX, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Switch } from "@/components/ui/switch";
@@ -200,7 +200,6 @@ export const SoundDialog = ({ open, onOpenChange, selectedSoundId, onSelectSound
   onSelectSound: (soundId: string) => void;
 }) => {
   const { t } = useTranslation();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [playingSoundId, setPlayingSoundId] = useState<string | null>(null);
   const [volumePercent, setVolumePercent] = useState(() => Math.round(getAlarmVolume() * 100));
   const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -289,56 +288,6 @@ export const SoundDialog = ({ open, onOpenChange, selectedSoundId, onSelectSound
             </div>
           ))}
 
-          {/* Custom sound */}
-          <div
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer border ${
-              selectedSoundId === "custom" ? "border-white/30 shadow-md" : "border-transparent hover:bg-white/10"
-            }`}
-            style={{ background: selectedSoundId === "custom" ? 'hsla(52, 100%, 60%, 0.15)' : 'hsla(0,0%,100%,0.08)' }}
-            onClick={() => { if (customSoundDataUrl) onSelectSound("custom"); else fileInputRef.current?.click(); }}
-          >
-            {customSoundDataUrl ? (
-              <button
-                onClick={(e) => { e.stopPropagation(); previewSound("custom"); }}
-                className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 hover:bg-white/20 transition-colors"
-                style={{ background: 'hsla(0,0%,100%,0.15)' }}
-              >
-                {playingSoundId === "custom" ? (
-                  <Square className="w-4 h-4 fill-current" style={{ color: 'hsla(52, 100%, 60%, 1)' }} />
-                ) : (
-                  <Play className="w-4 h-4 text-white/90 ml-0.5" />
-                )}
-              </button>
-            ) : (
-              <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'hsla(0,0%,100%,0.15)' }}>
-                <Upload className="w-4 h-4 text-white/70" />
-              </div>
-            )}
-            <div className="flex-1">
-              <span className="text-white font-medium text-sm block">
-                {customSoundName || t("settings.soundDialog.customUpload")}
-              </span>
-              {customSoundDataUrl && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                  className="text-white/60 text-xs underline mt-0.5"
-                >
-                  {t("settings.soundDialog.chooseOther")}
-                </button>
-              )}
-            </div>
-            {selectedSoundId === "custom" && (
-              <span className="font-bold" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>✓</span>
-            )}
-          </div>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="audio/*"
-            className="hidden"
-            onChange={onCustomUpload}
-          />
         </div>
       </DialogContent>
     </Dialog>
