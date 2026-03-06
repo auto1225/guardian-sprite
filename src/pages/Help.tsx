@@ -37,7 +37,8 @@ const SubTitle = ({ children }: { children: React.ReactNode }) => (
 );
 
 const Desc = ({ children, html }: { children?: React.ReactNode; html?: string }) => {
-  if (html) return <p className="text-white/80 text-sm leading-relaxed mb-3 whitespace-pre-line" dangerouslySetInnerHTML={{ __html: html }} />;
+  const content = html ?? (typeof children === 'string' ? children : undefined);
+  if (content) return <p className="text-white/80 text-sm leading-relaxed mb-3 whitespace-pre-line" dangerouslySetInnerHTML={{ __html: content }} />;
   return <p className="text-white/80 text-sm leading-relaxed mb-3 whitespace-pre-line">{children}</p>;
 };
 
