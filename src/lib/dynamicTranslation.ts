@@ -5,7 +5,7 @@ import ko from "@/i18n/locales/ko.json";
 const CACHE_PREFIX = "meercop_i18n_";
 const CACHE_VERSION_KEY = "meercop_i18n_version";
 // Bump this when ko.json changes to invalidate cached translations
-const CURRENT_VERSION = "3";
+const CURRENT_VERSION = "4";
 
 const STATIC_LANGS = ["ko", "en", "ja", "zh-CN", "zh-TW", "es", "fr", "de", "pt", "ru", "ar", "hi", "th", "vi", "id", "tr", "it"];
 
