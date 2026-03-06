@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ChevronLeft, User, LogOut, HelpCircle, UserCog, Globe, Crown, Star, Sparkles, ExternalLink } from "lucide-react";
+import { ChevronLeft, User, LogOut, HelpCircle, UserCog, Globe, Crown, Star, Sparkles, ExternalLink, FileText } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -20,9 +20,10 @@ interface SideMenuProps {
   isOpen: boolean;
   onClose: () => void;
   onHelpClick?: () => void;
+  onLegalClick?: () => void;
 }
 
-const SideMenu = ({ isOpen, onClose, onHelpClick }: SideMenuProps) => {
+const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps) => {
   const { t, i18n } = useTranslation();
   const { user, serials, signOut, effectiveUserId } = useAuth();
   const { toast } = useToast();
@@ -190,6 +191,7 @@ const SideMenu = ({ isOpen, onClose, onHelpClick }: SideMenuProps) => {
             </a>
           </div>
           <MenuItem icon={HelpCircle} label={t("sideMenu.helpQA")} onClick={() => { if (onHelpClick) { onHelpClick(); onClose(); } }} />
+          <MenuItem icon={FileText} label={t("sideMenu.legalTerms")} onClick={() => { if (onLegalClick) { onLegalClick(); onClose(); } }} />
 
           {/* Language selector */}
           <button
