@@ -360,6 +360,7 @@ const Index = () => {
         isOpen={panels.sideMenu}
         onClose={() => closePanel("sideMenu")}
         onHelpClick={() => openPanel("help")}
+        onLegalClick={() => openPanel("legal")}
       />
 
       {/* Settings Page */}
