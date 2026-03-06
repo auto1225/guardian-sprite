@@ -151,7 +151,7 @@ export const useDevices = () => {
         // ★ Presence가 sync 완료됐는데 이 기기가 Presence에 없으면 → DB heartbeat 폴백 확인
         if (presenceInitialSynced && d.status !== "offline") {
           const lastSeen = d.last_seen_at ? new Date(d.last_seen_at).getTime() : 0;
-          const isRecentlyActive = Date.now() - lastSeen < 5 * 60 * 1000; // 5분 이내
+          const isRecentlyActive = Date.now() - lastSeen < 150 * 1000; // 150초 (2분 30초)
           if (isRecentlyActive) {
             // DB heartbeat가 최근이므로 DB 상태를 신뢰 (Presence 크로스 프로젝트 지연 허용)
             console.log("[useDevices] 🟡 Not in Presence but DB active (", Math.round((Date.now() - lastSeen) / 1000), "s ago):", d.id.slice(0, 8), d.name);
