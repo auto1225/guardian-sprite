@@ -152,7 +152,7 @@ export function usePushSubscription(deviceId?: string | null) {
       console.log("[usePush] Step 6: Subscribing to PushManager...");
       const subscription = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey,
+        applicationServerKey: applicationServerKey.buffer as ArrayBuffer,
       });
       console.log("[usePush] Step 6: PushManager subscribed ✅");
 
