@@ -21,6 +21,7 @@ import PhotoAlertHistory from "@/components/PhotoAlertHistory";
 import RemoteCommandsPanel from "@/components/RemoteCommandsPanel";
 import LocationHistoryModal from "@/components/LocationHistoryModal";
 import HelpPage from "@/pages/Help";
+import LegalPage from "@/pages/Legal";
 import { useDevices } from "@/hooks/useDevices";
 import * as Alarm from "@/lib/alarmSound";
 import { useAlerts } from "@/hooks/useAlerts";
@@ -102,6 +103,7 @@ const Index = () => {
     deviceManage: false,
     photoHistory: false,
     help: false,
+    legal: false,
     remoteCommands: false,
     locationHistory: false,
   });
@@ -498,6 +500,12 @@ const Index = () => {
       <HelpPage
         isOpen={panels.help}
         onClose={() => closePanel("help")}
+      />
+
+      {/* Legal Page */}
+      <LegalPage
+        isOpen={panels.legal}
+        onClose={() => closePanel("legal")}
       />
 
       {/* Remote Commands Panel */}
