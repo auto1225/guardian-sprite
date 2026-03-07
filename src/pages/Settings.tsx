@@ -583,15 +583,15 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
 
           {/* Background Setting */}
           <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
-            <SettingItem label={t("bg.title")} onClick={() => setShowBgSelector(true)} />
+            <SettingItem label={t("bg.title")} description={t("bg.description")} onClick={() => setShowBgSelector(true)} />
           </div>
 
           {/* Mascot Visibility */}
           <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
             <div className="px-4 py-4 flex items-center justify-between">
-              <div>
+              <div className="flex-1 min-w-0 mr-3">
                 <span className="text-white font-semibold text-sm block">{t("settings.mascotVisible")}</span>
-                <span className="text-white/80 text-xs">{t("settings.mascotVisibleDesc")}</span>
+                <span className="text-white/80 text-xs block truncate">{t("settings.mascotVisibleDesc")}</span>
               </div>
               <Switch
                 checked={localStorage.getItem("meercop-mascot-visible") !== "false"}
