@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
 import { ActiveAlert, stopAlertSound } from "@/hooks/useAlerts";
@@ -27,14 +27,18 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff, alert
   const { toast } = useToast();
   const [phoneDismissed, setPhoneDismissed] = useState(false);
 
-  // ★ 마운트 시점의 기기명을 frozen — 이후 prop 변경에도 불변 유지
-  const frozenNameRef = useRef(alertDeviceName);
-  const frozenSerialRef = useRef(alertDeviceSerial);
-  // prop이 빈 값에서 유효 값으로 바뀌면 한 번만 업데이트
-  if (!frozenNameRef.current && alertDeviceName) frozenNameRef.current = alertDeviceName;
-  if (!frozenSerialRef.current && alertDeviceSerial) frozenSerialRef.current = alertDeviceSerial;
-  const displayName = frozenNameRef.current || device?.name || "Unknown";
-  const displaySerial = frozenSerialRef.current;
+  // ★ 기기명을 state로 frozen — ref와 달리 초기 빈 값→유효 값 전환 시 리렌더 발생
+  const [frozenName, setFrozenName] = useState(alertDeviceName || device?.name || "");
+  const [frozenSerial, setFrozenSerial] = useState(alertDeviceSerial);
+  useEffect(() => {
+    if (!frozenName && alertDeviceName) setFrozenName(alertDeviceName);
+    if (!frozenName && device?.name) setFrozenName(device.name);
+  }, [alertDeviceName, device?.name, frozenName]);
+  useEffect(() => {
+    if (!frozenSerial && alertDeviceSerial) setFrozenSerial(alertDeviceSerial);
+  }, [alertDeviceSerial, frozenSerial]);
+  const displayName = frozenName || device?.name || "Unknown";
+  const displaySerial = frozenSerial;
 
   const handleDismissRemoteAlarm = async () => {
     stopAlertSound();
