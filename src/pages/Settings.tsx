@@ -622,7 +622,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
               <span className="text-white/80 text-xs">{t("settings.deviceTypeDesc")}</span>
             </div>
             <div className="flex gap-2 flex-wrap">
-              {(["laptop", "desktop", "tablet"] as const).map((type) => (
+              {(["laptop", "desktop", "tablet", "smartphone"] as const).map((type) => (
                 <button
                   key={type}
                   onClick={async () => {
