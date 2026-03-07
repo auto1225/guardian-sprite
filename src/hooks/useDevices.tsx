@@ -31,7 +31,9 @@ let presenceInitialSynced = false; // ★ Presence 최초 sync 완료 여부
 
 // ── 모듈 레벨 싱글톤: 기기 선택 상태 (모든 컴포넌트가 공유) ──
 const SELECTED_DEVICE_STORAGE_KEY = "meercop_selected_device_id";
+const SELECTED_SERIAL_STORAGE_KEY = "meercop_selected_serial_key";
 let _selectedDeviceId: string | null = localStorage.getItem(SELECTED_DEVICE_STORAGE_KEY);
+let _selectedSerialKey: string | null = localStorage.getItem(SELECTED_SERIAL_STORAGE_KEY);
 let _selectionInitialized = false;
 const _selectionListeners = new Set<() => void>();
 
@@ -39,14 +41,22 @@ function getSelectedDeviceId() {
   return _selectedDeviceId;
 }
 
-function setGlobalSelectedDeviceId(id: string | null) {
+function setGlobalSelectedDeviceId(id: string | null, serialKey?: string | null) {
   if (_selectedDeviceId === id) return;
   _selectedDeviceId = id;
-  // ★ localStorage에 저장하여 새로고침 후에도 유지
   if (id) {
     localStorage.setItem(SELECTED_DEVICE_STORAGE_KEY, id);
   } else {
     localStorage.removeItem(SELECTED_DEVICE_STORAGE_KEY);
+  }
+  // ★ 시리얼 키도 함께 저장 — 새로고침 시 ID가 바뀌어도 시리얼로 복원 가능
+  if (serialKey !== undefined) {
+    _selectedSerialKey = serialKey ?? null;
+    if (serialKey) {
+      localStorage.setItem(SELECTED_SERIAL_STORAGE_KEY, serialKey);
+    } else {
+      localStorage.removeItem(SELECTED_SERIAL_STORAGE_KEY);
+    }
   }
   _selectionListeners.forEach(l => l());
 }
