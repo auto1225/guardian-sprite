@@ -115,14 +115,14 @@ export const useDevices = () => {
       const dbDevices = (data?.devices || []) as Device[];
       console.log("[useDevices] Fetched", dbDevices.length, "devices:", dbDevices.map(d => ({ id: d.id.slice(0, 8), name: d.name, type: d.device_type, status: d.status })));
 
-      // ★ DB 조회 결과에 Presence 확인된 온라인 상태 및 이름 보존
+      // ★ DB 조회 결과에 Presence 확인된 온라인 상태 보존 (이름은 DB 정본 사용)
       // Presence가 이미 sync된 상태라면, Presence에 없는 기기는 offline으로 강제 전환
       return dbDevices.map(d => {
         // 컨트롤러 스마트폰(시리얼 키 없는)만 스킵, 관리 대상 스마트폰은 Presence 처리
         if (d.device_type === "smartphone" && !(d.metadata as Record<string, unknown>)?.serial_key) return d;
-        // Presence에서 확인된 최신 이름 우선 적용
-        const presenceName = devicePresenceNames.get(d.id);
-        const resolvedName = presenceName || d.name;
+
+        // ★ DB 이름을 정본(Single Source of Truth)으로 사용 — Presence 이름 무시
+        const resolvedName = d.name;
 
         // ★ realtimeConfirmedOnline 매칭: 직접 ID 또는 serial_key 기반 폴백
         let isConfirmedOnline = realtimeConfirmedOnline.has(d.id);
@@ -138,7 +138,6 @@ export const useDevices = () => {
             // 매칭된 기기 ID를 realtimeConfirmedOnline에 등록 (이후 sync에서도 사용)
             realtimeConfirmedOnline.add(d.id);
             devicePresenceData.set(d.id, presenceData);
-            if (serialData.device_name) devicePresenceNames.set(d.id, serialData.device_name);
             console.log("[useDevices] 🔑 Serial-key match in queryFn:", d.id.slice(0, 8), "serial:", deviceSerialKey);
           }
         }
@@ -153,7 +152,7 @@ export const useDevices = () => {
           }
           return {
             ...d,
-            name: devicePresenceNames.get(d.id) || resolvedName,
+            // ★ 이름은 항상 DB 값 사용 (Presence 이름 오염 방지)
             status: "online" as Device["status"],
             is_network_connected: presenceData?.is_network_connected ?? true,
             is_camera_connected: resolvedCamera,
@@ -164,21 +163,18 @@ export const useDevices = () => {
           const lastSeen = d.last_seen_at ? new Date(d.last_seen_at).getTime() : 0;
           const isRecentlyActive = Date.now() - lastSeen < 150 * 1000; // 150초 (2분 30초)
           if (isRecentlyActive) {
-            // DB heartbeat가 최근이므로 DB 상태를 신뢰 (Presence 크로스 프로젝트 지연 허용)
             console.log("[useDevices] 🟡 Not in Presence but DB active (", Math.round((Date.now() - lastSeen) / 1000), "s ago):", d.id.slice(0, 8), d.name);
-            return { ...d, name: resolvedName };
+            return d;
           }
           console.log("[useDevices] 🔴 Force offline (not in Presence, DB stale):", d.id.slice(0, 8), d.name);
           return {
             ...d,
-            name: resolvedName,
             status: "offline" as Device["status"],
             is_network_connected: false,
             is_camera_connected: false,
           };
         }
-        // 오프라인 기기도 이름은 Presence에서 받은 최신값 유지
-        return presenceName ? { ...d, name: resolvedName } : d;
+        return d;
       });
     },
     enabled: !!effectiveUserId,
@@ -362,8 +358,8 @@ export const useDevices = () => {
               return oldDevices.map((device) => {
                 if (device.id !== updatedDevice.id) return device;
                 // ★ 이름이 이미 동일하고 주요 필드에 변화가 없으면 동일 참조 유지 (깜빡임 방지)
-                const presenceName = devicePresenceNames.get(device.id);
-                const effectiveName = presenceName || updatedDevice.name;
+                // ★ DB 이름을 정본으로 사용 — Presence 이름 무시
+                const effectiveName = updatedDevice.name;
                 if (
                   device.name === effectiveName &&
                   device.status === updatedDevice.status &&
@@ -642,23 +638,17 @@ export const useDevices = () => {
               }
             }
 
-            const presenceName = latest.device_name;
-            const nameChanged = presenceName && presenceName !== d.name;
-
-            const hasChanges = d.is_network_connected !== latest.is_network_connected || d.is_camera_connected !== resolvedCameraConnected || d.status !== newStatus || (latest.battery_level !== undefined && d.battery_level !== latest.battery_level) || nameChanged;
+            // ★ Presence의 device_name은 상태 확인용으로만 사용, UI 이름은 DB 정본 유지
+            const hasChanges = d.is_network_connected !== latest.is_network_connected || d.is_camera_connected !== resolvedCameraConnected || d.status !== newStatus || (latest.battery_level !== undefined && d.battery_level !== latest.battery_level);
             if (!hasChanges) return d;
 
-            if (nameChanged) {
-              console.log("[Presence] 📝 Name sync:", d.name, "→", presenceName);
-              devicePresenceNames.set(d.id, presenceName!);
-            }
-            console.log("[Presence] ✅ Updating:", d.id.slice(0, 8), "←", match.key.slice(0, 8), { status: `${d.status}→${newStatus}`, camera: `${d.is_camera_connected}→${resolvedCameraConnected}`, name: nameChanged ? `${d.name}→${presenceName}` : "unchanged" });
+            console.log("[Presence] ✅ Updating:", d.id.slice(0, 8), "←", match.key.slice(0, 8), { status: `${d.status}→${newStatus}`, camera: `${d.is_camera_connected}→${resolvedCameraConnected}` });
             const updatedMeta = newStatus === 'online'
               ? { ...((d.metadata as Record<string, unknown>) || {}), logged_out: false }
               : d.metadata;
             return {
               ...d,
-              ...(nameChanged ? { name: presenceName! } : {}),
+              // ★ 이름은 DB 값 유지 — Presence name으로 덮어쓰지 않음
               status: newStatus as Device["status"],
               is_network_connected: latest.is_network_connected ?? d.is_network_connected,
               is_camera_connected: resolvedCameraConnected,
