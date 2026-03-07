@@ -786,6 +786,7 @@ const DeviceCard = memo(({
 
   return (
     <div
+      onDoubleClick={() => device && onDoubleClick?.(device.id)}
       className={`rounded-xl px-3 py-2.5 bg-[hsla(220,35%,18%,0.95)] backdrop-blur-xl border shadow-xl transition-all ${
         isDragging ? "border-secondary/60 opacity-60 scale-[0.97]" : "border-white/30"
       } ${isSelected ? "ring-2 ring-secondary/50" : ""}`}
