@@ -100,7 +100,12 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
   const swipeActive = useRef(false);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const managedDevices = devices.filter(d => d.device_type !== "smartphone");
+  // ★ 컨트롤러(시리얼 키 없는 스마트폰)만 제외, 관리 대상 스마트폰은 포함
+  const managedDevices = devices.filter(d => {
+    if (d.device_type !== "smartphone") return true;
+    // 시리얼 키가 있는 스마트폰은 관리 대상
+    return !!(d.metadata as Record<string, unknown>)?.serial_key;
+  });
 
   // Fetch licenses
   useEffect(() => {

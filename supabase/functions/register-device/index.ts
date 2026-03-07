@@ -28,22 +28,23 @@ Deno.serve(async (req) => {
 
     const normalizedSerialKey = serial_key ? String(serial_key).trim().toUpperCase() : null;
     const effectiveType = device_type || "laptop";
-    const isNonSmartphone = (t: string) => t !== "smartphone";
-    const nonSmartphoneTypes = ["laptop", "desktop", "tablet"];
+    // ★ 관리 대상 기기 = 시리얼 키가 있는 기기 (스마트폰 포함)
+    // 컨트롤러 = 시리얼 키 없는 스마트폰
+    const isController = effectiveType === "smartphone" && !normalizedSerialKey;
+    const managedDeviceTypes = ["laptop", "desktop", "tablet", "smartphone"];
 
-    // ★ 비스마트폰은 시리얼 키 필수
-    if (isNonSmartphone(effectiveType) && !normalizedSerialKey) {
+    // ★ 컨트롤러가 아닌 기기는 시리얼 키 필수
+    if (!isController && !normalizedSerialKey) {
       return new Response(
         JSON.stringify({ error: "SERIAL_REQUIRED", message: "시리얼 키가 필요합니다." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // ★ 기존 기기 조회: device_id_override가 UUID 형식이면 직접 조회, 아니면 user_id + device_type 그룹 조회
+    // ★ 기존 기기 조회: device_id_override가 UUID 형식이면 직접 조회, 아니면 시리얼 키 또는 user_id + device_type으로 조회
     let existing: any = null;
 
     if (device_id_override) {
-      // UUID 형식 검증
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (uuidRegex.test(device_id_override)) {
         const { data } = await supabaseAdmin
@@ -56,57 +57,59 @@ Deno.serve(async (req) => {
     }
 
     if (!existing) {
-      if (isNonSmartphone(effectiveType)) {
-        if (normalizedSerialKey) {
-          // 1) metadata.serial_key로 조회 — 중복이 있을 수 있으므로 전체 조회 후 정리
-          const { data: allMatches } = await supabaseAdmin
-            .from("devices")
-            .select("id, name, device_type, status, metadata, created_at")
-            .eq("user_id", user_id)
-            .in("device_type", nonSmartphoneTypes)
-            .filter("metadata->>serial_key", "eq", normalizedSerialKey)
-            .order("created_at", { ascending: false });
+      if (!isController && normalizedSerialKey) {
+        // ★ 관리 대상 기기 (스마트폰 포함): 시리얼 키 기반 조회
+        // 1) metadata.serial_key로 조회 — 중복이 있을 수 있으므로 전체 조회 후 정리
+        const { data: allMatches } = await supabaseAdmin
+          .from("devices")
+          .select("id, name, device_type, status, metadata, created_at")
+          .eq("user_id", user_id)
+          .in("device_type", managedDeviceTypes)
+          .filter("metadata->>serial_key", "eq", normalizedSerialKey)
+          .order("created_at", { ascending: false });
 
-          if (allMatches && allMatches.length > 0) {
-            existing = allMatches[0]; // 가장 최근 것 사용
-            // ★ 중복 레코드 정리: 나머지 삭제
-            if (allMatches.length > 1) {
-              console.log(`[register-device] 🗑️ Cleaning ${allMatches.length - 1} duplicate(s) for serial ${normalizedSerialKey}`);
-              for (let i = 1; i < allMatches.length; i++) {
-                await supabaseAdmin.from("licenses").update({ device_id: null }).eq("device_id", allMatches[i].id);
-                await supabaseAdmin.from("devices").delete().eq("id", allMatches[i].id);
-              }
-            }
-          }
-
-          // 2) licenses 테이블에서 device_id 조회
-          if (!existing) {
-            const { data: licData } = await supabaseAdmin
-              .from("licenses")
-              .select("device_id")
-              .eq("serial_key", normalizedSerialKey)
-              .eq("user_id", user_id)
-              .maybeSingle();
-            if (licData?.device_id) {
-              const { data: devData } = await supabaseAdmin
-                .from("devices")
-                .select("id, name, device_type, status, metadata")
-                .eq("id", licData.device_id)
-                .maybeSingle();
-              if (devData) existing = devData;
+        if (allMatches && allMatches.length > 0) {
+          existing = allMatches[0];
+          if (allMatches.length > 1) {
+            console.log(`[register-device] 🗑️ Cleaning ${allMatches.length - 1} duplicate(s) for serial ${normalizedSerialKey}`);
+            for (let i = 1; i < allMatches.length; i++) {
+              await supabaseAdmin.from("licenses").update({ device_id: null }).eq("device_id", allMatches[i].id);
+              await supabaseAdmin.from("devices").delete().eq("id", allMatches[i].id);
             }
           }
         }
-      } else {
-        // 스마트폰: 기존 로직 유지
-        const { data } = await supabaseAdmin
+
+        // 2) licenses 테이블에서 device_id 조회
+        if (!existing) {
+          const { data: licData } = await supabaseAdmin
+            .from("licenses")
+            .select("device_id")
+            .eq("serial_key", normalizedSerialKey)
+            .eq("user_id", user_id)
+            .maybeSingle();
+          if (licData?.device_id) {
+            const { data: devData } = await supabaseAdmin
+              .from("devices")
+              .select("id, name, device_type, status, metadata")
+              .eq("id", licData.device_id)
+              .maybeSingle();
+            if (devData) existing = devData;
+          }
+        }
+      } else if (isController) {
+        // ★ 컨트롤러 스마트폰: user_id + device_type + 시리얼 키 없음으로 조회
+        const { data: controllers } = await supabaseAdmin
           .from("devices")
           .select("id, name, device_type, status, metadata")
           .eq("user_id", user_id)
-          .eq("device_type", effectiveType)
-          .limit(1)
-          .maybeSingle();
-        existing = data;
+          .eq("device_type", "smartphone")
+          .order("created_at", { ascending: true });
+
+        // 시리얼 키가 없는 스마트폰만 컨트롤러
+        const controllerDevice = controllers?.find(
+          (d: any) => !((d.metadata as Record<string, unknown>)?.serial_key)
+        );
+        if (controllerDevice) existing = controllerDevice;
       }
     }
 
