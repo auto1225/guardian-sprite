@@ -119,7 +119,11 @@
     "updatedAt": "Mis à jour",
     "editProfileNotice": "modifiable uniquement sur",
     "legalTerms": "Conditions / Mentions Légales",
-    "checkUpdate": "Vérifier les mises à jour"
+    "checkUpdate": "Vérifier les mises à jour",
+    "updateUpToDate": "Vous êtes à jour",
+    "currentVersion": "Version actuelle",
+    "updateAvailable": "Une nouvelle mise à jour est disponible ! Mise à jour imminente.",
+    "updateCheckFailed": "Échec de la vérification des mises à jour"
   },
   "errorBoundary": {
     "title": "Un problème est survenu",

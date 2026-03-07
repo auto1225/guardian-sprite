@@ -119,7 +119,11 @@
     "updatedAt": "更新",
     "editProfileNotice": "僅可在此修改",
     "legalTerms": "使用條款 / 法律聲明",
-    "checkUpdate": "檢查更新"
+    "checkUpdate": "檢查更新",
+    "updateUpToDate": "已是最新版本",
+    "currentVersion": "目前版本",
+    "updateAvailable": "有新更新可用！即將更新。",
+    "updateCheckFailed": "檢查更新失敗"
   },
   "errorBoundary": {
     "title": "發生問題",

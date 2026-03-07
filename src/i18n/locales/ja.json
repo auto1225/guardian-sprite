@@ -119,7 +119,11 @@
     "updatedAt": "更新",
     "editProfileNotice": "でのみ編集可能です",
     "legalTerms": "利用規約 / 法的通知",
-    "checkUpdate": "アップデートを確認"
+    "checkUpdate": "アップデートを確認",
+    "updateUpToDate": "最新バージョンです",
+    "currentVersion": "現在のバージョン",
+    "updateAvailable": "新しいアップデートがあります！まもなく更新されます。",
+    "updateCheckFailed": "アップデートの確認に失敗しました"
   },
   "errorBoundary": {
     "title": "問題が発生しました",
