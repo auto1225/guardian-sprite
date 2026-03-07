@@ -160,8 +160,11 @@ channel
     handleMessageCommand(payload);
   })
   .on("broadcast", { event: "alarm_dismiss" }, ({ payload }) => {
-    // ★ 컴퓨터 경보음 해제 — 반드시 구현!
     handleAlarmDismiss(payload);
+  })
+  .on("broadcast", { event: "mascot_toggle" }, ({ payload }) => {
+    // ★ 마스코트 보기/숨기기 — metadata.mascot_visible 동기화
+    handleMascotToggle(payload);
   })
   .subscribe();
 ```
