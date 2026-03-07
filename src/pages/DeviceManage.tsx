@@ -887,7 +887,7 @@ const DeviceCard = memo(({
       {device && (
         <div className="flex items-center justify-between mt-1">
           <div className="flex items-center gap-4">
-            <StatusIcon iconOn={laptopOn} iconOff={laptopOff} active={isOnline} label={device.device_type === "desktop" ? "Desktop" : device.device_type === "tablet" ? "Tablet" : "Laptop"} onClick={() => onIconClick?.(device.id, "laptop")} />
+            <StatusIcon iconOn={laptopOn} iconOff={laptopOff} active={isOnline && device.is_network_connected} label={device.device_type === "desktop" ? "Desktop" : device.device_type === "tablet" ? "Tablet" : "Laptop"} onClick={() => onIconClick?.(device.id, "laptop")} />
             <StatusIcon iconOn={wifiOn} iconOff={wifiOff} active={isOnline && device.is_network_connected} label="Network" onClick={() => onIconClick?.(device.id, "network")} />
             <StatusIcon iconOn={cameraOn} iconOff={cameraOff} active={isOnline && device.is_camera_connected} label="Camera" onClick={() => onIconClick?.(device.id, "camera")} />
             <button onClick={() => onSettingsClick?.(device.id)} className="flex flex-col items-center gap-0.5 active:scale-95 transition-transform">
