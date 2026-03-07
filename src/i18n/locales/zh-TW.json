@@ -115,7 +115,13 @@
     "remoteCommands": "遠端指令",
     "locationHistory": "位置紀錄",
     "photoAlertHistory": "照片警報紀錄",
-    "updatedAt": "更新"
+    "updatedAt": "更新",
+    "editProfileNotice": "僅可在此修改"
+  },
+  "errorBoundary": {
+    "title": "發生問題",
+    "description": "請稍後再試。",
+    "reload": "重新整理"
   },
   "deviceList": {
     "selectDevice": "選擇裝置"

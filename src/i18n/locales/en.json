@@ -127,7 +127,13 @@
     "logout": "Log out",
     "loggedOut": "Logged out",
     "loggedOutDesc": "You have been safely logged out.",
-    "updatedAt": "Updated"
+    "updatedAt": "Updated",
+    "editProfileNotice": "can only be edited on"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "description": "Please try again later.",
+    "reload": "Reload"
   },
   "deviceList": {
     "selectDevice": "Select device",
