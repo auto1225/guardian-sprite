@@ -64,7 +64,8 @@ export const useCommands = () => {
       });
     }
     
-    queryClient.invalidateQueries({ queryKey: ["devices"] });
+    // ★ invalidateQueries 제거: Realtime postgres_changes가 자동으로 캐시를 업데이트하므로
+    // invalidate로 인한 stale 데이터 반환 → optimistic update 덮어쓰기 문제 방지
   };
 
   const sendAlarm = (deviceId: string) => {
