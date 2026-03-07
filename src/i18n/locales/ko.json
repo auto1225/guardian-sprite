@@ -166,6 +166,18 @@
     "offDesc": "노트북 화면이 정상으로 복원됩니다.",
     "changeFailed": "위장 모드 변경 실패"
   },
+  "commandAck": {
+    "monitoringOnSent": "감시 ON 명령 전송됨",
+    "monitoringOffSent": "감시 OFF 명령 전송됨",
+    "monitoringOnConfirmed": "✅ 노트북에서 감시 ON 적용 확인",
+    "monitoringOffConfirmed": "✅ 노트북에서 감시 OFF 적용 확인",
+    "camouflageOnConfirmed": "✅ 노트북에서 위장 모드 ON 적용 확인",
+    "camouflageOffConfirmed": "✅ 노트북에서 위장 모드 OFF 적용 확인",
+    "commandConfirmedDesc": "노트북에 변경사항이 적용되었습니다.",
+    "commandTimeout": "⚠️ 노트북 응답 없음",
+    "commandTimeoutDesc": "명령은 전송되었으나 확인 응답이 없습니다. 노트북이 오프라인일 수 있습니다.",
+    "waitingForDevice": "노트북 응답 대기 중..."
+  },
   "network": {
     "title": "네트워크 정보",
     "connectionStatus": "연결 상태",
