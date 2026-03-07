@@ -390,8 +390,30 @@ const Index = () => {
 
               toast({
                 title: newVal ? t("camouflage.onTitle") : t("camouflage.offTitle"),
-                description: newVal ? t("camouflage.onDesc") : t("camouflage.offDesc"),
+                description: t("commandAck.waitingForDevice"),
               });
+
+              // ACK 대기
+              if (effectiveUserId) {
+                waitForCommandAck({
+                  deviceId: selectedDevice.id,
+                  userId: effectiveUserId,
+                  event: "camouflage_toggle",
+                }).then((acked) => {
+                  if (acked) {
+                    toast({
+                      title: newVal ? t("commandAck.camouflageOnConfirmed") : t("commandAck.camouflageOffConfirmed"),
+                      description: t("commandAck.commandConfirmedDesc"),
+                    });
+                  } else {
+                    toast({
+                      title: t("commandAck.commandTimeout"),
+                      description: t("commandAck.commandTimeoutDesc"),
+                      variant: "destructive",
+                    });
+                  }
+                });
+              }
             } catch {
               toast({ title: t("common.error"), description: t("camouflage.changeFailed"), variant: "destructive" });
             }
