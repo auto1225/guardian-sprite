@@ -1,4 +1,5 @@
 import React from "react";
+import i18n from "@/i18n";
 
 interface Props {
   children: React.ReactNode;
@@ -29,13 +30,13 @@ class ErrorBoundary extends React.Component<Props, State> {
       return (
         <div className="flex items-center justify-center min-h-screen bg-background text-foreground p-6">
           <div className="text-center space-y-4">
-            <h2 className="text-xl font-bold">문제가 발생했습니다</h2>
-            <p className="text-muted-foreground text-sm">잠시 후 다시 시도해주세요.</p>
+            <h2 className="text-xl font-bold">{i18n.t("errorBoundary.title")}</h2>
+            <p className="text-muted-foreground text-sm">{i18n.t("errorBoundary.description")}</p>
             <button
               onClick={() => window.location.reload()}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm"
             >
-              새로고침
+              {i18n.t("errorBoundary.reload")}
             </button>
           </div>
         </div>

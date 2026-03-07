@@ -115,7 +115,13 @@
     "remoteCommands": "Comandos remotos",
     "locationHistory": "Historial de ubicaciones",
     "photoAlertHistory": "Historial de alertas con fotos",
-    "updatedAt": "Actualizado"
+    "updatedAt": "Actualizado",
+    "editProfileNotice": "solo se puede editar en"
+  },
+  "errorBoundary": {
+    "title": "Algo salió mal",
+    "description": "Por favor, inténtalo de nuevo más tarde.",
+    "reload": "Recargar"
   },
   "deviceList": {
     "selectDevice": "Seleccionar dispositivo"

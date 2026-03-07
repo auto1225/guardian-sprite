@@ -115,7 +115,13 @@
     "remoteCommands": "Commandes à distance",
     "locationHistory": "Historique des positions",
     "photoAlertHistory": "Historique des alertes photo",
-    "updatedAt": "Mis à jour"
+    "updatedAt": "Mis à jour",
+    "editProfileNotice": "modifiable uniquement sur"
+  },
+  "errorBoundary": {
+    "title": "Un problème est survenu",
+    "description": "Veuillez réessayer plus tard.",
+    "reload": "Recharger"
   },
   "deviceList": {
     "selectDevice": "Sélectionner un appareil"
