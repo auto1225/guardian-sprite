@@ -12,7 +12,13 @@ interface MeercopCharacterProps {
   bgVersion?: number;
 }
 
-const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage }: MeercopCharacterProps) => {
+const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage, bgVersion }: MeercopCharacterProps) => {
+  const [bg, setBg] = useState(getSelectedBackground);
+
+  useEffect(() => {
+    setBg(getSelectedBackground());
+  }, [bgVersion]);
+
   const getCharacterImage = () => {
     if (isAlert) return meercopAlert;
     if (isMonitoring) return meercopOn;
@@ -61,16 +67,41 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
             - Drives the layout height
             - min-width prevents image from becoming too small on mobile
           */}
-          <img 
-            src={mainBg} 
-            alt="Mountain Background" 
-            style={{
-              width: '100%',
-              minWidth: '600px',
-              height: 'auto',
-              display: 'block',
-            }}
-          />
+          {/* Background: default image, custom image, or gradient */}
+          {bg.value === "__default__" ? (
+            <img 
+              src={mainBg} 
+              alt="Mountain Background" 
+              style={{
+                width: '100%',
+                minWidth: '600px',
+                height: 'auto',
+                display: 'block',
+              }}
+            />
+          ) : bg.value.startsWith("data:") ? (
+            <img 
+              src={bg.value} 
+              alt="Custom Background" 
+              style={{
+                width: '100%',
+                minWidth: '600px',
+                height: 'auto',
+                display: 'block',
+                objectFit: 'cover',
+                minHeight: '300px',
+              }}
+            />
+          ) : (
+            <div 
+              style={{
+                width: '100%',
+                minWidth: '600px',
+                minHeight: '300px',
+                background: bg.value,
+              }}
+            />
+          )}
           
           {/* 
             Character Group
