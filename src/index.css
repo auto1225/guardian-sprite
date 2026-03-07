@@ -142,3 +142,15 @@ All colors MUST be HSL.
   scrollbar-width: thin;
   scrollbar-color: hsla(0, 70%, 70%, 0.35) transparent;
 }
+
+/* Force Leaflet z-indexes to stay contained within alert scroll area */
+.alert-glass-scroll .leaflet-pane,
+.alert-glass-scroll .leaflet-top,
+.alert-glass-scroll .leaflet-bottom,
+.alert-glass-scroll .leaflet-control {
+  z-index: auto !important;
+}
+.alert-glass-scroll .leaflet-container {
+  z-index: 0;
+  position: relative;
+}
