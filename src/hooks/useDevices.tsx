@@ -795,17 +795,15 @@ export const useDevices = () => {
       }).catch(() => { /* best effort */ });
 
       // ★ 웹사이트 DB의 serial_numbers.device_name도 동기화
-      const currentDevices = queryClient.getQueryData<Device[]>(["devices", effectiveUserId]);
-      const targetDevice = currentDevices?.find(d => d.id === deviceId);
-      const serialKey = (targetDevice?.metadata as Record<string, unknown>)?.serial_key as string | undefined;
-      if (serialKey) {
+      const resolvedSerial = serialKey || (targetDevice?.metadata as Record<string, unknown>)?.serial_key as string | undefined;
+      if (resolvedSerial) {
         websiteSupabase
           .from("serial_numbers")
           .update({ device_name: newName })
-          .eq("serial_key", serialKey)
+          .eq("serial_key", resolvedSerial)
           .then(({ error }) => {
             if (error) console.warn("[useDevices] ⚠️ Website DB name sync failed:", error);
-            else console.log("[useDevices] ✅ Website DB name synced:", serialKey, "→", newName);
+            else console.log("[useDevices] ✅ Website DB name synced:", resolvedSerial, "→", newName);
           });
       }
     };
