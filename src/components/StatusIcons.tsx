@@ -64,7 +64,7 @@ const StatusIcons = ({ device, onIconClick }: StatusIconsProps) => {
       <StatusItem 
         iconOn={laptopOn}
         iconOff={laptopOff}
-        label={t(`statusIcons.${device?.device_type === "desktop" ? "desktop" : device?.device_type === "tablet" ? "tablet" : "laptop"}`)} 
+        label={t(`statusIcons.${device?.device_type === "desktop" ? "desktop" : device?.device_type === "tablet" ? "tablet" : device?.device_type === "smartphone" ? "smartphone" : "laptop"}`)} 
         isActive={isOnline}
         batteryLevel={batteryLevel}
         onClick={() => onIconClick?.("laptop")}
