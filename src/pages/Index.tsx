@@ -43,6 +43,7 @@ import PermissionRequestPopup from "@/components/PermissionRequestPopup";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
+import { waitForCommandAck } from "@/lib/commandAck";
 
 const Index = () => {
   const { t } = useTranslation();
@@ -176,6 +177,34 @@ const Index = () => {
 
     try {
       await toggleMonitoring(selectedDevice.id, newVal);
+      
+      // 명령 전송 성공 토스트
+      toast({
+        title: newVal ? t("commandAck.monitoringOnSent") : t("commandAck.monitoringOffSent"),
+        description: t("commandAck.waitingForDevice"),
+      });
+
+      // ACK 대기 (노트북 응답 확인)
+      if (effectiveUserId) {
+        waitForCommandAck({
+          deviceId: selectedDevice.id,
+          userId: effectiveUserId,
+          event: "monitoring_toggle",
+        }).then((acked) => {
+          if (acked) {
+            toast({
+              title: newVal ? t("commandAck.monitoringOnConfirmed") : t("commandAck.monitoringOffConfirmed"),
+              description: t("commandAck.commandConfirmedDesc"),
+            });
+          } else {
+            toast({
+              title: t("commandAck.commandTimeout"),
+              description: t("commandAck.commandTimeoutDesc"),
+              variant: "destructive",
+            });
+          }
+        });
+      }
     } catch (error) {
       // 실패 시 롤백
       queryClient.setQueriesData({ queryKey: ["devices"] }, (oldDevices: any[] | undefined) => {
@@ -361,8 +390,30 @@ const Index = () => {
 
               toast({
                 title: newVal ? t("camouflage.onTitle") : t("camouflage.offTitle"),
-                description: newVal ? t("camouflage.onDesc") : t("camouflage.offDesc"),
+                description: t("commandAck.waitingForDevice"),
               });
+
+              // ACK 대기
+              if (effectiveUserId) {
+                waitForCommandAck({
+                  deviceId: selectedDevice.id,
+                  userId: effectiveUserId,
+                  event: "camouflage_toggle",
+                }).then((acked) => {
+                  if (acked) {
+                    toast({
+                      title: newVal ? t("commandAck.camouflageOnConfirmed") : t("commandAck.camouflageOffConfirmed"),
+                      description: t("commandAck.commandConfirmedDesc"),
+                    });
+                  } else {
+                    toast({
+                      title: t("commandAck.commandTimeout"),
+                      description: t("commandAck.commandTimeoutDesc"),
+                      variant: "destructive",
+                    });
+                  }
+                });
+              }
             } catch {
               toast({ title: t("common.error"), description: t("camouflage.changeFailed"), variant: "destructive" });
             }

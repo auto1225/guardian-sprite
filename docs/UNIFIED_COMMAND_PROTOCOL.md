@@ -124,6 +124,55 @@
 
 ---
 
+## 📬 명령 확인 응답 (Command ACK)
+
+노트북이 명령을 수신·적용한 후, 동일 채널로 `command_ack` 이벤트를 브로드캐스트하여 스마트폰에 확인 피드백을 제공합니다.
+
+### ACK 페이로드 형식
+
+```json
+{
+  "device_id": "uuid",
+  "ack_event": "monitoring_toggle",
+  "success": true,
+  "timestamp": "2026-03-07T12:00:00.000Z"
+}
+```
+
+### ACK 지원 이벤트
+
+| 원본 이벤트 | ACK 응답 |
+|-------------|----------|
+| `monitoring_toggle` | ✅ 필수 |
+| `camouflage_toggle` | ✅ 필수 |
+| `settings_updated` | 선택 |
+| `lock_command` | 선택 |
+| `message_command` | 선택 |
+
+### 스마트폰 동작
+1. 명령 전송 후 "전송됨" 토스트 표시
+2. 8초간 `command_ack` 이벤트 대기
+3. ACK 수신 → "✅ 노트북에 적용 확인" 토스트
+4. 타임아웃 → "⚠️ 노트북 응답 없음" 경고 토스트
+
+### 노트북 (송신측) 구현
+
+```typescript
+// 명령 수신 후 처리 완료 시 ACK 전송
+channel.send({
+  type: "broadcast",
+  event: "command_ack",
+  payload: {
+    device_id: myDeviceId,
+    ack_event: "monitoring_toggle",
+    success: true,
+    timestamp: new Date().toISOString(),
+  },
+});
+```
+
+---
+
 ## 🔧 구현 가이드
 
 ### 스마트폰 (송신측)

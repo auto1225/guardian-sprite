@@ -166,6 +166,18 @@
     "offDesc": "Laptop screen restored to normal.",
     "changeFailed": "Failed to toggle camouflage"
   },
+  "commandAck": {
+    "monitoringOnSent": "Monitoring ON command sent",
+    "monitoringOffSent": "Monitoring OFF command sent",
+    "monitoringOnConfirmed": "✅ Monitoring ON confirmed on laptop",
+    "monitoringOffConfirmed": "✅ Monitoring OFF confirmed on laptop",
+    "camouflageOnConfirmed": "✅ Camouflage ON confirmed on laptop",
+    "camouflageOffConfirmed": "✅ Camouflage OFF confirmed on laptop",
+    "commandConfirmedDesc": "The laptop has applied the change.",
+    "commandTimeout": "⚠️ No response from laptop",
+    "commandTimeoutDesc": "The command was sent but no confirmation was received. The laptop may be offline.",
+    "waitingForDevice": "Waiting for laptop response..."
+  },
   "network": {
     "title": "Network Info",
     "connectionStatus": "Connection Status",
