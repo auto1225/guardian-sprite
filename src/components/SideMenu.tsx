@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { ChevronLeft, User, LogOut, HelpCircle, UserCog, Globe, Crown, Star, Sparkles, ExternalLink, FileText } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { ChevronLeft, User, LogOut, HelpCircle, UserCog, Globe, Crown, Star, Sparkles, ExternalLink, FileText, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
