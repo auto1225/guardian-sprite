@@ -428,26 +428,32 @@ const Index = () => {
       />
 
       {/* Alert Mode Overlay — key 고정으로 리마운트 방지 */}
-      {activeAlert && selectedDevice && (
-        <div style={{ display: (latestPhotoAlert || viewingPhotoAlert) ? 'none' : undefined }}>
-          <AlertMode
-            key={activeAlert.id}
-            device={selectedDevice}
-            activeAlert={activeAlert}
-            alertDeviceName={alertDeviceInfoRef.current?.name || selectedDevice.name}
-            alertDeviceSerial={alertDeviceInfoRef.current?.serial || ((selectedDevice.metadata as Record<string, unknown>)?.serial_key ? String((selectedDevice.metadata as Record<string, unknown>).serial_key) : null)}
-            onDismiss={() => {
-              alertDeviceInfoRef.current = null;
-              dismissAll();
-              setShowFallbackAlarmButtons(false);
-            }}
-            onSendRemoteAlarmOff={async () => {
-              await dismissRemoteAlarm();
-              setRemoteAlarmDismissed(true);
-            }}
-          />
-        </div>
-      )}
+      {activeAlert && selectedDevice && (() => {
+        // ★ 경보 발생 기기를 정확히 식별 — selectedDevice가 아닌 실제 경보 소스 기기 사용
+        const alertSourceDevice = activeAlert.device_id
+          ? devices.find(d => d.id === activeAlert.device_id) || selectedDevice
+          : selectedDevice;
+        return (
+          <div style={{ display: (latestPhotoAlert || viewingPhotoAlert) ? 'none' : undefined }}>
+            <AlertMode
+              key={activeAlert.id}
+              device={alertSourceDevice}
+              activeAlert={activeAlert}
+              alertDeviceName={alertDeviceInfoRef.current?.name || alertSourceDevice.name}
+              alertDeviceSerial={alertDeviceInfoRef.current?.serial || ((alertSourceDevice.metadata as Record<string, unknown>)?.serial_key ? String((alertSourceDevice.metadata as Record<string, unknown>).serial_key) : null)}
+              onDismiss={() => {
+                alertDeviceInfoRef.current = null;
+                dismissAll();
+                setShowFallbackAlarmButtons(false);
+              }}
+              onSendRemoteAlarmOff={async () => {
+                await dismissRemoteAlarm();
+                setRemoteAlarmDismissed(true);
+              }}
+            />
+          </div>
+        );
+      })()}
 
       {/* Photo Alert Overlay */}
       {(latestPhotoAlert || viewingPhotoAlert) && (
