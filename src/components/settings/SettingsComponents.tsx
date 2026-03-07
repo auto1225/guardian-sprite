@@ -63,10 +63,13 @@ export const ALARM_SOUNDS: { id: string; labelKey: string; freq: number[]; patte
 
 // ── Shared Sub-components ──
 
-export const SettingItem = ({ label, value, onClick }: { label: string; value?: string; onClick?: () => void }) => (
+export const SettingItem = ({ label, description, value, onClick }: { label: string; description?: string; value?: string; onClick?: () => void }) => (
   <button onClick={onClick} className="flex items-center justify-between w-full px-4 py-4 text-left hover:bg-white/8 active:bg-white/12 transition-colors">
-    <span className="text-white font-semibold text-sm">{label}</span>
-    <div className="flex items-center gap-2">
+    <div className="flex-1 min-w-0 mr-2">
+      <span className="text-white font-semibold text-sm block">{label}</span>
+      {description && <span className="text-white/80 text-xs block truncate">{description}</span>}
+    </div>
+    <div className="flex items-center gap-2 shrink-0">
       {value && <span className="text-white/80 text-sm font-medium">{value}</span>}
       <ChevronRight className="w-5 h-5 text-white/60" />
     </div>
