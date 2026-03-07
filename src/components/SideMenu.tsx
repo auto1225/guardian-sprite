@@ -217,6 +217,18 @@ const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps)
           <MenuItem icon={HelpCircle} label={t("sideMenu.helpQA")} onClick={() => { if (onHelpClick) { onHelpClick(); onClose(); } }} />
           <MenuItem icon={FileText} label={t("sideMenu.legalTerms")} onClick={() => { if (onLegalClick) { onLegalClick(); onClose(); } }} />
 
+          {/* Manual update */}
+          <button
+            onClick={handleCheckUpdate}
+            disabled={isUpdating}
+            className="flex items-center gap-3 w-full px-4 py-4 hover:bg-white/10 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-5 h-5 text-primary-foreground ${isUpdating ? "animate-spin" : ""}`} />
+            <span className="text-sm font-semibold text-primary-foreground">
+              {t("sideMenu.checkUpdate")}
+            </span>
+          </button>
+
           {/* Language selector */}
           <button
             onClick={() => setShowLangs(!showLangs)}
