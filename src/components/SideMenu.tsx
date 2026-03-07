@@ -187,7 +187,7 @@ const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps)
               className="flex items-center gap-1 text-[11px] text-white/60 hover:text-white/80 transition-colors"
             >
               <ExternalLink className="w-3 h-3" />
-              meercop.com {t("sideMenu.editProfileNotice", "에서만 수정 가능합니다")}
+              meercop.com {t("sideMenu.editProfileNotice")}
             </a>
           </div>
           <MenuItem icon={HelpCircle} label={t("sideMenu.helpQA")} onClick={() => { if (onHelpClick) { onHelpClick(); onClose(); } }} />
