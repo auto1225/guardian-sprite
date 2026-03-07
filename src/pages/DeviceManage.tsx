@@ -116,7 +116,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
         if (serialKeys.length === 0) return;
         const { data: licData, error: licError } = await supabase
           .from("licenses")
-          .select("serial_key, device_id")
+          .select("serial_key, device_id, device_name")
           .in("serial_key", serialKeys);
         if (licError) return;
         const map = new Map<string, string>();
