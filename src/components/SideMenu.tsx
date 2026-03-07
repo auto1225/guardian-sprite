@@ -96,8 +96,8 @@ const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps)
     // Fetch avatar
     const fetchAvatar = async () => {
       try {
-        const { data } = await supabase
-          .from("profiles")
+        const { data } = await websiteSupabase
+          .from("public_profiles")
           .select("avatar_url")
           .eq("user_id", effectiveUserId)
           .maybeSingle();
