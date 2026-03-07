@@ -228,10 +228,12 @@ export const useDevices = () => {
   useEffect(() => {
     if (resolvedDeviceId && resolvedDeviceId !== _selectedDeviceId) {
       console.log("[useDevices] Auto-selecting device:", resolvedDeviceId.slice(0, 8));
-      setGlobalSelectedDeviceId(resolvedDeviceId);
+      const dev = managedDevices.find(d => d.id === resolvedDeviceId);
+      const serial = dev ? (dev.metadata as Record<string, unknown>)?.serial_key as string | undefined : undefined;
+      setGlobalSelectedDeviceId(resolvedDeviceId, serial ?? null);
       _selectionInitialized = true;
     }
-  }, [resolvedDeviceId]);
+  }, [resolvedDeviceId, managedDevices]);
 
   const selectedDevice = devices.find((d) => d.id === resolvedDeviceId) || null;
 
