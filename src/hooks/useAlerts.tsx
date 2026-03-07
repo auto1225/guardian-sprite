@@ -35,6 +35,8 @@ export interface ActiveAlert {
   title: string;
   message: string | null;
   created_at: string;
+  /** 경보를 발생시킨 기기 ID — Presence/Broadcast의 device_id */
+  device_id?: string;
 }
 
 export const stopAlertSound = Alarm.stop;
@@ -135,12 +137,14 @@ export const useAlerts = (deviceId?: string | null) => {
     }
 
     console.log("[useAlerts] 🚨 New alert:", alert.id, "from device:", fromDeviceId?.slice(0, 8), "age:", Math.round(age / 1000), "s");
-    activeAlertRef.current = alert;
+    // ★ device_id를 alert 객체에 주입 — UI에서 어떤 기기의 경보인지 식별 가능
+    const enrichedAlert = { ...alert, device_id: fromDeviceId || alert.device_id };
+    activeAlertRef.current = enrichedAlert;
     lastAlertDeviceRef.current = fromDeviceId || null;
     if (fromDeviceId) {
       deviceLastAlertTimeRef.current.set(fromDeviceId, Date.now());
     }
-    safeSetActiveAlert(alert);
+    safeSetActiveAlert(enrichedAlert);
 
     if (!Alarm.isPlaying() && !Alarm.isMuted()) {
       console.log("[useAlerts] 🔊 Starting alarm sound...");
