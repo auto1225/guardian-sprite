@@ -462,6 +462,17 @@ const Index = () => {
           alert={(viewingPhotoAlert || latestPhotoAlert)!}
           isHistoryView={!!viewingPhotoAlert && !latestPhotoAlert}
           streamingDeviceId={selectedDeviceId}
+          alertDeviceName={(() => {
+            const a = (viewingPhotoAlert || latestPhotoAlert)!;
+            const dev = devices.find(d => d.id === a.device_id);
+            return a.device_name || dev?.name || alertDeviceInfoRef.current?.name || "";
+          })()}
+          alertDeviceSerial={(() => {
+            const a = (viewingPhotoAlert || latestPhotoAlert)!;
+            const dev = devices.find(d => d.id === a.device_id);
+            const meta = dev?.metadata as Record<string, unknown> | undefined;
+            return alertDeviceInfoRef.current?.serial || (meta?.serial_key ? String(meta.serial_key) : null);
+          })()}
           onBack={() => {
             dismissViewingPhoto();
             openPanel("photoHistory");
