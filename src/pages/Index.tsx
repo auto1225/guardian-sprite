@@ -127,12 +127,13 @@ const Index = () => {
   const alertDeviceInfoRef = useRef<{ name: string; serial: string | null } | null>(null);
 
   // 경보 발생 시 기기 정보 캡처 — 경보의 device_id로 정확한 기기 식별
+  // devices 로드 전이면 ref를 설정하지 않아 다음 렌더에서 재시도
   useEffect(() => {
     if (activeAlert) {
       setRemoteAlarmDismissed(false);
       setShowFallbackAlarmButtons(false);
-      if (!alertDeviceInfoRef.current) {
-        // ★ activeAlert.device_id로 실제 경보 발생 기기를 찾음
+      // ★ ref가 없거나 이름이 비어있으면 재시도 — devices 로딩 완료 후 캡처
+      if (!alertDeviceInfoRef.current || !alertDeviceInfoRef.current.name) {
         const alertSourceDevice = activeAlert.device_id
           ? devices.find(d => d.id === activeAlert.device_id)
           : selectedDevice;
