@@ -27,19 +27,28 @@ export async function broadcastCommand({
   timeoutMs = 5000,
   targetDeviceId,
 }: BroadcastOptions): Promise<void> {
-  // 기기별 독립 채널 우선, 없으면 사용자 통합 채널
   const channelName = targetDeviceId
     ? `device-commands-${targetDeviceId}`
     : `user-commands-${userId}`;
 
-  // 기존 동일 이름 채널 제거 (충돌 방지)
+  // ★ 기존 활성 채널이 있으면 재사용 (useDevices 등의 영구 구독 보호)
   const existing = supabase.getChannels().find(
     (ch) => ch.topic === `realtime:${channelName}`
   );
-  if (existing) supabase.removeChannel(existing);
 
+  if (existing) {
+    // 이미 SUBSCRIBED 상태인 채널로 바로 전송
+    try {
+      await existing.send({ type: "broadcast", event, payload });
+      console.log(`[broadcastCommand] ✅ ${event} sent via existing ${channelName}`, payload);
+    } catch (err) {
+      console.warn(`[broadcastCommand] ⚠️ ${event} send via existing channel failed:`, err);
+    }
+    return;
+  }
+
+  // 기존 채널이 없으면 임시 채널 생성 → 전송 → 정리
   const channel = supabase.channel(channelName);
-
   try {
     await new Promise<void>((resolve) => {
       const timeout = setTimeout(() => {
@@ -52,7 +61,7 @@ export async function broadcastCommand({
           clearTimeout(timeout);
           channel.send({ type: "broadcast", event, payload })
             .then(() => {
-              console.log(`[broadcastCommand] ✅ ${event} sent via ${channelName}`, payload);
+              console.log(`[broadcastCommand] ✅ ${event} sent via temp ${channelName}`, payload);
               supabase.removeChannel(channel);
               resolve();
             });
