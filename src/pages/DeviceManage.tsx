@@ -70,7 +70,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
   });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [customOrder, setCustomOrder] = useState<string[]>([]);
-  const [licenseMap, setLicenseMap] = useState<Map<string, string>>(new Map());
+  const [licenseMap, setLicenseMap] = useState<Map<string, { device_id: string; device_name: string | null }>>(new Map());
   const [iconPanel, setIconPanel] = useState<{ type: "locationMap" | "camera" | "networkInfo"; deviceId: string } | null>(null);
   const [settingsDeviceId, setSettingsDeviceId] = useState<string | null>(null);
 
