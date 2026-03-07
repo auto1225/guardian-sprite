@@ -537,9 +537,9 @@
   },
   "cameraViewer": {
     "connecting": "カメラ接続中...",
-    "waitingForCamera": "ノートPCのカメラ起動を待機中",
+    "waitingForCamera": "{{device}}のカメラ起動を待機中",
     "retry": "再試行",
-    "waitingForStart": "カメラ起動を待機中...",
+    "waitingForStart": "{{device}}のカメラを待機中...",
     "cameraNotDetected": "カメラが認識されません",
     "tapToPlay": "タップして再生",
     "noAudio": "No Audio",

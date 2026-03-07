@@ -537,9 +537,9 @@
   },
   "cameraViewer": {
     "connecting": "Conectando câmera...",
-    "waitingForCamera": "Aguardando início da câmera no notebook",
+    "waitingForCamera": "Aguardando início da câmera no {{device}}",
     "retry": "Tentar novamente",
-    "waitingForStart": "Aguardando início da câmera no notebook...",
+    "waitingForStart": "Aguardando câmera do {{device}}...",
     "cameraNotDetected": "Câmera não detectada",
     "tapToPlay": "Toque para reproduzir",
     "noAudio": "Sem áudio",

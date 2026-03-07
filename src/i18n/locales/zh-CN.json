@@ -537,9 +537,9 @@
   },
   "cameraViewer": {
     "connecting": "连接摄像头中...",
-    "waitingForCamera": "等待笔记本摄像头启动",
+    "waitingForCamera": "等待{{device}}摄像头启动",
     "retry": "重试",
-    "waitingForStart": "等待摄像头启动...",
+    "waitingForStart": "等待{{device}}摄像头...",
     "cameraNotDetected": "未检测到摄像头",
     "tapToPlay": "点击播放",
     "noAudio": "No Audio",
