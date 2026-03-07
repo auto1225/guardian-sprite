@@ -54,7 +54,10 @@ const Index = () => {
   useSmartphoneRegistration();
 
   const { devices, selectedDevice, selectedDeviceId, setSelectedDeviceId, isLoading, refreshDeviceStatus } = useDevices();
-  const nonSmartphoneDevices = devices.filter(d => d.device_type !== "smartphone");
+  const managedDevices = devices.filter(d => {
+    if (d.device_type !== "smartphone") return true;
+    return !!(d.metadata as Record<string, unknown>)?.serial_key;
+  });
   const deviceNameMap = Object.fromEntries(nonSmartphoneDevices.map(d => [d.id, d.name]));
   const { alerts, activeAlert, unreadCount, dismissRemoteAlarm, dismissAll } = useAlerts(selectedDeviceId);
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, subscribe: subscribePush } = usePushSubscription(selectedDeviceId);

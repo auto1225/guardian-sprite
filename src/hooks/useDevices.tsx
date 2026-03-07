@@ -183,8 +183,11 @@ export const useDevices = () => {
     setGlobalSelectedDeviceId(id);
   }, []);
 
-  // ── 비-스마트폰 기기 목록 (렌더링 중 즉시 계산) ──
-  const nonSmartphones = devices.filter(d => d.device_type !== "smartphone");
+  // ── 관리 대상 기기 목록: 컨트롤러(시리얼 키 없는 스마트폰)만 제외 ──
+  const managedDevices = devices.filter(d => {
+    if (d.device_type !== "smartphone") return true;
+    return !!(d.metadata as Record<string, unknown>)?.serial_key;
+  });
 
   // ── 자동 선택: 동기적으로 유효한 기기를 선택 ──
   // useEffect 대신 렌더링 중 즉시 계산하여 "기기 연결 대기 중" 깜빡임 방지
