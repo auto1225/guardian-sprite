@@ -116,7 +116,8 @@
     "locationHistory": "Historial de ubicaciones",
     "photoAlertHistory": "Historial de alertas con fotos",
     "updatedAt": "Actualizado",
-    "editProfileNotice": "solo se puede editar en"
+    "editProfileNotice": "solo se puede editar en",
+    "legalTerms": "Términos / Aviso Legal"
   },
   "errorBoundary": {
     "title": "Algo salió mal",
