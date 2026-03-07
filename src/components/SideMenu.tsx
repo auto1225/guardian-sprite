@@ -31,6 +31,30 @@ const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps)
   const [serialPage, setSerialPage] = useState(1);
   const [showLangs, setShowLangs] = useState(false);
   const [deviceNameMap, setDeviceNameMap] = useState<Record<string, string>>({});
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleCheckUpdate = useCallback(async () => {
+    if (!("serviceWorker" in navigator)) {
+      window.location.reload();
+      return;
+    }
+    setIsUpdating(true);
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) {
+        await reg.update();
+        if (reg.waiting) {
+          reg.waiting.postMessage({ type: "SKIP_WAITING" });
+          // controllerchange listener in usePWAUpdate will reload
+          return;
+        }
+      }
+      // No waiting SW — just hard reload
+      window.location.reload();
+    } catch {
+      window.location.reload();
+    }
+  }, []);
 
   // Fetch actual device names from shared DB
   useEffect(() => {
