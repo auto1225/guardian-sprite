@@ -188,7 +188,6 @@ const Index = () => {
       if (effectiveUserId) {
         waitForCommandAck({
           deviceId: selectedDevice.id,
-          userId: effectiveUserId,
           event: "monitoring_toggle",
         }).then((acked) => {
           if (acked) {
