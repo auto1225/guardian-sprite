@@ -180,29 +180,14 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
   const broadcastSettingsUpdate = async (deviceId: string, updates: Record<string, unknown>) => {
     const userId = device?.user_id;
     if (!userId) return;
-    // ★ 설정 변경은 해당 기기 전용 채널로만 전송 (다른 기기에 영향 없음)
-    const channelName = `device-commands-${deviceId}`;
-    const existing = supabase.getChannels().find(
-      (ch) => ch.topic === `realtime:${channelName}`
-    );
-    if (existing) supabase.removeChannel(existing);
-    const channel = supabase.channel(channelName);
-    try {
-      await new Promise<void>((resolve) => {
-        const timeout = setTimeout(() => { supabase.removeChannel(channel); resolve(); }, 5000);
-        channel.subscribe((status) => {
-          if (status === "SUBSCRIBED") {
-            clearTimeout(timeout);
-            channel.send({ type: "broadcast", event: "settings_updated", payload: { device_id: deviceId, settings: updates } })
-              .then(() => { supabase.removeChannel(channel); resolve(); });
-          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-            clearTimeout(timeout); supabase.removeChannel(channel); resolve();
-          }
-        });
-      });
-    } catch (err) {
-      console.warn("[Settings] broadcast failed (best-effort):", err);
-    }
+    const serialKey = (device.metadata as Record<string, unknown>)?.serial_key as string | undefined;
+    // ★ broadcastCommand 유틸리티 사용 — device_id + serial_key 포함, 기기별 채널로 전송
+    await broadcastCommand({
+      userId,
+      event: "settings_updated",
+      payload: { device_id: deviceId, serial_key: serialKey || "", settings: updates },
+      targetDeviceId: deviceId,
+    });
   };
 
   const saveMetadata = async (updates: Record<string, unknown>) => {
