@@ -85,29 +85,29 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff, alert
         </button>
       </div>
 
+      {/* ★ 기기명 + 경보 카드 — 스크롤 영역 밖 고정 (덮이지 않음) */}
+      <div className="px-4 pb-3 shrink-0">
+        <div className="bg-white/15 backdrop-blur-md border border-white/20 rounded-xl p-3">
+          {/* 기기명 + 시리얼 */}
+          <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/10">
+            <span className="text-yellow-200 font-black text-base leading-tight">{displayName}</span>
+            {displaySerial && (
+              <span className="text-yellow-200/60 text-[10px] font-mono">({displaySerial})</span>
+            )}
+          </div>
+          {/* 경보 내용 */}
+          <p className="text-white font-bold text-sm">{activeAlert.title}</p>
+          {activeAlert.message && (
+            <p className="text-white/70 text-xs mt-0.5">{activeAlert.message}</p>
+          )}
+          <p className="text-white/70 text-[11px] mt-0.5">
+            {new Date(activeAlert.created_at).toLocaleString("ko-KR")}
+          </p>
+        </div>
+      </div>
+
       {/* Scrollable content area */}
       <div className="flex-1 overflow-y-auto alert-glass-scroll">
-
-        {/* 경보 카드 — 기기명 + 경보 내용을 한 카드 안에 */}
-        <div className="px-4 pb-3">
-          <div className="bg-white/15 backdrop-blur-md border border-white/20 rounded-xl p-3">
-            {/* 기기명 + 시리얼 */}
-            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/10">
-              <span className="text-yellow-200 font-black text-base leading-tight">{displayName}</span>
-              {displaySerial && (
-                <span className="text-yellow-200/60 text-[10px] font-mono">({displaySerial})</span>
-              )}
-            </div>
-            {/* 경보 내용 */}
-            <p className="text-white font-bold text-sm">{activeAlert.title}</p>
-            {activeAlert.message && (
-              <p className="text-white/70 text-xs mt-0.5">{activeAlert.message}</p>
-            )}
-            <p className="text-white/70 text-[11px] mt-0.5">
-              {new Date(activeAlert.created_at).toLocaleString("ko-KR")}
-            </p>
-          </div>
-        </div>
 
         {/* 실시간 스트리밍 */}
         {hasCamera && device ? (
