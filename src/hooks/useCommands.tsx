@@ -60,7 +60,6 @@ export const useCommands = () => {
         userId: effectiveUserId,
         event: "monitoring_toggle",
         payload: { device_id: deviceId, is_monitoring: enable },
-        targetDeviceId: deviceId,
       });
     }
     
