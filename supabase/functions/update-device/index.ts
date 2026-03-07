@@ -63,10 +63,9 @@ Deno.serve(async (req) => {
 
     // ★ 기기명 중복 검사 (같은 user_id 내에서 동일 이름의 다른 기기가 있는지)
     if (updates.name) {
-      // 먼저 현재 기기의 user_id와 현재 이름을 조회
       const { data: currentDevice } = await supabase
         .from("devices")
-        .select("user_id, name")
+        .select("user_id, name, metadata")
         .eq("id", device_id)
         .single();
 
@@ -86,6 +85,18 @@ Deno.serve(async (req) => {
             JSON.stringify({ error: "DUPLICATE_DEVICE_NAME", message: `기기명 '${updates.name}'은(는) 이미 사용 중입니다.` }),
             { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
+        }
+      }
+
+      // ★ 기기명 변경 시 licenses.device_name도 동기화 (SSOT)
+      if (currentDevice && updates.name !== currentDevice.name) {
+        const serialKey = (currentDevice.metadata as Record<string, unknown>)?.serial_key as string | undefined;
+        if (serialKey) {
+          await supabase
+            .from("licenses")
+            .update({ device_name: updates.name })
+            .eq("serial_key", serialKey);
+          console.log(`[update-device] 📛 licenses.device_name synced: "${currentDevice.name}" → "${updates.name}" for serial ${serialKey}`);
         }
       }
     }
