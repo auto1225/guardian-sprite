@@ -29,6 +29,7 @@ import {
   type SensorSettings,
   type MotionSensitivity,
 } from "@/components/settings/SettingsComponents";
+import BackgroundSelector from "@/components/settings/BackgroundSelector";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 
@@ -38,9 +39,10 @@ interface SettingsPageProps {
   isOpen: boolean;
   onClose: () => void;
   onDeviceChange?: (deviceId: string) => void;
+  onBackgroundChange?: () => void;
 }
 
-const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChange }: SettingsPageProps) => {
+const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChange, onBackgroundChange }: SettingsPageProps) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation();
