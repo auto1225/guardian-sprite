@@ -119,7 +119,11 @@
     "updatedAt": "Aktualisiert",
     "editProfileNotice": "kann nur bearbeitet werden auf",
     "legalTerms": "Nutzungsbedingungen / Rechtliche Hinweise",
-    "checkUpdate": "Nach Updates suchen"
+    "checkUpdate": "Nach Updates suchen",
+    "updateUpToDate": "Sie verwenden die neueste Version",
+    "currentVersion": "Aktuelle Version",
+    "updateAvailable": "Ein neues Update ist verfügbar! Wird in Kürze aktualisiert.",
+    "updateCheckFailed": "Update-Prüfung fehlgeschlagen"
   },
   "errorBoundary": {
     "title": "Ein Fehler ist aufgetreten",

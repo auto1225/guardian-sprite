@@ -119,7 +119,11 @@
     "updatedAt": "Atualizado",
     "editProfileNotice": "só pode ser editado em",
     "legalTerms": "Termos / Aviso Legal",
-    "checkUpdate": "Verificar atualizações"
+    "checkUpdate": "Verificar atualizações",
+    "updateUpToDate": "Você está na versão mais recente",
+    "currentVersion": "Versão atual",
+    "updateAvailable": "Uma nova atualização está disponível! Atualizando em breve.",
+    "updateCheckFailed": "Falha ao verificar atualizações"
   },
   "errorBoundary": {
     "title": "Algo deu errado",

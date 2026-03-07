@@ -143,7 +143,11 @@
     "loggedOutDesc": "안전하게 로그아웃되었습니다.",
     "updatedAt": "업데이트",
     "editProfileNotice": "에서만 수정 가능합니다",
-    "checkUpdate": "최신 업데이트 확인"
+    "checkUpdate": "최신 업데이트 확인",
+    "updateUpToDate": "현재 최신 버전입니다",
+    "currentVersion": "현재 버전",
+    "updateAvailable": "새 업데이트가 있습니다! 잠시 후 업데이트됩니다.",
+    "updateCheckFailed": "업데이트 확인에 실패했습니다"
   },
   "errorBoundary": {
     "title": "문제가 발생했습니다",
