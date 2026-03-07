@@ -556,6 +556,7 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
             isRecording={isRecording}
             recordingDuration={recordingDuration}
             isPaused={isPaused}
+            deviceType={device.device_type}
             onToggleMute={handleToggleMute}
             onToggleRecording={toggleRecording}
             onTogglePause={togglePause}
