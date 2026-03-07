@@ -19,8 +19,12 @@ interface DeviceListProps {
 const DeviceList = ({ isExpanded, onToggle, selectedDeviceId, selectedDevice, onSelectDevice }: DeviceListProps) => {
   const { t } = useTranslation();
   const { devices: allDevices, getDeviceCharging } = useDevices();
+  // ★ 컨트롤러(시리얼 키 없는 스마트폰)만 제외, 관리 대상 스마트폰은 포함
   const devices = useMemo(
-    () => sortDevicesByOrder(allDevices.filter(d => d.device_type !== "smartphone")),
+    () => sortDevicesByOrder(allDevices.filter(d => {
+      if (d.device_type !== "smartphone") return true;
+      return !!(d.metadata as Record<string, unknown>)?.serial_key;
+    })),
     [allDevices]
   );
 
