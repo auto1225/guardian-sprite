@@ -173,7 +173,7 @@ const HelpPage = forwardRef<HTMLDivElement, HelpPageProps>(({ isOpen = true, onC
           <Desc>{t("help.sections.monitoringOnDesc")}</Desc>
           <SubTitle>{t("help.sections.detectionItems")}</SubTitle>
           <div className="space-y-3 ml-1">
-            {(["motionDetection", "lidDetection", "keyboardMouse", "cameraMotion", "usbDevice", "powerChange"] as const).map((key) => (
+            {(["motionDetection", "lidDetection", "keyboardMouse", "cameraMotion", "usbDevice", "powerChange", "screenTouchDetection"] as const).map((key) => (
               <div key={key}>
                 <p className="text-white font-semibold text-sm">{t(`help.sections.${key}`)}</p>
                 <p className="text-white/70 text-xs mt-0.5">{t(`help.sections.${key}Desc`)}</p>
@@ -325,7 +325,7 @@ const HelpPage = forwardRef<HTMLDivElement, HelpPageProps>(({ isOpen = true, onC
 
         <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden">
           <Accordion type="single" collapsible className="w-full">
-            {Array.from({ length: 18 }, (_, i) => i + 1).map((n) => (
+            {Array.from({ length: 19 }, (_, i) => i + 1).map((n) => (
               <AccordionItem key={n} value={`faq-${n}`} className="border-white/10">
                 <AccordionTrigger className="px-4 text-white text-sm hover:no-underline text-left">
                   {t(`help.faq.q${n}`)}
