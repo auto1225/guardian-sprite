@@ -534,6 +534,26 @@ export const useDevices = () => {
             if (!match) {
               // ★ Presence에 없는 비-스마트폰 기기 → DB heartbeat 폴백 확인
               if (d.status !== "offline") {
+                // ★ 활성 grace timer가 있으면 offline 강제 전환하지 않음 (leave→sync 경합 방지)
+                const deviceSerialKey = (d.metadata as Record<string, unknown>)?.serial_key as string | undefined;
+                const hasActiveGraceTimer = Array.from(activeLeaveTimers.keys()).some(timerKey => {
+                  // 직접 매칭: timer key === device ID
+                  if (timerKey === d.id) return true;
+                  // cross-DB 매칭: timer key의 serial_key로 연결된 기기
+                  if (deviceSerialKey) {
+                    const state = activePresenceChannel?.presenceState() || {};
+                    // leave된 key이므로 state에는 없지만, timerKey가 이전에 이 기기와 매칭되었는지 확인
+                    // realtimeConfirmedOnline에 아직 등록되어 있으면 grace period 중
+                    return realtimeConfirmedOnline.has(d.id);
+                  }
+                  return false;
+                });
+
+                if (hasActiveGraceTimer) {
+                  console.log("[Presence] ⏳ Grace timer active, skipping offline for:", d.id.slice(0, 8), d.name);
+                  return d;
+                }
+
                 const lastSeen = d.last_seen_at ? new Date(d.last_seen_at).getTime() : 0;
                 const isRecentlyActive = Date.now() - lastSeen < 5 * 60 * 1000;
                 if (isRecentlyActive) {
