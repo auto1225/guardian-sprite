@@ -196,30 +196,39 @@ export const useDevices = () => {
     setGlobalSelectedDeviceId(id, serial ?? null);
   }, [devices]);
 
-  // ── 관리 대상 기기 목록: 컨트롤러(시리얼 키 없는 스마트폰)만 제외 ──
+  // ── 관리 대상 기기 목록: 컨트롤러(시리얼 키 없는 스마트폰)만 제외, sort_order 정렬 ──
   const managedDevices = devices.filter(d => {
     if (d.device_type !== "smartphone") return true;
     return !!(d.metadata as Record<string, unknown>)?.serial_key;
+  }).sort((a, b) => {
+    const aOrder = ((a.metadata as Record<string, unknown>)?.sort_order as number) ?? Infinity;
+    const bOrder = ((b.metadata as Record<string, unknown>)?.sort_order as number) ?? Infinity;
+    if (aOrder !== Infinity || bOrder !== Infinity) return aOrder - bOrder;
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   });
 
   // ── 자동 선택: 동기적으로 유효한 기기를 선택 ──
   // useEffect 대신 렌더링 중 즉시 계산하여 "기기 연결 대기 중" 깜빡임 방지
   const resolvedDeviceId = (() => {
-    // 1) 저장된 device ID로 직접 매칭
-    if (selectedDeviceId) {
-      const found = managedDevices.find(d => d.id === selectedDeviceId);
-      if (found) return selectedDeviceId;
-    }
-    // 2) ★ device ID가 유효하지 않으면, 저장된 시리얼 키로 복원 시도
+    // ★ useSyncExternalStore보다 모듈 변수를 직접 사용 (render 타이밍 불일치 방지)
+    const savedId = _selectedDeviceId;
     const savedSerial = _selectedSerialKey || localStorage.getItem(SELECTED_SERIAL_STORAGE_KEY);
+
+    // 1) 저장된 device ID로 직접 매칭
+    if (savedId) {
+      const found = managedDevices.find(d => d.id === savedId);
+      if (found) return savedId;
+    }
+    // 2) device ID가 유효하지 않으면, 저장된 시리얼 키로 복원 시도
     if (savedSerial) {
       const bySerial = managedDevices.find(d => (d.metadata as Record<string, unknown>)?.serial_key === savedSerial);
       if (bySerial) return bySerial.id;
     }
-    // 3) 현재 선택이 유효하지 않음 → 재선택
+    // 3) 현재 선택이 유효하지 않음 → 재선택 (sort_order 정렬된 목록에서 안정적 선택)
     const mainDevice = managedDevices.find(d => (d.metadata as Record<string, unknown>)?.is_main);
     const onlineDevice = managedDevices.find(d => d.status === "online" || d.status === "monitoring" || d.status === "alert");
     const target = mainDevice || onlineDevice || managedDevices[0];
+    console.log("[useDevices] 🔄 Auto-select fallback:", { savedId: savedId?.slice(0, 8), savedSerial, picked: target?.id?.slice(0, 8), name: target?.name });
     return target?.id || null;
   })();
 
