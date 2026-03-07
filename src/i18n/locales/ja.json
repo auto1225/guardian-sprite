@@ -196,6 +196,8 @@
     "languageKo": "한국어",
     "languageEn": "English",
     "languageChanged": "言語が変更されました。",
+    "mascotVisible": "マスコット表示",
+    "mascotVisibleDesc": "メイン画面にマスコットと吹き出しを表示・非表示にします",
     "phoneAlarmSound": "スマートフォンアラーム音",
     "phoneAlarmSoundDesc": "アラート発生時にスマートフォンでアラーム音を再生",
     "alarmEnabled": "アラーム有効",
