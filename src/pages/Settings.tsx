@@ -96,6 +96,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
   const [showNicknameDialog, setShowNicknameDialog] = useState(false);
   const [showPinDialog, setShowPinDialog] = useState(false);
   const [showSoundDialog, setShowSoundDialog] = useState(false);
+  const [showBgSelector, setShowBgSelector] = useState(false);
   const [showLangPicker, setShowLangPicker] = useState(false);
   // ★ 기기별 언어 상태 — metadata.language를 우선 표시
   const [deviceLanguage, setDeviceLanguage] = useState<string>(
