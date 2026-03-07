@@ -183,20 +183,23 @@ export const useDevices = () => {
     setGlobalSelectedDeviceId(id);
   }, []);
 
-  // ── 비-스마트폰 기기 목록 (렌더링 중 즉시 계산) ──
-  const nonSmartphones = devices.filter(d => d.device_type !== "smartphone");
+  // ── 관리 대상 기기 목록: 컨트롤러(시리얼 키 없는 스마트폰)만 제외 ──
+  const managedDevices = devices.filter(d => {
+    if (d.device_type !== "smartphone") return true;
+    return !!(d.metadata as Record<string, unknown>)?.serial_key;
+  });
 
   // ── 자동 선택: 동기적으로 유효한 기기를 선택 ──
   // useEffect 대신 렌더링 중 즉시 계산하여 "기기 연결 대기 중" 깜빡임 방지
   const resolvedDeviceId = (() => {
     if (selectedDeviceId) {
-      const found = nonSmartphones.find(d => d.id === selectedDeviceId);
+      const found = managedDevices.find(d => d.id === selectedDeviceId);
       if (found) return selectedDeviceId;
     }
     // 현재 선택이 유효하지 않음 → 재선택
-    const mainDevice = nonSmartphones.find(d => (d.metadata as Record<string, unknown>)?.is_main);
-    const onlineDevice = nonSmartphones.find(d => d.status === "online" || d.status === "monitoring" || d.status === "alert");
-    const target = mainDevice || onlineDevice || nonSmartphones[0];
+    const mainDevice = managedDevices.find(d => (d.metadata as Record<string, unknown>)?.is_main);
+    const onlineDevice = managedDevices.find(d => d.status === "online" || d.status === "monitoring" || d.status === "alert");
+    const target = mainDevice || onlineDevice || managedDevices[0];
     return target?.id || null;
   })();
 
