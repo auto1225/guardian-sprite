@@ -146,9 +146,9 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
       }
 
       if (!matched) {
-        const linkedDeviceId = licenseMap.get(serial.serial_key);
-        if (linkedDeviceId) {
-          const device = managedDevices.find(d => d.id === linkedDeviceId && !usedDeviceIds.has(d.id));
+        const licEntry = licenseMap.get(serial.serial_key);
+        if (licEntry) {
+          const device = managedDevices.find(d => d.id === licEntry.device_id && !usedDeviceIds.has(d.id));
           if (device) {
             const deviceSerial = (device.metadata as Record<string, unknown>)?.serial_key as string | undefined;
             // ★ 기기의 metadata.serial_key가 다른 시리얼이면 매칭 거부 (잘못된 크로스 매칭 방지)
