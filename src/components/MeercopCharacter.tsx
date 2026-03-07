@@ -10,9 +10,10 @@ interface MeercopCharacterProps {
   isAlert?: boolean;
   statusMessage?: string;
   bgVersion?: number;
+  hideCharacter?: boolean;
 }
 
-const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage, bgVersion }: MeercopCharacterProps) => {
+const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage, bgVersion, hideCharacter = false }: MeercopCharacterProps) => {
   const [bg, setBg] = useState(getSelectedBackground);
 
   useEffect(() => {
@@ -124,7 +125,7 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
             }}
           >
             {/* Speech Bubble - Glued to character hat */}
-            {statusMessage && (
+            {!hideCharacter && statusMessage && (
               <div 
                 className="w-[85vw] max-w-sm"
                 style={{ marginBottom: '-50px' }}
@@ -138,17 +139,19 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
             )}
             
             {/* Meerkat Character */}
-            <img 
-              src={getCharacterImage()} 
-              alt="MeerCOP Character" 
-              style={{
-                width: '18rem',
-                maxWidth: '65vw',
-                height: 'auto',
-                objectFit: 'contain',
-                transition: 'all 0.3s',
-              }}
-            />
+            {!hideCharacter && (
+              <img 
+                src={getCharacterImage()} 
+                alt="MeerCOP Character" 
+                style={{
+                  width: '18rem',
+                  maxWidth: '65vw',
+                  height: 'auto',
+                  objectFit: 'contain',
+                  transition: 'all 0.3s',
+                }}
+              />
+            )}
           </div>
         </div>
       </div>

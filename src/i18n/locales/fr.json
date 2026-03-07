@@ -196,6 +196,8 @@
     "languageKo": "한국어",
     "languageEn": "English",
     "languageChanged": "Langue modifiée.",
+    "mascotVisible": "Afficher la mascotte",
+    "mascotVisibleDesc": "Afficher ou masquer la mascotte et la bulle de dialogue sur l'écran principal",
     "phoneAlarmSound": "Son d'alarme du téléphone",
     "phoneAlarmSoundDesc": "Jouer le son d'alarme sur le téléphone lors d'une alerte",
     "alarmEnabled": "Alarme activée",

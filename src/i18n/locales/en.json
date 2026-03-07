@@ -221,6 +221,8 @@
     "languageKo": "한국어",
     "languageEn": "English",
     "languageChanged": "Language changed.",
+    "mascotVisible": "Show Mascot",
+    "mascotVisibleDesc": "Show or hide the mascot character and speech bubble on the main screen",
     "phoneAlarmSound": "Phone Alarm Sound",
     "phoneAlarmSoundDesc": "Play alarm sound on phone when alert occurs",
     "alarmEnabled": "Alarm enabled",

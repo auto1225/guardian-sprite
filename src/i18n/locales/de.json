@@ -196,6 +196,8 @@
     "languageKo": "한국어",
     "languageEn": "English",
     "languageChanged": "Sprache wurde geändert.",
+    "mascotVisible": "Maskottchen anzeigen",
+    "mascotVisibleDesc": "Maskottchen und Sprechblase auf dem Hauptbildschirm anzeigen oder ausblenden",
     "phoneAlarmSound": "Smartphone-Alarmton",
     "phoneAlarmSoundDesc": "Alarmton auf dem Smartphone bei Alarm abspielen",
     "alarmEnabled": "Alarmton aktiviert",

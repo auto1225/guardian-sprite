@@ -115,6 +115,7 @@ const Index = () => {
 
   const [remoteAlarmDismissed, setRemoteAlarmDismissed] = useState(false);
   const [bgVersion, setBgVersion] = useState(0);
+  const [mascotVisible, setMascotVisible] = useState(() => localStorage.getItem("meercop-mascot-visible") !== "false");
   const [showFallbackAlarmButtons, setShowFallbackAlarmButtons] = useState(false);
   const [alarmPlaying, setAlarmPlaying] = useState(false);
 
@@ -240,6 +241,7 @@ const Index = () => {
         isMonitoring={isMonitoring} 
         isAlert={selectedDevice?.status === "alert"}
         bgVersion={bgVersion}
+        hideCharacter={!mascotVisible}
         statusMessage={
           selectedDevice?.status === "alert" 
             ? t("status.alertDetected")
@@ -385,6 +387,7 @@ const Index = () => {
           onClose={() => closePanel("settings")}
           onDeviceChange={(id) => setSelectedDeviceId(id)}
           onBackgroundChange={() => setBgVersion(v => v + 1)}
+          onMascotChange={() => setMascotVisible(localStorage.getItem("meercop-mascot-visible") !== "false")}
         />
       )}
 

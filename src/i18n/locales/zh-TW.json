@@ -196,6 +196,8 @@
     "languageKo": "한국어",
     "languageEn": "English",
     "languageChanged": "語言已變更。",
+    "mascotVisible": "顯示吉祥物",
+    "mascotVisibleDesc": "在主畫面上顯示或隱藏吉祥物角色和對話氣泡",
     "phoneAlarmSound": "手機警報聲",
     "phoneAlarmSoundDesc": "警報發生時在手機上播放警報聲",
     "alarmEnabled": "警報已啟用",

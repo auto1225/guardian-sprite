@@ -196,6 +196,8 @@
     "languageKo": "한국어",
     "languageEn": "English",
     "languageChanged": "Idioma cambiado.",
+    "mascotVisible": "Mostrar mascota",
+    "mascotVisibleDesc": "Mostrar u ocultar la mascota y el globo de diálogo en la pantalla principal",
     "phoneAlarmSound": "Sonido de alarma del teléfono",
     "phoneAlarmSoundDesc": "Reproducir sonido de alarma en el teléfono cuando ocurre una alerta",
     "alarmEnabled": "Alarma activada",
