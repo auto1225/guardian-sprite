@@ -684,9 +684,19 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-white font-semibold text-sm block">{t("settings.lidDetection")}</span>
-                  <span className="text-white/80 text-xs">{isLaptop ? t("settings.lidDetectionDescLaptop") : t("settings.lidDetectionDescOther")}</span>
+                  <span className="text-white/80 text-xs">{isLidSupported ? t("settings.lidDetectionDescLaptop") : t("settings.lidDetectionDescOther")}</span>
                 </div>
-                <Switch checked={sensorSettings.lidClosed} onCheckedChange={(v) => handleSensorToggle("lidClosed", v)} disabled={!isLaptop} />
+                <Switch
+                  checked={sensorSettings.lidClosed}
+                  onCheckedChange={(v) => {
+                    if (!isLidSupported) {
+                      toast({ title: t("settings.lidNotSupported"), description: t("settings.lidNotSupportedDesc"), variant: "destructive" });
+                      return;
+                    }
+                    handleSensorToggle("lidClosed", v);
+                  }}
+                  disabled={!isLidSupported}
+                />
               </div>
             </SensorSection>
 
