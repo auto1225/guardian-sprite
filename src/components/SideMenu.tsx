@@ -96,7 +96,7 @@ const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps)
             <img src={logoImage} alt="MeerCOP" className="w-10 h-10 object-contain" />
             <div>
               <p className="text-lg font-extrabold text-primary-foreground">MeerCOP</p>
-              <p className="text-xs text-white/70">ver 1.0.6</p>
+              <p className="text-xs text-white/70">{typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : ''}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2" aria-label={t("common.close")}>
