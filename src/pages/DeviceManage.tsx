@@ -119,9 +119,9 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
           .select("serial_key, device_id, device_name")
           .in("serial_key", serialKeys);
         if (licError) return;
-        const map = new Map<string, string>();
+        const map = new Map<string, { device_id: string; device_name: string | null }>();
         for (const lic of (licData || [])) {
-          if (lic.serial_key && lic.device_id) map.set(lic.serial_key, lic.device_id);
+          if (lic.serial_key && lic.device_id) map.set(lic.serial_key, { device_id: lic.device_id, device_name: lic.device_name ?? null });
         }
         setLicenseMap(map);
       } catch {}
