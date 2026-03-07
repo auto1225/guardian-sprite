@@ -793,6 +793,11 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
         selectedSoundId={selectedSoundId}
         onSelectSound={handleSelectSound}
       />
+      <BackgroundSelector
+        open={showBgSelector}
+        onOpenChange={setShowBgSelector}
+        onBackgroundChange={() => onBackgroundChange?.()}
+      />
     </>
   );
 };
