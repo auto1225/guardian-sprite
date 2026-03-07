@@ -643,9 +643,9 @@
   },
   "cameraViewer": {
     "connecting": "Connecting camera...",
-    "waitingForCamera": "Waiting for laptop camera to start",
+    "waitingForCamera": "Waiting for {{device}} camera to start",
     "retry": "Retry",
-    "waitingForStart": "Waiting for camera to start...",
+    "waitingForStart": "Waiting for {{device}} camera...",
     "cameraNotDetected": "Camera not detected",
     "tapToPlay": "Tap to play",
     "noAudio": "No Audio",
