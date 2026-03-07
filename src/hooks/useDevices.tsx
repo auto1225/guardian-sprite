@@ -191,8 +191,11 @@ export const useDevices = () => {
   // 전역 싱글톤 선택 상태 사용
   const selectedDeviceId = useSyncExternalStore(subscribeSelection, getSelectedDeviceId);
   const setSelectedDeviceId = useCallback((id: string | null) => {
-    setGlobalSelectedDeviceId(id);
-  }, []);
+    // 선택 시 해당 기기의 시리얼 키도 함께 저장
+    const dev = devices.find(d => d.id === id);
+    const serial = dev ? (dev.metadata as Record<string, unknown>)?.serial_key as string | undefined : undefined;
+    setGlobalSelectedDeviceId(id, serial ?? null);
+  }, [devices]);
 
   // ── 관리 대상 기기 목록: 컨트롤러(시리얼 키 없는 스마트폰)만 제외 ──
   const managedDevices = devices.filter(d => {
@@ -203,11 +206,18 @@ export const useDevices = () => {
   // ── 자동 선택: 동기적으로 유효한 기기를 선택 ──
   // useEffect 대신 렌더링 중 즉시 계산하여 "기기 연결 대기 중" 깜빡임 방지
   const resolvedDeviceId = (() => {
+    // 1) 저장된 device ID로 직접 매칭
     if (selectedDeviceId) {
       const found = managedDevices.find(d => d.id === selectedDeviceId);
       if (found) return selectedDeviceId;
     }
-    // 현재 선택이 유효하지 않음 → 재선택
+    // 2) ★ device ID가 유효하지 않으면, 저장된 시리얼 키로 복원 시도
+    const savedSerial = _selectedSerialKey || localStorage.getItem(SELECTED_SERIAL_STORAGE_KEY);
+    if (savedSerial) {
+      const bySerial = managedDevices.find(d => (d.metadata as Record<string, unknown>)?.serial_key === savedSerial);
+      if (bySerial) return bySerial.id;
+    }
+    // 3) 현재 선택이 유효하지 않음 → 재선택
     const mainDevice = managedDevices.find(d => (d.metadata as Record<string, unknown>)?.is_main);
     const onlineDevice = managedDevices.find(d => d.status === "online" || d.status === "monitoring" || d.status === "alert");
     const target = mainDevice || onlineDevice || managedDevices[0];
