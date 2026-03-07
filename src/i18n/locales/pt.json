@@ -440,6 +440,10 @@
       "settingSerialDesc": "Veja e copie números de série registrados.",
       "settingDeviceType": "💻 Tipo de dispositivo",
       "settingDeviceTypeDesc": "Os sensores disponíveis variam conforme o tipo de dispositivo (Notebook/Desktop/Tablet/Smartphone). Exemplo: detecção de tampa apenas em notebooks. Detecção de toque disponível em todos os tipos.",
+      "settingBackground": "🖼️ Plano de fundo",
+      "settingBackgroundDesc": "Personalize o fundo da tela principal. Escolha entre 6 gradientes (Padrão, Pôr do sol, Noite, Floresta, Oceano, Aurora) ou envie sua própria imagem (máx. 5 MB). As configurações são salvas localmente.",
+      "settingMascot": "🐾 Mostrar mascote",
+      "settingMascotDesc": "Exiba ou oculte o mascote MeerCOP e o balão de fala na tela principal. Esta configuração é salva localmente e funciona independentemente do app do notebook.",
       "deviceManage": "Gerenciamento de dispositivos",
       "deviceManageDesc": "Toque em gerenciamento de dispositivos no cabeçalho.",
       "deviceManageAdd": "Adicionar/excluir dispositivos",
@@ -479,7 +483,11 @@
       "q12": "O app não envia notificações push.",
       "a12": "1. Verifique a permissão de notificações do navegador.\n2. No iOS Safari, instale como PWA.\n3. Reabra o app com o dispositivo selecionado.\n4. No modo economia de energia, notificações podem atrasar.",
       "q19": "O que é a detecção de toque na tela?",
-      "a19": "A detecção de toque na tela monitora entradas tácteis físicas no display. Quando ativada, qualquer toque na tela aciona um alarme.\n\n• Disponível em todos os tipos de dispositivo (Notebook, Desktop, Tablet, Smartphone)\n• Pode ser ativada/desativada em Configurações → Sensores\n• Requer um plano que suporte a função sensor_touch\n• Aciona o processo padrão de alarme (som, captura de foto, notificação push)"
+      "a19": "A detecção de toque na tela monitora entradas tácteis físicas no display. Quando ativada, qualquer toque na tela aciona um alarme.\n\n• Disponível em todos os tipos de dispositivo (Notebook, Desktop, Tablet, Smartphone)\n• Pode ser ativada/desativada em Configurações → Sensores\n• Requer um plano que suporte a função sensor_touch\n• Aciona o processo padrão de alarme (som, captura de foto, notificação push)",
+      "q20": "Como mudo o plano de fundo?",
+      "a20": "Vá em Configurações → Plano de fundo para mudar o fundo da tela principal.\n\n• Escolha entre 6 gradientes: Padrão, Pôr do sol, Noite, Floresta, Oceano, Aurora\n• Envie uma imagem personalizada (máx. 5 MB)\n• Uma borda amarela e um ✓ indicam o fundo selecionado\n• As configurações são salvas localmente neste dispositivo",
+      "q21": "Como escondo o mascote?",
+      "a21": "Vá em Configurações → Mostrar mascote e desative o interruptor.\n\n• O mascote e o balão de fala desaparecem da tela principal\n• Apenas o fundo permanece visível\n• Esta configuração é salva localmente e funciona de forma independente\n• Reative a qualquer momento para restaurar o mascote"
     },
     "footer": {
       "copyright": "© 2025 MeerCOP. Todos os direitos reservados.",

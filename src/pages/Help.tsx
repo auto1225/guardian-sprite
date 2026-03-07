@@ -241,7 +241,7 @@ const HelpPage = forwardRef<HTMLDivElement, HelpPageProps>(({ isOpen = true, onC
         <SectionTitle id="sec-9" icon={Settings}>{t("help.sections.settingsTitle")}</SectionTitle>
         <Card>
           <Desc>{t("help.sections.settingsOverview")}</Desc>
-          {(["settingNickname", "settingPin", "settingSound", "settingVolume", "settingPhoneAlarm", "settingPcPin", "settingSensor", "settingSensitivity", "settingSerial", "settingStreamingQuality", "settingLanguage", "settingDeviceType"] as const).map((key) => (
+          {(["settingNickname", "settingPin", "settingSound", "settingVolume", "settingPhoneAlarm", "settingPcPin", "settingSensor", "settingSensitivity", "settingSerial", "settingStreamingQuality", "settingLanguage", "settingDeviceType", "settingBackground", "settingMascot"] as const).map((key) => (
             <div key={key} className="mb-3">
               <p className="text-white font-semibold text-sm">{t(`help.sections.${key}`)}</p>
               <p className="text-white/70 text-xs mt-0.5 whitespace-pre-line">{t(`help.sections.${key}Desc`)}</p>
@@ -325,7 +325,7 @@ const HelpPage = forwardRef<HTMLDivElement, HelpPageProps>(({ isOpen = true, onC
 
         <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden">
           <Accordion type="single" collapsible className="w-full">
-            {Array.from({ length: 19 }, (_, i) => i + 1).map((n) => (
+            {Array.from({ length: 21 }, (_, i) => i + 1).map((n) => (
               <AccordionItem key={n} value={`faq-${n}`} className="border-white/10">
                 <AccordionTrigger className="px-4 text-white text-sm hover:no-underline text-left">
                   {t(`help.faq.q${n}`)}

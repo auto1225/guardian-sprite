@@ -496,6 +496,10 @@
       "settingLanguageDesc": "Change the app display language and laptop program language. Supports 17 languages and can be set independently per device. Smartphone app language can also be changed from the side menu.",
       "settingDeviceType": "💻 Device Type",
       "settingDeviceTypeDesc": "Available sensors vary by device type (Laptop/Desktop/Tablet/Smartphone). Example: Lid detection is only available on laptops. Screen touch detection is available on all device types.",
+      "settingBackground": "🖼️ Background",
+      "settingBackgroundDesc": "Customize the main screen background. Choose from 6 preset gradients (Default, Sunset, Night, Forest, Ocean, Aurora) or upload your own image (max 5MB). Settings are saved locally on this device.",
+      "settingMascot": "🐾 Show Mascot",
+      "settingMascotDesc": "Show or hide the MeerCOP mascot character and speech bubble on the main screen. When hidden, only the background is displayed. This setting is saved locally on this device.",
 
       "deviceManage": "10. Device Management",
       "deviceManageDesc": "Tap the Device Management button on the right side of the header to manage all registered devices.",
@@ -579,7 +583,11 @@
       "q18": "What happens if I delete a device?",
       "a18": "Deleting a device from device management:\n\n• All alert history for that device is deleted\n• The serial number is retained and can be linked to a new device\n• Logging back into MeerCOP on the laptop registers it as a new device",
       "q19": "What is screen touch detection?",
-      "a19": "Screen touch detection monitors for physical touch input on the display. When enabled, any touch on the screen triggers an alert.\n\n• Available on all device types (Laptop, Desktop, Tablet, Smartphone)\n• Can be enabled/disabled in Settings → Detection Sensor Settings\n• Requires a plan that supports the sensor_touch capability\n• When triggered, it follows the same alert pipeline (alarm sound, photo capture, push notification)"
+      "a19": "Screen touch detection monitors for physical touch input on the display. When enabled, any touch on the screen triggers an alert.\n\n• Available on all device types (Laptop, Desktop, Tablet, Smartphone)\n• Can be enabled/disabled in Settings → Detection Sensor Settings\n• Requires a plan that supports the sensor_touch capability\n• When triggered, it follows the same alert pipeline (alarm sound, photo capture, push notification)",
+      "q20": "How do I change the background?",
+      "a20": "Go to Settings → Background to change the main screen background.\n\n• Choose from 6 preset gradients: Default, Sunset, Night, Forest, Ocean, Aurora\n• Upload a custom image (max 5MB) from your device\n• A yellow border and checkmark indicate the selected background\n• To remove a custom image, tap the X button on its thumbnail\n• Settings are saved locally on this device",
+      "q21": "How do I hide the mascot character?",
+      "a21": "Go to Settings → Show Mascot and toggle the switch off.\n\n• When disabled, the mascot character and speech bubble are hidden from the main screen\n• Only the background image/gradient remains visible\n• This setting is saved locally and works independently from the laptop app\n• Toggle it back on anytime to restore the mascot"
     },
     "footer": {
       "copyright": "© 2025 MeerCOP. All rights reserved.",
