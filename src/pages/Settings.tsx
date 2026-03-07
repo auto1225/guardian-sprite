@@ -48,7 +48,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { refreshSerials } = useAuth();
+  const { refreshSerials, serials: authSerials } = useAuth();
   const [licenses, setLicenses] = useState<{ serial_key: string; device_id: string | null; is_active: boolean }[]>([]);
   const [settingsDeviceId, setSettingsDeviceId] = useState(initialDeviceId);
 
@@ -443,40 +443,43 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
             <div className="px-4 pt-4 pb-2 flex items-center justify-between">
               <div>
                 <span className="text-white font-semibold text-sm block">{t("settings.serialNumbers")}</span>
-                <span className="text-white/80 text-xs">{t("settings.registeredSerials", { count: licenses.length })}</span>
+                <span className="text-white/80 text-xs">{t("settings.registeredSerials", { count: authSerials.length })}</span>
               </div>
               <span className="text-white/40 text-xs">{t("settings.tapToCopy")}</span>
             </div>
-            <div className="max-h-[180px] overflow-y-auto alert-history-scroll">
-              {licenses.length === 0 ? (
+            <div className="max-h-[220px] overflow-y-auto alert-history-scroll">
+              {authSerials.length === 0 ? (
                 <div className="px-4 pb-4">
                   <span className="text-white/60 text-sm">{t("settings.noSerials")}</span>
                 </div>
               ) : (
-                licenses.map((lic, idx) => (
-                  <button
-                    key={lic.serial_key}
-                    onClick={() => {
-                      navigator.clipboard.writeText(lic.serial_key);
-                      toast({ title: t("common.copied"), description: t("settings.serialCopied") });
-                    }}
-                    className={`w-full px-4 py-3 flex items-center justify-between text-left hover:bg-white/5 active:bg-white/10 transition-colors ${idx > 0 ? 'border-t border-white/10' : ''}`}
-                    style={lic.device_id === device.id ? { background: 'hsla(200, 60%, 30%, 0.5)' } : undefined}
-                  >
-                    <div className="flex flex-col min-w-0">
-                      <span className="font-mono font-bold text-sm tracking-wider" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>
-                        {lic.serial_key}
-                      </span>
-                      <span className={`text-xs mt-0.5 font-semibold ${lic.device_id === device.id ? '' : 'text-white/50'}`}
-                        style={lic.device_id === device.id ? { color: 'hsla(52, 100%, 60%, 0.9)' } : undefined}
-                      >
-                        {lic.device_id === device.id ? t("settings.currentDevice") : lic.device_id ? t("settings.otherDeviceLinked") : t("settings.unlinked")}
-                        {!lic.is_active && ` · ${t("settings.inactive")}`}
-                      </span>
-                    </div>
-                    <Copy className="w-4 h-4 text-white/40 shrink-0 ml-2" />
-                  </button>
-                ))
+                authSerials.map((serial, idx) => {
+                  const isCurrentDevice = deviceSerialKey === serial.serial_key;
+                  return (
+                    <button
+                      key={serial.serial_key}
+                      onClick={() => {
+                        navigator.clipboard.writeText(serial.serial_key);
+                        toast({ title: t("common.copied"), description: t("settings.serialCopied") });
+                      }}
+                      className={`w-full px-4 py-3 flex items-center justify-between text-left hover:bg-white/5 active:bg-white/10 transition-colors ${idx > 0 ? 'border-t border-white/10' : ''}`}
+                      style={isCurrentDevice ? { background: 'hsla(200, 60%, 30%, 0.5)' } : undefined}
+                    >
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-mono font-bold text-sm tracking-wider" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>
+                          {serial.serial_key}
+                        </span>
+                        <span className={`text-xs mt-0.5 font-semibold ${isCurrentDevice ? '' : 'text-white/50'}`}
+                          style={isCurrentDevice ? { color: 'hsla(52, 100%, 60%, 0.9)' } : undefined}
+                        >
+                          {isCurrentDevice ? t("settings.currentDevice") : serial.device_name ? `📌 ${serial.device_name}` : t("settings.unlinked")}
+                          {serial.status !== "active" && ` · ${t("settings.inactive")}`}
+                        </span>
+                      </div>
+                      <Copy className="w-4 h-4 text-white/40 shrink-0 ml-2" />
+                    </button>
+                  );
+                })
               )}
             </div>
           </div>
