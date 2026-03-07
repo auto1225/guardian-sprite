@@ -153,6 +153,8 @@ const NetworkInfoModal = forwardRef<HTMLDivElement, NetworkInfoModalProps>(({ is
       </div>
     </div>
   );
-};
+});
+
+NetworkInfoModal.displayName = "NetworkInfoModal";
 
 export default NetworkInfoModal;
