@@ -158,7 +158,8 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
         }
       }
 
-      if (!matched) result.push({ serial, device: null });
+      // DB에 기기가 없는 시리얼은 표시하지 않음 (사용자 요청)
+      if (!matched) { /* skip - no device in DB for this serial */ }
     }
 
     for (const device of managedDevices) {
