@@ -177,6 +177,34 @@ const Index = () => {
 
     try {
       await toggleMonitoring(selectedDevice.id, newVal);
+      
+      // 명령 전송 성공 토스트
+      toast({
+        title: newVal ? t("commandAck.monitoringOnSent") : t("commandAck.monitoringOffSent"),
+        description: t("commandAck.waitingForDevice"),
+      });
+
+      // ACK 대기 (노트북 응답 확인)
+      if (effectiveUserId) {
+        waitForCommandAck({
+          deviceId: selectedDevice.id,
+          userId: effectiveUserId,
+          event: "monitoring_toggle",
+        }).then((acked) => {
+          if (acked) {
+            toast({
+              title: newVal ? t("commandAck.monitoringOnConfirmed") : t("commandAck.monitoringOffConfirmed"),
+              description: t("commandAck.commandConfirmedDesc"),
+            });
+          } else {
+            toast({
+              title: t("commandAck.commandTimeout"),
+              description: t("commandAck.commandTimeoutDesc"),
+              variant: "destructive",
+            });
+          }
+        });
+      }
     } catch (error) {
       // 실패 시 롤백
       queryClient.setQueriesData({ queryKey: ["devices"] }, (oldDevices: any[] | undefined) => {
