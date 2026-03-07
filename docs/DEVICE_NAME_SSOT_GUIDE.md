@@ -126,11 +126,11 @@ await websiteSupabase.from("serial_numbers")
 - [x] `NetworkInfoModal`: forwardRef 경고 수정
 - [x] DB 데이터 보정: 잘못된 `device_type` 6건 `laptop`으로 수정
 
-### 노트북 앱
-- [ ] `register-device` 응답의 `device_name`을 로컬 DB에 반영
-- [ ] 하트비트에서 `name` 필드 전송 금지 또는 SSOT 이름만 사용
-- [ ] `validate-serial` 호출 시 `device_type` 파라미터 포함 (기본값 `laptop`)
-- [ ] 기기명 변경 시 `update-device` 호출 후 웹사이트 DB 동기화는 불필요 (서버가 처리)
+### 노트북 앱 ✅
+- [x] `register-device` 응답의 `device_name`을 로컬 DB에 반영 (`serialAuth.ts`)
+- [x] 하트비트에서 `name` 필드 미전송
+- [x] 기기명 변경 시 `updateDeviceViaEdge` + `syncSharedName` 이중 쓰기 (`DeviceNameBadge`)
+- [x] `deviceApi.ts`에서 공유DB 업데이트 시 `device_name` 포함 (삭제 코드 제거)
 
 ### 웹사이트 ✅ (수정 불필요)
 - [x] `verify-serial` 5개 액션 모두 `serial_numbers.device_name`을 SSOT로 처리
