@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.manage-signaling]
 verify_jwt = false
+
+[functions.check-app-version]
+verify_jwt = false
