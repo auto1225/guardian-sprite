@@ -21,6 +21,18 @@
 | `user-alerts-${userId}` | 💻→📱 | 경보 발생/해제 |
 | `user-photos-${userId}` | 💻→📱 | 사진 경보 전송 |
 
+### 명령 요약표
+
+| # | 이벤트 | 방향 | 설명 |
+|---|--------|------|------|
+| 1 | `monitoring_toggle` | 📱→💻 | 감시 ON/OFF |
+| 2 | `camouflage_toggle` | 📱→💻 | 위장 모드 ON/OFF |
+| 3 | `settings_updated` | 📱→💻 | 센서/PIN/민감도 등 설정 변경 |
+| 4 | `lock_command` | 📱→💻 | 화면 잠금 |
+| 5 | `message_command` | 📱→💻 | 팝업 메시지 표시 |
+| 6 | `alarm_dismiss` | 📱→💻 | 경보음 원격 해제 |
+| 7 | `mascot_toggle` | 📱→💻 | 마스코트/말풍선 보기·숨기기 |
+
 ---
 
 ## 📨 명령 이벤트 목록
