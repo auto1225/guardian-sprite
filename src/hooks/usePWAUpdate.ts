@@ -1,11 +1,29 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * PWA 업데이트 감지 및 자동 새로고침 훅
  * - 새 Service Worker가 감지되면 즉시 활성화 후 페이지 새로고침
  * - 앱이 포그라운드로 돌아올 때마다 업데이트 체크
+ * - 앱 시작 시 현재 빌드 버전을 DB에 자동 등록
  */
 export function usePWAUpdate() {
+  const registered = useRef(false);
+
+  // 앱 시작 시 현재 빌드 버전을 DB에 등록 (최신일 경우만)
+  useEffect(() => {
+    if (registered.current) return;
+    registered.current = true;
+    const buildTime = typeof __BUILD_TIME__ !== "undefined" ? __BUILD_TIME__ : "";
+    if (!buildTime) return;
+    supabase.functions.invoke("register-app-version", {
+      body: { build_time: buildTime },
+    }).then(({ data }) => {
+      if (data?.registered) {
+        console.log("[PWA] Registered new version:", buildTime);
+      }
+    }).catch(() => {});
+  }, []);
   const checkForUpdate = useCallback(() => {
     if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
       navigator.serviceWorker.getRegistration().then((reg) => {
