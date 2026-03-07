@@ -1,4 +1,18 @@
 {
+  "bg": {
+    "title": "Background",
+    "description": "Choose a background for the main screen",
+    "default": "Default",
+    "sunset": "Sunset",
+    "night": "Night",
+    "forest": "Forest",
+    "ocean": "Ocean",
+    "aurora": "Aurora",
+    "custom": "Custom",
+    "upload": "Upload",
+    "fileTooLarge": "Image must be under 5MB.",
+    "customSet": "Custom background applied."
+  },
   "plan": {
     "free": "1-Day Trial",
     "basic": "Basic Plan",
