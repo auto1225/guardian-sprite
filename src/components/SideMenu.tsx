@@ -88,25 +88,36 @@ const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps)
     }
   }, [toast, t]);
 
-  // Fetch actual device names from shared DB
+  // Fetch avatar + device names
   useEffect(() => {
     if (!isOpen || !effectiveUserId) return;
+
+    // Fetch avatar
+    const fetchAvatar = async () => {
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("avatar_url")
+          .eq("user_id", effectiveUserId)
+          .maybeSingle();
+        if (data?.avatar_url) setAvatarUrl(data.avatar_url);
+      } catch (err) {
+        console.warn("[SideMenu] Failed to fetch avatar:", err);
+      }
+    };
+    fetchAvatar();
+
+    // Fetch device names
     const fetchDeviceNames = async () => {
       try {
         const { data } = await supabase.functions.invoke("get-devices", {
           body: { user_id: effectiveUserId },
         });
         const devices = data?.devices || [];
-        // Build serial_key → device name map via licenses
-        const { data: licenses } = await supabase.functions.invoke("get-devices", {
-          body: { user_id: effectiveUserId, include_licenses: true },
-        });
-        // Fallback: map device_id → name, then match via licenses
         const idToName: Record<string, string> = {};
         for (const d of devices) {
           idToName[d.id] = d.name;
         }
-        // Try to get licenses from shared DB
         const { data: licenseData } = await supabase
           .from("licenses")
           .select("serial_key, device_id")
