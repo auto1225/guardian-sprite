@@ -433,18 +433,54 @@ const CameraPage = forwardRef<HTMLDivElement, CameraPageProps>(({ device, isOpen
     setIsPaused(p => !p);
   }, []);
 
-  // 스냅샷 (미리보기로 표시)
+  // 스냅샷 (미리보기로 표시) — object-cover로 화면에 보이는 영역만 캡처
   const captureSnapshot = useCallback(() => {
     if (!remoteStream) return;
     try {
-      const video = document.querySelector('video');
+      const video = document.querySelector('video') as HTMLVideoElement | null;
       if (!video || video.videoWidth === 0) return;
+
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      const cw = video.clientWidth;
+      const ch = video.clientHeight;
+
+      // 전체화면(object-contain) 또는 비디오 요소 크기가 없으면 전체 프레임 캡처
+      const isContain = window.getComputedStyle(video).objectFit === 'contain';
+      if (isContain || cw === 0 || ch === 0) {
+        const canvas = document.createElement("canvas");
+        canvas.width = vw;
+        canvas.height = vh;
+        const ctx = canvas.getContext("2d");
+        if (ctx) { ctx.drawImage(video, 0, 0); setSnapshotUrl(canvas.toDataURL("image/jpeg", 0.9)); }
+        return;
+      }
+
+      // object-cover 크롭 영역 계산
+      const containerRatio = cw / ch;
+      const videoRatio = vw / vh;
+      let sx: number, sy: number, sw: number, sh: number;
+
+      if (videoRatio > containerRatio) {
+        // 비디오가 더 넓음 → 좌우 잘림
+        sh = vh;
+        sw = vh * containerRatio;
+        sx = (vw - sw) / 2;
+        sy = 0;
+      } else {
+        // 비디오가 더 높음 → 상하 잘림
+        sw = vw;
+        sh = vw / containerRatio;
+        sx = 0;
+        sy = (vh - sh) / 2;
+      }
+
       const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth || 1280;
-      canvas.height = video.videoHeight || 720;
+      canvas.width = Math.round(sw);
+      canvas.height = Math.round(sh);
       const ctx = canvas.getContext("2d");
       if (ctx) {
-        ctx.drawImage(video, 0, 0);
+        ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
         setSnapshotUrl(canvas.toDataURL("image/jpeg", 0.9));
       }
     } catch (err) {
