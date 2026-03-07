@@ -188,6 +188,7 @@ const Index = () => {
       if (effectiveUserId) {
         waitForCommandAck({
           deviceId: selectedDevice.id,
+          deviceName: selectedDevice.name,
           event: "monitoring_toggle",
         }).then((acked) => {
           if (acked) {
@@ -396,6 +397,7 @@ const Index = () => {
               if (effectiveUserId) {
                 waitForCommandAck({
                   deviceId: selectedDevice.id,
+                  deviceName: selectedDevice.name,
                   event: "camouflage_toggle",
                 }).then((acked) => {
                   if (acked) {
