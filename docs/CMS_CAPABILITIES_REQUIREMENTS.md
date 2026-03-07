@@ -27,6 +27,7 @@ CMS의 `plan_features` 테이블에 아래 키들이 **모든 플랜(free, basic
 | `sensor_usb` | 센서: USB 감지 | ❌ false | ✅ true | ✅ true |
 | `sensor_power` | 센서: 전원 감지 | ❌ false | ❌ false | ✅ true |
 | `sensor_lid` | 센서: 노트북 덮개 감지 | ❌ false | ❌ false | ✅ true |
+| `sensor_touch` | 센서: 화면 터치 감지 | ❌ false | ✅ true | ✅ true |
 
 ### Number 키
 

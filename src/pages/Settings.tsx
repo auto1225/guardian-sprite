@@ -330,7 +330,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
     usb: "sensor_usb",
     power: "sensor_power",
     lidClosed: "sensor_lid",
-    screenTouch: "sensor_screen_touch",
+    screenTouch: "sensor_touch",
   };
 
   const handleSensorToggle = async (key: keyof SensorSettings, value: boolean) => {
