@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
+import { getSelectedBackgroundId } from "@/lib/backgroundPresets";
 import { broadcastCommand } from "@/lib/broadcastCommand";
 import { websiteSupabase } from "@/lib/websiteAuth";
 import { useAuth } from "@/hooks/useAuth";
@@ -580,8 +581,9 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
 
           {/* Background Setting */}
           <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
-            <SettingItem label={t("bg.title")} value={t(`bg.${(() => { const { getSelectedBackgroundId } = require("@/lib/backgroundPresets"); return getSelectedBackgroundId(); })()}`)} onClick={() => setShowBgSelector(true)} />
+            <SettingItem label={t("bg.title")} onClick={() => setShowBgSelector(true)} />
           </div>
+
 
           <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
             <div className="px-4 py-4 flex items-center justify-between">
