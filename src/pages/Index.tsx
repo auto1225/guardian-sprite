@@ -126,20 +126,27 @@ const Index = () => {
   // ★ 경보 발생 시 기기 정보를 ref에 캡처 — 이후 selectedDevice가 변해도 유지
   const alertDeviceInfoRef = useRef<{ name: string; serial: string | null } | null>(null);
 
-  // 경보 발생 시 기기 정보 캡처 — ref 초기화는 명시적 dismiss에서만 수행
+  // 경보 발생 시 기기 정보 캡처 — 경보의 device_id로 정확한 기기 식별
   useEffect(() => {
     if (activeAlert) {
       setRemoteAlarmDismissed(false);
       setShowFallbackAlarmButtons(false);
-      if (!alertDeviceInfoRef.current && selectedDevice) {
-        const meta = selectedDevice.metadata as Record<string, unknown> | null;
-        alertDeviceInfoRef.current = {
-          name: selectedDevice.name,
-          serial: meta?.serial_key ? String(meta.serial_key) : null,
-        };
+      if (!alertDeviceInfoRef.current) {
+        // ★ activeAlert.device_id로 실제 경보 발생 기기를 찾음
+        const alertSourceDevice = activeAlert.device_id
+          ? devices.find(d => d.id === activeAlert.device_id)
+          : selectedDevice;
+        const targetDevice = alertSourceDevice || selectedDevice;
+        if (targetDevice) {
+          const meta = targetDevice.metadata as Record<string, unknown> | null;
+          alertDeviceInfoRef.current = {
+            name: targetDevice.name,
+            serial: meta?.serial_key ? String(meta.serial_key) : null,
+          };
+        }
       }
     }
-  }, [activeAlert, selectedDevice]);
+  }, [activeAlert, selectedDevice, devices]);
 
   useEffect(() => {
     if (latestPhotoAlert) {
@@ -421,26 +428,32 @@ const Index = () => {
       />
 
       {/* Alert Mode Overlay — key 고정으로 리마운트 방지 */}
-      {activeAlert && selectedDevice && (
-        <div style={{ display: (latestPhotoAlert || viewingPhotoAlert) ? 'none' : undefined }}>
-          <AlertMode
-            key={activeAlert.id}
-            device={selectedDevice}
-            activeAlert={activeAlert}
-            alertDeviceName={alertDeviceInfoRef.current?.name || selectedDevice.name}
-            alertDeviceSerial={alertDeviceInfoRef.current?.serial || ((selectedDevice.metadata as Record<string, unknown>)?.serial_key ? String((selectedDevice.metadata as Record<string, unknown>).serial_key) : null)}
-            onDismiss={() => {
-              alertDeviceInfoRef.current = null;
-              dismissAll();
-              setShowFallbackAlarmButtons(false);
-            }}
-            onSendRemoteAlarmOff={async () => {
-              await dismissRemoteAlarm();
-              setRemoteAlarmDismissed(true);
-            }}
-          />
-        </div>
-      )}
+      {activeAlert && selectedDevice && (() => {
+        // ★ 경보 발생 기기를 정확히 식별 — selectedDevice가 아닌 실제 경보 소스 기기 사용
+        const alertSourceDevice = activeAlert.device_id
+          ? devices.find(d => d.id === activeAlert.device_id) || selectedDevice
+          : selectedDevice;
+        return (
+          <div style={{ display: (latestPhotoAlert || viewingPhotoAlert) ? 'none' : undefined }}>
+            <AlertMode
+              key={activeAlert.id}
+              device={alertSourceDevice}
+              activeAlert={activeAlert}
+              alertDeviceName={alertDeviceInfoRef.current?.name || alertSourceDevice.name}
+              alertDeviceSerial={alertDeviceInfoRef.current?.serial || ((alertSourceDevice.metadata as Record<string, unknown>)?.serial_key ? String((alertSourceDevice.metadata as Record<string, unknown>).serial_key) : null)}
+              onDismiss={() => {
+                alertDeviceInfoRef.current = null;
+                dismissAll();
+                setShowFallbackAlarmButtons(false);
+              }}
+              onSendRemoteAlarmOff={async () => {
+                await dismissRemoteAlarm();
+                setRemoteAlarmDismissed(true);
+              }}
+            />
+          </div>
+        );
+      })()}
 
       {/* Photo Alert Overlay */}
       {(latestPhotoAlert || viewingPhotoAlert) && (
