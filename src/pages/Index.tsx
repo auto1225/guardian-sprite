@@ -43,6 +43,7 @@ import PermissionRequestPopup from "@/components/PermissionRequestPopup";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
+import { waitForCommandAck } from "@/lib/commandAck";
 
 const Index = () => {
   const { t } = useTranslation();
