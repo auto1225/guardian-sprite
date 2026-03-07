@@ -126,7 +126,8 @@
     "legalTerms": "Terms / Legal Notice",
     "logout": "Log out",
     "loggedOut": "Logged out",
-    "loggedOutDesc": "You have been safely logged out."
+    "loggedOutDesc": "You have been safely logged out.",
+    "updatedAt": "Updated"
   },
   "deviceList": {
     "selectDevice": "Select device",

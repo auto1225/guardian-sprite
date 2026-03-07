@@ -114,7 +114,8 @@
     "loggedOutDesc": "安全にログアウトしました。",
     "remoteCommands": "リモートコマンド",
     "locationHistory": "位置履歴",
-    "photoAlertHistory": "写真アラート履歴"
+    "photoAlertHistory": "写真アラート履歴",
+    "updatedAt": "更新"
   },
   "deviceList": {
     "selectDevice": "デバイス選択"

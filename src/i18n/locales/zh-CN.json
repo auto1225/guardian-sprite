@@ -114,7 +114,8 @@
     "loggedOutDesc": "您已安全退出登录。",
     "remoteCommands": "远程命令",
     "locationHistory": "位置历史",
-    "photoAlertHistory": "照片警报记录"
+    "photoAlertHistory": "照片警报记录",
+    "updatedAt": "更新"
   },
   "deviceList": {
     "selectDevice": "选择设备"

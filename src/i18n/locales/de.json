@@ -114,7 +114,8 @@
     "loggedOutDesc": "Sie wurden sicher abgemeldet.",
     "remoteCommands": "Fernbefehle",
     "locationHistory": "Standortverlauf",
-    "photoAlertHistory": "Foto-Alarmverlauf"
+    "photoAlertHistory": "Foto-Alarmverlauf",
+    "updatedAt": "Aktualisiert"
   },
   "deviceList": {
     "selectDevice": "Gerät auswählen"

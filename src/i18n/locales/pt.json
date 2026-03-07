@@ -114,7 +114,8 @@
     "loggedOutDesc": "Você foi desconectado com segurança.",
     "remoteCommands": "Comandos remotos",
     "locationHistory": "Histórico de localização",
-    "photoAlertHistory": "Histórico de alertas de fotos"
+    "photoAlertHistory": "Histórico de alertas de fotos",
+    "updatedAt": "Atualizado"
   },
   "deviceList": {
     "selectDevice": "Selecionar dispositivo"
