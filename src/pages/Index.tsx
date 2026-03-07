@@ -58,7 +58,7 @@ const Index = () => {
     if (d.device_type !== "smartphone") return true;
     return !!(d.metadata as Record<string, unknown>)?.serial_key;
   });
-  const deviceNameMap = Object.fromEntries(nonSmartphoneDevices.map(d => [d.id, d.name]));
+  const deviceNameMap = Object.fromEntries(managedDevices.map(d => [d.id, d.name]));
   const { alerts, activeAlert, unreadCount, dismissRemoteAlarm, dismissAll } = useAlerts(selectedDeviceId);
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, subscribe: subscribePush } = usePushSubscription(selectedDeviceId);
   const isMonitoring = selectedDevice?.is_monitoring ?? false;

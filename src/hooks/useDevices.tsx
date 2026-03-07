@@ -193,13 +193,13 @@ export const useDevices = () => {
   // useEffect 대신 렌더링 중 즉시 계산하여 "기기 연결 대기 중" 깜빡임 방지
   const resolvedDeviceId = (() => {
     if (selectedDeviceId) {
-      const found = nonSmartphones.find(d => d.id === selectedDeviceId);
+      const found = managedDevices.find(d => d.id === selectedDeviceId);
       if (found) return selectedDeviceId;
     }
     // 현재 선택이 유효하지 않음 → 재선택
-    const mainDevice = nonSmartphones.find(d => (d.metadata as Record<string, unknown>)?.is_main);
-    const onlineDevice = nonSmartphones.find(d => d.status === "online" || d.status === "monitoring" || d.status === "alert");
-    const target = mainDevice || onlineDevice || nonSmartphones[0];
+    const mainDevice = managedDevices.find(d => (d.metadata as Record<string, unknown>)?.is_main);
+    const onlineDevice = managedDevices.find(d => d.status === "online" || d.status === "monitoring" || d.status === "alert");
+    const target = mainDevice || onlineDevice || managedDevices[0];
     return target?.id || null;
   })();
 
