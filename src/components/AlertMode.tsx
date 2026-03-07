@@ -111,7 +111,7 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff, alert
       </div>
 
       {/* Scrollable content area */}
-      <div className="flex-1 overflow-y-auto alert-glass-scroll relative z-0 isolate">
+      <div className="flex-1 overflow-y-auto alert-glass-scroll relative z-0" style={{ contain: 'strict', overflowY: 'auto' }}>
 
         {/* 실시간 스트리밍 */}
         {hasCamera && device ? (
