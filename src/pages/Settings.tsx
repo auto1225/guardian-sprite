@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
+import { getSelectedBackgroundId } from "@/lib/backgroundPresets";
 import { broadcastCommand } from "@/lib/broadcastCommand";
 import { websiteSupabase } from "@/lib/websiteAuth";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,6 +30,7 @@ import {
   type SensorSettings,
   type MotionSensitivity,
 } from "@/components/settings/SettingsComponents";
+import BackgroundSelector from "@/components/settings/BackgroundSelector";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 
@@ -38,9 +40,10 @@ interface SettingsPageProps {
   isOpen: boolean;
   onClose: () => void;
   onDeviceChange?: (deviceId: string) => void;
+  onBackgroundChange?: () => void;
 }
 
-const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChange }: SettingsPageProps) => {
+const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChange, onBackgroundChange }: SettingsPageProps) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -94,6 +97,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
   const [showNicknameDialog, setShowNicknameDialog] = useState(false);
   const [showPinDialog, setShowPinDialog] = useState(false);
   const [showSoundDialog, setShowSoundDialog] = useState(false);
+  const [showBgSelector, setShowBgSelector] = useState(false);
   const [showLangPicker, setShowLangPicker] = useState(false);
   // ★ 기기별 언어 상태 — metadata.language를 우선 표시
   const [deviceLanguage, setDeviceLanguage] = useState<string>(
@@ -575,7 +579,12 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
             )}
           </div>
 
-          {/* Toggle Settings */}
+          {/* Background Setting */}
+          <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
+            <SettingItem label={t("bg.title")} onClick={() => setShowBgSelector(true)} />
+          </div>
+
+
           <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
             <div className="px-4 py-4 flex items-center justify-between">
               <div>
@@ -783,6 +792,11 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
         onOpenChange={setShowSoundDialog}
         selectedSoundId={selectedSoundId}
         onSelectSound={handleSelectSound}
+      />
+      <BackgroundSelector
+        open={showBgSelector}
+        onOpenChange={setShowBgSelector}
+        onBackgroundChange={() => onBackgroundChange?.()}
       />
     </>
   );

@@ -1,4 +1,5 @@
 {
+  "bg": { "title": "Fundo", "description": "Escolha um fundo para a tela principal", "default": "Padrão", "sunset": "Pôr do sol", "night": "Noite", "forest": "Floresta", "ocean": "Oceano", "aurora": "Aurora", "custom": "Personalizado", "upload": "Enviar", "fileTooLarge": "A imagem deve ter menos de 5MB.", "customSet": "Fundo personalizado aplicado." },
   "common": {
     "loading": "Carregando...",
     "error": "Erro",
