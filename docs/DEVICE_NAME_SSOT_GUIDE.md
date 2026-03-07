@@ -30,7 +30,8 @@
 1. `licenses` 테이블에서 해당 시리얼의 `device_name` 조회
 2. `licenses.device_name`이 있으면 → `devices.name`에 동기화
 3. 없으면 → 요청의 `device_name` 또는 기본값 사용
-4. `licenses` upsert 시 `device_name` 포함
+4. `device_type` 불일치 시 → 요청의 `device_type`으로 자동 보정
+5. `licenses` upsert 시 `device_name` 포함
 
 ### 기기명 변경 시 (`update-device`)
 1. `devices.name` 업데이트
