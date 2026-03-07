@@ -542,14 +542,8 @@ export const useDevices = () => {
                 const hasActiveGraceTimer = Array.from(activeLeaveTimers.keys()).some(timerKey => {
                   // 직접 매칭: timer key === device ID
                   if (timerKey === d.id) return true;
-                  // cross-DB 매칭: timer key의 serial_key로 연결된 기기
-                  if (deviceSerialKey) {
-                    const state = activePresenceChannel?.presenceState() || {};
-                    // leave된 key이므로 state에는 없지만, timerKey가 이전에 이 기기와 매칭되었는지 확인
-                    // realtimeConfirmedOnline에 아직 등록되어 있으면 grace period 중
-                    return realtimeConfirmedOnline.has(d.id);
-                  }
-                  return false;
+                  // cross-DB 매칭: 이전에 이 device에 매핑된 Presence key의 leave timer 확인
+                  return presenceKeyToDeviceId.get(timerKey) === d.id;
                 });
 
                 if (hasActiveGraceTimer) {
@@ -577,6 +571,8 @@ export const useDevices = () => {
               }
               return d;
             }
+            // ★ 매칭된 Presence key → 공유 DB ID 매핑 기록
+            presenceKeyToDeviceId.set(match.key, d.id);
             matchedKeys.add(match.key);
 
             const latest = match.data;
