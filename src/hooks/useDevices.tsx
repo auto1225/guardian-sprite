@@ -533,7 +533,8 @@ export const useDevices = () => {
                 e.data.status === 'online'
               );
               const unmatchedDevices = oldDevices.filter(od =>
-                od.device_type !== 'smartphone' &&
+                // 컨트롤러 스마트폰(시리얼 키 없는)만 제외, 관리 대상 스마트폰은 폴백 매칭 허용
+                !(od.device_type === 'smartphone' && !(od.metadata as Record<string, unknown>)?.serial_key) &&
                 !allPresenceEntries.some(e => e.key === od.id || e.data.device_id === od.id) &&
                 !matchedKeys.has(od.id)
               );
