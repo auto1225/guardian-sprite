@@ -116,7 +116,8 @@
     "locationHistory": "Histórico de localização",
     "photoAlertHistory": "Histórico de alertas de fotos",
     "updatedAt": "Atualizado",
-    "editProfileNotice": "só pode ser editado em"
+    "editProfileNotice": "só pode ser editado em",
+    "legalTerms": "Termos / Aviso Legal"
   },
   "errorBoundary": {
     "title": "Algo deu errado",

@@ -116,7 +116,8 @@
     "locationHistory": "Standortverlauf",
     "photoAlertHistory": "Foto-Alarmverlauf",
     "updatedAt": "Aktualisiert",
-    "editProfileNotice": "kann nur bearbeitet werden auf"
+    "editProfileNotice": "kann nur bearbeitet werden auf",
+    "legalTerms": "Nutzungsbedingungen / Rechtliche Hinweise"
   },
   "errorBoundary": {
     "title": "Ein Fehler ist aufgetreten",

@@ -116,7 +116,8 @@
     "locationHistory": "Historique des positions",
     "photoAlertHistory": "Historique des alertes photo",
     "updatedAt": "Mis à jour",
-    "editProfileNotice": "modifiable uniquement sur"
+    "editProfileNotice": "modifiable uniquement sur",
+    "legalTerms": "Conditions / Mentions Légales"
   },
   "errorBoundary": {
     "title": "Un problème est survenu",
