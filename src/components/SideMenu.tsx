@@ -173,9 +173,12 @@ const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps)
 
         {/* User Info */}
         <div className="flex items-center gap-3 p-4 border-b border-white/20">
-          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-            <User className="w-6 h-6 text-primary-foreground" />
-          </div>
+          <Avatar className="w-12 h-12 border border-white/20">
+            {avatarUrl ? <AvatarImage src={avatarUrl} alt="avatar" /> : null}
+            <AvatarFallback className="bg-white/20 text-primary-foreground font-bold">
+              {(user?.email?.charAt(0) || "U").toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-primary-foreground truncate">
               {user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split("@")[0] || t("sideMenu.user")}
