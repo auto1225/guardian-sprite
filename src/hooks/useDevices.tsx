@@ -466,7 +466,8 @@ export const useDevices = () => {
           const matchedKeys = new Set<string>();
 
           return oldDevices.map((d) => {
-            if (d.device_type === "smartphone") return d;
+            // 컨트롤러 스마트폰(시리얼 키 없는)만 스킵, 관리 대상 스마트폰은 Presence 처리
+            if (d.device_type === "smartphone" && !(d.metadata as Record<string, unknown>)?.serial_key) return d;
 
             // 1) 공유 DB ID로 직접 매칭 (Presence key === 공유 DB device ID)
             let match = allPresenceEntries.find(e => e.key === d.id && !matchedKeys.has(e.key));
@@ -753,11 +754,31 @@ export const useDevices = () => {
     const cmdChannelName = `user-commands-${effectiveUserId}`;
     const nameChangedHandler = ({ payload }: { payload: any }) => {
       console.log("[useDevices] 📝 name_changed received:", payload);
-      // 노트북 페이로드: target_shared_device_id + new_name (또는 device_id + name 호환)
-      const deviceId = payload?.target_shared_device_id || payload?.device_id;
       const newName = payload?.new_name || payload?.name;
-      if (!deviceId || !newName) return;
-      console.log("[useDevices] ✅ Applying name change:", deviceId, "→", newName);
+      if (!newName) return;
+
+      // ★ serial_key 기반 매칭 우선 (노트북의 device_id 매핑 오류 방지)
+      const serialKey = payload?.serial_key;
+      const rawDeviceId = payload?.target_shared_device_id || payload?.device_id;
+      const currentDevices = queryClient.getQueryData<Device[]>(["devices", effectiveUserId]);
+
+      let targetDevice: Device | undefined;
+      if (serialKey && currentDevices) {
+        targetDevice = currentDevices.find(d =>
+          (d.metadata as Record<string, unknown>)?.serial_key === serialKey
+        );
+        if (targetDevice) {
+          console.log("[useDevices] 🔑 name_changed matched by serial_key:", serialKey, "→", targetDevice.id.slice(0, 8));
+        }
+      }
+      if (!targetDevice && rawDeviceId && currentDevices) {
+        targetDevice = currentDevices.find(d => d.id === rawDeviceId);
+      }
+
+      const deviceId = targetDevice?.id || rawDeviceId;
+      if (!deviceId) return;
+
+      console.log("[useDevices] ✅ Applying name change:", deviceId.slice(0, 8), "→", newName);
       // ★ 모듈 레벨 캐시에 저장 (DB 재조회 시에도 이름 보존)
       devicePresenceNames.set(deviceId, newName);
       // 로컬 캐시 즉시 업데이트 (DB 재조회 없이)
@@ -774,17 +795,15 @@ export const useDevices = () => {
       }).catch(() => { /* best effort */ });
 
       // ★ 웹사이트 DB의 serial_numbers.device_name도 동기화
-      const currentDevices = queryClient.getQueryData<Device[]>(["devices", effectiveUserId]);
-      const targetDevice = currentDevices?.find(d => d.id === deviceId);
-      const serialKey = (targetDevice?.metadata as Record<string, unknown>)?.serial_key as string | undefined;
-      if (serialKey) {
+      const resolvedSerial = serialKey || (targetDevice?.metadata as Record<string, unknown>)?.serial_key as string | undefined;
+      if (resolvedSerial) {
         websiteSupabase
           .from("serial_numbers")
           .update({ device_name: newName })
-          .eq("serial_key", serialKey)
+          .eq("serial_key", resolvedSerial)
           .then(({ error }) => {
             if (error) console.warn("[useDevices] ⚠️ Website DB name sync failed:", error);
-            else console.log("[useDevices] ✅ Website DB name synced:", serialKey, "→", newName);
+            else console.log("[useDevices] ✅ Website DB name synced:", resolvedSerial, "→", newName);
           });
       }
     };
