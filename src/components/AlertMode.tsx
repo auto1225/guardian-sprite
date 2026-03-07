@@ -65,6 +65,8 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff, alert
     onDismiss();
   };
 
+  // ★ 스트리밍 대상은 반드시 경보 발생 기기 — device가 폴백(selectedDevice)일 수 있으므로 activeAlert.device_id 우선
+  const streamingDeviceId = activeAlert.device_id || device?.id;
   const hasCamera = device?.is_camera_connected;
 
   // 위치 정보 신뢰성 강화 — 폴링 + DB fallback
@@ -115,7 +117,7 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff, alert
 
         {/* 실시간 스트리밍 */}
         {hasCamera && device ? (
-          <AlertStreamingViewer deviceId={device.id} alertId={activeAlert.id} />
+          <AlertStreamingViewer deviceId={streamingDeviceId} alertId={activeAlert.id} />
         ) : (
           <div className="mx-4 mb-3">
             <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden">
