@@ -924,7 +924,25 @@ const DeviceCard = memo(({
         </div>
       )}
 
-      {!device && (
+      {/* ★ 기기 미연결이지만 이전에 매칭된 적 있는 경우 (device_name 존재) → 비활성 아이콘 표시 */}
+      {!device && serial?.device_name && (
+        <div className="flex items-center justify-between mt-1">
+          <div className="flex items-center gap-4">
+            <StatusIcon iconOn={laptopOn} iconOff={laptopOff} active={false} label="Laptop" />
+            <StatusIcon iconOn={wifiOn} iconOff={wifiOff} active={false} label="Network" />
+            <StatusIcon iconOn={cameraOn} iconOff={cameraOff} active={false} label="Camera" />
+            <div className="flex flex-col items-center gap-0.5">
+              <div className="w-8 h-8 flex items-center justify-center">
+                <Settings className="w-6 h-6 text-white/30" />
+              </div>
+              <span className="text-primary-foreground/50 text-[9px] font-medium">{t("nav.settings")}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 한번도 매칭된 적 없는 시리얼 → "기기 미연결" 텍스트만 */}
+      {!device && !serial?.device_name && (
         <div className="mt-1 py-1 text-center">
           <span className="text-white/60 text-xs font-medium">⏳ {t("deviceManage.noDeviceConnected")}</span>
         </div>
