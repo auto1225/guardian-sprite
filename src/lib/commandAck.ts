@@ -1,14 +1,18 @@
 // 명령 ACK(확인 응답) 리스너
 // 노트북이 명령을 수신·적용하면 user-commands-${userId} 채널로 "command_ack" 이벤트를 브로드캐스트
-// 스마트폰은 동일 채널을 구독하여 ACK를 수신
+// 스마트폰은 CustomEvent를 통해 ACK를 수신 (채널 중복 구독 방지)
 
-import { supabase } from "@/integrations/supabase/client";
+/**
+ * command_ack 이벤트를 디스패치합니다.
+ * useDevices 등 이미 user-commands 채널을 구독하는 훅에서 호출합니다.
+ */
+export function dispatchCommandAck(payload: Record<string, unknown>): void {
+  window.dispatchEvent(new CustomEvent("command_ack", { detail: payload }));
+}
 
 interface WaitForAckOptions {
   /** 대상 기기 ID */
   deviceId: string;
-  /** userId (user-commands-${userId} 채널 수신용) */
-  userId: string;
   /** 원래 보낸 이벤트명 (e.g. "monitoring_toggle") */
   event: string;
   /** 타임아웃 (ms) */
@@ -16,14 +20,14 @@ interface WaitForAckOptions {
 }
 
 /**
- * 노트북으로부터 command_ack 이벤트를 대기합니다.
- * 노트북이 ACK를 보내는 실제 채널명(user-commands-${userId})을 구독합니다.
- * - 성공: true 반환
- * - 타임아웃: false 반환
+ * 노트북으로부터 command_ack를 대기합니다.
+ * useDevices 훅이 user-commands 채널에서 command_ack를 수신하면
+ * dispatchCommandAck()를 호출 → 여기서 CustomEvent로 수신합니다.
+ * - 성공: true
+ * - 타임아웃: false
  */
 export function waitForCommandAck({
   deviceId,
-  userId,
   event,
   timeoutMs = 8000,
 }: WaitForAckOptions): Promise<boolean> {
@@ -33,7 +37,7 @@ export function waitForCommandAck({
     const cleanup = () => {
       if (resolved) return;
       resolved = true;
-      supabase.removeChannel(channel);
+      window.removeEventListener("command_ack", handler);
     };
 
     const timeout = setTimeout(() => {
@@ -41,37 +45,19 @@ export function waitForCommandAck({
       resolve(false);
     }, timeoutMs);
 
-    // ★ 노트북이 ACK를 보내는 실제 채널명과 동일하게 구독
-    const channelName = `user-commands-${userId}`;
+    const handler = (e: Event) => {
+      const payload = (e as CustomEvent).detail;
+      const ackEvent = payload?.ack_event || payload?.command;
+      const ackDeviceId = payload?.device_id;
 
-    // 기존 동일 이름 채널이 있으면 재사용할 수 없으므로 고유 접미사 추가
-    // 하지만 Supabase broadcast는 같은 topic(채널명)을 공유해야 수신 가능
-    // → 이미 구독 중인 채널이 있으면 그 채널에 리스너를 붙이는 대신,
-    //   동일 topic으로 새 채널을 생성하여 수신
-    const channel = supabase.channel(channelName, {
-      config: { broadcast: { self: false } },
-    });
+      if (ackEvent === event && ackDeviceId === deviceId) {
+        console.log(`[commandAck] ✅ ACK received for ${event} from ${deviceId}`, payload);
+        clearTimeout(timeout);
+        cleanup();
+        resolve(true);
+      }
+    };
 
-    channel
-      .on("broadcast", { event: "command_ack" }, ({ payload }) => {
-        // payload.command 또는 payload.ack_event 모두 체크 (노트북 구현 호환)
-        const ackEvent = payload?.ack_event || payload?.command;
-        const ackDeviceId = payload?.device_id;
-
-        if (ackEvent === event && ackDeviceId === deviceId) {
-          console.log(`[commandAck] ✅ ACK received for ${event} from ${deviceId}`, payload);
-          clearTimeout(timeout);
-          cleanup();
-          resolve(true);
-        }
-      })
-      .subscribe((status) => {
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          console.warn(`[commandAck] ⚠️ Channel ${channelName} subscription failed:`, status);
-          clearTimeout(timeout);
-          cleanup();
-          resolve(false);
-        }
-      });
+    window.addEventListener("command_ack", handler);
   });
 }

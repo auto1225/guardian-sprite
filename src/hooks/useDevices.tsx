@@ -6,6 +6,7 @@ import { Database } from "@/integrations/supabase/types";
 import { deleteLaptopDbDevice } from "@/lib/laptopDb";
 import { websiteSupabase } from "@/lib/websiteAuth";
 import { invokeWithRetry } from "@/lib/invokeWithRetry";
+import { dispatchCommandAck } from "@/lib/commandAck";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 type DeviceInsert = Database["public"]["Tables"]["devices"]["Insert"];
@@ -875,6 +876,13 @@ export const useDevices = () => {
       console.log("[useDevices] ✅ Device", deviceId, "set to offline due to logout");
     };
     cmdChannel.on("broadcast", { event: "device_logout" }, deviceLogoutHandler);
+
+    // ── command_ack 브로드캐스트 수신: 노트북이 명령 적용 확인 ──
+    const commandAckHandler = ({ payload }: { payload: any }) => {
+      console.log("[useDevices] 📬 command_ack received:", payload);
+      dispatchCommandAck(payload);
+    };
+    cmdChannel.on("broadcast", { event: "command_ack" }, commandAckHandler);
 
     if (!existingCmdCh) {
       cmdChannel.subscribe((status) => {
