@@ -114,6 +114,7 @@ const Index = () => {
   const closePanel = (key: keyof typeof panels) => setPanels(p => ({ ...p, [key]: false }));
 
   const [remoteAlarmDismissed, setRemoteAlarmDismissed] = useState(false);
+  const [bgVersion, setBgVersion] = useState(0);
   const [showFallbackAlarmButtons, setShowFallbackAlarmButtons] = useState(false);
   const [alarmPlaying, setAlarmPlaying] = useState(false);
 
@@ -238,6 +239,7 @@ const Index = () => {
       <MeercopCharacter 
         isMonitoring={isMonitoring} 
         isAlert={selectedDevice?.status === "alert"}
+        bgVersion={bgVersion}
         statusMessage={
           selectedDevice?.status === "alert" 
             ? t("status.alertDetected")
@@ -382,6 +384,7 @@ const Index = () => {
           isOpen={panels.settings}
           onClose={() => closePanel("settings")}
           onDeviceChange={(id) => setSelectedDeviceId(id)}
+          onBackgroundChange={() => setBgVersion(v => v + 1)}
         />
       )}
 
