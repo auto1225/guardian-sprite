@@ -1,4 +1,5 @@
 {
+  "bg": { "title": "背景", "description": "メイン画面の背景を選択してください", "default": "デフォルト", "sunset": "夕焼け", "night": "夜", "forest": "森", "ocean": "海", "aurora": "オーロラ", "custom": "カスタム", "upload": "アップロード", "fileTooLarge": "画像は5MB以下にしてください。", "customSet": "カスタム背景が適用されました。" },
   "common": {
     "loading": "読み込み中...",
     "error": "エラー",

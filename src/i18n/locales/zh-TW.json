@@ -1,4 +1,5 @@
 {
+  "bg": { "title": "背景", "description": "選擇主畫面背景", "default": "預設", "sunset": "日落", "night": "夜晚", "forest": "森林", "ocean": "海洋", "aurora": "極光", "custom": "自訂", "upload": "上傳", "fileTooLarge": "圖片大小不能超過5MB。", "customSet": "自訂背景已套用。" },
   "common": {
     "loading": "載入中...",
     "error": "錯誤",
