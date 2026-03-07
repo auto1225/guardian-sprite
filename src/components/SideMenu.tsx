@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { SUPPORTED_LANGUAGES } from "@/lib/dynamicTranslation";
 import { supabase } from "@/integrations/supabase/client";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import logoImage from "@/assets/meercop-character.png";
 
 const ITEMS_PER_PAGE = 5;

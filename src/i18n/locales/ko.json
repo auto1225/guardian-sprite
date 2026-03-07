@@ -618,7 +618,12 @@
     "passwordChanged": "변경 완료",
     "passwordChangedDesc": "비밀번호가 변경되었습니다.",
     "passwordChangeFailed": "비밀번호 변경에 실패했습니다.",
-    "changing": "변경 중..."
+    "changing": "변경 중...",
+    "avatarUpdated": "프로필 사진이 업데이트되었습니다.",
+    "avatarUploadFailed": "사진 업로드에 실패했습니다.",
+    "invalidImageType": "이미지 파일을 선택해주세요.",
+    "imageTooLarge": "이미지 크기는 2MB 이하여야 합니다.",
+    "uploading": "업로드 중..."
   },
   "alertPanel": {
     "title": "경보 이력",
