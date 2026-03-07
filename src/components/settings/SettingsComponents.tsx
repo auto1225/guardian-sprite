@@ -17,7 +17,7 @@ import { getVolume as getAlarmVolume, setVolume as setAlarmVolume, preview as al
 // ── Types ──
 
 export interface SensorSettings {
-  deviceType: "laptop" | "desktop" | "tablet";
+  deviceType: "laptop" | "desktop" | "tablet" | "smartphone";
   lidClosed: boolean;
   camera: boolean;
   microphone: boolean;
@@ -27,6 +27,7 @@ export interface SensorSettings {
   mouseType: "wired" | "wireless";
   usb: boolean;
   power: boolean;
+  screenTouch: boolean;
 }
 
 export type MotionSensitivity = "sensitive" | "normal" | "insensitive";
@@ -48,6 +49,7 @@ export const DEFAULT_SENSOR_SETTINGS: SensorSettings = {
   mouseType: "wired",
   usb: false,
   power: false,
+  screenTouch: false,
 };
 
 export const ALARM_SOUNDS: { id: string; labelKey: string; freq: number[]; pattern: number[] }[] = [

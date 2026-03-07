@@ -82,7 +82,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
     const saved = meta.sensorSettings as SensorSettings | undefined;
     return saved
       ? { ...DEFAULT_SENSOR_SETTINGS, ...saved }
-      : { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device?.device_type as "laptop" | "desktop" | "tablet") || "laptop" };
+      : { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device?.device_type as "laptop" | "desktop" | "tablet" | "smartphone") || "laptop" };
   });
   const [motionSensitivity, setMotionSensitivity] = useState<MotionSensitivity>(
     (meta.motionSensitivity as MotionSensitivity) || "insensitive"
@@ -115,7 +115,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
     const saved = m.sensorSettings as SensorSettings | undefined;
     setSensorSettings(saved
       ? { ...DEFAULT_SENSOR_SETTINGS, ...saved }
-      : { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device.device_type as "laptop" | "desktop" | "tablet") || "laptop" });
+      : { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device.device_type as "laptop" | "desktop" | "tablet" | "smartphone") || "laptop" });
     setMotionSensitivity((m.motionSensitivity as MotionSensitivity) || "insensitive");
     setMouseSensitivity((m.mouseSensitivity as MotionSensitivity) || "sensitive");
     // ★ 기기별 언어 설정 반영
@@ -138,7 +138,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
 
     const defaultPin = "1234";
     const defaultSoundId = "whistle";
-    const defaultSensors = { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device.device_type as "laptop" | "desktop" | "tablet") || "laptop" };
+    const defaultSensors = { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device.device_type as "laptop" | "desktop" | "tablet" | "smartphone") || "laptop" };
 
     // 볼륨 기본값 20% (localStorage에 아직 없을 때만)
     if (!localStorage.getItem('meercop_alarm_volume')) {
@@ -330,6 +330,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
     usb: "sensor_usb",
     power: "sensor_power",
     lidClosed: "sensor_lid",
+    screenTouch: "sensor_screen_touch",
   };
 
   const handleSensorToggle = async (key: keyof SensorSettings, value: boolean) => {
@@ -358,6 +359,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
   };
 
   const isLaptop = sensorSettings.deviceType === "laptop";
+  const isLidSupported = sensorSettings.deviceType === "laptop";
   const selectedSoundLabel =
     selectedSoundId === "custom"
       ? customSoundName || t("settings.soundDialog.customLabel")
@@ -619,29 +621,30 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
               <span className="text-white font-semibold text-sm block">{t("settings.deviceType")}</span>
               <span className="text-white/80 text-xs">{t("settings.deviceTypeDesc")}</span>
             </div>
-            <div className="flex gap-2">
-              {(["laptop", "desktop", "tablet"] as const).map((type) => (
+            <div className="flex gap-2 flex-wrap">
+              {(["laptop", "desktop", "tablet", "smartphone"] as const).map((type) => (
                 <button
                   key={type}
                   onClick={async () => {
                     const updated = { ...sensorSettings, deviceType: type };
+                    // 비-노트북으로 변경 시 lid를 자동으로 off
+                    if (type !== "laptop") updated.lidClosed = false;
                     setSensorSettings(updated);
                     try {
                       await saveMetadata({ sensorSettings: updated });
                       await supabase.functions.invoke("update-device", { body: { device_id: device.id, device_type: type } });
-                      // 기기 타입 변경을 노트북에 즉시 브로드캐스트
                       await broadcastSettingsUpdate(device.id, { device_type: type, sensorSettings: updated });
                       queryClient.invalidateQueries({ queryKey: ["devices"] });
                     } catch {
                       toast({ title: t("common.error"), description: t("common.settingSaveFailed"), variant: "destructive" });
                     }
                   }}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                  className={`flex-1 min-w-[70px] py-2.5 rounded-xl text-sm font-semibold transition-all ${
                     sensorSettings.deviceType === type ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
                   }`}
                   style={sensorSettings.deviceType === type ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
                   >
-                    {type === "laptop" ? t("settings.laptop") : type === "desktop" ? t("settings.desktop") : t("settings.tablet")}
+                    {type === "laptop" ? t("settings.laptop") : type === "desktop" ? t("settings.desktop") : type === "tablet" ? t("settings.tablet") : t("settings.smartphone")}
                 </button>
               ))}
             </div>
@@ -681,9 +684,19 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-white font-semibold text-sm block">{t("settings.lidDetection")}</span>
-                  <span className="text-white/80 text-xs">{isLaptop ? t("settings.lidDetectionDescLaptop") : t("settings.lidDetectionDescOther")}</span>
+                  <span className="text-white/80 text-xs">{isLidSupported ? t("settings.lidDetectionDescLaptop") : t("settings.lidDetectionDescOther")}</span>
                 </div>
-                <Switch checked={sensorSettings.lidClosed} onCheckedChange={(v) => handleSensorToggle("lidClosed", v)} disabled={!isLaptop} />
+                <Switch
+                  checked={sensorSettings.lidClosed}
+                  onCheckedChange={(v) => {
+                    if (!isLidSupported) {
+                      toast({ title: t("settings.lidNotSupported"), description: t("settings.lidNotSupportedDesc"), variant: "destructive" });
+                      return;
+                    }
+                    handleSensorToggle("lidClosed", v);
+                  }}
+                  disabled={!isLidSupported}
+                />
               </div>
             </SensorSection>
 
@@ -734,6 +747,11 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
             <div className="border-t border-white/10" />
             <SensorSection>
               <SensorToggle label={t("settings.powerDetection")} description={t("settings.powerDetectionDesc")} checked={sensorSettings.power} onChange={(v) => handleSensorToggle("power", v)} />
+            </SensorSection>
+
+            <div className="border-t border-white/10" />
+            <SensorSection>
+              <SensorToggle label={t("settings.screenTouchDetection")} description={t("settings.screenTouchDetectionDesc")} checked={sensorSettings.screenTouch} onChange={(v) => handleSensorToggle("screenTouch", v)} />
             </SensorSection>
           </div>
 
