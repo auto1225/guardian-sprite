@@ -435,7 +435,7 @@ const Index = () => {
           ? devices.find(d => d.id === activeAlert.device_id) || selectedDevice
           : selectedDevice;
         return (
-          <div style={{ display: (latestPhotoAlert || viewingPhotoAlert) ? 'none' : undefined }}>
+          <div style={{ display: (latestPhotoAlert || viewingPhotoAlert || photoReceiving) ? 'none' : undefined }}>
             <AlertMode
               key={activeAlert.id}
               device={alertSourceDevice}
