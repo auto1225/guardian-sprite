@@ -21,6 +21,18 @@
 | `user-alerts-${userId}` | 💻→📱 | 경보 발생/해제 |
 | `user-photos-${userId}` | 💻→📱 | 사진 경보 전송 |
 
+### 명령 요약표
+
+| # | 이벤트 | 방향 | 설명 |
+|---|--------|------|------|
+| 1 | `monitoring_toggle` | 📱→💻 | 감시 ON/OFF |
+| 2 | `camouflage_toggle` | 📱→💻 | 위장 모드 ON/OFF |
+| 3 | `settings_updated` | 📱→💻 | 센서/PIN/민감도 등 설정 변경 |
+| 4 | `lock_command` | 📱→💻 | 화면 잠금 |
+| 5 | `message_command` | 📱→💻 | 팝업 메시지 표시 |
+| 6 | `alarm_dismiss` | 📱→💻 | 경보음 원격 해제 |
+| 7 | `mascot_toggle` | 📱→💻 | 마스코트/말풍선 보기·숨기기 |
+
 ---
 
 ## 📨 명령 이벤트 목록
@@ -96,6 +108,20 @@
 }
 ```
 
+### 7. `mascot_toggle`
+마스코트 캐릭터 및 말풍선 보기/숨기기 (📱→💻)
+
+```json
+{
+  "device_id": "uuid",
+  "mascot_visible": true
+}
+```
+
+> - `mascot_visible: true` → 캐릭터 + 말풍선 표시
+> - `mascot_visible: false` → 캐릭터 + 말풍선 숨김
+> - DB `metadata.mascot_visible`에도 동기화하여 새로고침 후에도 상태 유지
+
 ---
 
 ## 🔧 구현 가이드
@@ -134,8 +160,11 @@ channel
     handleMessageCommand(payload);
   })
   .on("broadcast", { event: "alarm_dismiss" }, ({ payload }) => {
-    // ★ 컴퓨터 경보음 해제 — 반드시 구현!
     handleAlarmDismiss(payload);
+  })
+  .on("broadcast", { event: "mascot_toggle" }, ({ payload }) => {
+    // ★ 마스코트 보기/숨기기 — metadata.mascot_visible 동기화
+    handleMascotToggle(payload);
   })
   .subscribe();
 ```
