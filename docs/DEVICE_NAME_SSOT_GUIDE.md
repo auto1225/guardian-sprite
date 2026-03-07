@@ -118,14 +118,19 @@ await websiteSupabase.from("serial_numbers")
 
 ### 스마트폰 앱 ✅
 - [x] `licenses` 테이블에 `device_name` 컬럼 추가
-- [x] `register-device`: `licenses.device_name` SSOT 동기화
+- [x] `register-device`: `licenses.device_name` SSOT 동기화 + `device_type` 불일치 보정
 - [x] `update-device`: 기기명 변경 시 `licenses.device_name` 갱신
+- [x] `validate-serial`: `device_type` 기본값 `laptop`으로 변경
 - [x] `Settings.tsx`: licenses 조회에 `device_name` 포함
 - [x] `DeviceManage.tsx`: licenses 조회에 `device_name` 포함
+- [x] `NetworkInfoModal`: forwardRef 경고 수정
+- [x] DB 데이터 보정: 잘못된 `device_type` 6건 `laptop`으로 수정
 
 ### 노트북 앱
 - [ ] `register-device` 응답의 `device_name`을 로컬 DB에 반영
-- [ ] 하트비트에서 이름 덮어쓰기 방지 확인
+- [ ] 하트비트에서 `name` 필드 전송 금지 또는 SSOT 이름만 사용
+- [ ] `validate-serial` 호출 시 `device_type` 파라미터 포함 (기본값 `laptop`)
+- [ ] 기기명 변경 시 `update-device` 호출 후 웹사이트 DB 동기화는 불필요 (서버가 처리)
 
 ### 웹사이트 ✅ (수정 불필요)
 - [x] `verify-serial` 5개 액션 모두 `serial_numbers.device_name`을 SSOT로 처리
