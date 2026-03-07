@@ -578,7 +578,11 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
             )}
           </div>
 
-          {/* Toggle Settings */}
+          {/* Background Setting */}
+          <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
+            <SettingItem label={t("bg.title")} value={t(`bg.${(() => { const { getSelectedBackgroundId } = require("@/lib/backgroundPresets"); return getSelectedBackgroundId(); })()}`)} onClick={() => setShowBgSelector(true)} />
+          </div>
+
           <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
             <div className="px-4 py-4 flex items-center justify-between">
               <div>
