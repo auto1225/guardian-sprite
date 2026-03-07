@@ -150,7 +150,8 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
         if (linkedDeviceId) {
           const device = managedDevices.find(d => d.id === linkedDeviceId && !usedDeviceIds.has(d.id));
           if (device) {
-            const deviceSerial = (device.metadata as Record<string, unknown>)?.serial_key;
+            const deviceSerial = (device.metadata as Record<string, unknown>)?.serial_key as string | undefined;
+            // ★ 기기의 metadata.serial_key가 다른 시리얼이면 매칭 거부 (잘못된 크로스 매칭 방지)
             if (!deviceSerial || deviceSerial === serial.serial_key) {
               usedDeviceIds.add(device.id); result.push({ serial, device }); matched = true;
             }
