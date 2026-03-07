@@ -440,6 +440,10 @@
       "settingSerialDesc": "Voir les numéros de série enregistrés. Appuyez pour copier.",
       "settingDeviceType": "💻 Type d'appareil",
       "settingDeviceTypeDesc": "Les capteurs disponibles varient selon le type d'appareil (Portable/Bureau/Tablette/Smartphone). Exemple : la détection de capot n'est disponible que sur les portables. La détection tactile est disponible sur tous les types.",
+      "settingBackground": "🖼️ Fond d'écran",
+      "settingBackgroundDesc": "Personnalisez l'arrière-plan de l'écran principal. Choisissez parmi 6 dégradés (Par défaut, Coucher de soleil, Nuit, Forêt, Océan, Aurore) ou téléchargez votre propre image (max. 5 Mo). Les paramètres sont enregistrés localement.",
+      "settingMascot": "🐾 Afficher la mascotte",
+      "settingMascotDesc": "Affichez ou masquez la mascotte MeerCOP et la bulle de dialogue sur l'écran principal. Ce paramètre est enregistré localement et fonctionne indépendamment de l'application laptop.",
       "deviceManage": "Gestion des appareils",
       "deviceManageDesc": "Appuyez sur le bouton de gestion dans l'en-tête pour gérer tous les appareils enregistrés.",
       "deviceManageAdd": "Ajouter / supprimer des appareils",
@@ -479,7 +483,11 @@
       "q12": "L'app n'envoie pas de notifications push.",
       "a12": "1. Vérifiez que la permission de notification du navigateur est sur \"Autoriser\".\n2. Sur iOS Safari, l'installation en PWA est requise.\n3. Rouvrir l'app avec un appareil sélectionné retente automatiquement l'abonnement push.\n4. Les notifications peuvent être retardées en mode économie d'énergie.",
       "q19": "Qu'est-ce que la détection tactile d'écran ?",
-      "a19": "La détection tactile d'écran surveille les entrées tactiles physiques sur l'affichage. Lorsqu'elle est activée, tout toucher de l'écran déclenche une alarme.\n\n• Disponible sur tous les types d'appareils (Portable, Bureau, Tablette, Smartphone)\n• Activable/désactivable dans Paramètres → Capteurs\n• Nécessite un forfait prenant en charge la fonction sensor_touch\n• Déclenche le processus d'alarme standard (son, capture photo, notification push)"
+      "a19": "La détection tactile d'écran surveille les entrées tactiles physiques sur l'affichage. Lorsqu'elle est activée, tout toucher de l'écran déclenche une alarme.\n\n• Disponible sur tous les types d'appareils (Portable, Bureau, Tablette, Smartphone)\n• Activable/désactivable dans Paramètres → Capteurs\n• Nécessite un forfait prenant en charge la fonction sensor_touch\n• Déclenche le processus d'alarme standard (son, capture photo, notification push)",
+      "q20": "Comment changer le fond d'écran ?",
+      "a20": "Allez dans Paramètres → Fond d'écran pour changer l'arrière-plan.\n\n• Choisissez parmi 6 dégradés : Par défaut, Coucher de soleil, Nuit, Forêt, Océan, Aurore\n• Téléchargez une image personnalisée (max. 5 Mo)\n• Une bordure jaune et une coche indiquent le fond sélectionné\n• Les paramètres sont enregistrés localement",
+      "q21": "Comment masquer la mascotte ?",
+      "a21": "Allez dans Paramètres → Afficher la mascotte et désactivez l'interrupteur.\n\n• La mascotte et la bulle de dialogue disparaissent de l'écran principal\n• Seul l'arrière-plan reste visible\n• Ce paramètre est enregistré localement et fonctionne indépendamment\n• Réactivez-le à tout moment pour restaurer la mascotte"
     },
     "footer": {
       "copyright": "© 2025 MeerCOP. Tous droits réservés.",

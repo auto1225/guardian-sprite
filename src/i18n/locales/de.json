@@ -440,6 +440,10 @@
       "settingSerialDesc": "Registrierte Seriennummern anzeigen und durch Tippen kopieren.",
       "settingDeviceType": "💻 Gerätetyp",
       "settingDeviceTypeDesc": "Verfügbare Sensoren variieren je nach Gerätetyp (Laptop/Desktop/Tablet/Smartphone). Deckelkontrolle nur bei Laptops. Bildschirmberührung bei allen Gerätetypen.",
+      "settingBackground": "🖼️ Hintergrund",
+      "settingBackgroundDesc": "Passen Sie den Hintergrund des Hauptbildschirms an. Wählen Sie aus 6 voreingestellten Verläufen (Standard, Sonnenuntergang, Nacht, Wald, Ozean, Aurora) oder laden Sie ein eigenes Bild hoch (max. 5 MB). Einstellungen werden lokal auf diesem Gerät gespeichert.",
+      "settingMascot": "🐾 Maskottchen anzeigen",
+      "settingMascotDesc": "Das MeerCOP-Maskottchen und die Sprechblase auf dem Hauptbildschirm anzeigen oder ausblenden. Diese Einstellung wird lokal gespeichert und funktioniert unabhängig von der Laptop-App.",
       "deviceManage": "Geräteverwaltung",
       "deviceManageDesc": "Tippen Sie auf die Geräteverwaltung im Header.",
       "deviceManageAdd": "Geräte hinzufügen/löschen",
@@ -479,7 +483,11 @@
       "q12": "Die App sendet keine Push-Benachrichtigungen.",
       "a12": "1. Überprüfen Sie die Browser-Benachrichtigungsberechtigung.\n2. Auf iOS Safari muss die App als PWA installiert sein.\n3. Öffnen Sie die App erneut mit ausgewähltem Gerät.\n4. Im Energiesparmodus können Benachrichtigungen verzögert werden.",
       "q19": "Was ist die Bildschirmberührungserkennung?",
-      "a19": "Die Bildschirmberührungserkennung überwacht physische Berührungen des Displays. Bei Aktivierung löst jede Bildschirmberührung einen Alarm aus.\n\n• Verfügbar auf allen Gerätetypen (Laptop, Desktop, Tablet, Smartphone)\n• Kann in den Einstellungen → Sensoreinstellungen aktiviert/deaktiviert werden\n• Erfordert einen Plan mit sensor_touch Funktion\n• Löst den Standard-Alarmprozess aus (Alarmton, Fotoaufnahme, Push-Benachrichtigung)"
+      "a19": "Die Bildschirmberührungserkennung überwacht physische Berührungen des Displays. Bei Aktivierung löst jede Bildschirmberührung einen Alarm aus.\n\n• Verfügbar auf allen Gerätetypen (Laptop, Desktop, Tablet, Smartphone)\n• Kann in den Einstellungen → Sensoreinstellungen aktiviert/deaktiviert werden\n• Erfordert einen Plan mit sensor_touch Funktion\n• Löst den Standard-Alarmprozess aus (Alarmton, Fotoaufnahme, Push-Benachrichtigung)",
+      "q20": "Wie ändere ich den Hintergrund?",
+      "a20": "Gehen Sie zu Einstellungen → Hintergrund, um den Hauptbildschirm-Hintergrund zu ändern.\n\n• Wählen Sie aus 6 Farbverläufen: Standard, Sonnenuntergang, Nacht, Wald, Ozean, Aurora\n• Laden Sie ein eigenes Bild hoch (max. 5 MB)\n• Ein gelber Rand und ein Häkchen zeigen den ausgewählten Hintergrund\n• Einstellungen werden lokal auf diesem Gerät gespeichert",
+      "q21": "Wie verstecke ich das Maskottchen?",
+      "a21": "Gehen Sie zu Einstellungen → Maskottchen anzeigen und schalten Sie den Schalter aus.\n\n• Bei Deaktivierung werden Maskottchen und Sprechblase ausgeblendet\n• Nur der Hintergrund bleibt sichtbar\n• Diese Einstellung wird lokal gespeichert und funktioniert unabhängig von der Laptop-App\n• Schalten Sie es jederzeit wieder ein, um das Maskottchen wiederherzustellen"
     },
     "footer": {
       "copyright": "© 2025 MeerCOP. Alle Rechte vorbehalten.",

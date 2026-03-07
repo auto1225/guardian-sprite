@@ -440,6 +440,10 @@
       "settingSerialDesc": "Ver números de serie registrados. Toca para copiar.",
       "settingDeviceType": "💻 Tipo de dispositivo",
       "settingDeviceTypeDesc": "Los sensores disponibles varían según el tipo de dispositivo (Portátil/Escritorio/Tableta/Smartphone). Ejemplo: la detección de tapa solo está disponible en portátiles. La detección de toque de pantalla está disponible en todos los tipos.",
+      "settingBackground": "🖼️ Fondo de pantalla",
+      "settingBackgroundDesc": "Personaliza el fondo de la pantalla principal. Elige entre 6 degradados preestablecidos (Predeterminado, Atardecer, Noche, Bosque, Océano, Aurora) o sube tu propia imagen (máx. 5 MB). La configuración se guarda localmente.",
+      "settingMascot": "🐾 Mostrar mascota",
+      "settingMascotDesc": "Muestra u oculta la mascota MeerCOP y el globo de diálogo en la pantalla principal. Esta configuración se guarda localmente y funciona de forma independiente a la app del portátil.",
       "deviceManage": "Gestión de dispositivos",
       "deviceManageDesc": "Toca el botón de gestión de dispositivos en el encabezado para gestionar todos los dispositivos registrados.",
       "deviceManageAdd": "Añadir / eliminar dispositivos",
@@ -479,7 +483,11 @@
       "q12": "La app no envía notificaciones push.",
       "a12": "1. Verifica que el permiso de notificaciones del navegador esté en \"Permitir\".\n2. En iOS Safari, se requiere instalación como PWA.\n3. Reabrir la app con un dispositivo seleccionado reintenta la suscripción push automáticamente.\n4. Las notificaciones pueden retrasarse en modo de ahorro de energía.",
       "q19": "¿Qué es la detección de toque de pantalla?",
-      "a19": "La detección de toque de pantalla monitorea las entradas táctiles físicas en la pantalla. Cuando está habilitada, cualquier toque activa una alarma.\n\n• Disponible en todos los tipos de dispositivos (Portátil, Escritorio, Tableta, Smartphone)\n• Se puede habilitar/deshabilitar en Configuración → Sensores\n• Requiere un plan que soporte la función sensor_touch\n• Activa el proceso de alarma estándar (sonido, captura de fotos, notificación push)"
+      "a19": "La detección de toque de pantalla monitorea las entradas táctiles físicas en la pantalla. Cuando está habilitada, cualquier toque activa una alarma.\n\n• Disponible en todos los tipos de dispositivos (Portátil, Escritorio, Tableta, Smartphone)\n• Se puede habilitar/deshabilitar en Configuración → Sensores\n• Requiere un plan que soporte la función sensor_touch\n• Activa el proceso de alarma estándar (sonido, captura de fotos, notificación push)",
+      "q20": "¿Cómo cambio el fondo de pantalla?",
+      "a20": "Ve a Configuración → Fondo de pantalla para cambiar el fondo de la pantalla principal.\n\n• Elige entre 6 degradados: Predeterminado, Atardecer, Noche, Bosque, Océano, Aurora\n• Sube una imagen personalizada (máx. 5 MB)\n• Un borde amarillo y una marca indican el fondo seleccionado\n• La configuración se guarda localmente en este dispositivo",
+      "q21": "¿Cómo oculto la mascota?",
+      "a21": "Ve a Configuración → Mostrar mascota y desactiva el interruptor.\n\n• Al desactivarla, la mascota y el globo de diálogo se ocultan de la pantalla principal\n• Solo el fondo permanece visible\n• Esta configuración se guarda localmente y funciona de forma independiente\n• Actívala de nuevo en cualquier momento para restaurar la mascota"
     },
     "footer": {
       "copyright": "© 2025 MeerCOP. Todos los derechos reservados.",
