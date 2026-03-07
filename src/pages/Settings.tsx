@@ -440,21 +440,19 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
 
           {/* Serial Numbers */}
           <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
-            <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-              <div>
-                <span className="text-white font-semibold text-sm block">{t("settings.serialNumbers")}</span>
-                <span className="text-white/80 text-xs">{t("settings.registeredSerials", { count: authSerials.length })}</span>
-              </div>
+            <div className="px-4 py-3 flex items-center justify-between">
+              <span className="text-white font-semibold text-sm">{t("settings.serialNumbers")} · {t("settings.registeredSerials", { count: authSerials.length })}</span>
               <span className="text-white/40 text-xs">{t("settings.tapToCopy")}</span>
             </div>
-            <div className="max-h-[220px] overflow-y-auto alert-history-scroll">
+            <div className="max-h-[200px] overflow-y-auto alert-history-scroll">
               {authSerials.length === 0 ? (
-                <div className="px-4 pb-4">
+                <div className="px-4 pb-3">
                   <span className="text-white/60 text-sm">{t("settings.noSerials")}</span>
                 </div>
               ) : (
                 authSerials.map((serial, idx) => {
                   const isCurrentDevice = deviceSerialKey === serial.serial_key;
+                  const label = isCurrentDevice ? t("settings.currentDevice") : serial.device_name || t("settings.unlinked");
                   return (
                     <button
                       key={serial.serial_key}
@@ -462,21 +460,21 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
                         navigator.clipboard.writeText(serial.serial_key);
                         toast({ title: t("common.copied"), description: t("settings.serialCopied") });
                       }}
-                      className={`w-full px-4 py-3 flex items-center justify-between text-left hover:bg-white/5 active:bg-white/10 transition-colors ${idx > 0 ? 'border-t border-white/10' : ''}`}
+                      className={`w-full px-4 py-2 flex items-center justify-between text-left hover:bg-white/5 active:bg-white/10 transition-colors ${idx > 0 ? 'border-t border-white/10' : ''}`}
                       style={isCurrentDevice ? { background: 'hsla(200, 60%, 30%, 0.5)' } : undefined}
                     >
-                      <div className="flex flex-col min-w-0">
-                        <span className="font-mono font-bold text-sm tracking-wider" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className="font-mono font-bold text-xs tracking-wider shrink-0" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>
                           {serial.serial_key}
                         </span>
-                        <span className={`text-xs mt-0.5 font-semibold ${isCurrentDevice ? '' : 'text-white/50'}`}
+                        <span className={`text-xs truncate ${isCurrentDevice ? 'font-semibold' : 'text-white/50'}`}
                           style={isCurrentDevice ? { color: 'hsla(52, 100%, 60%, 0.9)' } : undefined}
                         >
-                          {isCurrentDevice ? t("settings.currentDevice") : serial.device_name ? `📌 ${serial.device_name}` : t("settings.unlinked")}
+                          {isCurrentDevice ? `📌 ${label}` : serial.device_name ? `· ${label}` : `· ${label}`}
                           {serial.status !== "active" && ` · ${t("settings.inactive")}`}
                         </span>
                       </div>
-                      <Copy className="w-4 h-4 text-white/40 shrink-0 ml-2" />
+                      <Copy className="w-3.5 h-3.5 text-white/40 shrink-0 ml-1" />
                     </button>
                   );
                 })
