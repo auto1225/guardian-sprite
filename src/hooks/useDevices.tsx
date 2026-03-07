@@ -876,6 +876,13 @@ export const useDevices = () => {
     };
     cmdChannel.on("broadcast", { event: "device_logout" }, deviceLogoutHandler);
 
+    // ── command_ack 브로드캐스트 수신: 노트북이 명령 적용 확인 ──
+    const commandAckHandler = ({ payload }: { payload: any }) => {
+      console.log("[useDevices] 📬 command_ack received:", payload);
+      dispatchCommandAck(payload);
+    };
+    cmdChannel.on("broadcast", { event: "command_ack" }, commandAckHandler);
+
     if (!existingCmdCh) {
       cmdChannel.subscribe((status) => {
         if (status === "SUBSCRIBED") {
