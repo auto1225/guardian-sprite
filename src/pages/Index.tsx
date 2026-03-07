@@ -176,7 +176,8 @@ const Index = () => {
     });
 
     try {
-      await toggleMonitoring(selectedDevice.id, newVal);
+      const monitorSerialKey = (selectedDevice.metadata as Record<string, unknown>)?.serial_key as string | undefined;
+      await toggleMonitoring(selectedDevice.id, newVal, monitorSerialKey);
       
       // 명령 전송 성공 토스트
       toast({
@@ -186,9 +187,11 @@ const Index = () => {
 
       // ACK 대기 (노트북 응답 확인)
       if (effectiveUserId) {
+        const serialKey = (selectedDevice.metadata as Record<string, unknown>)?.serial_key as string | undefined;
         waitForCommandAck({
           deviceId: selectedDevice.id,
           deviceName: selectedDevice.name,
+          serialKey,
           event: "monitoring_toggle",
         }).then((acked) => {
           if (acked) {
@@ -380,11 +383,11 @@ const Index = () => {
                 );
               });
               if (effectiveUserId) {
+                const serialKey = (selectedDevice.metadata as Record<string, unknown>)?.serial_key as string | undefined;
                 await broadcastCommand({
                   userId: effectiveUserId,
                   event: "camouflage_toggle",
-                  payload: { device_id: selectedDevice.id, camouflage_mode: newVal },
-                  targetDeviceId: selectedDevice.id,
+                  payload: { device_id: selectedDevice.id, camouflage_mode: newVal, serial_key: serialKey },
                 });
               }
 
@@ -395,9 +398,11 @@ const Index = () => {
 
               // ACK 대기
               if (effectiveUserId) {
+                const ackSerialKey = (selectedDevice.metadata as Record<string, unknown>)?.serial_key as string | undefined;
                 waitForCommandAck({
                   deviceId: selectedDevice.id,
                   deviceName: selectedDevice.name,
+                  serialKey: ackSerialKey,
                   event: "camouflage_toggle",
                 }).then((acked) => {
                   if (acked) {

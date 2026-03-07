@@ -15,6 +15,8 @@ interface WaitForAckOptions {
   deviceId: string;
   /** 대상 기기명 (cross-DB ID 불일치 시 fallback 매칭) */
   deviceName?: string;
+  /** 대상 기기 시리얼 키 (가장 신뢰할 수 있는 매칭 기준) */
+  serialKey?: string;
   /** 원래 보낸 이벤트명 (e.g. "monitoring_toggle") */
   event: string;
   /** 타임아웃 (ms) */
@@ -26,12 +28,15 @@ interface WaitForAckOptions {
  * useDevices 훅이 user-commands 채널에서 command_ack를 수신하면
  * dispatchCommandAck()를 호출 → 여기서 CustomEvent로 수신합니다.
  *
- * 매칭 기준: event명 일치 + (device_id 일치 OR device_name 일치)
- * → 공유 DB ID와 로컬 DB ID가 다른 cross-DB 환경에서도 정상 매칭
+ * 매칭 기준 (우선순위):
+ * 1. serial_key 일치 (cross-DB 환경에서 가장 신뢰)
+ * 2. device_id 일치
+ * 3. device_name 일치
  */
 export function waitForCommandAck({
   deviceId,
   deviceName,
+  serialKey,
   event,
   timeoutMs = 8000,
 }: WaitForAckOptions): Promise<boolean> {
@@ -54,16 +59,18 @@ export function waitForCommandAck({
       const ackEvent = payload?.ack_event || payload?.command;
       const ackDeviceId = payload?.device_id;
       const ackDeviceName = payload?.device_name;
+      const ackSerialKey = payload?.serial_key;
 
       if (ackEvent !== event) return;
 
-      // ★ device_id OR device_name 매칭 (cross-DB ID 불일치 대응)
+      // ★ 매칭 우선순위: serial_key > device_id > device_name
+      const serialMatched = serialKey && ackSerialKey && ackSerialKey === serialKey;
       const idMatched = ackDeviceId === deviceId;
       const nameMatched = deviceName && ackDeviceName && ackDeviceName === deviceName;
 
-      if (idMatched || nameMatched) {
-        console.log(`[commandAck] ✅ ACK matched for ${event}:`, 
-          idMatched ? `id=${deviceId}` : `name=${deviceName}`, payload);
+      if (serialMatched || idMatched || nameMatched) {
+        const matchType = serialMatched ? `serial=${serialKey}` : idMatched ? `id=${deviceId}` : `name=${deviceName}`;
+        console.log(`[commandAck] ✅ ACK matched for ${event}:`, matchType, payload);
         clearTimeout(timeout);
         cleanup();
         resolve(true);

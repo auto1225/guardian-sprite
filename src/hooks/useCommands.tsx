@@ -41,7 +41,7 @@ export const useCommands = () => {
     },
   });
 
-  const toggleMonitoring = async (deviceId: string, enable: boolean) => {
+  const toggleMonitoring = async (deviceId: string, enable: boolean, serialKey?: string) => {
     console.log("[useCommands] toggleMonitoring called:", deviceId, "enable:", enable);
     
     const { error } = await invokeWithRetry("update-device", {
@@ -59,8 +59,7 @@ export const useCommands = () => {
       await broadcastCommand({
         userId: effectiveUserId,
         event: "monitoring_toggle",
-        payload: { device_id: deviceId, is_monitoring: enable },
-        targetDeviceId: deviceId,
+        payload: { device_id: deviceId, is_monitoring: enable, serial_key: serialKey },
       });
     }
     
