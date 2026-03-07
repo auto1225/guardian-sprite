@@ -93,9 +93,9 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff, alert
           <div className="bg-white/15 backdrop-blur-md border border-white/20 rounded-xl p-3">
             {/* 기기명 + 시리얼 */}
             <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/10">
-              <span className="text-yellow-200 font-black text-base leading-tight">{alertDeviceName}</span>
-              {alertDeviceSerial && (
-                <span className="text-yellow-200/60 text-[10px] font-mono">({alertDeviceSerial})</span>
+              <span className="text-yellow-200 font-black text-base leading-tight">{displayName}</span>
+              {displaySerial && (
+                <span className="text-yellow-200/60 text-[10px] font-mono">({displaySerial})</span>
               )}
             </div>
             {/* 경보 내용 */}
