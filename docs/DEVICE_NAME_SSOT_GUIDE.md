@@ -119,13 +119,14 @@ await websiteSupabase.from("serial_numbers")
 - [x] `licenses` 테이블에 `device_name` 컬럼 추가
 - [x] `register-device`: `licenses.device_name` SSOT 동기화
 - [x] `update-device`: 기기명 변경 시 `licenses.device_name` 갱신
-- [ ] `Settings.tsx`: licenses 조회에 `device_name` 포함
-- [ ] `DeviceManage.tsx`: licenses 조회에 `device_name` 포함
+- [x] `Settings.tsx`: licenses 조회에 `device_name` 포함
+- [x] `DeviceManage.tsx`: licenses 조회에 `device_name` 포함
 
 ### 노트북 앱
 - [ ] `register-device` 응답의 `device_name`을 로컬 DB에 반영
 - [ ] 하트비트에서 이름 덮어쓰기 방지 확인
 
-### 웹사이트
-- [ ] `device_name` 동기화 전략 결정 (옵션 A 또는 B)
-- [ ] 선택한 옵션 구현
+### 웹사이트 ✅ (수정 불필요)
+- [x] `verify-serial` 5개 액션 모두 `serial_numbers.device_name`을 SSOT로 처리
+- [x] CMS 화면(CMSSerials, CMSUsers) 정확히 표시
+- [x] 별도 동기화 불필요 — 웹사이트 DB가 자체 SSOT 유지
