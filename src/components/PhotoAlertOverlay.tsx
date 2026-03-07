@@ -22,6 +22,10 @@ interface PhotoAlertOverlayProps {
   isHistoryView?: boolean;
   /** DB 기반 기기 ID — 크로스 프로젝트 ID 불일치 방지용 */
   streamingDeviceId?: string | null;
+  /** 경보 발생 기기명 */
+  alertDeviceName?: string;
+  /** 경보 발생 기기 시리얼 */
+  alertDeviceSerial?: string | null;
 }
 
 export default function PhotoAlertOverlay({
@@ -34,6 +38,8 @@ export default function PhotoAlertOverlay({
   remoteAlarmDismissed,
   isHistoryView = false,
   streamingDeviceId,
+  alertDeviceName,
+  alertDeviceSerial,
 }: PhotoAlertOverlayProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
