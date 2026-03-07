@@ -359,6 +359,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
   };
 
   const isLaptop = sensorSettings.deviceType === "laptop";
+  const isLidSupported = sensorSettings.deviceType === "laptop";
   const selectedSoundLabel =
     selectedSoundId === "custom"
       ? customSoundName || t("settings.soundDialog.customLabel")
@@ -620,29 +621,30 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
               <span className="text-white font-semibold text-sm block">{t("settings.deviceType")}</span>
               <span className="text-white/80 text-xs">{t("settings.deviceTypeDesc")}</span>
             </div>
-            <div className="flex gap-2">
-              {(["laptop", "desktop", "tablet"] as const).map((type) => (
+            <div className="flex gap-2 flex-wrap">
+              {(["laptop", "desktop", "tablet", "smartphone"] as const).map((type) => (
                 <button
                   key={type}
                   onClick={async () => {
                     const updated = { ...sensorSettings, deviceType: type };
+                    // 비-노트북으로 변경 시 lid를 자동으로 off
+                    if (type !== "laptop") updated.lidClosed = false;
                     setSensorSettings(updated);
                     try {
                       await saveMetadata({ sensorSettings: updated });
                       await supabase.functions.invoke("update-device", { body: { device_id: device.id, device_type: type } });
-                      // 기기 타입 변경을 노트북에 즉시 브로드캐스트
                       await broadcastSettingsUpdate(device.id, { device_type: type, sensorSettings: updated });
                       queryClient.invalidateQueries({ queryKey: ["devices"] });
                     } catch {
                       toast({ title: t("common.error"), description: t("common.settingSaveFailed"), variant: "destructive" });
                     }
                   }}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                  className={`flex-1 min-w-[70px] py-2.5 rounded-xl text-sm font-semibold transition-all ${
                     sensorSettings.deviceType === type ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
                   }`}
                   style={sensorSettings.deviceType === type ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
                   >
-                    {type === "laptop" ? t("settings.laptop") : type === "desktop" ? t("settings.desktop") : t("settings.tablet")}
+                    {type === "laptop" ? t("settings.laptop") : type === "desktop" ? t("settings.desktop") : type === "tablet" ? t("settings.tablet") : t("settings.smartphone")}
                 </button>
               ))}
             </div>
