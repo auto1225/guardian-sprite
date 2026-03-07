@@ -41,9 +41,10 @@ interface SettingsPageProps {
   onClose: () => void;
   onDeviceChange?: (deviceId: string) => void;
   onBackgroundChange?: () => void;
+  onMascotChange?: () => void;
 }
 
-const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChange, onBackgroundChange }: SettingsPageProps) => {
+const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChange, onBackgroundChange, onMascotChange }: SettingsPageProps) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -582,6 +583,23 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
           {/* Background Setting */}
           <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
             <SettingItem label={t("bg.title")} onClick={() => setShowBgSelector(true)} />
+          </div>
+
+          {/* Mascot Visibility */}
+          <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
+            <div className="px-4 py-4 flex items-center justify-between">
+              <div>
+                <span className="text-white font-semibold text-sm block">{t("settings.mascotVisible")}</span>
+                <span className="text-white/80 text-xs">{t("settings.mascotVisibleDesc")}</span>
+              </div>
+              <Switch
+                checked={localStorage.getItem("meercop-mascot-visible") !== "false"}
+                onCheckedChange={(v) => {
+                  localStorage.setItem("meercop-mascot-visible", v ? "true" : "false");
+                  onMascotChange?.();
+                }}
+              />
+            </div>
           </div>
 
 
