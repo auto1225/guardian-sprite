@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { SUPPORTED_LANGUAGES } from "@/lib/dynamicTranslation";
 import { supabase } from "@/integrations/supabase/client";
+import { websiteSupabase } from "@/lib/websiteAuth";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import logoImage from "@/assets/meercop-character.png";
 
@@ -95,8 +96,8 @@ const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps)
     // Fetch avatar
     const fetchAvatar = async () => {
       try {
-        const { data } = await supabase
-          .from("profiles")
+        const { data } = await websiteSupabase
+          .from("public_profiles")
           .select("avatar_url")
           .eq("user_id", effectiveUserId)
           .maybeSingle();

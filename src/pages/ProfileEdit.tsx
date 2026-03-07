@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, User, Mail, Lock, Save, Camera } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { websiteSupabase } from "@/lib/websiteAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -30,13 +30,13 @@ const ProfileEdit = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return;
-      const { data } = await supabase
-        .from("profiles")
+      const { data } = await websiteSupabase
+        .from("public_profiles")
         .select("display_name, avatar_url")
         .eq("user_id", user.id)
         .maybeSingle();
       if (data?.display_name) setDisplayName(data.display_name);
-      else setDisplayName(user.email?.split("@")[0] || "");
+      else setDisplayName(user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "");
       if (data?.avatar_url) setAvatarUrl(data.avatar_url);
     };
     fetchProfile();
@@ -61,19 +61,19 @@ const ProfileEdit = () => {
       const ext = file.name.split(".").pop() || "jpg";
       const path = `${user.id}/avatar.${ext}`;
 
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
+      // Upload to website storage
+      const { error: uploadError } = await websiteSupabase.storage
         .from("avatars")
         .upload(path, file, { upsert: true });
       if (uploadError) throw uploadError;
 
       // Get public URL
-      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+      const { data: urlData } = websiteSupabase.storage.from("avatars").getPublicUrl(path);
       const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
-      // Update profiles table
-      const { error: updateError } = await supabase
-        .from("profiles")
+      // Update public_profiles table
+      const { error: updateError } = await websiteSupabase
+        .from("public_profiles")
         .update({ avatar_url: publicUrl })
         .eq("user_id", user.id);
       if (updateError) throw updateError;
@@ -94,8 +94,8 @@ const ProfileEdit = () => {
     if (!user) return;
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
+      const { error } = await websiteSupabase
+        .from("public_profiles")
         .update({ display_name: displayName })
         .eq("user_id", user.id);
       if (error) throw error;
@@ -118,7 +118,7 @@ const ProfileEdit = () => {
     }
     setPasswordLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      const { error } = await websiteSupabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
       toast({ title: t("profile.passwordChanged"), description: t("profile.passwordChangedDesc") });
       setCurrentPassword("");
