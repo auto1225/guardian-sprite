@@ -90,7 +90,7 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff, alert
       </div>
 
       {/* ★ 기기명 + 경보 카드 — 스크롤 영역 밖 고정 (덮이지 않음) */}
-      <div className="px-4 pb-3 shrink-0 relative z-10">
+      <div className="px-4 pb-3 shrink-0 relative z-[500] shadow-lg">
         <div className="bg-white/15 backdrop-blur-md border border-white/20 rounded-xl p-3 shadow-lg">
           {/* 기기명 + 시리얼 */}
           <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/10">
@@ -111,7 +111,7 @@ const AlertMode = ({ device, activeAlert, onDismiss, onSendRemoteAlarmOff, alert
       </div>
 
       {/* Scrollable content area */}
-      <div className="flex-1 overflow-y-auto alert-glass-scroll">
+      <div className="flex-1 overflow-y-auto alert-glass-scroll relative z-0 isolate">
 
         {/* 실시간 스트리밍 */}
         {hasCamera && device ? (
