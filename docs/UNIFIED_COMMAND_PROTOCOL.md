@@ -96,6 +96,20 @@
 }
 ```
 
+### 7. `mascot_toggle`
+마스코트 캐릭터 및 말풍선 보기/숨기기 (📱→💻)
+
+```json
+{
+  "device_id": "uuid",
+  "mascot_visible": true
+}
+```
+
+> - `mascot_visible: true` → 캐릭터 + 말풍선 표시
+> - `mascot_visible: false` → 캐릭터 + 말풍선 숨김
+> - DB `metadata.mascot_visible`에도 동기화하여 새로고침 후에도 상태 유지
+
 ---
 
 ## 🔧 구현 가이드
