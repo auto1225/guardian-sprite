@@ -82,7 +82,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
     const saved = meta.sensorSettings as SensorSettings | undefined;
     return saved
       ? { ...DEFAULT_SENSOR_SETTINGS, ...saved }
-      : { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device?.device_type as "laptop" | "desktop" | "tablet") || "laptop" };
+      : { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device?.device_type as "laptop" | "desktop" | "tablet" | "smartphone") || "laptop" };
   });
   const [motionSensitivity, setMotionSensitivity] = useState<MotionSensitivity>(
     (meta.motionSensitivity as MotionSensitivity) || "insensitive"
@@ -115,7 +115,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
     const saved = m.sensorSettings as SensorSettings | undefined;
     setSensorSettings(saved
       ? { ...DEFAULT_SENSOR_SETTINGS, ...saved }
-      : { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device.device_type as "laptop" | "desktop" | "tablet") || "laptop" });
+      : { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device.device_type as "laptop" | "desktop" | "tablet" | "smartphone") || "laptop" });
     setMotionSensitivity((m.motionSensitivity as MotionSensitivity) || "insensitive");
     setMouseSensitivity((m.mouseSensitivity as MotionSensitivity) || "sensitive");
     // ★ 기기별 언어 설정 반영
@@ -138,7 +138,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
 
     const defaultPin = "1234";
     const defaultSoundId = "whistle";
-    const defaultSensors = { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device.device_type as "laptop" | "desktop" | "tablet") || "laptop" };
+    const defaultSensors = { ...DEFAULT_SENSOR_SETTINGS, deviceType: (device.device_type as "laptop" | "desktop" | "tablet" | "smartphone") || "laptop" };
 
     // 볼륨 기본값 20% (localStorage에 아직 없을 때만)
     if (!localStorage.getItem('meercop_alarm_volume')) {
@@ -330,6 +330,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
     usb: "sensor_usb",
     power: "sensor_power",
     lidClosed: "sensor_lid",
+    screenTouch: "sensor_screen_touch",
   };
 
   const handleSensorToggle = async (key: keyof SensorSettings, value: boolean) => {
