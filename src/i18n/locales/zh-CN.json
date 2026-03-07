@@ -623,7 +623,7 @@
       "disclaimerTitle": "3. 免责声明",
       "disclaimerContent": "<strong>⚠️ 重要：请仔细阅读本节。</strong>",
       "disclaimerNoWarranty": "3-1. 无保证",
-      "disclaimerNoWarrantyDesc": "本应用按<strong>"原样"</strong>和<strong>"可用状态"</strong>提供。\n\n• 开发者<strong>不作任何明示或暗示保证</strong>\n• 使用风险由用户自行承担",
+      "disclaimerNoWarrantyDesc": "本应用按<strong>\u201c原样\u201d</strong>和<strong>\u201c可用状态\u201d</strong>提供。\n\n• 开发者<strong>不作任何明示或暗示保证</strong>\n• 使用风险由用户自行承担",
       "disclaimerAccuracy": "3-2. 准确性免责",
       "disclaimerAccuracyDesc": "• GPS数据可能存在误差\n• 运动检测可能产生误报\n• 流媒体质量取决于网络\n• 反向地理编码仅供参考",
       "disclaimerAvailability": "3-3. 服务可用性",
