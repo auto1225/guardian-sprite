@@ -476,7 +476,10 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
 
           {/* General Settings */}
           <div className="rounded-2xl border border-white/25 overflow-hidden" style={{ background: 'hsla(0,0%,100%,0.18)' }}>
-            <SettingItem label={t("settings.nickname")} value={nickname} onClick={() => setShowNicknameDialog(true)} />
+            <div className="flex items-center justify-between w-full px-4 py-4">
+              <span className="text-white font-semibold text-sm">{t("settings.nickname")}</span>
+              <span className="text-white/80 text-sm font-medium">{nickname}</span>
+            </div>
             <div className="border-t border-white/10" />
             <SettingItem label={t("settings.alarmPin")} value={alarmPin} onClick={() => setShowPinDialog(true)} />
             <div className="border-t border-white/10" />
