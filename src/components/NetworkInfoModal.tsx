@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, forwardRef } from "react";
 import { useTranslation } from "react-i18next";
 import { X, Wifi, Globe, BarChart3, Loader2, Zap, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";

@@ -149,7 +149,7 @@ Deno.serve(async (req) => {
       .insert({
         user_id: license.user_id,
         name: device_name || "My Device",
-        device_type: device_type || "smartphone",
+        device_type: device_type || "laptop",
         status: "online",
         last_seen_at: new Date().toISOString(),
       })
