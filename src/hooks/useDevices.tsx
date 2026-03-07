@@ -6,6 +6,7 @@ import { Database } from "@/integrations/supabase/types";
 import { deleteLaptopDbDevice } from "@/lib/laptopDb";
 import { websiteSupabase } from "@/lib/websiteAuth";
 import { invokeWithRetry } from "@/lib/invokeWithRetry";
+import { dispatchCommandAck } from "@/lib/commandAck";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 type DeviceInsert = Database["public"]["Tables"]["devices"]["Insert"];
