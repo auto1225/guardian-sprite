@@ -28,7 +28,9 @@ const DeviceList = ({ isExpanded, onToggle, selectedDeviceId, selectedDevice, on
     [allDevices]
   );
 
-  if (!selectedDevice || selectedDevice.device_type === "smartphone") {
+  // 컨트롤러(시리얼 키 없는 스마트폰)만 대기 화면 표시
+  const isController = selectedDevice?.device_type === "smartphone" && !(selectedDevice?.metadata as Record<string, unknown>)?.serial_key;
+  if (!selectedDevice || isController) {
     return (
       <div className="px-4 py-2">
         <div className="flex items-center justify-center">
