@@ -413,6 +413,8 @@
       "usbDeviceDesc": "Alerts trigger when an unauthorized USB device is connected. Detects all USB connections including flash drives, external hard drives, keyboards, etc.",
       "powerChange": "🔋 Power Change Detection",
       "powerChangeDesc": "Alerts trigger when the charger is disconnected or connected. Useful for detecting attempts to unplug the charger and carry away the laptop.",
+      "screenTouchDetection": "👆 Screen Touch Detection",
+      "screenTouchDetectionDesc": "Alerts trigger when someone touches the screen. Available on all device types (Laptop, Desktop, Tablet, Smartphone). Useful for detecting unauthorized screen interactions.",
 
       "alertTitle": "5. When Alerts Trigger",
       "alertDesc": "When a sensor detects an anomaly, the following happen simultaneously:\n\n• 📱 Push notification sent to smartphone\n• 🔊 Alarm sounds on both smartphone and laptop\n• 📷 Auto photo capture from laptop camera\n• 📍 Current location auto-recorded\n• 📺 Full-screen alert mode activated",
@@ -467,7 +469,7 @@
       "settingPcPin": "🖥️ PC Alarm Dismiss PIN Requirement",
       "settingPcPinDesc": "When enabled, PIN entry is required to dismiss alarms on the laptop. When disabled, alarms can be dismissed without PIN on the laptop.",
       "settingSensor": "🔧 Detection Sensor Settings",
-      "settingSensorDesc": "Enable/disable each detection sensor individually:\n\n• <strong>Camera Motion Detection</strong> — Detect movement in front of camera + sensitivity setting\n• <strong>Lid Detection</strong> — Laptop only, detect lid open/close\n• <strong>Keyboard Detection</strong> — Detect keyboard input\n• <strong>Mouse Detection</strong> — Detect mouse movement + sensitivity setting\n• <strong>USB Detection</strong> — Detect USB device connections\n• <strong>Power Detection</strong> — Detect power cable connect/disconnect",
+      "settingSensorDesc": "Enable/disable each detection sensor individually:\n\n• <strong>Camera Motion Detection</strong> — Detect movement in front of camera + sensitivity setting\n• <strong>Lid Detection</strong> — Laptop only, detect lid open/close\n• <strong>Keyboard Detection</strong> — Detect keyboard input\n• <strong>Mouse Detection</strong> — Detect mouse movement + sensitivity setting\n• <strong>USB Detection</strong> — Detect USB device connections\n• <strong>Power Detection</strong> — Detect power cable connect/disconnect\n• <strong>Screen Touch Detection</strong> — Detect screen touch input (all device types)",
       "settingSensitivity": "📊 Sensitivity Settings",
       "settingSensitivityDesc": "Camera motion and mouse detection have 3 sensitivity levels:\n\n• <strong>Sensitive</strong> — Reacts to small movements/vibrations\n• <strong>Normal</strong> — Reacts to typical movements\n• <strong>Insensitive</strong> — Detects only large movements (recommended for vibration-prone environments like cafes)",
       "settingSerial": "🔑 Serial Numbers",
@@ -477,7 +479,7 @@
       "settingLanguage": "🌐 Language Setting",
       "settingLanguageDesc": "Change the app display language and laptop program language. Supports 17 languages and can be set independently per device. Smartphone app language can also be changed from the side menu.",
       "settingDeviceType": "💻 Device Type",
-      "settingDeviceTypeDesc": "Available sensors vary by device type (Laptop/Desktop/Tablet). Example: Lid detection is only available on laptops.",
+      "settingDeviceTypeDesc": "Available sensors vary by device type (Laptop/Desktop/Tablet/Smartphone). Example: Lid detection is only available on laptops. Screen touch detection is available on all device types.",
 
       "deviceManage": "10. Device Management",
       "deviceManageDesc": "Tap the Device Management button on the right side of the header to manage all registered devices.",
@@ -559,7 +561,9 @@
       "q17": "How much data does it use?",
       "a17": "Approximate data usage by feature:\n\n• <strong>Monitoring standby</strong> — Very little (heartbeat signals only)\n• <strong>Alert photo transfer</strong> — About 50KB-200KB per photo\n• <strong>Live streaming</strong> — About 3-10MB per minute depending on quality\n• <strong>Location tracking</strong> — Negligible\n\n💡 Using Wi-Fi saves mobile data.",
       "q18": "What happens if I delete a device?",
-      "a18": "Deleting a device from device management:\n\n• All alert history for that device is deleted\n• The serial number is retained and can be linked to a new device\n• Logging back into MeerCOP on the laptop registers it as a new device"
+      "a18": "Deleting a device from device management:\n\n• All alert history for that device is deleted\n• The serial number is retained and can be linked to a new device\n• Logging back into MeerCOP on the laptop registers it as a new device",
+      "q19": "What is screen touch detection?",
+      "a19": "Screen touch detection monitors for physical touch input on the display. When enabled, any touch on the screen triggers an alert.\n\n• Available on all device types (Laptop, Desktop, Tablet, Smartphone)\n• Can be enabled/disabled in Settings → Detection Sensor Settings\n• Requires a plan that supports the sensor_touch capability\n• When triggered, it follows the same alert pipeline (alarm sound, photo capture, push notification)"
     },
     "footer": {
       "copyright": "© 2025 MeerCOP. All rights reserved.",
