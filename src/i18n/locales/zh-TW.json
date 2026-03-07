@@ -118,7 +118,8 @@
     "photoAlertHistory": "照片警報紀錄",
     "updatedAt": "更新",
     "editProfileNotice": "僅可在此修改",
-    "legalTerms": "使用條款 / 法律聲明"
+    "legalTerms": "使用條款 / 法律聲明",
+    "checkUpdate": "檢查更新"
   },
   "errorBoundary": {
     "title": "發生問題",

@@ -118,7 +118,8 @@
     "photoAlertHistory": "Foto-Alarmverlauf",
     "updatedAt": "Aktualisiert",
     "editProfileNotice": "kann nur bearbeitet werden auf",
-    "legalTerms": "Nutzungsbedingungen / Rechtliche Hinweise"
+    "legalTerms": "Nutzungsbedingungen / Rechtliche Hinweise",
+    "checkUpdate": "Nach Updates suchen"
   },
   "errorBoundary": {
     "title": "Ein Fehler ist aufgetreten",

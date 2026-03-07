@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { ChevronLeft, User, LogOut, HelpCircle, UserCog, Globe, Crown, Star, Sparkles, ExternalLink, FileText } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { ChevronLeft, User, LogOut, HelpCircle, UserCog, Globe, Crown, Star, Sparkles, ExternalLink, FileText, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -31,6 +31,30 @@ const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps)
   const [serialPage, setSerialPage] = useState(1);
   const [showLangs, setShowLangs] = useState(false);
   const [deviceNameMap, setDeviceNameMap] = useState<Record<string, string>>({});
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleCheckUpdate = useCallback(async () => {
+    if (!("serviceWorker" in navigator)) {
+      window.location.reload();
+      return;
+    }
+    setIsUpdating(true);
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) {
+        await reg.update();
+        if (reg.waiting) {
+          reg.waiting.postMessage({ type: "SKIP_WAITING" });
+          // controllerchange listener in usePWAUpdate will reload
+          return;
+        }
+      }
+      // No waiting SW — just hard reload
+      window.location.reload();
+    } catch {
+      window.location.reload();
+    }
+  }, []);
 
   // Fetch actual device names from shared DB
   useEffect(() => {
@@ -192,6 +216,18 @@ const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps)
           </div>
           <MenuItem icon={HelpCircle} label={t("sideMenu.helpQA")} onClick={() => { if (onHelpClick) { onHelpClick(); onClose(); } }} />
           <MenuItem icon={FileText} label={t("sideMenu.legalTerms")} onClick={() => { if (onLegalClick) { onLegalClick(); onClose(); } }} />
+
+          {/* Manual update */}
+          <button
+            onClick={handleCheckUpdate}
+            disabled={isUpdating}
+            className="flex items-center gap-3 w-full px-4 py-4 hover:bg-white/10 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-5 h-5 text-primary-foreground ${isUpdating ? "animate-spin" : ""}`} />
+            <span className="text-sm font-semibold text-primary-foreground">
+              {t("sideMenu.checkUpdate")}
+            </span>
+          </button>
 
           {/* Language selector */}
           <button

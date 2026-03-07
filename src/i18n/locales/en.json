@@ -142,7 +142,8 @@
     "loggedOut": "Logged out",
     "loggedOutDesc": "You have been safely logged out.",
     "updatedAt": "Updated",
-    "editProfileNotice": "can only be edited on"
+    "editProfileNotice": "can only be edited on",
+    "checkUpdate": "Check for Updates"
   },
   "errorBoundary": {
     "title": "Something went wrong",
