@@ -176,7 +176,8 @@ const Index = () => {
     });
 
     try {
-      await toggleMonitoring(selectedDevice.id, newVal);
+      const monitorSerialKey = (selectedDevice.metadata as Record<string, unknown>)?.serial_key as string | undefined;
+      await toggleMonitoring(selectedDevice.id, newVal, monitorSerialKey);
       
       // 명령 전송 성공 토스트
       toast({
