@@ -537,9 +537,9 @@
   },
   "cameraViewer": {
     "connecting": "連線攝影機中...",
-    "waitingForCamera": "等待筆電攝影機啟動",
+    "waitingForCamera": "等待{{device}}攝影機啟動",
     "retry": "重試",
-    "waitingForStart": "等待攝影機啟動...",
+    "waitingForStart": "等待{{device}}攝影機...",
     "cameraNotDetected": "未偵測到攝影機",
     "tapToPlay": "點擊播放",
     "noAudio": "No Audio",

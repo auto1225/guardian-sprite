@@ -537,9 +537,9 @@
   },
   "cameraViewer": {
     "connecting": "Connexion de la caméra...",
-    "waitingForCamera": "En attente du démarrage de la caméra du portable",
+    "waitingForCamera": "En attente du démarrage de la caméra du {{device}}",
     "retry": "Réessayer",
-    "waitingForStart": "En attente du démarrage de la caméra...",
+    "waitingForStart": "En attente de la caméra du {{device}}...",
     "cameraNotDetected": "Caméra non détectée",
     "tapToPlay": "Appuyez pour lire",
     "noAudio": "No Audio",

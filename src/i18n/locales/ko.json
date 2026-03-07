@@ -643,9 +643,9 @@
   },
   "cameraViewer": {
     "connecting": "카메라 연결 중...",
-    "waitingForCamera": "노트북에서 카메라가 시작될 때까지 대기 중",
+    "waitingForCamera": "{{device}}에서 카메라가 시작될 때까지 대기 중",
     "retry": "다시 시도",
-    "waitingForStart": "노트북에서 카메라 시작 대기 중...",
+    "waitingForStart": "{{device}}에서 카메라 시작 대기 중...",
     "cameraNotDetected": "카메라가 인식되지 않습니다",
     "tapToPlay": "터치하여 재생",
     "noAudio": "No Audio",
