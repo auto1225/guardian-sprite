@@ -19,7 +19,7 @@ interface NetworkInfo {
   updated_at?: string;
 }
 
-const NetworkInfoModal = ({ isOpen, onClose, deviceId, deviceName }: NetworkInfoModalProps) => {
+const NetworkInfoModal = forwardRef<HTMLDivElement, NetworkInfoModalProps>(({ isOpen, onClose, deviceId, deviceName }, ref) => {
   const { t } = useTranslation();
   const [networkInfo, setNetworkInfo] = useState<NetworkInfo | null>(null);
   const [ipAddress, setIpAddress] = useState<string | null>(null);
