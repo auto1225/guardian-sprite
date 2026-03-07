@@ -33,6 +33,7 @@ const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps)
   const [showLangs, setShowLangs] = useState(false);
   const [deviceNameMap, setDeviceNameMap] = useState<Record<string, string>>({});
   const [isUpdating, setIsUpdating] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const handleCheckUpdate = useCallback(async () => {
     setIsUpdating(true);
