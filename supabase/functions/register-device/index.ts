@@ -128,6 +128,12 @@ Deno.serve(async (req) => {
         updatePayload.metadata = { ...currentMeta, serial_key: normalizedSerialKey };
       }
 
+      // ★ device_type 불일치 보정
+      if (effectiveType && effectiveType !== existing.device_type) {
+        updatePayload.device_type = effectiveType;
+        console.log(`[register-device] 🔧 device_type corrected: "${existing.device_type}" → "${effectiveType}"`);
+      }
+
       // ★ licenses.device_name이 SSOT — 있으면 devices.name 동기화
       const authoritativeName = licenseDeviceName || device_name || existing.name;
       if (authoritativeName && authoritativeName !== existing.name) {
