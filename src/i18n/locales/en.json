@@ -618,7 +618,12 @@
     "passwordChanged": "Changed",
     "passwordChangedDesc": "Password has been changed.",
     "passwordChangeFailed": "Failed to change password.",
-    "changing": "Changing..."
+    "changing": "Changing...",
+    "avatarUpdated": "Profile photo updated.",
+    "avatarUploadFailed": "Failed to upload photo.",
+    "invalidImageType": "Please select an image file.",
+    "imageTooLarge": "Image must be under 2MB.",
+    "uploading": "Uploading..."
   },
   "alertPanel": {
     "title": "Alert History",

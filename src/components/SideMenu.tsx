@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { SUPPORTED_LANGUAGES } from "@/lib/dynamicTranslation";
 import { supabase } from "@/integrations/supabase/client";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import logoImage from "@/assets/meercop-character.png";
 
 const ITEMS_PER_PAGE = 5;
@@ -32,6 +33,7 @@ const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps)
   const [showLangs, setShowLangs] = useState(false);
   const [deviceNameMap, setDeviceNameMap] = useState<Record<string, string>>({});
   const [isUpdating, setIsUpdating] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const handleCheckUpdate = useCallback(async () => {
     setIsUpdating(true);
@@ -86,25 +88,36 @@ const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps)
     }
   }, [toast, t]);
 
-  // Fetch actual device names from shared DB
+  // Fetch avatar + device names
   useEffect(() => {
     if (!isOpen || !effectiveUserId) return;
+
+    // Fetch avatar
+    const fetchAvatar = async () => {
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("avatar_url")
+          .eq("user_id", effectiveUserId)
+          .maybeSingle();
+        if (data?.avatar_url) setAvatarUrl(data.avatar_url);
+      } catch (err) {
+        console.warn("[SideMenu] Failed to fetch avatar:", err);
+      }
+    };
+    fetchAvatar();
+
+    // Fetch device names
     const fetchDeviceNames = async () => {
       try {
         const { data } = await supabase.functions.invoke("get-devices", {
           body: { user_id: effectiveUserId },
         });
         const devices = data?.devices || [];
-        // Build serial_key → device name map via licenses
-        const { data: licenses } = await supabase.functions.invoke("get-devices", {
-          body: { user_id: effectiveUserId, include_licenses: true },
-        });
-        // Fallback: map device_id → name, then match via licenses
         const idToName: Record<string, string> = {};
         for (const d of devices) {
           idToName[d.id] = d.name;
         }
-        // Try to get licenses from shared DB
         const { data: licenseData } = await supabase
           .from("licenses")
           .select("serial_key, device_id")
@@ -160,9 +173,12 @@ const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps)
 
         {/* User Info */}
         <div className="flex items-center gap-3 p-4 border-b border-white/20">
-          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-            <User className="w-6 h-6 text-primary-foreground" />
-          </div>
+          <Avatar className="w-12 h-12 border border-white/20">
+            {avatarUrl ? <AvatarImage src={avatarUrl} alt="avatar" /> : null}
+            <AvatarFallback className="bg-white/20 text-primary-foreground font-bold">
+              {(user?.email?.charAt(0) || "U").toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-primary-foreground truncate">
               {user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split("@")[0] || t("sideMenu.user")}

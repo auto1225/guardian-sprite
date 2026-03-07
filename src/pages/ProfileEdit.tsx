@@ -1,21 +1,27 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, User, Mail, Lock, Save } from "lucide-react";
+import { ArrowLeft, User, Mail, Lock, Save, Camera } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useTranslation } from "react-i18next";
+
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 
 const ProfileEdit = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [displayName, setDisplayName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -26,14 +32,63 @@ const ProfileEdit = () => {
       if (!user) return;
       const { data } = await supabase
         .from("profiles")
-        .select("display_name")
+        .select("display_name, avatar_url")
         .eq("user_id", user.id)
         .maybeSingle();
       if (data?.display_name) setDisplayName(data.display_name);
       else setDisplayName(user.email?.split("@")[0] || "");
+      if (data?.avatar_url) setAvatarUrl(data.avatar_url);
     };
     fetchProfile();
   }, [user]);
+
+  const handleAvatarSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate
+    if (!file.type.startsWith("image/")) {
+      toast({ title: t("common.error"), description: t("profile.invalidImageType"), variant: "destructive" });
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      toast({ title: t("common.error"), description: t("profile.imageTooLarge"), variant: "destructive" });
+      return;
+    }
+
+    setAvatarLoading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${user.id}/avatar.${ext}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+      // Update profiles table
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("user_id", user.id);
+      if (updateError) throw updateError;
+
+      setAvatarUrl(publicUrl);
+      toast({ title: t("profile.avatarUpdated") });
+    } catch (err) {
+      console.error("[ProfileEdit] Avatar upload failed:", err);
+      toast({ title: t("common.error"), description: t("profile.avatarUploadFailed"), variant: "destructive" });
+    } finally {
+      setAvatarLoading(false);
+      // Reset input so the same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const handleSaveProfile = async () => {
     if (!user) return;
@@ -76,6 +131,8 @@ const ProfileEdit = () => {
     }
   };
 
+  const initials = (user?.email?.charAt(0) || "U").toUpperCase();
+
   return (
     <div
       className="min-h-screen flex flex-col"
@@ -92,11 +149,35 @@ const ProfileEdit = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Profile Section */}
+        {/* Avatar Section */}
         <div className="flex flex-col items-center gap-3 py-4">
-          <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-md border border-white/25 flex items-center justify-center">
-            <User className="w-10 h-10 text-white" />
+          <div className="relative">
+            <Avatar className="w-20 h-20 border-2 border-white/30">
+              {avatarUrl ? (
+                <AvatarImage src={avatarUrl} alt="avatar" />
+              ) : null}
+              <AvatarFallback className="bg-white/20 text-white text-2xl font-bold">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={avatarLoading}
+              className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-white/30 backdrop-blur-md border border-white/40 flex items-center justify-center hover:bg-white/50 transition-colors disabled:opacity-50"
+            >
+              <Camera className="w-3.5 h-3.5 text-white" />
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarSelect}
+            />
           </div>
+          {avatarLoading && (
+            <span className="text-white/60 text-xs animate-pulse">{t("profile.uploading")}</span>
+          )}
           <p className="text-white/70 text-sm">{user?.email}</p>
         </div>
 
