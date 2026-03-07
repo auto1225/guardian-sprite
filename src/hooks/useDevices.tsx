@@ -108,7 +108,8 @@ export const useDevices = () => {
       // ★ DB 조회 결과에 Presence 확인된 온라인 상태 및 이름 보존
       // Presence가 이미 sync된 상태라면, Presence에 없는 기기는 offline으로 강제 전환
       return dbDevices.map(d => {
-        if (d.device_type === "smartphone") return d;
+        // 컨트롤러 스마트폰(시리얼 키 없는)만 스킵, 관리 대상 스마트폰은 Presence 처리
+        if (d.device_type === "smartphone" && !(d.metadata as Record<string, unknown>)?.serial_key) return d;
         // Presence에서 확인된 최신 이름 우선 적용
         const presenceName = devicePresenceNames.get(d.id);
         const resolvedName = presenceName || d.name;
@@ -329,7 +330,8 @@ export const useDevices = () => {
         .on("postgres_changes", { event: "UPDATE", schema: "public", table: "devices", filter: `user_id=eq.${effectiveUserId}` },
           (payload) => {
             const updatedDevice = payload.new as Device;
-            if (updatedDevice.device_type === "smartphone") return;
+            // 컨트롤러 스마트폰만 무시, 관리 대상 스마트폰은 처리
+            if (updatedDevice.device_type === "smartphone" && !(updatedDevice.metadata as Record<string, unknown>)?.serial_key) return;
             if (updatedDevice.status === "online") realtimeConfirmedOnline.add(updatedDevice.id);
             else if (updatedDevice.status === "offline") realtimeConfirmedOnline.delete(updatedDevice.id);
             console.log("[Realtime] Device updated:", { id: updatedDevice.id, status: updatedDevice.status });
