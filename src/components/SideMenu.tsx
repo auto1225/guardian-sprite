@@ -34,27 +34,57 @@ const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps)
   const [isUpdating, setIsUpdating] = useState(false);
 
   const handleCheckUpdate = useCallback(async () => {
-    if (!("serviceWorker" in navigator)) {
-      window.location.reload();
-      return;
-    }
     setIsUpdating(true);
     try {
-      const reg = await navigator.serviceWorker.getRegistration();
-      if (reg) {
-        await reg.update();
-        if (reg.waiting) {
-          reg.waiting.postMessage({ type: "SKIP_WAITING" });
-          // controllerchange listener in usePWAUpdate will reload
-          return;
-        }
+      // 1) DB에서 최신 버전 조회
+      const { data } = await supabase.functions.invoke("check-app-version");
+      const latestVersion = data?.latest_version;
+      const currentVersion = typeof __BUILD_TIME__ !== "undefined" ? __BUILD_TIME__ : "";
+
+      // 2) 비교
+      if (!latestVersion || latestVersion === currentVersion) {
+        toast({
+          title: t("sideMenu.updateUpToDate"),
+          description: `${t("sideMenu.currentVersion")}: ${currentVersion}`,
+        });
+        setIsUpdating(false);
+        return;
       }
-      // No waiting SW — just hard reload
-      window.location.reload();
+
+      // 3) 업데이트 필요 → 확인 후 새로고침
+      toast({
+        title: t("sideMenu.updateAvailable"),
+        description: `${latestVersion}`,
+      });
+
+      // 잠시 후 자동 새로고침
+      setTimeout(() => {
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.getRegistration().then((reg) => {
+            if (reg) {
+              reg.update().then(() => {
+                if (reg.waiting) {
+                  reg.waiting.postMessage({ type: "SKIP_WAITING" });
+                } else {
+                  window.location.reload();
+                }
+              });
+            } else {
+              window.location.reload();
+            }
+          });
+        } else {
+          window.location.reload();
+        }
+      }, 2000);
     } catch {
-      window.location.reload();
+      toast({
+        title: t("sideMenu.updateCheckFailed"),
+        variant: "destructive",
+      });
+      setIsUpdating(false);
     }
-  }, []);
+  }, [toast, t]);
 
   // Fetch actual device names from shared DB
   useEffect(() => {
