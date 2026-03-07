@@ -48,7 +48,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { refreshSerials } = useAuth();
+  const { refreshSerials, serials: authSerials } = useAuth();
   const [licenses, setLicenses] = useState<{ serial_key: string; device_id: string | null; is_active: boolean }[]>([]);
   const [settingsDeviceId, setSettingsDeviceId] = useState(initialDeviceId);
 
