@@ -53,6 +53,7 @@
     "laptop": "Laptop",
     "desktop": "Desktop",
     "tablet": "Tablet",
+    "smartphone": "Phone",
     "network": "Network",
     "camera": "Camera",
     "settings": "Settings"
