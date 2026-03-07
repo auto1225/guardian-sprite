@@ -434,7 +434,7 @@ const CameraViewer = ({
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
             <RefreshCw className="w-8 h-8 text-white/50 animate-spin" />
             <p className="text-white/70 text-sm mt-4">{t("cameraViewer.connecting")}</p>
-            <p className="text-white/50 text-xs mt-1">{t("cameraViewer.waitingForCamera", { device: t(`statusIcons.${deviceType || "laptop"}`) })}</p>
+            <p className="text-white/50 text-xs mt-1">{t("cameraViewer.waitingForCamera", { device: t(`settings.${deviceType || "laptop"}`) })}</p>
           </div>
         )}
 
@@ -450,7 +450,7 @@ const CameraViewer = ({
         {showWaiting && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
             <RefreshCw className="w-6 h-6 text-white/50 animate-spin" />
-            <p className="text-white/70 text-sm mt-4">{t("cameraViewer.waitingForStart", { device: t(`statusIcons.${deviceType || "laptop"}`) })}</p>
+            <p className="text-white/70 text-sm mt-4">{t("cameraViewer.waitingForStart", { device: t(`settings.${deviceType || "laptop"}`) })}</p>
           </div>
         )}
 
