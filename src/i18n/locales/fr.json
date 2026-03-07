@@ -118,7 +118,8 @@
     "photoAlertHistory": "Historique des alertes photo",
     "updatedAt": "Mis à jour",
     "editProfileNotice": "modifiable uniquement sur",
-    "legalTerms": "Conditions / Mentions Légales"
+    "legalTerms": "Conditions / Mentions Légales",
+    "checkUpdate": "Vérifier les mises à jour"
   },
   "errorBoundary": {
     "title": "Un problème est survenu",

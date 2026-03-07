@@ -118,7 +118,8 @@
     "photoAlertHistory": "Historial de alertas con fotos",
     "updatedAt": "Actualizado",
     "editProfileNotice": "solo se puede editar en",
-    "legalTerms": "Términos / Aviso Legal"
+    "legalTerms": "Términos / Aviso Legal",
+    "checkUpdate": "Buscar actualizaciones"
   },
   "errorBoundary": {
     "title": "Algo salió mal",

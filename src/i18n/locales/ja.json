@@ -118,7 +118,8 @@
     "photoAlertHistory": "写真アラート履歴",
     "updatedAt": "更新",
     "editProfileNotice": "でのみ編集可能です",
-    "legalTerms": "利用規約 / 法的通知"
+    "legalTerms": "利用規約 / 法的通知",
+    "checkUpdate": "アップデートを確認"
   },
   "errorBoundary": {
     "title": "問題が発生しました",
