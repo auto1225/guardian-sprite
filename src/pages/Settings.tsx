@@ -735,18 +735,9 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
                       </button>
                     ))}
                   </div>
-                </div>
-              </>
-            )}
-
             <div className="border-t border-white/10" />
             <SensorSection>
-              <SensorToggle label={t("settings.usbDetection")} description={t("settings.usbDetectionDesc")} checked={sensorSettings.usb} onChange={(v) => handleSensorToggle("usb", v)} />
-            </SensorSection>
-
-            <div className="border-t border-white/10" />
-            <SensorSection>
-              <SensorToggle label={t("settings.powerDetection")} description={t("settings.powerDetectionDesc")} checked={sensorSettings.power} onChange={(v) => handleSensorToggle("power", v)} />
+              <SensorToggle label={t("settings.screenTouchDetection")} description={t("settings.screenTouchDetectionDesc")} checked={sensorSettings.screenTouch} onChange={(v) => handleSensorToggle("screenTouch", v)} />
             </SensorSection>
           </div>
 
