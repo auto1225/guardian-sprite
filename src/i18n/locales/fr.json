@@ -114,7 +114,8 @@
     "loggedOutDesc": "Vous avez été déconnecté en toute sécurité.",
     "remoteCommands": "Commandes à distance",
     "locationHistory": "Historique des positions",
-    "photoAlertHistory": "Historique des alertes photo"
+    "photoAlertHistory": "Historique des alertes photo",
+    "updatedAt": "Mis à jour"
   },
   "deviceList": {
     "selectDevice": "Sélectionner un appareil"

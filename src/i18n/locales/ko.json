@@ -126,7 +126,8 @@
     "legalTerms": "이용약관 / 법적고지",
     "logout": "로그아웃",
     "loggedOut": "로그아웃",
-    "loggedOutDesc": "안전하게 로그아웃되었습니다."
+    "loggedOutDesc": "안전하게 로그아웃되었습니다.",
+    "updatedAt": "업데이트"
   },
   "deviceList": {
     "selectDevice": "기기 선택",

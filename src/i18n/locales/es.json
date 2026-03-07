@@ -114,7 +114,8 @@
     "loggedOutDesc": "Has cerrado sesión de forma segura.",
     "remoteCommands": "Comandos remotos",
     "locationHistory": "Historial de ubicaciones",
-    "photoAlertHistory": "Historial de alertas con fotos"
+    "photoAlertHistory": "Historial de alertas con fotos",
+    "updatedAt": "Actualizado"
   },
   "deviceList": {
     "selectDevice": "Seleccionar dispositivo"
