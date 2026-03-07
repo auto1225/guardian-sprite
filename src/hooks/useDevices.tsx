@@ -20,6 +20,8 @@ const devicePresenceData = new Map<string, { is_network_connected?: boolean; is_
 // ★ serial_key → Presence 데이터 인덱스 (queryFn에서 cross-DB 매칭용)
 const presenceBySerialKey = new Map<string, { is_network_connected?: boolean; is_camera_connected?: boolean; device_name?: string }>();
 const devicePresenceNames = new Map<string, string>(); // Presence/Broadcast에서 확인된 최신 이름
+// ★ Presence key → 공유 DB device ID 매핑 (leave→sync 경합 방지용)
+const presenceKeyToDeviceId = new Map<string, string>();
 const deviceChargingMap = new Map<string, boolean>(); // Presence-only: is_charging per deviceId
 const cameraDbVerified = new Map<string, number>(); // DB에서 camera=true 확인된 시각 (30초간 Presence 무시)
 // ★ 카메라 다운그레이드 grace period 타이머
@@ -84,6 +86,7 @@ function cleanupAllChannels() {
   realtimeConfirmedOnline.clear();
   devicePresenceNames.clear();
   presenceBySerialKey.clear();
+  presenceKeyToDeviceId.clear();
   activeUserId = null;
   subscriberCount = 0;
   presenceInitialSynced = false;
