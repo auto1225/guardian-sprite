@@ -538,7 +538,6 @@ export const useDevices = () => {
               // ★ Presence에 없는 비-스마트폰 기기 → DB heartbeat 폴백 확인
               if (d.status !== "offline") {
                 // ★ 활성 grace timer가 있으면 offline 강제 전환하지 않음 (leave→sync 경합 방지)
-                const deviceSerialKey = (d.metadata as Record<string, unknown>)?.serial_key as string | undefined;
                 const hasActiveGraceTimer = Array.from(activeLeaveTimers.keys()).some(timerKey => {
                   // 직접 매칭: timer key === device ID
                   if (timerKey === d.id) return true;
