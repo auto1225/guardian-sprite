@@ -1,12 +1,15 @@
+import { useState, useEffect, useCallback } from "react";
 import meercopOff from "@/assets/meercop-off.png";
 import meercopOn from "@/assets/meercop-on.png";
 import meercopAlert from "@/assets/meercop-alert.png";
 import mainBg from "@/assets/main-bg.png";
+import { getSelectedBackground } from "@/lib/backgroundPresets";
 
 interface MeercopCharacterProps {
   isMonitoring?: boolean;
   isAlert?: boolean;
   statusMessage?: string;
+  bgVersion?: number;
 }
 
 const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage }: MeercopCharacterProps) => {
