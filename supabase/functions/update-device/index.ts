@@ -63,14 +63,15 @@ Deno.serve(async (req) => {
 
     // ★ 기기명 중복 검사 (같은 user_id 내에서 동일 이름의 다른 기기가 있는지)
     if (updates.name) {
-      // 먼저 현재 기기의 user_id를 조회
+      // 먼저 현재 기기의 user_id와 현재 이름을 조회
       const { data: currentDevice } = await supabase
         .from("devices")
-        .select("user_id")
+        .select("user_id, name")
         .eq("id", device_id)
         .single();
 
-      if (currentDevice) {
+      // 이름이 실제로 변경되는 경우에만 중복 검사
+      if (currentDevice && updates.name !== currentDevice.name) {
         const { data: dupDevice } = await supabase
           .from("devices")
           .select("id")
