@@ -20,6 +20,8 @@ const devicePresenceData = new Map<string, { is_network_connected?: boolean; is_
 // ★ serial_key → Presence 데이터 인덱스 (queryFn에서 cross-DB 매칭용)
 const presenceBySerialKey = new Map<string, { is_network_connected?: boolean; is_camera_connected?: boolean; device_name?: string }>();
 const devicePresenceNames = new Map<string, string>(); // Presence/Broadcast에서 확인된 최신 이름
+// ★ Presence key → 공유 DB device ID 매핑 (leave→sync 경합 방지용)
+const presenceKeyToDeviceId = new Map<string, string>();
 const deviceChargingMap = new Map<string, boolean>(); // Presence-only: is_charging per deviceId
 const cameraDbVerified = new Map<string, number>(); // DB에서 camera=true 확인된 시각 (30초간 Presence 무시)
 // ★ 카메라 다운그레이드 grace period 타이머
@@ -84,6 +86,7 @@ function cleanupAllChannels() {
   realtimeConfirmedOnline.clear();
   devicePresenceNames.clear();
   presenceBySerialKey.clear();
+  presenceKeyToDeviceId.clear();
   activeUserId = null;
   subscriberCount = 0;
   presenceInitialSynced = false;
@@ -535,18 +538,11 @@ export const useDevices = () => {
               // ★ Presence에 없는 비-스마트폰 기기 → DB heartbeat 폴백 확인
               if (d.status !== "offline") {
                 // ★ 활성 grace timer가 있으면 offline 강제 전환하지 않음 (leave→sync 경합 방지)
-                const deviceSerialKey = (d.metadata as Record<string, unknown>)?.serial_key as string | undefined;
                 const hasActiveGraceTimer = Array.from(activeLeaveTimers.keys()).some(timerKey => {
                   // 직접 매칭: timer key === device ID
                   if (timerKey === d.id) return true;
-                  // cross-DB 매칭: timer key의 serial_key로 연결된 기기
-                  if (deviceSerialKey) {
-                    const state = activePresenceChannel?.presenceState() || {};
-                    // leave된 key이므로 state에는 없지만, timerKey가 이전에 이 기기와 매칭되었는지 확인
-                    // realtimeConfirmedOnline에 아직 등록되어 있으면 grace period 중
-                    return realtimeConfirmedOnline.has(d.id);
-                  }
-                  return false;
+                  // cross-DB 매칭: 이전에 이 device에 매핑된 Presence key의 leave timer 확인
+                  return presenceKeyToDeviceId.get(timerKey) === d.id;
                 });
 
                 if (hasActiveGraceTimer) {
@@ -574,6 +570,8 @@ export const useDevices = () => {
               }
               return d;
             }
+            // ★ 매칭된 Presence key → 공유 DB ID 매핑 기록
+            presenceKeyToDeviceId.set(match.key, d.id);
             matchedKeys.add(match.key);
 
             const latest = match.data;
