@@ -30,8 +30,14 @@ Deno.serve(async (req) => {
       );
     }
 
+    // value is stored as JSON string, strip quotes if needed
+    let version = data.value;
+    if (typeof version === "string" && version.startsWith('"')) {
+      version = JSON.parse(version);
+    }
+
     return new Response(
-      JSON.stringify({ latest_version: data.value }),
+      JSON.stringify({ latest_version: version }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
