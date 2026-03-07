@@ -49,7 +49,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
   const { toast } = useToast();
   const { t } = useTranslation();
   const { refreshSerials, serials: authSerials } = useAuth();
-  const [licenses, setLicenses] = useState<{ serial_key: string; device_id: string | null; is_active: boolean }[]>([]);
+  const [licenses, setLicenses] = useState<{ serial_key: string; device_id: string | null; is_active: boolean; device_name: string | null }[]>([]);
   const [settingsDeviceId, setSettingsDeviceId] = useState(initialDeviceId);
 
   useEffect(() => {
@@ -65,7 +65,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
     const fetchLicenses = async () => {
       const { data } = await supabase
         .from("licenses")
-        .select("serial_key, device_id, is_active")
+        .select("serial_key, device_id, is_active, device_name")
         .eq("user_id", device.user_id)
         .order("created_at", { ascending: true });
       setLicenses(data ?? []);

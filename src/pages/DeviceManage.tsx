@@ -70,7 +70,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
   });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [customOrder, setCustomOrder] = useState<string[]>([]);
-  const [licenseMap, setLicenseMap] = useState<Map<string, string>>(new Map());
+  const [licenseMap, setLicenseMap] = useState<Map<string, { device_id: string; device_name: string | null }>>(new Map());
   const [iconPanel, setIconPanel] = useState<{ type: "locationMap" | "camera" | "networkInfo"; deviceId: string } | null>(null);
   const [settingsDeviceId, setSettingsDeviceId] = useState<string | null>(null);
 
@@ -116,12 +116,12 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
         if (serialKeys.length === 0) return;
         const { data: licData, error: licError } = await supabase
           .from("licenses")
-          .select("serial_key, device_id")
+          .select("serial_key, device_id, device_name")
           .in("serial_key", serialKeys);
         if (licError) return;
-        const map = new Map<string, string>();
+        const map = new Map<string, { device_id: string; device_name: string | null }>();
         for (const lic of (licData || [])) {
-          if (lic.serial_key && lic.device_id) map.set(lic.serial_key, lic.device_id);
+          if (lic.serial_key && lic.device_id) map.set(lic.serial_key, { device_id: lic.device_id, device_name: lic.device_name ?? null });
         }
         setLicenseMap(map);
       } catch {}
@@ -146,9 +146,9 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
       }
 
       if (!matched) {
-        const linkedDeviceId = licenseMap.get(serial.serial_key);
-        if (linkedDeviceId) {
-          const device = managedDevices.find(d => d.id === linkedDeviceId && !usedDeviceIds.has(d.id));
+        const licEntry = licenseMap.get(serial.serial_key);
+        if (licEntry) {
+          const device = managedDevices.find(d => d.id === licEntry.device_id && !usedDeviceIds.has(d.id));
           if (device) {
             const deviceSerial = (device.metadata as Record<string, unknown>)?.serial_key as string | undefined;
             // ★ 기기의 metadata.serial_key가 다른 시리얼이면 매칭 거부 (잘못된 크로스 매칭 방지)
