@@ -1,7 +1,7 @@
 // src/lib/broadcastCommand.ts
-// 기기별 독립 명령 브로드캐스트 유틸리티
-// targetDeviceId가 있으면 device-commands-${deviceId} 채널로 전송 (기기 독립)
-// 없으면 user-commands-${userId} 채널로 전송 (계정 레벨)
+// 명령 브로드캐스트 유틸리티
+// 항상 user-commands-${userId} 채널로 전송
+// payload에 device_id가 있으면 device-commands-${deviceId}에도 동시 전송 (하위 호환)
 
 import { supabase } from "@/integrations/supabase/client";
 
@@ -10,14 +10,14 @@ interface BroadcastOptions {
   event: string;
   payload: Record<string, unknown>;
   timeoutMs?: number;
-  /** 기기별 독립 채널로 전송 (device-commands-${deviceId}) */
+  /** @deprecated 사용하지 않음. payload.device_id로 자동 감지 */
   targetDeviceId?: string;
 }
 
 /**
- * user-commands-${userId} 채널로 명령을 브로드캐스트합니다.
- * - userId 기반이므로 device_id 불일치 문제가 없습니다.
- * - 페이로드에 반드시 device_id를 포함해야 노트북이 대상 기기를 식별할 수 있습니다.
+ * 명령을 브로드캐스트합니다.
+ * 1) user-commands-${userId} 채널로 전송 (주 채널)
+ * 2) payload.device_id가 있으면 device-commands-${deviceId}에도 전송 (하위 호환)
  * - best-effort: 실패해도 예외를 던지지 않습니다.
  */
 export async function broadcastCommand({
@@ -25,22 +25,34 @@ export async function broadcastCommand({
   event,
   payload,
   timeoutMs = 5000,
-  targetDeviceId,
 }: BroadcastOptions): Promise<void> {
-  const channelName = targetDeviceId
-    ? `device-commands-${targetDeviceId}`
-    : `user-commands-${userId}`;
+  const channels: string[] = [`user-commands-${userId}`];
 
+  // ★ payload에 device_id가 있으면 device-commands 채널에도 전송 (하위 호환)
+  const deviceId = payload.device_id as string | undefined;
+  if (deviceId) {
+    channels.push(`device-commands-${deviceId}`);
+  }
+
+  // 모든 채널에 병렬 전송
+  await Promise.all(channels.map(channelName => sendToChannel(channelName, event, payload, timeoutMs)));
+}
+
+async function sendToChannel(
+  channelName: string,
+  event: string,
+  payload: Record<string, unknown>,
+  timeoutMs: number,
+): Promise<void> {
   // ★ 기존 활성 채널이 있으면 재사용 (useDevices 등의 영구 구독 보호)
   const existing = supabase.getChannels().find(
     (ch) => ch.topic === `realtime:${channelName}`
   );
 
   if (existing) {
-    // 이미 SUBSCRIBED 상태인 채널로 바로 전송
     try {
       await existing.send({ type: "broadcast", event, payload });
-      console.log(`[broadcastCommand] ✅ ${event} sent via existing ${channelName}`, payload);
+      console.log(`[broadcastCommand] ✅ ${event} sent via existing ${channelName}`);
     } catch (err) {
       console.warn(`[broadcastCommand] ⚠️ ${event} send via existing channel failed:`, err);
     }
@@ -61,7 +73,7 @@ export async function broadcastCommand({
           clearTimeout(timeout);
           channel.send({ type: "broadcast", event, payload })
             .then(() => {
-              console.log(`[broadcastCommand] ✅ ${event} sent via temp ${channelName}`, payload);
+              console.log(`[broadcastCommand] ✅ ${event} sent via temp ${channelName}`);
               supabase.removeChannel(channel);
               resolve();
             });
@@ -73,6 +85,6 @@ export async function broadcastCommand({
       });
     });
   } catch (err) {
-    console.warn(`[broadcastCommand] ⚠️ ${event} broadcast failed (best-effort):`, err);
+    console.warn(`[broadcastCommand] ⚠️ ${event} broadcast to ${channelName} failed:`, err);
   }
 }
