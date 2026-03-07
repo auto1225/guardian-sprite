@@ -28,12 +28,9 @@ Deno.serve(async (req) => {
 
     const normalizedSerialKey = serial_key ? String(serial_key).trim().toUpperCase() : null;
     const effectiveType = device_type || "laptop";
-    // ★ 관리 대상 기기 = 시리얼 키가 있는 기기 (스마트폰 포함)
-    // 컨트롤러 = 시리얼 키 없는 스마트폰
     const isController = effectiveType === "smartphone" && !normalizedSerialKey;
     const managedDeviceTypes = ["laptop", "desktop", "tablet", "smartphone"];
 
-    // ★ 컨트롤러가 아닌 기기는 시리얼 키 필수
     if (!isController && !normalizedSerialKey) {
       return new Response(
         JSON.stringify({ error: "SERIAL_REQUIRED", message: "시리얼 키가 필요합니다." }),
@@ -41,7 +38,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ★ 기존 기기 조회: device_id_override가 UUID 형식이면 직접 조회, 아니면 시리얼 키 또는 user_id + device_type으로 조회
+    // ★ 시리얼 키가 있으면 licenses.device_name을 SSOT로 사용
+    let licenseDeviceName: string | null = null;
+    if (normalizedSerialKey) {
+      const { data: licRecord } = await supabaseAdmin
+        .from("licenses")
+        .select("device_name, device_id")
+        .eq("serial_key", normalizedSerialKey)
+        .eq("user_id", user_id)
+        .maybeSingle();
+      licenseDeviceName = licRecord?.device_name || null;
+    }
+
+    // ★ 기존 기기 조회
     let existing: any = null;
 
     if (device_id_override) {
@@ -58,8 +67,6 @@ Deno.serve(async (req) => {
 
     if (!existing) {
       if (!isController && normalizedSerialKey) {
-        // ★ 관리 대상 기기 (스마트폰 포함): 시리얼 키 기반 조회
-        // 1) metadata.serial_key로 조회 — 중복이 있을 수 있으므로 전체 조회 후 정리
         const { data: allMatches } = await supabaseAdmin
           .from("devices")
           .select("id, name, device_type, status, metadata, created_at")
@@ -79,7 +86,6 @@ Deno.serve(async (req) => {
           }
         }
 
-        // 2) licenses 테이블에서 device_id 조회
         if (!existing) {
           const { data: licData } = await supabaseAdmin
             .from("licenses")
@@ -97,7 +103,6 @@ Deno.serve(async (req) => {
           }
         }
       } else if (isController) {
-        // ★ 컨트롤러 스마트폰: user_id + device_type + 시리얼 키 없음으로 조회
         const { data: controllers } = await supabaseAdmin
           .from("devices")
           .select("id, name, device_type, status, metadata")
@@ -105,7 +110,6 @@ Deno.serve(async (req) => {
           .eq("device_type", "smartphone")
           .order("created_at", { ascending: true });
 
-        // 시리얼 키가 없는 스마트폰만 컨트롤러
         const controllerDevice = controllers?.find(
           (d: any) => !((d.metadata as Record<string, unknown>)?.serial_key)
         );
@@ -120,28 +124,34 @@ Deno.serve(async (req) => {
         last_seen_at: new Date().toISOString(),
       };
 
-      // serial_key를 metadata에 저장 (핵심: 이것으로 DeviceManage에서 매칭)
       if (normalizedSerialKey) {
         updatePayload.metadata = { ...currentMeta, serial_key: normalizedSerialKey };
       }
 
-      // ★ 재접속 시 이름 덮어쓰기 금지!
-      // 이름 변경은 name_changed 브로드캐스트 + update-device를 통해서만 수행.
-      // 노트북 로컬 DB 이름이 공유 DB 이름과 다를 수 있지만,
-      // 공유 DB의 이름을 정본(Single Source of Truth)으로 취급함.
-      // 대신 현재 공유 DB 이름을 응답에 포함하여 노트북이 동기화할 수 있게 함.
+      // ★ licenses.device_name이 SSOT — 있으면 devices.name 동기화
+      const authoritativeName = licenseDeviceName || device_name || existing.name;
+      if (authoritativeName && authoritativeName !== existing.name) {
+        updatePayload.name = authoritativeName;
+        console.log(`[register-device] 📛 Name synced from licenses SSOT: "${existing.name}" → "${authoritativeName}"`);
+      }
 
       await supabaseAdmin
         .from("devices")
         .update(updatePayload)
         .eq("id", existing.id);
 
-      // licenses 테이블 upsert
+      // licenses 테이블 upsert (device_name 포함)
       if (normalizedSerialKey) {
         await supabaseAdmin
           .from("licenses")
           .upsert(
-            { serial_key: normalizedSerialKey, device_id: existing.id, user_id, is_active: true },
+            {
+              serial_key: normalizedSerialKey,
+              device_id: existing.id,
+              user_id,
+              is_active: true,
+              device_name: authoritativeName,
+            },
             { onConflict: "serial_key" }
           );
       }
@@ -150,7 +160,7 @@ Deno.serve(async (req) => {
         JSON.stringify({
           success: true,
           device_id: existing.id,
-          device_name: existing.name, // ★ 공유 DB의 정본 이름 반환 (노트북 동기화용)
+          device_name: authoritativeName,
           reconnected: true,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -158,9 +168,10 @@ Deno.serve(async (req) => {
     }
 
     // 새 기기 등록
-    const finalName = device_name || "My Device";
+    // ★ 이름 결정 우선순위: licenses.device_name > 요청 device_name > 기본값
+    const finalName = licenseDeviceName || device_name || "My Device";
 
-    // ★ 기기명 중복 검사 (같은 user_id 내에서 동일 이름의 다른 기기가 있는지)
+    // 기기명 중복 검사
     if (finalName && finalName !== "My Device") {
       const { data: dupDevice } = await supabaseAdmin
         .from("devices")
@@ -204,12 +215,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    // licenses 테이블 upsert
+    // licenses 테이블 upsert (device_name 포함)
     if (normalizedSerialKey) {
       await supabaseAdmin
         .from("licenses")
         .upsert(
-          { serial_key: normalizedSerialKey, device_id: newDevice.id, user_id, is_active: true },
+          {
+            serial_key: normalizedSerialKey,
+            device_id: newDevice.id,
+            user_id,
+            is_active: true,
+            device_name: finalName,
+          },
           { onConflict: "serial_key" }
         );
     }
@@ -218,6 +235,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         device_id: newDevice.id,
+        device_name: finalName,
         reconnected: false,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
