@@ -621,6 +621,10 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
                 isDragging={dragFromIdx === localIdx}
                 showHandle={true}
                 onHandlePointerDown={(e) => handleDragPointerDown(e, localIdx)}
+                onDoubleClick={(deviceId) => {
+                  onSelectDevice(deviceId);
+                  onClose();
+                }}
                 t={t}
               />
             </div>
@@ -740,6 +744,7 @@ interface DeviceCardProps {
   onToggleCamouflage: (deviceId: string) => void;
   onIconClick?: (deviceId: string, type: "laptop" | "network" | "camera") => void;
   onSettingsClick?: (deviceId: string) => void;
+  onDoubleClick?: (deviceId: string) => void;
   isDragging: boolean;
   showHandle: boolean;
   onHandlePointerDown: (e: React.PointerEvent) => void;
@@ -749,7 +754,7 @@ interface DeviceCardProps {
 const DeviceCard = memo(({
   item, itemKey: key, isSelected, serialNumber, onToggleSelect,
   onSetAsMain, onNumberChange, onDelete, onViewAlertHistory, onToggleMonitoring,
-  onToggleCamouflage, onIconClick, onSettingsClick, isDragging, showHandle, onHandlePointerDown, t,
+  onToggleCamouflage, onIconClick, onSettingsClick, onDoubleClick, isDragging, showHandle, onHandlePointerDown, t,
 }: DeviceCardProps) => {
   const { serial, device } = item;
   const isMain = !!(device && (device.metadata as Record<string, unknown>)?.is_main);
