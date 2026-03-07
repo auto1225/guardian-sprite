@@ -162,8 +162,24 @@ export default function PhotoAlertOverlay({
         )}
       </div>
 
+      {/* ★ 기기명 + 시리얼 카드 — 스크롤 영역 밖 고정 */}
+      {(alertDeviceName || alert.device_name) && (
+        <div className="px-4 pb-3 shrink-0 relative z-[500]">
+          <div className="bg-white/15 backdrop-blur-md border border-white/20 rounded-xl p-3 shadow-lg">
+            <div className="flex items-center gap-2">
+              <span className="text-yellow-200 font-black text-base leading-tight">
+                {alertDeviceName || alert.device_name}
+              </span>
+              {alertDeviceSerial && (
+                <span className="text-yellow-200/60 text-[10px] font-mono">({alertDeviceSerial})</span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Scrollable content area */}
-      <div className="flex-1 overflow-y-auto alert-glass-scroll">
+      <div className="flex-1 overflow-y-auto alert-glass-scroll" style={{ contain: 'strict', overflowY: 'auto' }}>
         {receiving && (
           <div className="px-4 pb-2">
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-3">
