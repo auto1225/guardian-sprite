@@ -38,11 +38,11 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
         className="scene-mask"
         style={{
           position: 'fixed',
-          bottom: 0,
+          top: 0,
           left: 0,
           width: '100%',
-          height: '50vh',
-          overflow: 'visible',
+          height: '100dvh',
+          overflow: 'hidden',
           display: 'flex',
           alignItems: 'flex-end',
           pointerEvents: 'none',
