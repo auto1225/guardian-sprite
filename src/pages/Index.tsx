@@ -398,8 +398,9 @@ const Index = () => {
               return;
             }
             if (!guard("camouflage_mode")) return;
-            const currentMeta = (selectedDevice.metadata as Record<string, unknown>) || {};
-            const newVal = !currentMeta.camouflage_mode;
+            const newVal = !buttonCamouflage;
+            // ★ 버튼 즉시 토글
+            setOptimisticCamouflage(newVal);
             try {
               await safeMetadataUpdate(selectedDevice.id, { camouflage_mode: newVal });
 
