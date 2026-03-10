@@ -60,9 +60,7 @@ const DeviceCard = ({ device, isSelected, isMain, isCharging, onSelect }: Device
             ) : null;
           })()}
         </div>
-        {(device.device_type !== "smartphone" || !!(device.metadata as Record<string, unknown>)?.serial_key) && (
-          {(() => {
-            // ★ 기기가 오프라인이면 is_monitoring이 true여도 OFF로 표시
+        {(device.device_type !== "smartphone" || !!(device.metadata as Record<string, unknown>)?.serial_key) && (() => {
             const effectiveMonitoring = device.is_monitoring && device.status !== "offline";
             return (
               <span
@@ -76,7 +74,6 @@ const DeviceCard = ({ device, isSelected, isMain, isCharging, onSelect }: Device
               </span>
             );
           })()}
-        )}
       </div>
 
       {/* Row 2: Status icons + Battery */}
