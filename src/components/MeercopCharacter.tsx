@@ -47,7 +47,6 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
           alignItems: 'flex-end',
           pointerEvents: 'none',
           zIndex: 0,
-          background: 'linear-gradient(180deg, hsla(200, 70%, 65%, 1) 0%, hsla(200, 75%, 55%, 1) 100%)',
         }}
       >
         {/* 
