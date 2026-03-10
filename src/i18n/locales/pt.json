@@ -590,7 +590,10 @@
     "resume": "Retomar streaming",
     "pause": "Pausar streaming",
     "snapshot": "Salvar captura",
-    "download": "Baixar"
+    "download": "Baixar",
+    "fullscreen": "Tela cheia",
+    "exitFullscreen": "Sair da tela cheia",
+    "live": "AO VIVO"
   },
   "notFound": {
     "title": "404",
