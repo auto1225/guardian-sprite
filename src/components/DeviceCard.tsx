@@ -60,17 +60,20 @@ const DeviceCard = ({ device, isSelected, isMain, isCharging, onSelect }: Device
             ) : null;
           })()}
         </div>
-        {(device.device_type !== "smartphone" || !!(device.metadata as Record<string, unknown>)?.serial_key) && (
-          <span
-            className={`px-2.5 py-1 rounded-full text-xs font-bold shadow-sm shrink-0 ${
-              device.is_monitoring
-                ? "bg-status-active/90 text-white shadow-[0_0_8px_rgba(76,175,80,0.4)]"
-                : "bg-white/15 text-white/70 backdrop-blur-sm"
-            }`}
-          >
-            {device.is_monitoring ? "ON" : "OFF"}
-          </span>
-        )}
+        {(device.device_type !== "smartphone" || !!(device.metadata as Record<string, unknown>)?.serial_key) && (() => {
+            const effectiveMonitoring = device.is_monitoring && device.status !== "offline";
+            return (
+              <span
+                className={`px-2.5 py-1 rounded-full text-xs font-bold shadow-sm shrink-0 ${
+                  effectiveMonitoring
+                    ? "bg-status-active/90 text-white shadow-[0_0_8px_rgba(76,175,80,0.4)]"
+                    : "bg-white/15 text-white/70 backdrop-blur-sm"
+                }`}
+              >
+                {effectiveMonitoring ? "ON" : "OFF"}
+              </span>
+            );
+          })()}
       </div>
 
       {/* Row 2: Status icons + Battery */}
