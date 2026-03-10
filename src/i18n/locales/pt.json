@@ -55,7 +55,9 @@
     "statusChangeFailed": "Falha ao alterar o status.",
     "alertMessage": "Impacto detectado no notebook!",
     "readyMessage": "MeerCOP pronto para monitorar! Você pode iniciar o monitoramento a qualquer momento.",
-    "monitoringMessage": "MeerCOP está monitorando seu notebook."
+    "monitoringMessage": "MeerCOP está monitorando seu notebook.",
+    "deviceLoggedOut": "⚠️ O computador fez logout. Ele se reconectará automaticamente ao fazer login novamente.",
+    "deviceOfflineActionDesc": "Não é possível conectar porque o computador fez logout ou está offline."
   },
   "toggle": {
     "startMonitoring": "Iniciar monitoramento",
