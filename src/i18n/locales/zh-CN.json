@@ -28,7 +28,9 @@
     "or": "或",
     "adding": "注册中...",
     "register": "注册",
-    "copied": "已复制"
+    "copied": "已复制",
+    "noDevice": "无设备",
+    "noDeviceDesc": "未找到已连接的设备。请先在笔记本上使用序列号登录。"
   },
   "header": {
     "openMenu": "打开菜单",
