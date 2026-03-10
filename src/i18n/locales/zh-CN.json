@@ -416,6 +416,7 @@
   "help": {
     "title": "使用指南",
     "appIntro": "笔记本防盗与远程监控应用",
+    "tocTitle": "📖 目录",
     "sections": {
       "appIntroTitle": "应用介绍",
       "appIntroContent": "<strong>MeerCOP</strong>是一款用于防止笔记本（电脑）被盗和未经授权使用的实时监控应用。在手机上开启监控后，当笔记本检测到移动、触碰、盖子打开等情况时，会立即发出警报，并通过照片、位置和实时直播掌握情况。",

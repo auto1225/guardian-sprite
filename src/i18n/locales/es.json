@@ -416,6 +416,7 @@
   "help": {
     "title": "Guía de uso",
     "appIntro": "App antirrobo y vigilancia remota de portátiles",
+    "tocTitle": "📖 Índice",
     "sections": {
       "appIntroTitle": "Acerca de la app",
       "appIntroContent": "<strong>MeerCOP</strong> es una app de vigilancia en tiempo real para prevenir el robo y uso no autorizado de portátiles. Al activar la vigilancia desde tu smartphone, cualquier movimiento, toque o apertura de tapa detectada en el portátil activa una alarma inmediata con fotos, ubicación y transmisión en vivo.",
