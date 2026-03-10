@@ -40,6 +40,7 @@
     "laptop": "Laptop",
     "desktop": "Desktop",
     "tablet": "Tablet",
+    "smartphone": "Smartphone",
     "network": "Netzwerk",
     "camera": "Kamera",
     "settings": "Einstellungen"
