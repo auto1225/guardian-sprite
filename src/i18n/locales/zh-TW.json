@@ -590,7 +590,10 @@
     "resume": "恢復串流",
     "pause": "暫停串流",
     "snapshot": "儲存快照",
-    "download": "下載"
+    "download": "下載",
+    "fullscreen": "全螢幕",
+    "exitFullscreen": "退出全螢幕",
+    "live": "直播"
   },
   "notFound": {
     "title": "404",
