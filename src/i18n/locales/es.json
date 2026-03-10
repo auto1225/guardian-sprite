@@ -590,7 +590,10 @@
     "resume": "Reanudar transmisión",
     "pause": "Pausar transmisión",
     "snapshot": "Guardar captura",
-    "download": "Descargar"
+    "download": "Descargar",
+    "fullscreen": "Pantalla completa",
+    "exitFullscreen": "Salir de pantalla completa",
+    "live": "EN VIVO"
   },
   "notFound": {
     "title": "404",
