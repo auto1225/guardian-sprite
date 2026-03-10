@@ -621,6 +621,12 @@
     "renewButton": "Auf meercop.com erneuern",
     "renewNotice": "Nach der Erneuerung starten Sie die App neu."
   },
+  "upgrade": {
+    "required": "🔒 Upgrade erforderlich",
+    "featureLocked": "Diese Funktion ist in Ihrem aktuellen Tarif nicht verfügbar. Bitte upgraden Sie auf der Website.",
+    "limitReached": "🔒 Limit erreicht",
+    "maxDevicesReached": "Sie haben die maximale Anzahl an Geräten erreicht. Upgraden Sie, um weitere hinzuzufügen."
+  },
   "permissions": {
     "title": "Berechtigungen erforderlich",
     "subtitle": "MeerCOP benötigt die folgenden Berechtigungen für Sicherheitsfunktionen.",
