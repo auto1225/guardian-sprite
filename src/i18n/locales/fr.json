@@ -72,6 +72,18 @@
     "allDismissed": "Alarme désactivée",
     "allDismissedDesc": "Toutes les alarmes ont été désactivées."
   },
+  "commandAck": {
+    "monitoringOnSent": "Commande d'activation de la surveillance envoyée",
+    "monitoringOffSent": "Commande de désactivation de la surveillance envoyée",
+    "monitoringOnConfirmed": "✅ Surveillance activée confirmée sur l'ordinateur",
+    "monitoringOffConfirmed": "✅ Surveillance désactivée confirmée sur l'ordinateur",
+    "camouflageOnConfirmed": "✅ Mode camouflage activé confirmé sur l'ordinateur",
+    "camouflageOffConfirmed": "✅ Mode camouflage désactivé confirmé sur l'ordinateur",
+    "commandConfirmedDesc": "L'ordinateur a appliqué le changement.",
+    "commandTimeout": "⚠️ Pas de réponse de l'ordinateur",
+    "commandTimeoutDesc": "La commande a été envoyée mais aucune confirmation n'a été reçue. L'ordinateur est peut-être hors ligne.",
+    "waitingForDevice": "En attente de la réponse de l'ordinateur..."
+  },
   "alert": {
     "securityAlert": "🚨 Alerte de sécurité",
     "liveStreaming": "🎥 Diffusion en direct",
