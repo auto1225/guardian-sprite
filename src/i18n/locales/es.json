@@ -157,7 +157,8 @@
     "reload": "Recargar"
   },
   "deviceList": {
-    "selectDevice": "Seleccionar dispositivo"
+    "selectDevice": "Seleccionar dispositivo",
+    "waitingForDevice": "⏳ Esperando dispositivo..."
   },
   "camouflage": {
     "onTitle": "Modo camuflaje ON",
