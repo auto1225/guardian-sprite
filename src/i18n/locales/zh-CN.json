@@ -55,7 +55,9 @@
     "statusChangeFailed": "状态更改失败。",
     "alertMessage": "检测到笔记本受到撞击！",
     "readyMessage": "MeerCOP监控准备就绪！随时可以开始监控。",
-    "monitoringMessage": "MeerCOP正在监控您的笔记本。"
+    "monitoringMessage": "MeerCOP正在监控您的笔记本。",
+    "deviceLoggedOut": "⚠️ 电脑已注销。重新登录后将自动重新连接。",
+    "deviceOfflineActionDesc": "电脑已注销或离线，无法连接。"
   },
   "toggle": {
     "startMonitoring": "开始监控",
