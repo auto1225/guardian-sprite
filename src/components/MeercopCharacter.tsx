@@ -58,9 +58,11 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
           className="content-wrapper"
           style={{
             width: '100%',
+            height: '100%',
             position: 'relative',
             display: 'flex',
             justifyContent: 'center',
+            alignItems: 'flex-end',
           }}
         >
           {/* 
