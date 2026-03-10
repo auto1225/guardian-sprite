@@ -28,7 +28,9 @@
     "or": "o",
     "adding": "Registrando...",
     "register": "Registrar",
-    "copied": "Copiado"
+    "copied": "Copiado",
+    "noDevice": "Sin dispositivo",
+    "noDeviceDesc": "No se encontró ningún dispositivo conectado. Inicia sesión con tu serie en el portátil primero."
   },
   "header": {
     "openMenu": "Abrir menú",
