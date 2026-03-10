@@ -416,6 +416,7 @@
   "help": {
     "title": "Manual do usuário",
     "appIntro": "App de proteção contra roubo e monitoramento remoto de notebook",
+    "tocTitle": "📖 Índice",
     "sections": {
       "appIntroTitle": "Introdução",
       "appIntroContent": "<strong>MeerCOP</strong> é um app de monitoramento em tempo real para proteger contra roubo e uso não autorizado de notebooks.",
