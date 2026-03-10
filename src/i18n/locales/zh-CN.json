@@ -157,7 +157,8 @@
     "reload": "刷新"
   },
   "deviceList": {
-    "selectDevice": "选择设备"
+    "selectDevice": "选择设备",
+    "waitingForDevice": "⏳ 等待设备..."
   },
   "camouflage": {
     "onTitle": "伪装模式 ON",
