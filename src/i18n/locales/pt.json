@@ -28,7 +28,9 @@
     "or": "ou",
     "adding": "Registrando...",
     "register": "Registrar",
-    "copied": "Copiado"
+    "copied": "Copiado",
+    "noDevice": "Sem dispositivo",
+    "noDeviceDesc": "Nenhum dispositivo conectado encontrado. Faça login com seu número de série no notebook primeiro."
   },
   "header": {
     "openMenu": "Abrir menu",
