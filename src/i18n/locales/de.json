@@ -28,7 +28,9 @@
     "or": "oder",
     "adding": "Registrierung...",
     "register": "Registrieren",
-    "copied": "Kopiert"
+    "copied": "Kopiert",
+    "noDevice": "Kein Gerät",
+    "noDeviceDesc": "Kein verbundenes Gerät gefunden. Bitte melden Sie sich zuerst mit Ihrer Seriennummer am Laptop an."
   },
   "header": {
     "openMenu": "Menü öffnen",
@@ -38,6 +40,7 @@
     "laptop": "Laptop",
     "desktop": "Desktop",
     "tablet": "Tablet",
+    "smartphone": "Smartphone",
     "network": "Netzwerk",
     "camera": "Kamera",
     "settings": "Einstellungen"
@@ -52,7 +55,9 @@
     "statusChangeFailed": "Statusänderung fehlgeschlagen.",
     "alertMessage": "Erschütterung am Laptop erkannt!",
     "readyMessage": "MeerCOP überwachungsbereit! Sie können die Überwachung jederzeit starten.",
-    "monitoringMessage": "MeerCOP überwacht Ihren Laptop."
+    "monitoringMessage": "MeerCOP überwacht Ihren Laptop.",
+    "deviceLoggedOut": "⚠️ Der Computer hat sich abgemeldet. Er wird automatisch erneut verbunden, wenn er sich wieder anmeldet.",
+    "deviceOfflineActionDesc": "Verbindung nicht möglich, da der Computer abgemeldet oder offline ist."
   },
   "toggle": {
     "startMonitoring": "Überwachung starten",
@@ -152,7 +157,8 @@
     "reload": "Neu laden"
   },
   "deviceList": {
-    "selectDevice": "Gerät auswählen"
+    "selectDevice": "Gerät auswählen",
+    "waitingForDevice": "⏳ Warte auf Gerät..."
   },
   "camouflage": {
     "onTitle": "Tarnmodus AN",
@@ -271,6 +277,7 @@
       "insensitive": "Unempfindlich"
     },
     "nicknameChanged": "Spitzname wurde geändert.",
+    "duplicateDeviceName": "Dieser Gerätename wird bereits von einem anderen Gerät verwendet.",
     "pinChanged": "PIN wurde geändert.",
     "nicknameDialog": {
       "title": "Spitzname ändern",
@@ -409,6 +416,7 @@
   "help": {
     "title": "Benutzerhandbuch",
     "appIntro": "Laptop-Diebstahlschutz- & Fernüberwachungs-App",
+    "tocTitle": "📖 Inhaltsverzeichnis",
     "sections": {
       "appIntroTitle": "App-Einführung",
       "appIntroContent": "<strong>MeerCOP</strong> ist eine Echtzeit-Überwachungs-App zum Schutz vor Laptop-Diebstahl und unbefugter Nutzung. Wenn die Überwachung aktiviert ist, wird bei Bewegung, Berührung oder Deckelöffnung sofort ein Alarm ausgelöst.",

@@ -28,7 +28,9 @@
     "or": "ou",
     "adding": "Registrando...",
     "register": "Registrar",
-    "copied": "Copiado"
+    "copied": "Copiado",
+    "noDevice": "Sem dispositivo",
+    "noDeviceDesc": "Nenhum dispositivo conectado encontrado. Faça login com seu número de série no notebook primeiro."
   },
   "header": {
     "openMenu": "Abrir menu",
@@ -38,6 +40,7 @@
     "laptop": "Notebook",
     "desktop": "Desktop",
     "tablet": "Tablet",
+    "smartphone": "Smartphone",
     "network": "Rede",
     "camera": "Câmera",
     "settings": "Configurações"
@@ -52,7 +55,9 @@
     "statusChangeFailed": "Falha ao alterar o status.",
     "alertMessage": "Impacto detectado no notebook!",
     "readyMessage": "MeerCOP pronto para monitorar! Você pode iniciar o monitoramento a qualquer momento.",
-    "monitoringMessage": "MeerCOP está monitorando seu notebook."
+    "monitoringMessage": "MeerCOP está monitorando seu notebook.",
+    "deviceLoggedOut": "⚠️ O computador fez logout. Ele se reconectará automaticamente ao fazer login novamente.",
+    "deviceOfflineActionDesc": "Não é possível conectar porque o computador fez logout ou está offline."
   },
   "toggle": {
     "startMonitoring": "Iniciar monitoramento",
@@ -152,7 +157,8 @@
     "reload": "Recarregar"
   },
   "deviceList": {
-    "selectDevice": "Selecionar dispositivo"
+    "selectDevice": "Selecionar dispositivo",
+    "waitingForDevice": "⏳ Aguardando dispositivo..."
   },
   "camouflage": {
     "onTitle": "Modo camuflagem LIGADO",
@@ -271,6 +277,7 @@
       "insensitive": "Insensível"
     },
     "nicknameChanged": "Apelido alterado.",
+    "duplicateDeviceName": "Este nome de dispositivo já está em uso por outro dispositivo.",
     "pinChanged": "PIN alterado.",
     "nicknameDialog": {
       "title": "Alterar apelido",
@@ -409,6 +416,7 @@
   "help": {
     "title": "Manual do usuário",
     "appIntro": "App de proteção contra roubo e monitoramento remoto de notebook",
+    "tocTitle": "📖 Índice",
     "sections": {
       "appIntroTitle": "Introdução",
       "appIntroContent": "<strong>MeerCOP</strong> é um app de monitoramento em tempo real para proteger contra roubo e uso não autorizado de notebooks.",

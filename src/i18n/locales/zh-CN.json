@@ -28,7 +28,9 @@
     "or": "或",
     "adding": "注册中...",
     "register": "注册",
-    "copied": "已复制"
+    "copied": "已复制",
+    "noDevice": "无设备",
+    "noDeviceDesc": "未找到已连接的设备。请先在笔记本上使用序列号登录。"
   },
   "header": {
     "openMenu": "打开菜单",
@@ -38,6 +40,7 @@
     "laptop": "笔记本",
     "desktop": "台式机",
     "tablet": "平板",
+    "smartphone": "智能手机",
     "network": "网络",
     "camera": "摄像头",
     "settings": "设置"
@@ -52,7 +55,9 @@
     "statusChangeFailed": "状态更改失败。",
     "alertMessage": "检测到笔记本受到撞击！",
     "readyMessage": "MeerCOP监控准备就绪！随时可以开始监控。",
-    "monitoringMessage": "MeerCOP正在监控您的笔记本。"
+    "monitoringMessage": "MeerCOP正在监控您的笔记本。",
+    "deviceLoggedOut": "⚠️ 电脑已注销。重新登录后将自动重新连接。",
+    "deviceOfflineActionDesc": "电脑已注销或离线，无法连接。"
   },
   "toggle": {
     "startMonitoring": "开始监控",
@@ -152,7 +157,8 @@
     "reload": "刷新"
   },
   "deviceList": {
-    "selectDevice": "选择设备"
+    "selectDevice": "选择设备",
+    "waitingForDevice": "⏳ 等待设备..."
   },
   "camouflage": {
     "onTitle": "伪装模式 ON",
@@ -271,6 +277,7 @@
       "insensitive": "迟钝"
     },
     "nicknameChanged": "昵称已更改。",
+    "duplicateDeviceName": "此设备名称已被其他设备使用。",
     "pinChanged": "密码已更改。",
     "nicknameDialog": {
       "title": "更改昵称",
@@ -409,6 +416,7 @@
   "help": {
     "title": "使用指南",
     "appIntro": "笔记本防盗与远程监控应用",
+    "tocTitle": "📖 目录",
     "sections": {
       "appIntroTitle": "应用介绍",
       "appIntroContent": "<strong>MeerCOP</strong>是一款用于防止笔记本（电脑）被盗和未经授权使用的实时监控应用。在手机上开启监控后，当笔记本检测到移动、触碰、盖子打开等情况时，会立即发出警报，并通过照片、位置和实时直播掌握情况。",

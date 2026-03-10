@@ -28,7 +28,9 @@
     "or": "ou",
     "adding": "Enregistrement...",
     "register": "Enregistrer",
-    "copied": "Copié"
+    "copied": "Copié",
+    "noDevice": "Aucun appareil",
+    "noDeviceDesc": "Aucun appareil connecté trouvé. Connectez-vous d'abord avec votre série sur l'ordinateur."
   },
   "header": {
     "openMenu": "Ouvrir le menu",
@@ -38,6 +40,7 @@
     "laptop": "Ordinateur portable",
     "desktop": "Ordinateur de bureau",
     "tablet": "Tablette",
+    "smartphone": "Smartphone",
     "network": "Réseau",
     "camera": "Caméra",
     "settings": "Paramètres"
@@ -52,7 +55,9 @@
     "statusChangeFailed": "Échec du changement de statut.",
     "alertMessage": "Un choc a été détecté sur votre ordinateur portable !",
     "readyMessage": "MeerCOP est prêt ! Vous pouvez lancer la surveillance à tout moment.",
-    "monitoringMessage": "MeerCOP surveille votre ordinateur portable."
+    "monitoringMessage": "MeerCOP surveille votre ordinateur portable.",
+    "deviceLoggedOut": "⚠️ L'ordinateur s'est déconnecté. Il se reconnectera automatiquement lors de la prochaine connexion.",
+    "deviceOfflineActionDesc": "Impossible de se connecter car l'ordinateur est déconnecté ou hors ligne."
   },
   "toggle": {
     "startMonitoring": "Démarrer la surveillance",
@@ -271,6 +276,7 @@
       "insensitive": "Peu sensible"
     },
     "nicknameChanged": "Surnom modifié.",
+    "duplicateDeviceName": "Ce nom d'appareil est déjà utilisé par un autre appareil.",
     "pinChanged": "PIN modifié.",
     "nicknameDialog": {
       "title": "Modifier le surnom",
@@ -409,6 +415,7 @@
   "help": {
     "title": "Guide d'utilisation",
     "appIntro": "Application antivol et surveillance à distance pour portables",
+    "tocTitle": "📖 Table des matières",
     "sections": {
       "appIntroTitle": "À propos de l'application",
       "appIntroContent": "<strong>MeerCOP</strong> est une application de surveillance en temps réel pour prévenir le vol et l'utilisation non autorisée des ordinateurs portables. Lorsque la surveillance est activée depuis votre smartphone, tout mouvement, toucher ou ouverture du capot détecté sur le portable déclenche une alarme immédiate avec photos, position et diffusion en direct.",

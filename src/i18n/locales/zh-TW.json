@@ -28,7 +28,9 @@
     "or": "或",
     "adding": "註冊中...",
     "register": "註冊",
-    "copied": "已複製"
+    "copied": "已複製",
+    "noDevice": "無裝置",
+    "noDeviceDesc": "未找到已連線的裝置。請先在筆電上使用序號登入。"
   },
   "header": {
     "openMenu": "開啟選單",
@@ -38,6 +40,7 @@
     "laptop": "筆電",
     "desktop": "桌機",
     "tablet": "平板",
+    "smartphone": "智慧手機",
     "network": "網路",
     "camera": "攝影機",
     "settings": "設定"
@@ -52,7 +55,9 @@
     "statusChangeFailed": "狀態變更失敗。",
     "alertMessage": "偵測到筆電受到撞擊！",
     "readyMessage": "MeerCOP監控準備就緒！隨時可以開始監控。",
-    "monitoringMessage": "MeerCOP正在監控您的筆電。"
+    "monitoringMessage": "MeerCOP正在監控您的筆電。",
+    "deviceLoggedOut": "⚠️ 電腦已登出。重新登入後將自動重新連線。",
+    "deviceOfflineActionDesc": "電腦已登出或離線，無法連線。"
   },
   "toggle": {
     "startMonitoring": "開始監控",
@@ -152,7 +157,8 @@
     "reload": "重新整理"
   },
   "deviceList": {
-    "selectDevice": "選擇裝置"
+    "selectDevice": "選擇裝置",
+    "waitingForDevice": "⏳ 等待裝置..."
   },
   "camouflage": {
     "onTitle": "偽裝模式 ON",
@@ -271,6 +277,7 @@
       "insensitive": "遲鈍"
     },
     "nicknameChanged": "暱稱已變更。",
+    "duplicateDeviceName": "此裝置名稱已被其他裝置使用。",
     "pinChanged": "密碼已變更。",
     "nicknameDialog": {
       "title": "變更暱稱",
@@ -409,6 +416,7 @@
   "help": {
     "title": "使用指南",
     "appIntro": "筆電防盜與遠端監控應用程式",
+    "tocTitle": "📖 目錄",
     "sections": {
       "appIntroTitle": "應用程式介紹",
       "appIntroContent": "<strong>MeerCOP</strong>是一款用於防止筆電（電腦）遭竊和未經授權使用的即時監控應用程式。在手機上開啟監控後，當筆電偵測到移動、觸碰、上蓋開啟等情況時，會立即發出警報，並透過照片、位置和即時串流掌握狀況。",

@@ -28,7 +28,9 @@
     "or": "o",
     "adding": "Registrando...",
     "register": "Registrar",
-    "copied": "Copiado"
+    "copied": "Copiado",
+    "noDevice": "Sin dispositivo",
+    "noDeviceDesc": "No se encontró ningún dispositivo conectado. Inicia sesión con tu serie en el portátil primero."
   },
   "header": {
     "openMenu": "Abrir menú",
@@ -38,6 +40,7 @@
     "laptop": "Portátil",
     "desktop": "Escritorio",
     "tablet": "Tableta",
+    "smartphone": "Smartphone",
     "network": "Red",
     "camera": "Cámara",
     "settings": "Ajustes"
@@ -52,7 +55,9 @@
     "statusChangeFailed": "Error al cambiar el estado.",
     "alertMessage": "¡Se detectó un impacto en tu portátil!",
     "readyMessage": "¡MeerCOP listo para vigilar! Puedes iniciar la vigilancia en cualquier momento.",
-    "monitoringMessage": "MeerCOP está vigilando tu portátil."
+    "monitoringMessage": "MeerCOP está vigilando tu portátil.",
+    "deviceLoggedOut": "⚠️ El ordenador ha cerrado sesión. Se reconectará automáticamente al volver a iniciar sesión.",
+    "deviceOfflineActionDesc": "No se puede conectar porque el ordenador cerró sesión o está sin conexión."
   },
   "toggle": {
     "startMonitoring": "Iniciar vigilancia",
@@ -152,7 +157,8 @@
     "reload": "Recargar"
   },
   "deviceList": {
-    "selectDevice": "Seleccionar dispositivo"
+    "selectDevice": "Seleccionar dispositivo",
+    "waitingForDevice": "⏳ Esperando dispositivo..."
   },
   "camouflage": {
     "onTitle": "Modo camuflaje ON",
@@ -271,6 +277,7 @@
       "insensitive": "Poco sensible"
     },
     "nicknameChanged": "Apodo cambiado.",
+    "duplicateDeviceName": "Este nombre de dispositivo ya está en uso por otro dispositivo.",
     "pinChanged": "PIN cambiado.",
     "nicknameDialog": {
       "title": "Cambiar apodo",
@@ -409,6 +416,7 @@
   "help": {
     "title": "Guía de uso",
     "appIntro": "App antirrobo y vigilancia remota de portátiles",
+    "tocTitle": "📖 Índice",
     "sections": {
       "appIntroTitle": "Acerca de la app",
       "appIntroContent": "<strong>MeerCOP</strong> es una app de vigilancia en tiempo real para prevenir el robo y uso no autorizado de portátiles. Al activar la vigilancia desde tu smartphone, cualquier movimiento, toque o apertura de tapa detectada en el portátil activa una alarma inmediata con fotos, ubicación y transmisión en vivo.",
