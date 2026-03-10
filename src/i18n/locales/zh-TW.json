@@ -55,7 +55,9 @@
     "statusChangeFailed": "狀態變更失敗。",
     "alertMessage": "偵測到筆電受到撞擊！",
     "readyMessage": "MeerCOP監控準備就緒！隨時可以開始監控。",
-    "monitoringMessage": "MeerCOP正在監控您的筆電。"
+    "monitoringMessage": "MeerCOP正在監控您的筆電。",
+    "deviceLoggedOut": "⚠️ 電腦已登出。重新登入後將自動重新連線。",
+    "deviceOfflineActionDesc": "電腦已登出或離線，無法連線。"
   },
   "toggle": {
     "startMonitoring": "開始監控",
