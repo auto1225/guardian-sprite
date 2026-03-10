@@ -621,6 +621,12 @@
     "renewButton": "Renovar em meercop.com",
     "renewNotice": "Após renovar, reinicie o aplicativo."
   },
+  "upgrade": {
+    "required": "🔒 Atualização necessária",
+    "featureLocked": "Este recurso não está disponível no seu plano atual. Atualize no site.",
+    "limitReached": "🔒 Limite atingido",
+    "maxDevicesReached": "Você atingiu o número máximo de dispositivos. Atualize para adicionar mais."
+  },
   "permissions": {
     "title": "Permissões necessárias",
     "subtitle": "O MeerCOP precisa das seguintes permissões para funções de segurança.",
