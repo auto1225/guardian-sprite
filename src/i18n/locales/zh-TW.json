@@ -241,6 +241,7 @@
     "usbDetectionDesc": "偵測USB裝置連線",
     "powerDetection": "電源線偵測",
     "powerDetectionDesc": "偵測電源中斷",
+    "powerDetectionWarning": "在iOS Safari、Firefox等部分瀏覽器中，電源線偵測功能無法使用。",
     "screenTouchDetection": "螢幕觸控偵測",
     "screenTouchDetectionDesc": "偵測螢幕觸控輸入",
     "sensitivity": {

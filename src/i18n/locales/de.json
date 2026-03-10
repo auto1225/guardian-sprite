@@ -241,6 +241,7 @@
     "usbDetectionDesc": "Erkennt USB-Geräteverbindungen",
     "powerDetection": "Stromkabelerkennung",
     "powerDetectionDesc": "Erkennt das Trennen/Anschließen des Netzteils",
+    "powerDetectionWarning": "Die Stromkabelerkennung funktioniert in einigen Browsern wie iOS Safari und Firefox nicht.",
     "screenTouchDetection": "Bildschirmberührungserkennung",
     "screenTouchDetectionDesc": "Erkennt Bildschirmberührungen",
     "sensitivity": {

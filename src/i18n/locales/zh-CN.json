@@ -241,6 +241,7 @@
     "usbDetectionDesc": "检测USB设备连接",
     "powerDetection": "电源线检测",
     "powerDetectionDesc": "检测电源断开",
+    "powerDetectionWarning": "在iOS Safari、Firefox等部分浏览器中，电源线检测功能无法使用。",
     "screenTouchDetection": "屏幕触摸检测",
     "screenTouchDetectionDesc": "检测屏幕触摸输入",
     "sensitivity": {
