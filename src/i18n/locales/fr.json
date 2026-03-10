@@ -276,6 +276,7 @@
       "insensitive": "Peu sensible"
     },
     "nicknameChanged": "Surnom modifié.",
+    "duplicateDeviceName": "Ce nom d'appareil est déjà utilisé par un autre appareil.",
     "pinChanged": "PIN modifié.",
     "nicknameDialog": {
       "title": "Modifier le surnom",
