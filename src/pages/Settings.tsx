@@ -105,9 +105,18 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
     (meta.language as string) || localStorage.getItem('i18nextLng') || "en"
   );
 
-  // 기기가 바뀌면 설정값 재초기화
+  // ★ 로컬에서 저장 중인 동안 useEffect가 상태를 되돌리지 않도록 가드
+  const savingRef = useRef(false);
+
+  // 기기가 바뀌면 설정값 재초기화 (기기 ID 변경 시에만)
+  const prevDeviceIdRef = useRef(device?.id);
   useEffect(() => {
     if (!device) return;
+    // 기기가 실제로 바뀐 경우에만 전체 재초기화
+    const deviceChanged = prevDeviceIdRef.current !== device.id;
+    prevDeviceIdRef.current = device.id;
+    if (!deviceChanged && savingRef.current) return; // 저장 중이면 스킵
+
     setNickname(device.name);
     const m = (device.metadata as Record<string, unknown>) || {};
     setAlarmPin((m.alarm_pin as string) || "1234");
@@ -191,8 +200,8 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
   };
 
   const saveMetadata = async (updates: Record<string, unknown>) => {
-    await safeMetadataUpdate(device.id, updates);
-    // ★ 로컬 캐시 즉시 업데이트 → invalidate 대신 setQueryData로 깜빡임 방지
+    savingRef.current = true;
+    // ★ 낙관적 업데이트를 DB 쓰기 전에 수행 → Realtime/refetch 레이스 컨디션 방지
     queryClient.setQueryData(["devices", device.user_id], (old: Device[] | undefined) => {
       if (!old) return old;
       return old.map(d => {
@@ -201,6 +210,15 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
         return { ...d, metadata: { ...currentMeta, ...updates } };
       });
     });
+    try {
+      await safeMetadataUpdate(device.id, updates);
+    } catch (err) {
+      // DB 쓰기 실패 시 캐시 롤백
+      queryClient.invalidateQueries({ queryKey: ["devices", device.user_id] });
+      throw err;
+    } finally {
+      savingRef.current = false;
+    }
     // Broadcast to laptop so it can apply changes immediately (no RLS access to postgres_changes)
     broadcastSettingsUpdate(device.id, updates);
   };
