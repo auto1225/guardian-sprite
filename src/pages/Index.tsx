@@ -66,6 +66,29 @@ const Index = () => {
   const isDeviceOnline = selectedDevice?.status !== "offline";
   const isMonitoring = isDeviceOnline && (selectedDevice?.is_monitoring ?? false);
   const selectedSerialKey = selectedDevice?.metadata ? (selectedDevice.metadata as Record<string, unknown>)?.serial_key as string | undefined : undefined;
+
+  // ★ 버튼 전용 로컬 낙관적 상태 — 버튼은 즉시 토글, pill/badge는 Realtime 반영
+  const [optimisticMonitoring, setOptimisticMonitoring] = useState<boolean | null>(null);
+  const [optimisticCamouflage, setOptimisticCamouflage] = useState<boolean | null>(null);
+
+  // 실제 기기 상태가 변하면 낙관적 상태 리셋
+  useEffect(() => {
+    setOptimisticMonitoring(null);
+  }, [selectedDevice?.is_monitoring, selectedDevice?.status]);
+
+  useEffect(() => {
+    setOptimisticCamouflage(null);
+  }, [(selectedDevice?.metadata as Record<string, unknown>)?.camouflage_mode, selectedDevice?.status]);
+
+  // 기기 변경 시 낙관적 상태 리셋
+  useEffect(() => {
+    setOptimisticMonitoring(null);
+    setOptimisticCamouflage(null);
+  }, [selectedDeviceId]);
+
+  // 버튼에 표시할 값: 낙관적 상태가 있으면 사용, 없으면 실제 상태
+  const buttonMonitoring = optimisticMonitoring !== null ? optimisticMonitoring : isMonitoring;
+  const buttonCamouflage = optimisticCamouflage !== null ? optimisticCamouflage : (isDeviceOnline && !!(selectedDevice?.metadata as Record<string, unknown>)?.camouflage_mode);
   const { guard } = useCapabilityGuard(selectedSerialKey);
   const { toggleMonitoring } = useCommands();
   const { toast } = useToast();
@@ -176,7 +199,9 @@ const Index = () => {
       return;
     }
     if (!guard("monitoring_toggle")) return;
-    const newVal = !isMonitoring;
+    const newVal = !buttonMonitoring;
+    // ★ 버튼 즉시 토글
+    setOptimisticMonitoring(newVal);
 
     try {
       const monitorSerialKey = (selectedDevice.metadata as Record<string, unknown>)?.serial_key as string | undefined;
@@ -359,9 +384,9 @@ const Index = () => {
           </div>
         )}
         <ToggleButton 
-          isOn={isMonitoring}
+          isOn={buttonMonitoring}
           onToggle={handleToggleMonitoring}
-          isCamouflage={isDeviceOnline && !!(selectedDevice?.metadata as Record<string, unknown>)?.camouflage_mode}
+          isCamouflage={buttonCamouflage}
           onCamouflageToggle={selectedDevice ? async () => {
             // ★ 기기가 오프라인이면 위장모드 토글 불가
             if (selectedDevice.status === "offline") {
@@ -373,8 +398,9 @@ const Index = () => {
               return;
             }
             if (!guard("camouflage_mode")) return;
-            const currentMeta = (selectedDevice.metadata as Record<string, unknown>) || {};
-            const newVal = !currentMeta.camouflage_mode;
+            const newVal = !buttonCamouflage;
+            // ★ 버튼 즉시 토글
+            setOptimisticCamouflage(newVal);
             try {
               await safeMetadataUpdate(selectedDevice.id, { camouflage_mode: newVal });
 
