@@ -28,7 +28,9 @@
     "or": "ou",
     "adding": "Enregistrement...",
     "register": "Enregistrer",
-    "copied": "Copié"
+    "copied": "Copié",
+    "noDevice": "Aucun appareil",
+    "noDeviceDesc": "Aucun appareil connecté trouvé. Connectez-vous d'abord avec votre série sur l'ordinateur."
   },
   "header": {
     "openMenu": "Ouvrir le menu",
