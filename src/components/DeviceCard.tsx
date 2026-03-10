@@ -60,7 +60,7 @@ const DeviceCard = ({ device, isSelected, isMain, isCharging, onSelect }: Device
             ) : null;
           })()}
         </div>
-        {device.device_type !== "smartphone" && (
+        {(device.device_type !== "smartphone" || !!(device.metadata as Record<string, unknown>)?.serial_key) && (
           <span
             className={`px-2.5 py-1 rounded-full text-xs font-bold shadow-sm shrink-0 ${
               device.is_monitoring

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { ChevronDown, ChevronUp, X } from "lucide-react";
+import { ChevronDown, ChevronUp, X, Monitor } from "lucide-react";
 import { useDevices } from "@/hooks/useDevices";
 import { useTranslation } from "react-i18next";
 import DeviceCard from "./DeviceCard";
@@ -56,10 +56,39 @@ const DeviceList = ({ isExpanded, onToggle, selectedDeviceId, selectedDevice, on
           onClick={onToggle}
           className="flex items-center justify-center gap-2 cursor-pointer"
         >
-          <div className="bg-white/15 backdrop-blur-xl border border-white/25 rounded-full px-4 py-1.5 flex items-center gap-2 shadow-lg">
-            <span className="text-white font-bold text-sm drop-shadow-sm">
+          <div
+            className="backdrop-blur-xl border rounded-full px-4 py-1.5 flex items-center gap-2 shadow-lg transition-all"
+            style={{
+              background: selectedDevice.is_monitoring
+                ? 'linear-gradient(135deg, hsla(45, 90%, 50%, 0.35) 0%, hsla(40, 85%, 45%, 0.25) 100%)'
+                : 'hsla(0, 0%, 100%, 0.15)',
+              borderColor: selectedDevice.is_monitoring
+                ? 'hsla(45, 80%, 55%, 0.6)'
+                : 'hsla(0, 0%, 100%, 0.25)',
+              boxShadow: selectedDevice.is_monitoring
+                ? '0 2px 12px hsla(45, 80%, 50%, 0.3)'
+                : 'none',
+            }}
+          >
+            <span
+              className="font-bold text-sm drop-shadow-sm"
+              style={{
+                color: selectedDevice.is_monitoring ? 'hsl(45, 90%, 55%)' : 'white',
+              }}
+            >
               {selectedDevice.name}
             </span>
+            {selectedDevice.is_monitoring && (
+              <span
+                className="px-1.5 py-0.5 rounded-full text-xs font-bold"
+                style={{
+                  background: 'hsla(45, 90%, 50%, 0.9)',
+                  color: 'hsl(0, 0%, 15%)',
+                }}
+              >
+                ON
+              </span>
+            )}
             {devices.length > 1 && (
               isExpanded ? (
                <ChevronUp className="w-4 h-4 text-white/80" />
@@ -68,6 +97,20 @@ const DeviceList = ({ isExpanded, onToggle, selectedDeviceId, selectedDevice, on
               )
             )}
           </div>
+          {!!(selectedDevice.metadata as Record<string, unknown>)?.camouflage_mode && (
+            <div
+              className="backdrop-blur-xl border rounded-full px-2.5 py-1.5 flex items-center gap-1.5 shadow-lg"
+              style={{
+                background: 'linear-gradient(135deg, hsla(220, 30%, 20%, 0.6) 0%, hsla(220, 25%, 15%, 0.5) 100%)',
+                borderColor: 'hsla(220, 40%, 50%, 0.5)',
+              }}
+            >
+              <Monitor className="w-3.5 h-3.5" style={{ color: 'hsl(210, 60%, 70%)' }} />
+              <span className="text-xs font-bold" style={{ color: 'hsl(210, 60%, 70%)' }}>
+                STEALTH
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Expanded device list */}
