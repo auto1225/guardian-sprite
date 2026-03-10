@@ -1,5 +1,14 @@
 {
   "bg": { "title": "Fondo", "description": "Elige un fondo para la pantalla principal", "default": "Predeterminado", "sunset": "Atardecer", "night": "Noche", "forest": "Bosque", "ocean": "Océano", "aurora": "Aurora", "custom": "Personalizado", "upload": "Subir", "fileTooLarge": "La imagen debe ser menor de 5MB.", "customSet": "Fondo personalizado aplicado." },
+  "plan": {
+    "free": "Prueba 1 día",
+    "basic": "Plan Básico",
+    "premium": "Plan Premium",
+    "currentPlan": "Plan actual",
+    "remainingDays": "Restante",
+    "days": " días",
+    "expiresAt": "Expira"
+  },
   "common": {
     "loading": "Cargando...",
     "error": "Error",
@@ -62,6 +71,18 @@
     "phoneAlarmDismissedDesc": "La alarma del teléfono ha sido silenciada.",
     "allDismissed": "Alarma desactivada",
     "allDismissedDesc": "Todas las alarmas han sido desactivadas."
+  },
+  "commandAck": {
+    "monitoringOnSent": "Comando de activar vigilancia enviado",
+    "monitoringOffSent": "Comando de desactivar vigilancia enviado",
+    "monitoringOnConfirmed": "✅ Vigilancia activada confirmada en el portátil",
+    "monitoringOffConfirmed": "✅ Vigilancia desactivada confirmada en el portátil",
+    "camouflageOnConfirmed": "✅ Modo camuflaje activado confirmado en el portátil",
+    "camouflageOffConfirmed": "✅ Modo camuflaje desactivado confirmado en el portátil",
+    "commandConfirmedDesc": "El portátil ha aplicado el cambio.",
+    "commandTimeout": "⚠️ Sin respuesta del portátil",
+    "commandTimeoutDesc": "El comando fue enviado pero no se recibió confirmación. El portátil puede estar sin conexión.",
+    "waitingForDevice": "Esperando respuesta del portátil..."
   },
   "alert": {
     "securityAlert": "🚨 Alerta de seguridad",
@@ -317,7 +338,25 @@
     "serialLabel": "Serie",
     "registrationFailed": "Error al registrar el dispositivo.",
     "serialNotLinked": "Serie no vinculado",
-    "serialPrefix": "Serie:"
+    "serialPrefix": "Serie:",
+    "noDeviceConnected": "Sin dispositivo conectado",
+    "sortAlpha": "Nombre",
+    "sortNumber": "Número",
+    "sortPlan": "Plan",
+    "sortDays": "Días restantes",
+    "sortMonitoring": "Vigilancia",
+    "setNumber": "Asignar número",
+    "numberLabel": "Número",
+    "numberPlaceholder": "Introduce número (ej. 1, 2, 3...)",
+    "numberSaved": "Número guardado",
+    "selectAll": "Seleccionar todo",
+    "deselectAll": "Deseleccionar todo",
+    "bulkMonitorOn": "Activar vigilancia",
+    "bulkMonitorOff": "Desactivar vigilancia",
+    "selected": " seleccionados",
+    "bulkSuccess": "Actualización masiva completada",
+    "bulkSuccessDesc": "Se actualizó el estado de vigilancia de los dispositivos seleccionados.",
+    "dragHint": "Mantén presionado para reordenar"
   },
   "auth": {
     "title": "MeerCOP",
@@ -519,7 +558,12 @@
     "passwordChanged": "Cambiado",
     "passwordChangedDesc": "La contraseña ha sido cambiada.",
     "passwordChangeFailed": "Error al cambiar la contraseña.",
-    "changing": "Cambiando..."
+    "changing": "Cambiando...",
+    "avatarUpdated": "Foto de perfil actualizada.",
+    "avatarUploadFailed": "Error al subir la foto.",
+    "invalidImageType": "Selecciona un archivo de imagen.",
+    "imageTooLarge": "La imagen debe ser menor de 2MB.",
+    "uploading": "Subiendo..."
   },
   "alertPanel": {
     "title": "Historial de alertas",
@@ -551,7 +595,10 @@
     "resume": "Reanudar transmisión",
     "pause": "Pausar transmisión",
     "snapshot": "Guardar captura",
-    "download": "Descargar"
+    "download": "Descargar",
+    "fullscreen": "Pantalla completa",
+    "exitFullscreen": "Salir de pantalla completa",
+    "live": "EN VIVO"
   },
   "notFound": {
     "title": "404",
@@ -599,6 +646,12 @@
     "expiredDescription": "Tu período de prueba ha terminado. Renueva tu suscripción para seguir usando MeerCOP.",
     "renewButton": "Renovar en meercop.com",
     "renewNotice": "Después de renovar, reinicia la app."
+  },
+  "upgrade": {
+    "required": "🔒 Actualización necesaria",
+    "featureLocked": "Esta función no está disponible en tu plan actual. Actualiza en el sitio web.",
+    "limitReached": "🔒 Límite alcanzado",
+    "maxDevicesReached": "Has alcanzado el número máximo de dispositivos. Actualiza para añadir más."
   },
   "permissions": {
     "title": "Permisos necesarios",

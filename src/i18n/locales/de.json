@@ -1,5 +1,14 @@
 {
   "bg": { "title": "Hintergrund", "description": "Wählen Sie einen Hintergrund für den Hauptbildschirm", "default": "Standard", "sunset": "Sonnenuntergang", "night": "Nacht", "forest": "Wald", "ocean": "Ozean", "aurora": "Aurora", "custom": "Benutzerdefiniert", "upload": "Hochladen", "fileTooLarge": "Das Bild muss kleiner als 5 MB sein.", "customSet": "Benutzerdefinierter Hintergrund angewendet." },
+  "plan": {
+    "free": "1-Tag Testversion",
+    "basic": "Basis-Tarif",
+    "premium": "Premium-Tarif",
+    "currentPlan": "Aktueller Tarif",
+    "remainingDays": "Verbleibend",
+    "days": " Tage",
+    "expiresAt": "Läuft ab"
+  },
   "common": {
     "loading": "Laden...",
     "error": "Fehler",
@@ -62,6 +71,18 @@
     "phoneAlarmDismissedDesc": "Der Smartphone-Alarm wurde aufgehoben.",
     "allDismissed": "Alarm aufgehoben",
     "allDismissedDesc": "Alle Alarme von Computer und Smartphone wurden aufgehoben."
+  },
+  "commandAck": {
+    "monitoringOnSent": "Befehl zur Aktivierung der Überwachung gesendet",
+    "monitoringOffSent": "Befehl zur Deaktivierung der Überwachung gesendet",
+    "monitoringOnConfirmed": "✅ Überwachung auf dem Laptop aktiviert bestätigt",
+    "monitoringOffConfirmed": "✅ Überwachung auf dem Laptop deaktiviert bestätigt",
+    "camouflageOnConfirmed": "✅ Tarnmodus auf dem Laptop aktiviert bestätigt",
+    "camouflageOffConfirmed": "✅ Tarnmodus auf dem Laptop deaktiviert bestätigt",
+    "commandConfirmedDesc": "Der Laptop hat die Änderung übernommen.",
+    "commandTimeout": "⚠️ Keine Antwort vom Laptop",
+    "commandTimeoutDesc": "Der Befehl wurde gesendet, aber keine Bestätigung erhalten. Der Laptop ist möglicherweise offline.",
+    "waitingForDevice": "Warte auf Antwort des Laptops..."
   },
   "alert": {
     "securityAlert": "🚨 Sicherheitsalarm",
@@ -317,7 +338,25 @@
     "serialLabel": "Seriennr.",
     "registrationFailed": "Geräteregistrierung fehlgeschlagen.",
     "serialNotLinked": "Seriennummer nicht verknüpft",
-    "serialPrefix": "Seriennr.:"
+    "serialPrefix": "Seriennr.:",
+    "noDeviceConnected": "Kein Gerät verbunden",
+    "sortAlpha": "Name",
+    "sortNumber": "Nummer",
+    "sortPlan": "Tarif",
+    "sortDays": "Verbleibende Tage",
+    "sortMonitoring": "Überwachung",
+    "setNumber": "Nummer zuweisen",
+    "numberLabel": "Nummer",
+    "numberPlaceholder": "Nummer eingeben (z.B. 1, 2, 3...)",
+    "numberSaved": "Nummer gespeichert",
+    "selectAll": "Alle auswählen",
+    "deselectAll": "Alle abwählen",
+    "bulkMonitorOn": "Überwachung EIN",
+    "bulkMonitorOff": "Überwachung AUS",
+    "selected": " ausgewählt",
+    "bulkSuccess": "Massenaktualisierung abgeschlossen",
+    "bulkSuccessDesc": "Der Überwachungsstatus der ausgewählten Geräte wurde aktualisiert.",
+    "dragHint": "Halten zum Neuordnen"
   },
   "auth": {
     "title": "MeerCOP",
@@ -519,7 +558,12 @@
     "passwordChanged": "Geändert",
     "passwordChangedDesc": "Passwort wurde geändert.",
     "passwordChangeFailed": "Passwort konnte nicht geändert werden.",
-    "changing": "Wird geändert..."
+    "changing": "Wird geändert...",
+    "avatarUpdated": "Profilbild aktualisiert.",
+    "avatarUploadFailed": "Fehler beim Hochladen des Fotos.",
+    "invalidImageType": "Bitte wählen Sie eine Bilddatei.",
+    "imageTooLarge": "Das Bild muss kleiner als 2 MB sein.",
+    "uploading": "Wird hochgeladen..."
   },
   "alertPanel": {
     "title": "Alarmverlauf",
@@ -551,7 +595,10 @@
     "resume": "Streaming fortsetzen",
     "pause": "Streaming pausieren",
     "snapshot": "Schnappschuss speichern",
-    "download": "Herunterladen"
+    "download": "Herunterladen",
+    "fullscreen": "Vollbild",
+    "exitFullscreen": "Vollbild beenden",
+    "live": "LIVE"
   },
   "notFound": {
     "title": "404",
@@ -599,6 +646,12 @@
     "expiredDescription": "Ihre Testphase ist abgelaufen. Bitte erneuern Sie Ihr Abonnement, um MeerCOP weiter zu nutzen.",
     "renewButton": "Auf meercop.com erneuern",
     "renewNotice": "Nach der Erneuerung starten Sie die App neu."
+  },
+  "upgrade": {
+    "required": "🔒 Upgrade erforderlich",
+    "featureLocked": "Diese Funktion ist in Ihrem aktuellen Tarif nicht verfügbar. Bitte upgraden Sie auf der Website.",
+    "limitReached": "🔒 Limit erreicht",
+    "maxDevicesReached": "Sie haben die maximale Anzahl an Geräten erreicht. Upgraden Sie, um weitere hinzuzufügen."
   },
   "permissions": {
     "title": "Berechtigungen erforderlich",

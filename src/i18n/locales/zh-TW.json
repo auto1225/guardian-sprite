@@ -1,5 +1,14 @@
 {
   "bg": { "title": "背景", "description": "選擇主畫面背景", "default": "預設", "sunset": "日落", "night": "夜晚", "forest": "森林", "ocean": "海洋", "aurora": "極光", "custom": "自訂", "upload": "上傳", "fileTooLarge": "圖片大小不能超過5MB。", "customSet": "自訂背景已套用。" },
+  "plan": {
+    "free": "1天試用",
+    "basic": "基礎方案",
+    "premium": "進階方案",
+    "currentPlan": "目前方案",
+    "remainingDays": "剩餘",
+    "days": "天",
+    "expiresAt": "到期日"
+  },
   "common": {
     "loading": "載入中...",
     "error": "錯誤",
@@ -62,6 +71,18 @@
     "phoneAlarmDismissedDesc": "手機的警報聲已關閉。",
     "allDismissed": "警報已解除",
     "allDismissedDesc": "所有警報已解除。"
+  },
+  "commandAck": {
+    "monitoringOnSent": "已發送開啟監控命令",
+    "monitoringOffSent": "已發送關閉監控命令",
+    "monitoringOnConfirmed": "✅ 筆電已確認開啟監控",
+    "monitoringOffConfirmed": "✅ 筆電已確認關閉監控",
+    "camouflageOnConfirmed": "✅ 筆電已確認開啟偽裝模式",
+    "camouflageOffConfirmed": "✅ 筆電已確認關閉偽裝模式",
+    "commandConfirmedDesc": "筆電已套用變更。",
+    "commandTimeout": "⚠️ 筆電無回應",
+    "commandTimeoutDesc": "命令已發送但未收到確認。筆電可能處於離線狀態。",
+    "waitingForDevice": "等待筆電回應..."
   },
   "alert": {
     "securityAlert": "🚨 安全警報",
@@ -317,7 +338,25 @@
     "serialLabel": "序號",
     "registrationFailed": "裝置註冊失敗。",
     "serialNotLinked": "序號未連線",
-    "serialPrefix": "序號："
+    "serialPrefix": "序號：",
+    "noDeviceConnected": "未連線裝置",
+    "sortAlpha": "名稱",
+    "sortNumber": "編號",
+    "sortPlan": "方案",
+    "sortDays": "剩餘天數",
+    "sortMonitoring": "監控中",
+    "setNumber": "設定編號",
+    "numberLabel": "編號",
+    "numberPlaceholder": "輸入編號（如 1, 2, 3...）",
+    "numberSaved": "編號已儲存",
+    "selectAll": "全選",
+    "deselectAll": "取消全選",
+    "bulkMonitorOn": "批次開啟監控",
+    "bulkMonitorOff": "批次關閉監控",
+    "selected": "已選擇",
+    "bulkSuccess": "批次更新完成",
+    "bulkSuccessDesc": "已更新所選裝置的監控狀態。",
+    "dragHint": "長按拖動排序"
   },
   "auth": {
     "title": "MeerCOP",
@@ -519,7 +558,12 @@
     "passwordChanged": "變更完成",
     "passwordChangedDesc": "密碼已變更。",
     "passwordChangeFailed": "密碼變更失敗。",
-    "changing": "變更中..."
+    "changing": "變更中...",
+    "avatarUpdated": "頭像已更新。",
+    "avatarUploadFailed": "頭像上傳失敗。",
+    "invalidImageType": "請選擇圖片檔案。",
+    "imageTooLarge": "圖片大小不能超過2MB。",
+    "uploading": "上傳中..."
   },
   "alertPanel": {
     "title": "警報紀錄",
@@ -551,7 +595,10 @@
     "resume": "恢復串流",
     "pause": "暫停串流",
     "snapshot": "儲存快照",
-    "download": "下載"
+    "download": "下載",
+    "fullscreen": "全螢幕",
+    "exitFullscreen": "退出全螢幕",
+    "live": "直播"
   },
   "notFound": {
     "title": "404",
@@ -599,6 +646,12 @@
     "expiredDescription": "您的試用期已結束。請續訂以繼續使用 MeerCOP。",
     "renewButton": "在 meercop.com 續訂",
     "renewNotice": "續訂後請重新啟動應用程式。"
+  },
+  "upgrade": {
+    "required": "🔒 需要升級",
+    "featureLocked": "此功能在您目前的方案中不可用。請在網站上升級。",
+    "limitReached": "🔒 已達上限",
+    "maxDevicesReached": "您已達到裝置數量上限。請升級以新增更多裝置。"
   },
   "permissions": {
     "title": "需要權限設定",

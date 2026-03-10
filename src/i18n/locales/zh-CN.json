@@ -1,5 +1,14 @@
 {
   "bg": { "title": "背景", "description": "选择主屏幕背景", "default": "默认", "sunset": "日落", "night": "夜晚", "forest": "森林", "ocean": "海洋", "aurora": "极光", "custom": "自定义", "upload": "上传", "fileTooLarge": "图片大小不能超过5MB。", "customSet": "自定义背景已应用。" },
+  "plan": {
+    "free": "1天试用",
+    "basic": "基础套餐",
+    "premium": "高级套餐",
+    "currentPlan": "当前套餐",
+    "remainingDays": "剩余",
+    "days": "天",
+    "expiresAt": "到期日"
+  },
   "common": {
     "loading": "加载中...",
     "error": "错误",
@@ -62,6 +71,18 @@
     "phoneAlarmDismissedDesc": "手机的警报声已关闭。",
     "allDismissed": "警报已解除",
     "allDismissedDesc": "所有警报已解除。"
+  },
+  "commandAck": {
+    "monitoringOnSent": "已发送开启监控命令",
+    "monitoringOffSent": "已发送关闭监控命令",
+    "monitoringOnConfirmed": "✅ 笔记本已确认开启监控",
+    "monitoringOffConfirmed": "✅ 笔记本已确认关闭监控",
+    "camouflageOnConfirmed": "✅ 笔记本已确认开启伪装模式",
+    "camouflageOffConfirmed": "✅ 笔记本已确认关闭伪装模式",
+    "commandConfirmedDesc": "笔记本已应用更改。",
+    "commandTimeout": "⚠️ 笔记本无响应",
+    "commandTimeoutDesc": "命令已发送但未收到确认。笔记本可能处于离线状态。",
+    "waitingForDevice": "等待笔记本响应..."
   },
   "alert": {
     "securityAlert": "🚨 安全警报",
@@ -317,7 +338,25 @@
     "serialLabel": "序列号",
     "registrationFailed": "设备注册失败。",
     "serialNotLinked": "序列号未连接",
-    "serialPrefix": "序列号："
+    "serialPrefix": "序列号：",
+    "noDeviceConnected": "未连接设备",
+    "sortAlpha": "名称",
+    "sortNumber": "编号",
+    "sortPlan": "套餐",
+    "sortDays": "剩余天数",
+    "sortMonitoring": "监控中",
+    "setNumber": "设置编号",
+    "numberLabel": "编号",
+    "numberPlaceholder": "输入编号（如 1, 2, 3...）",
+    "numberSaved": "编号已保存",
+    "selectAll": "全选",
+    "deselectAll": "取消全选",
+    "bulkMonitorOn": "批量开启监控",
+    "bulkMonitorOff": "批量关闭监控",
+    "selected": "已选择",
+    "bulkSuccess": "批量更新完成",
+    "bulkSuccessDesc": "已更新所选设备的监控状态。",
+    "dragHint": "长按拖动排序"
   },
   "auth": {
     "title": "MeerCOP",
@@ -519,7 +558,12 @@
     "passwordChanged": "更改完成",
     "passwordChangedDesc": "密码已更改。",
     "passwordChangeFailed": "密码更改失败。",
-    "changing": "更改中..."
+    "changing": "更改中...",
+    "avatarUpdated": "头像已更新。",
+    "avatarUploadFailed": "头像上传失败。",
+    "invalidImageType": "请选择图片文件。",
+    "imageTooLarge": "图片大小不能超过2MB。",
+    "uploading": "上传中..."
   },
   "alertPanel": {
     "title": "警报记录",
@@ -551,7 +595,10 @@
     "resume": "恢复直播",
     "pause": "暂停直播",
     "snapshot": "保存快照",
-    "download": "下载"
+    "download": "下载",
+    "fullscreen": "全屏",
+    "exitFullscreen": "退出全屏",
+    "live": "直播"
   },
   "notFound": {
     "title": "404",
@@ -599,6 +646,12 @@
     "expiredDescription": "您的试用期已结束。请续订以继续使用 MeerCOP。",
     "renewButton": "在 meercop.com 续订",
     "renewNotice": "续订后请重新启动应用。"
+  },
+  "upgrade": {
+    "required": "🔒 需要升级",
+    "featureLocked": "此功能在您当前的套餐中不可用。请在网站上升级。",
+    "limitReached": "🔒 已达上限",
+    "maxDevicesReached": "您已达到设备数量上限。请升级以添加更多设备。"
   },
   "permissions": {
     "title": "需要权限设置",

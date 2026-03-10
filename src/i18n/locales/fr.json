@@ -1,5 +1,14 @@
 {
   "bg": { "title": "Fond d\u2019écran", "description": "Choisissez un fond pour l\u2019écran principal", "default": "Par défaut", "sunset": "Coucher de soleil", "night": "Nuit", "forest": "Forêt", "ocean": "Océan", "aurora": "Aurore", "custom": "Personnalisé", "upload": "Télécharger", "fileTooLarge": "L\u2019image doit faire moins de 5 Mo.", "customSet": "Fond personnalisé appliqué." },
+  "plan": {
+    "free": "Essai 1 jour",
+    "basic": "Forfait Basic",
+    "premium": "Forfait Premium",
+    "currentPlan": "Forfait actuel",
+    "remainingDays": "Restant",
+    "days": " jours",
+    "expiresAt": "Expire"
+  },
   "common": {
     "loading": "Chargement...",
     "error": "Erreur",
@@ -62,6 +71,18 @@
     "phoneAlarmDismissedDesc": "L'alarme du téléphone a été désactivée.",
     "allDismissed": "Alarme désactivée",
     "allDismissedDesc": "Toutes les alarmes ont été désactivées."
+  },
+  "commandAck": {
+    "monitoringOnSent": "Commande d'activation de la surveillance envoyée",
+    "monitoringOffSent": "Commande de désactivation de la surveillance envoyée",
+    "monitoringOnConfirmed": "✅ Surveillance activée confirmée sur l'ordinateur",
+    "monitoringOffConfirmed": "✅ Surveillance désactivée confirmée sur l'ordinateur",
+    "camouflageOnConfirmed": "✅ Mode camouflage activé confirmé sur l'ordinateur",
+    "camouflageOffConfirmed": "✅ Mode camouflage désactivé confirmé sur l'ordinateur",
+    "commandConfirmedDesc": "L'ordinateur a appliqué le changement.",
+    "commandTimeout": "⚠️ Pas de réponse de l'ordinateur",
+    "commandTimeoutDesc": "La commande a été envoyée mais aucune confirmation n'a été reçue. L'ordinateur est peut-être hors ligne.",
+    "waitingForDevice": "En attente de la réponse de l'ordinateur..."
   },
   "alert": {
     "securityAlert": "🚨 Alerte de sécurité",
@@ -317,7 +338,25 @@
     "serialLabel": "Série",
     "registrationFailed": "Échec de l'enregistrement de l'appareil.",
     "serialNotLinked": "Série non liée",
-    "serialPrefix": "Série :"
+    "serialPrefix": "Série :",
+    "noDeviceConnected": "Aucun appareil connecté",
+    "sortAlpha": "Nom",
+    "sortNumber": "Numéro",
+    "sortPlan": "Forfait",
+    "sortDays": "Jours restants",
+    "sortMonitoring": "Surveillance",
+    "setNumber": "Définir le numéro",
+    "numberLabel": "Numéro",
+    "numberPlaceholder": "Entrez un numéro (ex. 1, 2, 3...)",
+    "numberSaved": "Numéro enregistré",
+    "selectAll": "Tout sélectionner",
+    "deselectAll": "Tout désélectionner",
+    "bulkMonitorOn": "Activer surveillance",
+    "bulkMonitorOff": "Désactiver surveillance",
+    "selected": " sélectionnés",
+    "bulkSuccess": "Mise à jour groupée terminée",
+    "bulkSuccessDesc": "L'état de surveillance des appareils sélectionnés a été mis à jour.",
+    "dragHint": "Maintenez pour réorganiser"
   },
   "auth": {
     "title": "MeerCOP",
@@ -519,7 +558,12 @@
     "passwordChanged": "Modifié",
     "passwordChangedDesc": "Le mot de passe a été modifié.",
     "passwordChangeFailed": "Échec de la modification du mot de passe.",
-    "changing": "Modification..."
+    "changing": "Modification...",
+    "avatarUpdated": "Photo de profil mise à jour.",
+    "avatarUploadFailed": "Échec du téléchargement de la photo.",
+    "invalidImageType": "Veuillez sélectionner un fichier image.",
+    "imageTooLarge": "L'image doit faire moins de 2 Mo.",
+    "uploading": "Téléchargement..."
   },
   "alertPanel": {
     "title": "Historique des alertes",
@@ -551,7 +595,10 @@
     "resume": "Reprendre la diffusion",
     "pause": "Mettre en pause la diffusion",
     "snapshot": "Enregistrer la capture",
-    "download": "Télécharger"
+    "download": "Télécharger",
+    "fullscreen": "Plein écran",
+    "exitFullscreen": "Quitter le plein écran",
+    "live": "EN DIRECT"
   },
   "notFound": {
     "title": "404",
@@ -599,6 +646,12 @@
     "expiredDescription": "Votre période d'essai est terminée. Veuillez renouveler votre abonnement pour continuer à utiliser MeerCOP.",
     "renewButton": "Renouveler sur meercop.com",
     "renewNotice": "Après le renouvellement, redémarrez l'application."
+  },
+  "upgrade": {
+    "required": "🔒 Mise à niveau requise",
+    "featureLocked": "Cette fonctionnalité n'est pas disponible avec votre forfait actuel. Mettez à niveau sur le site web.",
+    "limitReached": "🔒 Limite atteinte",
+    "maxDevicesReached": "Vous avez atteint le nombre maximum d'appareils. Mettez à niveau pour en ajouter."
   },
   "permissions": {
     "title": "Autorisations requises",
