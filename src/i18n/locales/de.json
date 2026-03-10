@@ -1,5 +1,14 @@
 {
   "bg": { "title": "Hintergrund", "description": "Wählen Sie einen Hintergrund für den Hauptbildschirm", "default": "Standard", "sunset": "Sonnenuntergang", "night": "Nacht", "forest": "Wald", "ocean": "Ozean", "aurora": "Aurora", "custom": "Benutzerdefiniert", "upload": "Hochladen", "fileTooLarge": "Das Bild muss kleiner als 5 MB sein.", "customSet": "Benutzerdefinierter Hintergrund angewendet." },
+  "plan": {
+    "free": "1-Tag Testversion",
+    "basic": "Basis-Tarif",
+    "premium": "Premium-Tarif",
+    "currentPlan": "Aktueller Tarif",
+    "remainingDays": "Verbleibend",
+    "days": " Tage",
+    "expiresAt": "Läuft ab"
+  },
   "common": {
     "loading": "Laden...",
     "error": "Fehler",
