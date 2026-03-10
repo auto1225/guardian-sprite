@@ -606,7 +606,11 @@
       "q20": "How do I change the background?",
       "a20": "Go to Settings → Background to change the main screen background.\n\n• Choose from 6 preset gradients: Default, Sunset, Night, Forest, Ocean, Aurora\n• Upload a custom image (max 5MB) from your device\n• A yellow border and checkmark indicate the selected background\n• To remove a custom image, tap the X button on its thumbnail\n• Settings are saved locally on this device",
       "q21": "How do I hide the mascot character?",
-      "a21": "Go to Settings → Show Mascot and toggle the switch off.\n\n• When disabled, the mascot character and speech bubble are hidden from the main screen\n• Only the background image/gradient remains visible\n• This setting is saved locally and works independently from the laptop app\n• Toggle it back on anytime to restore the mascot"
+      "a21": "Go to Settings → Show Mascot and toggle the switch off.\n\n• When disabled, the mascot character and speech bubble are hidden from the main screen\n• Only the background image/gradient remains visible\n• This setting is saved locally and works independently from the laptop app\n• Toggle it back on anytime to restore the mascot",
+      "q22": "What does the command confirmation (ACK) mean?",
+      "a22": "When you toggle monitoring or camouflage, the button responds immediately but the system waits for laptop confirmation.\n\n• <strong>\"Waiting for laptop response...\"</strong> — Command sent, awaiting confirmation\n• <strong>\"✅ Confirmed on laptop\"</strong> — The laptop successfully applied the change\n• <strong>\"⚠️ No response from laptop\"</strong> — No confirmation received (laptop may be offline)\n\nThe device name pill and STEALTH badge only update when the laptop actually confirms the change.",
+      "q23": "Why can't I toggle monitoring or camouflage when the laptop is offline?",
+      "a23": "Commands require an active connection to the laptop. When the laptop is offline (turned off, in sleep mode, or browser closed):\n\n• The monitoring and camouflage buttons show an offline error when tapped\n• The device name pill shows the actual laptop state, not your button press\n• Wait for the laptop to come back online, then try again\n\n💡 Keep the MeerCOP browser tab open on the laptop and disable sleep mode for continuous monitoring."
     },
     "footer": {
       "copyright": "© 2025 MeerCOP. All rights reserved.",
