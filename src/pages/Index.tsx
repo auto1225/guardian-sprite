@@ -62,7 +62,9 @@ const Index = () => {
   const deviceNameMap = Object.fromEntries(managedDevices.map(d => [d.id, d.name]));
   const { alerts, activeAlert, unreadCount, dismissRemoteAlarm, dismissAll } = useAlerts(selectedDeviceId);
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, subscribe: subscribePush } = usePushSubscription(selectedDeviceId);
-  const isMonitoring = selectedDevice?.is_monitoring ?? false;
+  // ★ 기기가 오프라인이면 is_monitoring이 DB에서 true여도 UI에서는 OFF로 표시
+  const isDeviceOnline = selectedDevice?.status !== "offline";
+  const isMonitoring = isDeviceOnline && (selectedDevice?.is_monitoring ?? false);
   const selectedSerialKey = selectedDevice?.metadata ? (selectedDevice.metadata as Record<string, unknown>)?.serial_key as string | undefined : undefined;
   const { guard } = useCapabilityGuard(selectedSerialKey);
   const { toggleMonitoring } = useCommands();
