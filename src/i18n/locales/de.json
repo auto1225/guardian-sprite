@@ -157,7 +157,8 @@
     "reload": "Neu laden"
   },
   "deviceList": {
-    "selectDevice": "Gerät auswählen"
+    "selectDevice": "Gerät auswählen",
+    "waitingForDevice": "⏳ Warte auf Gerät..."
   },
   "camouflage": {
     "onTitle": "Tarnmodus AN",
