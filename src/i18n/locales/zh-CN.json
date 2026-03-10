@@ -621,6 +621,12 @@
     "renewButton": "在 meercop.com 续订",
     "renewNotice": "续订后请重新启动应用。"
   },
+  "upgrade": {
+    "required": "🔒 需要升级",
+    "featureLocked": "此功能在您当前的套餐中不可用。请在网站上升级。",
+    "limitReached": "🔒 已达上限",
+    "maxDevicesReached": "您已达到设备数量上限。请升级以添加更多设备。"
+  },
   "permissions": {
     "title": "需要权限设置",
     "subtitle": "MeerCOP需要以下权限来提供安全功能。",
