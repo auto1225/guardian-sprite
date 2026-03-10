@@ -55,7 +55,9 @@
     "statusChangeFailed": "Error al cambiar el estado.",
     "alertMessage": "¡Se detectó un impacto en tu portátil!",
     "readyMessage": "¡MeerCOP listo para vigilar! Puedes iniciar la vigilancia en cualquier momento.",
-    "monitoringMessage": "MeerCOP está vigilando tu portátil."
+    "monitoringMessage": "MeerCOP está vigilando tu portátil.",
+    "deviceLoggedOut": "⚠️ El ordenador ha cerrado sesión. Se reconectará automáticamente al volver a iniciar sesión.",
+    "deviceOfflineActionDesc": "No se puede conectar porque el ordenador cerró sesión o está sin conexión."
   },
   "toggle": {
     "startMonitoring": "Iniciar vigilancia",
