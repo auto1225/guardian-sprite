@@ -108,19 +108,18 @@ const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps)
     };
     fetchAvatar();
 
-    // Fetch device names — licenses.device_name (SSOT) 우선 사용
+    // Fetch device names — get-devices (service_role) → metadata.serial_key 기준 매핑
     const fetchDeviceNames = async () => {
       try {
-        const { data: licenseData } = await supabase
-          .from("licenses")
-          .select("serial_key, device_name")
-          .eq("user_id", effectiveUserId);
+        const { data } = await supabase.functions.invoke("get-devices", {
+          body: { user_id: effectiveUserId },
+        });
+        const devices = data?.devices || [];
         const map: Record<string, string> = {};
-        if (licenseData) {
-          for (const lic of licenseData) {
-            if (lic.device_name) {
-              map[lic.serial_key] = lic.device_name;
-            }
+        for (const d of devices) {
+          const serial = (d.metadata as Record<string, unknown>)?.serial_key as string | undefined;
+          if (serial && d.name) {
+            map[serial] = d.name;
           }
         }
         setDeviceNameMap(map);
