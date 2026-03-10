@@ -739,8 +739,8 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
                       <button
                         key={key}
                         onClick={() => handleMouseSensitivityChange(key)}
-                        className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                          mouseSensitivity === key ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
+                        className={`flex-1 py-2.5 rounded-xl text-sm font-semibold ${
+                          mouseSensitivity === key ? "text-slate-800" : "text-white"
                         }`}
                         style={mouseSensitivity === key ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
                       >
