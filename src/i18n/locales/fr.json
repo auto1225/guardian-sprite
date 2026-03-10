@@ -55,7 +55,9 @@
     "statusChangeFailed": "Échec du changement de statut.",
     "alertMessage": "Un choc a été détecté sur votre ordinateur portable !",
     "readyMessage": "MeerCOP est prêt ! Vous pouvez lancer la surveillance à tout moment.",
-    "monitoringMessage": "MeerCOP surveille votre ordinateur portable."
+    "monitoringMessage": "MeerCOP surveille votre ordinateur portable.",
+    "deviceLoggedOut": "⚠️ L'ordinateur s'est déconnecté. Il se reconnectera automatiquement lors de la prochaine connexion.",
+    "deviceOfflineActionDesc": "Impossible de se connecter car l'ordinateur est déconnecté ou hors ligne."
   },
   "toggle": {
     "startMonitoring": "Démarrer la surveillance",
