@@ -28,7 +28,9 @@
     "or": "oder",
     "adding": "Registrierung...",
     "register": "Registrieren",
-    "copied": "Kopiert"
+    "copied": "Kopiert",
+    "noDevice": "Kein Gerät",
+    "noDeviceDesc": "Kein verbundenes Gerät gefunden. Bitte melden Sie sich zuerst mit Ihrer Seriennummer am Laptop an."
   },
   "header": {
     "openMenu": "Menü öffnen",
