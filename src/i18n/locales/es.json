@@ -40,6 +40,7 @@
     "laptop": "Portátil",
     "desktop": "Escritorio",
     "tablet": "Tableta",
+    "smartphone": "Smartphone",
     "network": "Red",
     "camera": "Cámara",
     "settings": "Ajustes"
