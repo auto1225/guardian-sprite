@@ -277,6 +277,7 @@
       "insensitive": "Insensível"
     },
     "nicknameChanged": "Apelido alterado.",
+    "duplicateDeviceName": "Este nome de dispositivo já está em uso por outro dispositivo.",
     "pinChanged": "PIN alterado.",
     "nicknameDialog": {
       "title": "Alterar apelido",
