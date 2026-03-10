@@ -669,7 +669,10 @@
     "resume": "스트리밍 재개",
     "pause": "스트리밍 일시정지",
     "snapshot": "스냅샷 저장",
-    "download": "다운로드"
+    "download": "다운로드",
+    "fullscreen": "전체 화면",
+    "exitFullscreen": "전체 화면 종료",
+    "live": "LIVE"
   },
   "notFound": {
     "title": "404",

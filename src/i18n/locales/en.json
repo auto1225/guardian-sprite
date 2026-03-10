@@ -669,7 +669,10 @@
     "resume": "Resume streaming",
     "pause": "Pause streaming",
     "snapshot": "Take snapshot",
-    "download": "Download"
+    "download": "Download",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "live": "LIVE"
   },
   "notFound": {
     "title": "404",
