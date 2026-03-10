@@ -590,7 +590,10 @@
     "resume": "Streaming fortsetzen",
     "pause": "Streaming pausieren",
     "snapshot": "Schnappschuss speichern",
-    "download": "Herunterladen"
+    "download": "Herunterladen",
+    "fullscreen": "Vollbild",
+    "exitFullscreen": "Vollbild beenden",
+    "live": "LIVE"
   },
   "notFound": {
     "title": "404",
