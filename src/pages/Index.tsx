@@ -199,7 +199,9 @@ const Index = () => {
       return;
     }
     if (!guard("monitoring_toggle")) return;
-    const newVal = !isMonitoring;
+    const newVal = !buttonMonitoring;
+    // ★ 버튼 즉시 토글
+    setOptimisticMonitoring(newVal);
 
     try {
       const monitorSerialKey = (selectedDevice.metadata as Record<string, unknown>)?.serial_key as string | undefined;
