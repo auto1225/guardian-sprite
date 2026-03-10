@@ -85,20 +85,23 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
               src={bg.value} 
               alt="Custom Background" 
               style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
                 width: '100%',
-                minWidth: '600px',
-                height: 'auto',
+                height: '100%',
                 display: 'block',
                 objectFit: 'cover',
-                minHeight: '300px',
               }}
             />
           ) : (
             <div 
               style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
                 width: '100%',
-                minWidth: '600px',
-                minHeight: '300px',
+                height: '100%',
                 background: bg.value,
               }}
             />
