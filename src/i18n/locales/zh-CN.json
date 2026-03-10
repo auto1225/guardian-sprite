@@ -590,7 +590,10 @@
     "resume": "恢复直播",
     "pause": "暂停直播",
     "snapshot": "保存快照",
-    "download": "下载"
+    "download": "下载",
+    "fullscreen": "全屏",
+    "exitFullscreen": "退出全屏",
+    "live": "直播"
   },
   "notFound": {
     "title": "404",
