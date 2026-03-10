@@ -200,8 +200,8 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
   };
 
   const saveMetadata = async (updates: Record<string, unknown>) => {
-    await safeMetadataUpdate(device.id, updates);
-    // ★ 로컬 캐시 즉시 업데이트 → invalidate 대신 setQueryData로 깜빡임 방지
+    savingRef.current = true;
+    // ★ 낙관적 업데이트를 DB 쓰기 전에 수행 → Realtime/refetch 레이스 컨디션 방지
     queryClient.setQueryData(["devices", device.user_id], (old: Device[] | undefined) => {
       if (!old) return old;
       return old.map(d => {
@@ -210,6 +210,15 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
         return { ...d, metadata: { ...currentMeta, ...updates } };
       });
     });
+    try {
+      await safeMetadataUpdate(device.id, updates);
+    } catch (err) {
+      // DB 쓰기 실패 시 캐시 롤백
+      queryClient.invalidateQueries({ queryKey: ["devices", device.user_id] });
+      throw err;
+    } finally {
+      savingRef.current = false;
+    }
     // Broadcast to laptop so it can apply changes immediately (no RLS access to postgres_changes)
     broadcastSettingsUpdate(device.id, updates);
   };
