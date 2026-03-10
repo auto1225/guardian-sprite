@@ -1,5 +1,14 @@
 {
   "bg": { "title": "背景", "description": "选择主屏幕背景", "default": "默认", "sunset": "日落", "night": "夜晚", "forest": "森林", "ocean": "海洋", "aurora": "极光", "custom": "自定义", "upload": "上传", "fileTooLarge": "图片大小不能超过5MB。", "customSet": "自定义背景已应用。" },
+  "plan": {
+    "free": "1天试用",
+    "basic": "基础套餐",
+    "premium": "高级套餐",
+    "currentPlan": "当前套餐",
+    "remainingDays": "剩余",
+    "days": "天",
+    "expiresAt": "到期日"
+  },
   "common": {
     "loading": "加载中...",
     "error": "错误",
