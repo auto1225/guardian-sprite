@@ -361,23 +361,24 @@ const Index = () => {
         <ToggleButton 
           isOn={isMonitoring}
           onToggle={handleToggleMonitoring}
-          isCamouflage={!!(selectedDevice?.metadata as Record<string, unknown>)?.camouflage_mode}
+          isCamouflage={isDeviceOnline && !!(selectedDevice?.metadata as Record<string, unknown>)?.camouflage_mode}
           onCamouflageToggle={selectedDevice ? async () => {
+            // ★ 기기가 오프라인이면 위장모드 토글 불가
+            if (selectedDevice.status === "offline") {
+              toast({
+                title: t("status.deviceOffline"),
+                description: t("status.deviceOfflineActionDesc", "컴퓨터가 로그아웃 또는 오프라인 상태이므로 연결할 수 없습니다."),
+                variant: "destructive",
+              });
+              return;
+            }
             if (!guard("camouflage_mode")) return;
             const currentMeta = (selectedDevice.metadata as Record<string, unknown>) || {};
             const newVal = !currentMeta.camouflage_mode;
             try {
               await safeMetadataUpdate(selectedDevice.id, { camouflage_mode: newVal });
 
-              // 로컬 캐시 즉시 업데이트 (UI 반영)
-              queryClient.setQueriesData({ queryKey: ["devices"] }, (oldDevices: any[] | undefined) => {
-                if (!oldDevices || !Array.isArray(oldDevices)) return oldDevices;
-                return oldDevices.map((d: any) =>
-                  d.id === selectedDevice.id
-                    ? { ...d, metadata: { ...((d.metadata as Record<string, unknown>) || {}), camouflage_mode: newVal } }
-                    : d
-                );
-              });
+              // ★ 낙관적 업데이트 제거 — 실제 기기가 DB를 업데이트할 때 Realtime으로 반영
               if (effectiveUserId) {
                 const serialKey = (selectedDevice.metadata as Record<string, unknown>)?.serial_key as string | undefined;
                 await broadcastCommand({
