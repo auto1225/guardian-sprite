@@ -652,8 +652,8 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
                       toast({ title: t("common.error"), description: t("common.settingSaveFailed"), variant: "destructive" });
                     }
                   }}
-                  className={`flex-1 min-w-[70px] py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                    sensorSettings.deviceType === type ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
+                  className={`flex-1 min-w-[70px] py-2.5 rounded-xl text-sm font-semibold ${
+                    sensorSettings.deviceType === type ? "text-slate-800" : "text-white"
                   }`}
                   style={sensorSettings.deviceType === type ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
                   >
