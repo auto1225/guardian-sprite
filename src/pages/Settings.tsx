@@ -553,8 +553,8 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
                         toast({ title: t("common.error"), description: t("common.saveFailed"), variant: "destructive" });
                       }
                     }}
-                    className={`py-1.5 px-1 rounded-lg text-[10px] font-semibold transition-all text-center leading-tight ${
-                      deviceLanguage === lang.code ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
+                    className={`py-1.5 px-1 rounded-lg text-[10px] font-semibold text-center leading-tight ${
+                      deviceLanguage === lang.code ? "text-slate-800" : "text-white"
                     }`}
                     style={deviceLanguage === lang.code ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
                   >
