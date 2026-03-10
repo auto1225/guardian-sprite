@@ -60,20 +60,20 @@ const DeviceList = ({ isExpanded, onToggle, selectedDeviceId, selectedDevice, on
             className="backdrop-blur-xl border rounded-full px-4 py-1.5 flex items-center gap-2 shadow-lg transition-all"
             style={{
               background: selectedDevice.is_monitoring
-                ? 'linear-gradient(135deg, hsla(45, 90%, 50%, 0.35) 0%, hsla(40, 85%, 45%, 0.25) 100%)'
+                ? 'linear-gradient(135deg, hsla(80, 70%, 45%, 0.35) 0%, hsla(55, 80%, 50%, 0.25) 100%)'
                 : 'hsla(0, 0%, 100%, 0.15)',
               borderColor: selectedDevice.is_monitoring
-                ? 'hsla(45, 80%, 55%, 0.6)'
+                ? 'hsla(80, 60%, 50%, 0.5)'
                 : 'hsla(0, 0%, 100%, 0.25)',
               boxShadow: selectedDevice.is_monitoring
-                ? '0 2px 12px hsla(45, 80%, 50%, 0.3)'
-                : 'none',
+                ? '0 4px 20px hsla(80, 60%, 40%, 0.3), inset 0 1px 0 hsla(0, 0%, 100%, 0.15)'
+                : 'inset 0 1px 0 hsla(0, 0%, 100%, 0.1)',
             }}
           >
             <span
               className="font-bold text-sm drop-shadow-sm"
               style={{
-                color: selectedDevice.is_monitoring ? 'hsl(45, 90%, 55%)' : 'white',
+                color: selectedDevice.is_monitoring ? 'hsl(55, 80%, 60%)' : 'white',
               }}
             >
               {selectedDevice.name}
@@ -82,8 +82,8 @@ const DeviceList = ({ isExpanded, onToggle, selectedDeviceId, selectedDevice, on
               <span
                 className="px-1.5 py-0.5 rounded-full text-xs font-bold"
                 style={{
-                  background: 'hsla(45, 90%, 50%, 0.9)',
-                  color: 'hsl(0, 0%, 15%)',
+                  background: 'hsla(80, 60%, 50%, 0.3)',
+                  color: 'hsl(55, 80%, 60%)',
                 }}
               >
                 ON
