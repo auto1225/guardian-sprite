@@ -279,6 +279,7 @@
     "usbDetectionDesc": "Detect USB device connections",
     "powerDetection": "Power Cable Detection",
     "powerDetectionDesc": "Detect power cable disconnection",
+    "powerDetectionWarning": "Power cable detection does not work on some browsers such as iOS Safari and Firefox.",
     "screenTouchDetection": "Screen Touch Detection",
     "screenTouchDetectionDesc": "Detect screen touch input",
     "sensitivity": {

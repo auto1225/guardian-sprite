@@ -241,6 +241,7 @@
     "usbDetectionDesc": "Detecta conexiones de dispositivos USB",
     "powerDetection": "Detección de cable de alimentación",
     "powerDetectionDesc": "Detecta la desconexión de la alimentación",
+    "powerDetectionWarning": "La detección del cable de alimentación no funciona en algunos navegadores como iOS Safari y Firefox.",
     "screenTouchDetection": "Detección de toque de pantalla",
     "screenTouchDetectionDesc": "Detecta la entrada táctil de pantalla",
     "sensitivity": {

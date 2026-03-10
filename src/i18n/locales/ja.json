@@ -241,6 +241,7 @@
     "usbDetectionDesc": "USBデバイスの接続を検知します",
     "powerDetection": "電源ケーブル検知",
     "powerDetectionDesc": "電源の切断を検知します",
+    "powerDetectionWarning": "iOS Safari、Firefoxなどの一部のブラウザでは電源ケーブル検知が動作しません。",
     "screenTouchDetection": "画面タッチ検知",
     "screenTouchDetectionDesc": "画面のタッチ入力を検知します",
     "sensitivity": {

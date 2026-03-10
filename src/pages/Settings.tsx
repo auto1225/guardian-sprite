@@ -760,6 +760,7 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
             <div className="border-t border-white/10" />
             <SensorSection>
               <SensorToggle label={t("settings.powerDetection")} description={t("settings.powerDetectionDesc")} checked={sensorSettings.power} onChange={(v) => handleSensorToggle("power", v)} />
+              <p className="text-xs text-yellow-300/80 px-1 -mt-1">⚠️ {t("settings.powerDetectionWarning")}</p>
             </SensorSection>
 
             <div className="border-t border-white/10" />
