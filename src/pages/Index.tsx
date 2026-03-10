@@ -177,20 +177,12 @@ const Index = () => {
     }
     if (!guard("monitoring_toggle")) return;
     const newVal = !isMonitoring;
-    
-    // 즉시 로컬 캐시 업데이트 (UI 반응성)
-    queryClient.setQueriesData({ queryKey: ["devices"] }, (oldDevices: any[] | undefined) => {
-      if (!oldDevices || !Array.isArray(oldDevices)) return oldDevices;
-      return oldDevices.map((d: any) =>
-        d.id === selectedDevice.id ? { ...d, is_monitoring: newVal } : d
-      );
-    });
 
     try {
       const monitorSerialKey = (selectedDevice.metadata as Record<string, unknown>)?.serial_key as string | undefined;
       await toggleMonitoring(selectedDevice.id, newVal, monitorSerialKey);
       
-      // 명령 전송 성공 토스트
+      // 명령 전송 성공 토스트 — UI는 실제 기기가 DB를 업데이트할 때 Realtime으로 반영됨
       toast({
         title: newVal ? t("commandAck.monitoringOnSent") : t("commandAck.monitoringOffSent"),
         description: t("commandAck.waitingForDevice"),
@@ -220,13 +212,6 @@ const Index = () => {
         });
       }
     } catch (error) {
-      // 실패 시 롤백
-      queryClient.setQueriesData({ queryKey: ["devices"] }, (oldDevices: any[] | undefined) => {
-        if (!oldDevices || !Array.isArray(oldDevices)) return oldDevices;
-        return oldDevices.map((d: any) =>
-          d.id === selectedDevice.id ? { ...d, is_monitoring: !newVal } : d
-        );
-      });
       toast({
         title: t("common.error"),
         description: t("status.statusChangeFailed"),
