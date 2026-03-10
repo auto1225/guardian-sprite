@@ -72,6 +72,18 @@
     "allDismissed": "Alarm aufgehoben",
     "allDismissedDesc": "Alle Alarme von Computer und Smartphone wurden aufgehoben."
   },
+  "commandAck": {
+    "monitoringOnSent": "Befehl zur Aktivierung der Überwachung gesendet",
+    "monitoringOffSent": "Befehl zur Deaktivierung der Überwachung gesendet",
+    "monitoringOnConfirmed": "✅ Überwachung auf dem Laptop aktiviert bestätigt",
+    "monitoringOffConfirmed": "✅ Überwachung auf dem Laptop deaktiviert bestätigt",
+    "camouflageOnConfirmed": "✅ Tarnmodus auf dem Laptop aktiviert bestätigt",
+    "camouflageOffConfirmed": "✅ Tarnmodus auf dem Laptop deaktiviert bestätigt",
+    "commandConfirmedDesc": "Der Laptop hat die Änderung übernommen.",
+    "commandTimeout": "⚠️ Keine Antwort vom Laptop",
+    "commandTimeoutDesc": "Der Befehl wurde gesendet, aber keine Bestätigung erhalten. Der Laptop ist möglicherweise offline.",
+    "waitingForDevice": "Warte auf Antwort des Laptops..."
+  },
   "alert": {
     "securityAlert": "🚨 Sicherheitsalarm",
     "liveStreaming": "🎥 Live-Streaming",
