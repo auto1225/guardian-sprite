@@ -72,6 +72,18 @@
     "allDismissed": "警報已解除",
     "allDismissedDesc": "所有警報已解除。"
   },
+  "commandAck": {
+    "monitoringOnSent": "已發送開啟監控命令",
+    "monitoringOffSent": "已發送關閉監控命令",
+    "monitoringOnConfirmed": "✅ 筆電已確認開啟監控",
+    "monitoringOffConfirmed": "✅ 筆電已確認關閉監控",
+    "camouflageOnConfirmed": "✅ 筆電已確認開啟偽裝模式",
+    "camouflageOffConfirmed": "✅ 筆電已確認關閉偽裝模式",
+    "commandConfirmedDesc": "筆電已套用變更。",
+    "commandTimeout": "⚠️ 筆電無回應",
+    "commandTimeoutDesc": "命令已發送但未收到確認。筆電可能處於離線狀態。",
+    "waitingForDevice": "等待筆電回應..."
+  },
   "alert": {
     "securityAlert": "🚨 安全警報",
     "liveStreaming": "🎥 即時串流",
