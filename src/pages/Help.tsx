@@ -330,8 +330,8 @@ const HelpPage = forwardRef<HTMLDivElement, HelpPageProps>(({ isOpen = true, onC
                 <AccordionTrigger className="px-4 text-white text-sm hover:no-underline text-left">
                   {t(`help.faq.q${n}`)}
                 </AccordionTrigger>
-                <AccordionContent className="px-4 text-white/70 text-sm whitespace-pre-line">
-                  {t(`help.faq.a${n}`)}
+                <AccordionContent className="px-4 text-white/70 text-sm whitespace-pre-line" dangerouslySetInnerHTML={{ __html: t(`help.faq.a${n}`) }}>
+
                 </AccordionContent>
               </AccordionItem>
             ))}
