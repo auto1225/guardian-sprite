@@ -1,5 +1,14 @@
 {
   "bg": { "title": "Fondo", "description": "Elige un fondo para la pantalla principal", "default": "Predeterminado", "sunset": "Atardecer", "night": "Noche", "forest": "Bosque", "ocean": "Océano", "aurora": "Aurora", "custom": "Personalizado", "upload": "Subir", "fileTooLarge": "La imagen debe ser menor de 5MB.", "customSet": "Fondo personalizado aplicado." },
+  "plan": {
+    "free": "Prueba 1 día",
+    "basic": "Plan Básico",
+    "premium": "Plan Premium",
+    "currentPlan": "Plan actual",
+    "remainingDays": "Restante",
+    "days": " días",
+    "expiresAt": "Expira"
+  },
   "common": {
     "loading": "Cargando...",
     "error": "Error",
