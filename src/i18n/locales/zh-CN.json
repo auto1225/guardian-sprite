@@ -72,6 +72,18 @@
     "allDismissed": "警报已解除",
     "allDismissedDesc": "所有警报已解除。"
   },
+  "commandAck": {
+    "monitoringOnSent": "已发送开启监控命令",
+    "monitoringOffSent": "已发送关闭监控命令",
+    "monitoringOnConfirmed": "✅ 笔记本已确认开启监控",
+    "monitoringOffConfirmed": "✅ 笔记本已确认关闭监控",
+    "camouflageOnConfirmed": "✅ 笔记本已确认开启伪装模式",
+    "camouflageOffConfirmed": "✅ 笔记本已确认关闭伪装模式",
+    "commandConfirmedDesc": "笔记本已应用更改。",
+    "commandTimeout": "⚠️ 笔记本无响应",
+    "commandTimeoutDesc": "命令已发送但未收到确认。笔记本可能处于离线状态。",
+    "waitingForDevice": "等待笔记本响应..."
+  },
   "alert": {
     "securityAlert": "🚨 安全警报",
     "liveStreaming": "🎥 实时直播",
