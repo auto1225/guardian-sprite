@@ -166,6 +166,15 @@ const Index = () => {
 
   const handleToggleMonitoring = async () => {
     if (!selectedDevice) return;
+    // ★ 기기가 오프라인이면 감시 토글 불가
+    if (selectedDevice.status === "offline") {
+      toast({
+        title: t("status.deviceOffline"),
+        description: t("status.deviceOfflineActionDesc", "컴퓨터가 로그아웃 또는 오프라인 상태이므로 연결할 수 없습니다."),
+        variant: "destructive",
+      });
+      return;
+    }
     if (!guard("monitoring_toggle")) return;
     const newVal = !isMonitoring;
     

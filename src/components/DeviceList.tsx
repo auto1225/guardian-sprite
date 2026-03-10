@@ -58,27 +58,31 @@ const DeviceList = ({ isExpanded, onToggle, selectedDeviceId, selectedDevice, on
         >
           <div
             className="backdrop-blur-xl border rounded-full px-4 py-1.5 flex items-center gap-2 shadow-lg transition-all"
-            style={{
-              background: selectedDevice.is_monitoring
-                ? 'linear-gradient(135deg, hsla(80, 70%, 45%, 0.35) 0%, hsla(55, 80%, 50%, 0.25) 100%)'
-                : 'hsla(0, 0%, 100%, 0.15)',
-              borderColor: selectedDevice.is_monitoring
-                ? 'hsla(80, 60%, 50%, 0.5)'
-                : 'hsla(0, 0%, 100%, 0.25)',
-              boxShadow: selectedDevice.is_monitoring
-                ? '0 4px 20px hsla(80, 60%, 40%, 0.3), inset 0 1px 0 hsla(0, 0%, 100%, 0.15)'
-                : 'inset 0 1px 0 hsla(0, 0%, 100%, 0.1)',
-            }}
+            style={(() => {
+              // ★ 기기가 오프라인이면 is_monitoring이 true여도 OFF 스타일 적용
+              const effectiveMonitoring = selectedDevice.is_monitoring && selectedDevice.status !== "offline";
+              return {
+                background: effectiveMonitoring
+                  ? 'linear-gradient(135deg, hsla(80, 70%, 45%, 0.35) 0%, hsla(55, 80%, 50%, 0.25) 100%)'
+                  : 'hsla(0, 0%, 100%, 0.15)',
+                borderColor: effectiveMonitoring
+                  ? 'hsla(80, 60%, 50%, 0.5)'
+                  : 'hsla(0, 0%, 100%, 0.25)',
+                boxShadow: effectiveMonitoring
+                  ? '0 4px 20px hsla(80, 60%, 40%, 0.3), inset 0 1px 0 hsla(0, 0%, 100%, 0.15)'
+                  : 'inset 0 1px 0 hsla(0, 0%, 100%, 0.1)',
+              };
+            })()}
           >
             <span
               className="font-bold text-sm drop-shadow-sm"
               style={{
-                color: selectedDevice.is_monitoring ? 'hsl(55, 80%, 60%)' : 'white',
+                color: (selectedDevice.is_monitoring && selectedDevice.status !== "offline") ? 'hsl(55, 80%, 60%)' : 'white',
               }}
             >
               {selectedDevice.name}
             </span>
-            {selectedDevice.is_monitoring && (
+            {selectedDevice.is_monitoring && selectedDevice.status !== "offline" && (
               <span
                 className="px-1.5 py-0.5 rounded-full text-xs font-bold"
                 style={{
