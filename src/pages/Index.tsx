@@ -384,9 +384,9 @@ const Index = () => {
           </div>
         )}
         <ToggleButton 
-          isOn={isMonitoring}
+          isOn={buttonMonitoring}
           onToggle={handleToggleMonitoring}
-          isCamouflage={isDeviceOnline && !!(selectedDevice?.metadata as Record<string, unknown>)?.camouflage_mode}
+          isCamouflage={buttonCamouflage}
           onCamouflageToggle={selectedDevice ? async () => {
             // ★ 기기가 오프라인이면 위장모드 토글 불가
             if (selectedDevice.status === "offline") {
