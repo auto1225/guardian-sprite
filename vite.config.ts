@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => {
       includeAssets: ["favicon.ico", "robots.txt", "pwa-192x192.png", "pwa-512x512.png"],
       manifest: {
         name: "MeerCOP - 노트북 도난 방지",
-        short_name: "MeerCOP",
+        short_name: "MeerCOP Smartphone",
         description: "노트북 도난 방지 및 원격 모니터링 서비스",
         theme_color: "#0EA5E9",
         background_color: "#0EA5E9",
