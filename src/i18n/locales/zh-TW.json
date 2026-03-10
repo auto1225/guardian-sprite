@@ -277,6 +277,7 @@
       "insensitive": "遲鈍"
     },
     "nicknameChanged": "暱稱已變更。",
+    "duplicateDeviceName": "此裝置名稱已被其他裝置使用。",
     "pinChanged": "密碼已變更。",
     "nicknameDialog": {
       "title": "變更暱稱",
