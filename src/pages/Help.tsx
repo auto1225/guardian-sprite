@@ -325,7 +325,7 @@ const HelpPage = forwardRef<HTMLDivElement, HelpPageProps>(({ isOpen = true, onC
 
         <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden">
           <Accordion type="single" collapsible className="w-full">
-            {Array.from({ length: 21 }, (_, i) => i + 1).map((n) => (
+            {Array.from({ length: 23 }, (_, i) => i + 1).map((n) => (
               <AccordionItem key={n} value={`faq-${n}`} className="border-white/10">
                 <AccordionTrigger className="px-4 text-white text-sm hover:no-underline text-left">
                   {t(`help.faq.q${n}`)}

@@ -551,7 +551,10 @@
     "resume": "ストリーミング再開",
     "pause": "ストリーミング一時停止",
     "snapshot": "スナップショット保存",
-    "download": "ダウンロード"
+    "download": "ダウンロード",
+    "fullscreen": "全画面",
+    "exitFullscreen": "全画面終了",
+    "live": "LIVE"
   },
   "notFound": {
     "title": "404",

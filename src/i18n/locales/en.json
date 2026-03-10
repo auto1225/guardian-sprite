@@ -428,14 +428,14 @@
       "characterArea": "MeerCOP Character & Status Message",
       "characterAreaDesc": "The MeerCOP character is displayed in the center. Below it, the current status message appears:\n\n• <strong>\"MeerCOP is ready!\"</strong> — Monitoring is off, standby mode\n• <strong>\"MeerCOP is monitoring your laptop.\"</strong> — Monitoring is active\n• <strong>\"🚨 Impact detected on your laptop!\"</strong> — Alert triggered\n• <strong>\"⚠️ Cannot connect to computer.\"</strong> — Laptop offline\n• <strong>\"⚠️ Network connection lost.\"</strong> — Network disconnected",
       "monitoringToggle": "Monitoring Toggle Button",
-      "monitoringToggleDesc": "A large circular button at the bottom of the screen.\n\n• <strong>MeerCOP ON</strong> — Starts monitoring. All detection sensors on the laptop are activated.\n• <strong>MeerCOP OFF</strong> — Stops monitoring.\n\nThe character image and background color change based on monitoring status.",
+      "monitoringToggleDesc": "A large circular button at the bottom of the screen.\n\n• <strong>MeerCOP ON</strong> — Starts monitoring. All detection sensors on the laptop are activated.\n• <strong>MeerCOP OFF</strong> — Stops monitoring.\n\nThe button toggles immediately when tapped. The device name pill at the top updates only when the laptop confirms the command. If the laptop is offline, an error message appears and the button does not toggle.\n\nThe character image and background color change based on monitoring status.",
       "camouflageMode": "Camouflage Mode Button",
-      "camouflageModeDesc": "A monitor-shaped icon next to the monitoring toggle. Tapping this button:\n\n• <strong>Camouflage ON</strong> — The laptop screen is covered in black, appearing off. Monitoring continues.\n• <strong>Camouflage OFF</strong> — The laptop screen returns to normal.\n\nUseful for making the laptop appear unused when leaving your seat at a cafe, to detect theft attempts.",
+      "camouflageModeDesc": "A monitor-shaped icon next to the monitoring toggle. Tapping this button:\n\n• <strong>Camouflage ON</strong> — The laptop screen is covered in black, appearing off. Monitoring continues.\n• <strong>Camouflage OFF</strong> — The laptop screen returns to normal.\n\nThe button toggles immediately, while the STEALTH badge next to the device name updates only when the laptop confirms the change. If the laptop is offline, the button is disabled.\n\nUseful for making the laptop appear unused when leaving your seat at a cafe, to detect theft attempts.",
 
       "monitoringFeature": "4. Monitoring Details",
       "monitoringOn": "Monitoring ON",
       "monitoringOnDesc": "When monitoring is enabled, the laptop's accelerometer, camera, keyboard/mouse input, and other sensors are activated. Any anomaly triggers an immediate alert to your smartphone and sounds an alarm on the laptop.",
-      "detectionItems": "Detection Items (6 types)",
+      "detectionItems": "Detection Items (7 types)",
       "motionDetection": "🔄 Motion Detection (Accelerometer)",
       "motionDetectionDesc": "Detected when the laptop is shaken or moved. Sensitivity adjustable: Sensitive (small vibrations), Normal, Insensitive (large movements only). 'Insensitive' recommended in vibration-prone environments like cafes.",
       "lidDetection": "📂 Lid Opening Detection",
@@ -606,7 +606,11 @@
       "q20": "How do I change the background?",
       "a20": "Go to Settings → Background to change the main screen background.\n\n• Choose from 6 preset gradients: Default, Sunset, Night, Forest, Ocean, Aurora\n• Upload a custom image (max 5MB) from your device\n• A yellow border and checkmark indicate the selected background\n• To remove a custom image, tap the X button on its thumbnail\n• Settings are saved locally on this device",
       "q21": "How do I hide the mascot character?",
-      "a21": "Go to Settings → Show Mascot and toggle the switch off.\n\n• When disabled, the mascot character and speech bubble are hidden from the main screen\n• Only the background image/gradient remains visible\n• This setting is saved locally and works independently from the laptop app\n• Toggle it back on anytime to restore the mascot"
+      "a21": "Go to Settings → Show Mascot and toggle the switch off.\n\n• When disabled, the mascot character and speech bubble are hidden from the main screen\n• Only the background image/gradient remains visible\n• This setting is saved locally and works independently from the laptop app\n• Toggle it back on anytime to restore the mascot",
+      "q22": "What does the command confirmation (ACK) mean?",
+      "a22": "When you toggle monitoring or camouflage, the button responds immediately but the system waits for laptop confirmation.\n\n• <strong>\"Waiting for laptop response...\"</strong> — Command sent, awaiting confirmation\n• <strong>\"✅ Confirmed on laptop\"</strong> — The laptop successfully applied the change\n• <strong>\"⚠️ No response from laptop\"</strong> — No confirmation received (laptop may be offline)\n\nThe device name pill and STEALTH badge only update when the laptop actually confirms the change.",
+      "q23": "Why can't I toggle monitoring or camouflage when the laptop is offline?",
+      "a23": "Commands require an active connection to the laptop. When the laptop is offline (turned off, in sleep mode, or browser closed):\n\n• The monitoring and camouflage buttons show an offline error when tapped\n• The device name pill shows the actual laptop state, not your button press\n• Wait for the laptop to come back online, then try again\n\n💡 Keep the MeerCOP browser tab open on the laptop and disable sleep mode for continuous monitoring."
     },
     "footer": {
       "copyright": "© 2025 MeerCOP. All rights reserved.",
@@ -669,7 +673,10 @@
     "resume": "Resume streaming",
     "pause": "Pause streaming",
     "snapshot": "Take snapshot",
-    "download": "Download"
+    "download": "Download",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "live": "LIVE"
   },
   "notFound": {
     "title": "404",
