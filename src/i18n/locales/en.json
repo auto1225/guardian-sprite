@@ -435,7 +435,7 @@
       "monitoringFeature": "4. Monitoring Details",
       "monitoringOn": "Monitoring ON",
       "monitoringOnDesc": "When monitoring is enabled, the laptop's accelerometer, camera, keyboard/mouse input, and other sensors are activated. Any anomaly triggers an immediate alert to your smartphone and sounds an alarm on the laptop.",
-      "detectionItems": "Detection Items (6 types)",
+      "detectionItems": "Detection Items (7 types)",
       "motionDetection": "🔄 Motion Detection (Accelerometer)",
       "motionDetectionDesc": "Detected when the laptop is shaken or moved. Sensitivity adjustable: Sensitive (small vibrations), Normal, Insensitive (large movements only). 'Insensitive' recommended in vibration-prone environments like cafes.",
       "lidDetection": "📂 Lid Opening Detection",

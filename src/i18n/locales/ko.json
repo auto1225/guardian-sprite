@@ -435,7 +435,7 @@
       "monitoringFeature": "4. 감시 기능 상세",
       "monitoringOn": "감시 모드 ON",
       "monitoringOnDesc": "감시를 켜면 노트북의 가속도 센서, 카메라, 키보드/마우스 입력 등을 모니터링합니다. 이상이 감지되면 즉시 스마트폰에 경보가 전달되고, 노트북에서도 경보음이 울립니다.",
-      "detectionItems": "감지 항목 (6가지)",
+      "detectionItems": "감지 항목 (7가지)",
       "motionDetection": "🔄 움직임 감지 (가속도 센서)",
       "motionDetectionDesc": "노트북이 흔들리거나 이동할 때 감지됩니다. 민감도 조절 가능: 민감(작은 진동), 보통, 둔감(큰 움직임만). 카페처럼 진동이 있는 환경에서는 '둔감' 설정을 권장합니다.",
       "lidDetection": "📂 덮개(리드) 열림 감지",
