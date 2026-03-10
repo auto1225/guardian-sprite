@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import meercopOff from "@/assets/meercop-off.png";
 import meercopOn from "@/assets/meercop-on.png";
 import meercopAlert from "@/assets/meercop-alert.png";
