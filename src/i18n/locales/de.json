@@ -55,7 +55,9 @@
     "statusChangeFailed": "Statusänderung fehlgeschlagen.",
     "alertMessage": "Erschütterung am Laptop erkannt!",
     "readyMessage": "MeerCOP überwachungsbereit! Sie können die Überwachung jederzeit starten.",
-    "monitoringMessage": "MeerCOP überwacht Ihren Laptop."
+    "monitoringMessage": "MeerCOP überwacht Ihren Laptop.",
+    "deviceLoggedOut": "⚠️ Der Computer hat sich abgemeldet. Er wird automatisch erneut verbunden, wenn er sich wieder anmeldet.",
+    "deviceOfflineActionDesc": "Verbindung nicht möglich, da der Computer abgemeldet oder offline ist."
   },
   "toggle": {
     "startMonitoring": "Überwachung starten",
