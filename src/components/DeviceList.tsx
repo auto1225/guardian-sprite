@@ -101,7 +101,7 @@ const DeviceList = ({ isExpanded, onToggle, selectedDeviceId, selectedDevice, on
               )
             )}
           </div>
-          {!!(selectedDevice.metadata as Record<string, unknown>)?.camouflage_mode && (
+          {selectedDevice.status !== "offline" && !!(selectedDevice.metadata as Record<string, unknown>)?.camouflage_mode && (
             <div
               className="backdrop-blur-xl border rounded-full px-2.5 py-1.5 flex items-center gap-1.5 shadow-lg"
               style={{
