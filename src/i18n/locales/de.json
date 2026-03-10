@@ -277,6 +277,7 @@
       "insensitive": "Unempfindlich"
     },
     "nicknameChanged": "Spitzname wurde geändert.",
+    "duplicateDeviceName": "Dieser Gerätename wird bereits von einem anderen Gerät verwendet.",
     "pinChanged": "PIN wurde geändert.",
     "nicknameDialog": {
       "title": "Spitzname ändern",
