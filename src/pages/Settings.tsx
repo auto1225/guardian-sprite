@@ -497,8 +497,8 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
                       toast({ title: t("common.error"), description: t("common.settingSaveFailed"), variant: "destructive" });
                     }
                   }}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                    ((meta.streaming_quality as string) || "vga") === q ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold ${
+                    ((meta.streaming_quality as string) || "vga") === q ? "text-slate-800" : "text-white"
                   }`}
                   style={((meta.streaming_quality as string) || "vga") === q ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
                 >
@@ -553,8 +553,8 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
                         toast({ title: t("common.error"), description: t("common.saveFailed"), variant: "destructive" });
                       }
                     }}
-                    className={`py-1.5 px-1 rounded-lg text-[10px] font-semibold transition-all text-center leading-tight ${
-                      deviceLanguage === lang.code ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
+                    className={`py-1.5 px-1 rounded-lg text-[10px] font-semibold text-center leading-tight ${
+                      deviceLanguage === lang.code ? "text-slate-800" : "text-white"
                     }`}
                     style={deviceLanguage === lang.code ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
                   >
@@ -652,8 +652,8 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
                       toast({ title: t("common.error"), description: t("common.settingSaveFailed"), variant: "destructive" });
                     }
                   }}
-                  className={`flex-1 min-w-[70px] py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                    sensorSettings.deviceType === type ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
+                  className={`flex-1 min-w-[70px] py-2.5 rounded-xl text-sm font-semibold ${
+                    sensorSettings.deviceType === type ? "text-slate-800" : "text-white"
                   }`}
                   style={sensorSettings.deviceType === type ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
                   >
@@ -679,8 +679,8 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
                       <button
                         key={key}
                         onClick={() => handleSensitivityChange(key)}
-                        className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                          motionSensitivity === key ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
+                        className={`flex-1 py-2.5 rounded-xl text-sm font-semibold ${
+                          motionSensitivity === key ? "text-slate-800" : "text-white"
                         }`}
                         style={motionSensitivity === key ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
                       >
@@ -739,8 +739,8 @@ const SettingsPage = ({ devices, initialDeviceId, isOpen, onClose, onDeviceChang
                       <button
                         key={key}
                         onClick={() => handleMouseSensitivityChange(key)}
-                        className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                          mouseSensitivity === key ? "text-slate-800 shadow-md" : "text-white hover:bg-white/15"
+                        className={`flex-1 py-2.5 rounded-xl text-sm font-semibold ${
+                          mouseSensitivity === key ? "text-slate-800" : "text-white"
                         }`}
                         style={mouseSensitivity === key ? { background: 'hsla(52, 100%, 60%, 0.9)' } : { background: 'hsla(0,0%,100%,0.1)' }}
                       >
