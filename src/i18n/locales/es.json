@@ -72,6 +72,18 @@
     "allDismissed": "Alarma desactivada",
     "allDismissedDesc": "Todas las alarmas han sido desactivadas."
   },
+  "commandAck": {
+    "monitoringOnSent": "Comando de activar vigilancia enviado",
+    "monitoringOffSent": "Comando de desactivar vigilancia enviado",
+    "monitoringOnConfirmed": "✅ Vigilancia activada confirmada en el portátil",
+    "monitoringOffConfirmed": "✅ Vigilancia desactivada confirmada en el portátil",
+    "camouflageOnConfirmed": "✅ Modo camuflaje activado confirmado en el portátil",
+    "camouflageOffConfirmed": "✅ Modo camuflaje desactivado confirmado en el portátil",
+    "commandConfirmedDesc": "El portátil ha aplicado el cambio.",
+    "commandTimeout": "⚠️ Sin respuesta del portátil",
+    "commandTimeoutDesc": "El comando fue enviado pero no se recibió confirmación. El portátil puede estar sin conexión.",
+    "waitingForDevice": "Esperando respuesta del portátil..."
+  },
   "alert": {
     "securityAlert": "🚨 Alerta de seguridad",
     "liveStreaming": "🎥 Transmisión en vivo",
