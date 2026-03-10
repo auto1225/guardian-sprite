@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { ChevronDown, ChevronUp, X } from "lucide-react";
+import { ChevronDown, ChevronUp, X, Monitor } from "lucide-react";
 import { useDevices } from "@/hooks/useDevices";
 import { useTranslation } from "react-i18next";
 import DeviceCard from "./DeviceCard";
