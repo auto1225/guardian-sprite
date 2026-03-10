@@ -558,7 +558,12 @@
     "passwordChanged": "變更完成",
     "passwordChangedDesc": "密碼已變更。",
     "passwordChangeFailed": "密碼變更失敗。",
-    "changing": "變更中..."
+    "changing": "變更中...",
+    "avatarUpdated": "頭像已更新。",
+    "avatarUploadFailed": "頭像上傳失敗。",
+    "invalidImageType": "請選擇圖片檔案。",
+    "imageTooLarge": "圖片大小不能超過2MB。",
+    "uploading": "上傳中..."
   },
   "alertPanel": {
     "title": "警報紀錄",

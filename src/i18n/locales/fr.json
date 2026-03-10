@@ -558,7 +558,12 @@
     "passwordChanged": "Modifié",
     "passwordChangedDesc": "Le mot de passe a été modifié.",
     "passwordChangeFailed": "Échec de la modification du mot de passe.",
-    "changing": "Modification..."
+    "changing": "Modification...",
+    "avatarUpdated": "Photo de profil mise à jour.",
+    "avatarUploadFailed": "Échec du téléchargement de la photo.",
+    "invalidImageType": "Veuillez sélectionner un fichier image.",
+    "imageTooLarge": "L'image doit faire moins de 2 Mo.",
+    "uploading": "Téléchargement..."
   },
   "alertPanel": {
     "title": "Historique des alertes",

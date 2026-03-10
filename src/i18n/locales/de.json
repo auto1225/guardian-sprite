@@ -558,7 +558,12 @@
     "passwordChanged": "Geändert",
     "passwordChangedDesc": "Passwort wurde geändert.",
     "passwordChangeFailed": "Passwort konnte nicht geändert werden.",
-    "changing": "Wird geändert..."
+    "changing": "Wird geändert...",
+    "avatarUpdated": "Profilbild aktualisiert.",
+    "avatarUploadFailed": "Fehler beim Hochladen des Fotos.",
+    "invalidImageType": "Bitte wählen Sie eine Bilddatei.",
+    "imageTooLarge": "Das Bild muss kleiner als 2 MB sein.",
+    "uploading": "Wird hochgeladen..."
   },
   "alertPanel": {
     "title": "Alarmverlauf",

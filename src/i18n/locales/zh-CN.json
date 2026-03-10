@@ -558,7 +558,12 @@
     "passwordChanged": "更改完成",
     "passwordChangedDesc": "密码已更改。",
     "passwordChangeFailed": "密码更改失败。",
-    "changing": "更改中..."
+    "changing": "更改中...",
+    "avatarUpdated": "头像已更新。",
+    "avatarUploadFailed": "头像上传失败。",
+    "invalidImageType": "请选择图片文件。",
+    "imageTooLarge": "图片大小不能超过2MB。",
+    "uploading": "上传中..."
   },
   "alertPanel": {
     "title": "警报记录",
