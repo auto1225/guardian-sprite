@@ -28,7 +28,9 @@
     "or": "或",
     "adding": "註冊中...",
     "register": "註冊",
-    "copied": "已複製"
+    "copied": "已複製",
+    "noDevice": "無裝置",
+    "noDeviceDesc": "未找到已連線的裝置。請先在筆電上使用序號登入。"
   },
   "header": {
     "openMenu": "開啟選單",
