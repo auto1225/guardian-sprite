@@ -272,7 +272,7 @@ export default function AlertStreamingViewer({ deviceId, alertId }: AlertStreami
           <button
             onClick={toggleFullscreen}
             className={`${isConnected ? "" : "ml-auto"} p-1.5 rounded-lg hover:bg-white/20 active:bg-white/30 transition-colors`}
-            title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            title={isFullscreen ? t("cameraViewer.exitFullscreen") : t("cameraViewer.fullscreen")}
           >
             {isFullscreen ? <Minimize size={18} className="text-white" /> : <Maximize size={18} className="text-white" />}
           </button>

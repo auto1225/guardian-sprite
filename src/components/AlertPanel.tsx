@@ -374,7 +374,7 @@ const PhotoAlertItem = forwardRef<HTMLDivElement, { alert: UnifiedAlert; onView:
           </h4>
           <span className="flex items-center gap-1.5 flex-shrink-0">
             <span className="text-[11px] text-white/70 whitespace-nowrap font-medium">
-              {new Date(alert.created_at).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+              {new Date(alert.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
             </span>
           </span>
         </div>

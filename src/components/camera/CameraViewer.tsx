@@ -501,7 +501,7 @@ const CameraViewer = ({
         {/* Fullscreen toggle */}
         <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
           className="absolute bottom-3 right-3 p-2 bg-black/60 rounded-lg hover:bg-black/80 active:bg-black/90 transition-colors z-10"
-          title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}>
+          title={isFullscreen ? t("cameraViewer.exitFullscreen") : t("cameraViewer.fullscreen")}>
           {isFullscreen ? <Minimize size={18} className="text-white" /> : <Maximize size={18} className="text-white" />}
         </button>
 
