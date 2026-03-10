@@ -72,6 +72,18 @@
     "allDismissed": "Alarme cancelado",
     "allDismissedDesc": "Todos os alarmes do computador e smartphone foram cancelados."
   },
+  "commandAck": {
+    "monitoringOnSent": "Comando de ativar monitoramento enviado",
+    "monitoringOffSent": "Comando de desativar monitoramento enviado",
+    "monitoringOnConfirmed": "✅ Monitoramento ativado confirmado no notebook",
+    "monitoringOffConfirmed": "✅ Monitoramento desativado confirmado no notebook",
+    "camouflageOnConfirmed": "✅ Modo camuflagem ativado confirmado no notebook",
+    "camouflageOffConfirmed": "✅ Modo camuflagem desativado confirmado no notebook",
+    "commandConfirmedDesc": "O notebook aplicou a alteração.",
+    "commandTimeout": "⚠️ Sem resposta do notebook",
+    "commandTimeoutDesc": "O comando foi enviado mas nenhuma confirmação foi recebida. O notebook pode estar offline.",
+    "waitingForDevice": "Aguardando resposta do notebook..."
+  },
   "alert": {
     "securityAlert": "🚨 Alerta de segurança",
     "liveStreaming": "🎥 Streaming ao vivo",
