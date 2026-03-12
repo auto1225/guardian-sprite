@@ -36,7 +36,6 @@ const Auth = () => {
         return;
       }
       toast({ title: t("auth.loginSuccess"), description: t("auth.loginSuccessDesc") });
-      navigate("/");
     } catch {
       toast({ title: t("common.error"), description: t("auth.unexpectedError"), variant: "destructive" });
     } finally {
