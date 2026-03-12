@@ -1,31 +1,16 @@
 import { createClient, type SupportedStorage } from "@supabase/supabase-js";
+import { safeStorage } from "@/lib/safeStorage";
 
 const WEBSITE_SUPABASE_URL = "https://peqgmuicrorjvvburqly.supabase.co";
 const WEBSITE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlcWdtdWljcm9yanZ2YnVycWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NDA1NzQsImV4cCI6MjA4NzUxNjU3NH0.e5HYG3dSMqhm4ahT-en-nNX2mD95KM_TdKIlfuzdMc4";
 
-const memoryStorage = new Map<string, string>();
-
 const safeWebStorage: SupportedStorage = {
-  getItem: (key: string) => {
-    try {
-      return window.localStorage.getItem(key);
-    } catch {
-      return memoryStorage.get(key) ?? null;
-    }
-  },
+  getItem: (key: string) => safeStorage.getItem(key),
   setItem: (key: string, value: string) => {
-    try {
-      window.localStorage.setItem(key, value);
-    } catch {
-      memoryStorage.set(key, value);
-    }
+    safeStorage.setItem(key, value);
   },
   removeItem: (key: string) => {
-    try {
-      window.localStorage.removeItem(key);
-    } catch {
-      memoryStorage.delete(key);
-    }
+    safeStorage.removeItem(key);
   },
 };
 

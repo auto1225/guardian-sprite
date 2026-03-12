@@ -273,8 +273,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }
 
-    localStorage.removeItem(SERIAL_STORAGE_KEY);
-    localStorage.removeItem(SERIAL_DATA_KEY);
+    safeStorage.removeItem(SERIAL_STORAGE_KEY);
+    safeStorage.removeItem(SERIAL_DATA_KEY);
     clearCapabilitiesCache();
     setSerials([]);
     setCapabilities({});

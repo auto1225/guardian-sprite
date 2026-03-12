@@ -1,6 +1,7 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
+import { safeStorage } from "@/lib/safeStorage";
 
 import ko from "./locales/ko.json";
 import en from "./locales/en.json";
@@ -19,6 +20,18 @@ import vi from "./locales/vi.json";
 import id from "./locales/id.json";
 import tr from "./locales/tr.json";
 import it from "./locales/it.json";
+
+const useLocalStorageLanguage = safeStorage.isPersistentAvailable();
+const detectionOptions = useLocalStorageLanguage
+  ? {
+      order: ["localStorage", "navigator"],
+      caches: ["localStorage"],
+      lookupLocalStorage: "meercop_language",
+    }
+  : {
+      order: ["navigator"],
+      caches: [] as string[],
+    };
 
 i18n
   .use(LanguageDetector)
@@ -47,11 +60,7 @@ i18n
     interpolation: {
       escapeValue: false,
     },
-    detection: {
-      order: ["localStorage", "navigator"],
-      caches: ["localStorage"],
-      lookupLocalStorage: "meercop_language",
-    },
+    detection: detectionOptions,
   });
 
 export default i18n;

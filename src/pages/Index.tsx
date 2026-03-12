@@ -467,7 +467,7 @@ const Index = () => {
           onClose={() => closePanel("settings")}
           onDeviceChange={(id) => setSelectedDeviceId(id)}
           onBackgroundChange={() => setBgVersion(v => v + 1)}
-          onMascotChange={() => setMascotVisible(localStorage.getItem("meercop-mascot-visible") !== "false")}
+          onMascotChange={() => setMascotVisible(safeStorage.getItem("meercop-mascot-visible") !== "false")}
         />
       )}
 

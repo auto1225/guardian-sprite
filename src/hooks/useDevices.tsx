@@ -214,7 +214,7 @@ export const useDevices = () => {
   const resolvedDeviceId = (() => {
     // ★ useSyncExternalStore보다 모듈 변수를 직접 사용 (render 타이밍 불일치 방지)
     const savedId = _selectedDeviceId;
-    const savedSerial = _selectedSerialKey || localStorage.getItem(SELECTED_SERIAL_STORAGE_KEY);
+    const savedSerial = _selectedSerialKey || safeStorage.getItem(SELECTED_SERIAL_STORAGE_KEY);
 
     // 1) 저장된 device ID로 직접 매칭
     if (savedId) {
