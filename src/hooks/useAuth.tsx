@@ -230,7 +230,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await websiteSupabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await websiteSupabase.auth.signInWithPassword({ email, password });
+    if (!error && data.session) {
+      notifyNativeLoginSuccess(data.session.access_token, data.session.refresh_token);
+    }
     return { error: error as Error | null };
   };
 
