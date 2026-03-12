@@ -4,6 +4,7 @@ import { websiteSupabase, fetchUserSerials, UserSerial, ServerCapabilities, Plan
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { clearCapabilitiesCache } from "@/hooks/usePlanCapabilities";
+import { notifyNativeLoginSuccess, notifyNativeLogout } from "@/lib/nativeBridge";
 
 // Legacy keys (cleanup on logout)
 const SERIAL_STORAGE_KEY = "meercop_serial_key";
