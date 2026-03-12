@@ -361,6 +361,64 @@ function buildAes128GcmBody(
   return body;
 }
 
+// ── FCM 전송 (Google FCM HTTP v1 API) ──
+
+async function sendFCMNotification(
+  fcmToken: string,
+  payloadJson: string,
+  supabaseAdmin: ReturnType<typeof createClient>
+) {
+  const fcmServerKey = Deno.env.get("FCM_SERVER_KEY");
+  if (!fcmServerKey) {
+    throw new Error("FCM_SERVER_KEY not configured");
+  }
+
+  const payload = JSON.parse(payloadJson);
+
+  const response = await fetch("https://fcm.googleapis.com/fcm/send", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `key=${fcmServerKey}`,
+    },
+    body: JSON.stringify({
+      to: fcmToken,
+      notification: {
+        title: payload.title,
+        body: payload.body,
+        icon: payload.icon || "/pwa-192x192.png",
+        tag: payload.tag,
+        click_action: "OPEN_APP",
+      },
+      data: {
+        device_id: payload.device_id || "",
+        device_name: payload.device_name || "",
+        type: "meercop_alert",
+      },
+      priority: "high",
+      time_to_live: 86400,
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    const statusCode = response.status;
+    // FCM 토큰 만료/무효
+    if (statusCode === 400 || statusCode === 404) {
+      throw { statusCode: 410, message: `FCM token invalid: ${text}` };
+    }
+    throw { statusCode, message: text };
+  }
+
+  const result = await response.json();
+  // FCM 응답에서 실패한 토큰 확인
+  if (result.failure > 0 && result.results?.[0]?.error === "NotRegistered") {
+    throw { statusCode: 410, message: "FCM token not registered" };
+  }
+
+  console.log(`[push-notifications] FCM sent, success=${result.success}`);
+}
+
 // ══════════════════════════════════════
 // Main handler
 // ══════════════════════════════════════
