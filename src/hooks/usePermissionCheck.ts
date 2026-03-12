@@ -57,6 +57,17 @@ async function waitForNativeRuntimeSignal(): Promise<boolean> {
   return false;
 }
 
+function shouldBypassWebPermissionPopup(nativeRuntime: boolean): boolean {
+  if (nativeRuntime) return true;
+
+  const ua = navigator.userAgent || "";
+  const isMobileOs = /Android|iPhone|iPad|iPod/i.test(ua);
+
+  // 모바일에서는 기능 실행 시점에 권한을 요청하도록 하고,
+  // 초기 일괄 권한 팝업은 WebView 프리징 이슈를 피하기 위해 생략한다.
+  return isMobileOs;
+}
+
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = window.setTimeout(() => resolve(fallback), timeoutMs);
@@ -132,10 +143,13 @@ export function usePermissionCheck() {
 
   const checkPermissions = useCallback(async () => {
     const nativeRuntime = await waitForNativeRuntimeSignal();
+    const bypassWebPopup = shouldBypassWebPermissionPopup(nativeRuntime);
 
-    // 네이티브 앱에서는 앱 레벨에서 권한을 처리하므로 웹 권한 팝업 스킵
-    if (nativeRuntime) {
-      console.log("[PermissionCheck] Native app detected, skipping web permission popup");
+    if (bypassWebPopup) {
+      console.log("[PermissionCheck] Bypassing web permission popup", {
+        nativeRuntime,
+        ua: navigator.userAgent,
+      });
       clearDismissed();
       setPermissions([]);
       setShouldShow(false);
