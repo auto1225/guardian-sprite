@@ -7,6 +7,7 @@
  *   3. 위치(Geolocation) — 위치 추적
  */
 import { useState, useEffect, useCallback } from "react";
+import { isRunningInNativeApp } from "@/lib/nativeBridge";
 
 export interface PermissionItem {
   key: string;
