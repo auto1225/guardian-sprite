@@ -271,6 +271,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setPlanCapabilities({});
     prevSerialsRef.current = [];
     unsubscribeRealtime();
+    notifyNativeLogout();
     await websiteSupabase.auth.signOut();
   };
 
