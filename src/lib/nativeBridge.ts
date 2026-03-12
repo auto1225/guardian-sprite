@@ -46,7 +46,19 @@ declare global {
 // ── 네이티브 환경 감지 ──
 
 export function isRunningInNativeApp(): boolean {
-  return !!(window.__IS_NATIVE_APP || window.NativeApp);
+  try {
+    if (window.__IS_NATIVE_APP) return true;
+    if (window.NativeApp) return true;
+    if (typeof window.isNativeApp === "function" && window.isNativeApp()) return true;
+  } catch {
+    // ignore bridge probing errors and continue with UA fallback
+  }
+
+  const ua = navigator.userAgent || "";
+  const isAndroidWebView = /\bwv\b/i.test(ua) || /Android.*Version\/[\d.]+/i.test(ua);
+  const isIOSWebView = /iPhone|iPad|iPod/i.test(ua) && /AppleWebKit/i.test(ua) && !/Safari/i.test(ua);
+
+  return isAndroidWebView || isIOSWebView;
 }
 
 // ── Web → Native 호출 ──
