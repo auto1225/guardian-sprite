@@ -361,6 +361,64 @@ function buildAes128GcmBody(
   return body;
 }
 
+// ── FCM 전송 (Google FCM HTTP v1 API) ──
+
+async function sendFCMNotification(
+  fcmToken: string,
+  payloadJson: string,
+  supabaseAdmin: ReturnType<typeof createClient>
+) {
+  const fcmServerKey = Deno.env.get("FCM_SERVER_KEY");
+  if (!fcmServerKey) {
+    throw new Error("FCM_SERVER_KEY not configured");
+  }
+
+  const payload = JSON.parse(payloadJson);
+
+  const response = await fetch("https://fcm.googleapis.com/fcm/send", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `key=${fcmServerKey}`,
+    },
+    body: JSON.stringify({
+      to: fcmToken,
+      notification: {
+        title: payload.title,
+        body: payload.body,
+        icon: payload.icon || "/pwa-192x192.png",
+        tag: payload.tag,
+        click_action: "OPEN_APP",
+      },
+      data: {
+        device_id: payload.device_id || "",
+        device_name: payload.device_name || "",
+        type: "meercop_alert",
+      },
+      priority: "high",
+      time_to_live: 86400,
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    const statusCode = response.status;
+    // FCM 토큰 만료/무효
+    if (statusCode === 400 || statusCode === 404) {
+      throw { statusCode: 410, message: `FCM token invalid: ${text}` };
+    }
+    throw { statusCode, message: text };
+  }
+
+  const result = await response.json();
+  // FCM 응답에서 실패한 토큰 확인
+  if (result.failure > 0 && result.results?.[0]?.error === "NotRegistered") {
+    throw { statusCode: 410, message: "FCM token not registered" };
+  }
+
+  console.log(`[push-notifications] FCM sent, success=${result.success}`);
+}
+
 // ══════════════════════════════════════
 // Main handler
 // ══════════════════════════════════════
@@ -428,6 +486,54 @@ serve(async (req) => {
       }
 
       return jsonResponse({ success: true });
+    }
+
+    // ── FCM 토큰 저장 (네이티브 앱용, 인증 필요) ──
+    if (action === "subscribe-fcm") {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader?.startsWith("Bearer ")) {
+        return jsonResponse({ error: "Unauthorized" }, 401);
+      }
+
+      const userClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+
+      const { data: claims, error: claimsErr } = await userClient.auth.getUser();
+      if (claimsErr || !claims.user) {
+        return jsonResponse({ error: "Unauthorized" }, 401);
+      }
+
+      const { fcm_token, device_id } = body;
+      if (!fcm_token) {
+        return jsonResponse({ error: "fcm_token required" }, 400);
+      }
+
+      // Upsert by fcm_token
+      const { error: upsertErr } = await supabaseAdmin
+        .from("push_subscriptions")
+        .upsert(
+          {
+            user_id: claims.user.id,
+            device_id: device_id || null,
+            token_type: "fcm",
+            fcm_token: fcm_token,
+            endpoint: `fcm://${fcm_token.slice(0, 20)}`,
+            p256dh: "",
+            auth: "",
+          },
+          { onConflict: "fcm_token" }
+        );
+
+      if (upsertErr) {
+        console.error("[push-notifications] FCM upsert error:", upsertErr);
+        return jsonResponse({ error: "Failed to save FCM token" }, 500);
+      }
+
+      console.log(`[push-notifications] ✅ FCM token saved for user=${claims.user.id.slice(0,8)}`);
+      return jsonResponse({ success: true, token_type: "fcm" });
     }
 
     // ── 푸시 전송 (인증 필요) ──
@@ -504,11 +610,15 @@ serve(async (req) => {
 
         for (const sub of subs) {
           try {
-            await sendPushNotification(
-              { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-              payload,
-              vapidKeys
-            );
+            if (sub.token_type === "fcm" && sub.fcm_token) {
+              await sendFCMNotification(sub.fcm_token, payload, supabaseAdmin);
+            } else if (sub.endpoint && sub.p256dh && sub.auth) {
+              await sendPushNotification(
+                { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+                payload,
+                vapidKeys
+              );
+            }
             totalSent++;
           } catch (err: any) {
             console.error(`[push-notifications] Send error (round ${round + 1}):`, err);
@@ -516,7 +626,7 @@ serve(async (req) => {
               await supabaseAdmin
                 .from("push_subscriptions")
                 .delete()
-                .eq("endpoint", sub.endpoint);
+                .eq("id", sub.id);
             }
             allErrors.push(`round${round + 1}: ${err?.message || String(err)}`);
           }
@@ -575,11 +685,15 @@ serve(async (req) => {
 
       for (const sub of subs) {
         try {
-          await sendPushNotification(
-            { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-            payload,
-            vapidKeys
-          );
+          if (sub.token_type === "fcm" && sub.fcm_token) {
+            await sendFCMNotification(sub.fcm_token, payload, supabaseAdmin);
+          } else if (sub.endpoint && sub.p256dh && sub.auth) {
+            await sendPushNotification(
+              { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+              payload,
+              vapidKeys
+            );
+          }
           sent++;
         } catch (err: any) {
           console.error("[push-notifications] send-server error:", err);
@@ -587,7 +701,7 @@ serve(async (req) => {
             await supabaseAdmin
               .from("push_subscriptions")
               .delete()
-              .eq("endpoint", sub.endpoint);
+              .eq("id", sub.id);
           }
           errors.push(err?.message || String(err));
         }

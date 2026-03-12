@@ -4,6 +4,7 @@ import { websiteSupabase, fetchUserSerials, UserSerial, ServerCapabilities, Plan
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { clearCapabilitiesCache } from "@/hooks/usePlanCapabilities";
+import { notifyNativeLoginSuccess, notifyNativeLogout } from "@/lib/nativeBridge";
 
 // Legacy keys (cleanup on logout)
 const SERIAL_STORAGE_KEY = "meercop_serial_key";
@@ -229,7 +230,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await websiteSupabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await websiteSupabase.auth.signInWithPassword({ email, password });
+    if (!error && data.session) {
+      notifyNativeLoginSuccess(data.session.access_token, data.session.refresh_token);
+    }
     return { error: error as Error | null };
   };
 
@@ -267,6 +271,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setPlanCapabilities({});
     prevSerialsRef.current = [];
     unsubscribeRealtime();
+    notifyNativeLogout();
     await websiteSupabase.auth.signOut();
   };
 
