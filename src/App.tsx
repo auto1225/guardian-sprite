@@ -16,6 +16,12 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const NativeBridgeInit = () => {
+  const { effectiveUserId } = useAuth();
+  useNativeBridge({ effectiveUserId });
+  return null;
+};
+
 const GlobalErrorGuard = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const handler = (e: PromiseRejectionEvent) => {
