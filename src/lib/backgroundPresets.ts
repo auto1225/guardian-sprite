@@ -1,3 +1,5 @@
+import { safeStorage } from "@/lib/safeStorage";
+
 // Background preset definitions and localStorage helpers
 
 export interface BackgroundOption {
@@ -20,13 +22,13 @@ const SELECTION_KEY = "meercop-bg-selection";
 const CUSTOM_BG_KEY = "meercop-custom-bg";
 
 export function getSelectedBackgroundId(): string {
-  return localStorage.getItem(SELECTION_KEY) || "default";
+  return safeStorage.getItem(SELECTION_KEY) || "default";
 }
 
 export function getSelectedBackground(): { id: string; value: string } {
   const id = getSelectedBackgroundId();
   if (id === "custom") {
-    const customUrl = localStorage.getItem(CUSTOM_BG_KEY) || "";
+    const customUrl = safeStorage.getItem(CUSTOM_BG_KEY) || "";
     return { id, value: customUrl || "__default__" };
   }
   const preset = BACKGROUND_PRESETS.find(p => p.id === id);
@@ -34,19 +36,19 @@ export function getSelectedBackground(): { id: string; value: string } {
 }
 
 export function selectPreset(id: string): void {
-  localStorage.setItem(SELECTION_KEY, id);
+  safeStorage.setItem(SELECTION_KEY, id);
 }
 
 export function saveCustomBackground(dataUrl: string): void {
-  localStorage.setItem(CUSTOM_BG_KEY, dataUrl);
-  localStorage.setItem(SELECTION_KEY, "custom");
+  safeStorage.setItem(CUSTOM_BG_KEY, dataUrl);
+  safeStorage.setItem(SELECTION_KEY, "custom");
 }
 
 export function deleteCustomBackground(): void {
-  localStorage.removeItem(CUSTOM_BG_KEY);
-  localStorage.setItem(SELECTION_KEY, "default");
+  safeStorage.removeItem(CUSTOM_BG_KEY);
+  safeStorage.setItem(SELECTION_KEY, "default");
 }
 
 export function getCustomBackground(): string | null {
-  return localStorage.getItem(CUSTOM_BG_KEY);
+  return safeStorage.getItem(CUSTOM_BG_KEY);
 }

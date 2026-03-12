@@ -7,6 +7,7 @@ import { deleteLaptopDbDevice } from "@/lib/laptopDb";
 import { websiteSupabase } from "@/lib/websiteAuth";
 import { invokeWithRetry } from "@/lib/invokeWithRetry";
 import { dispatchCommandAck } from "@/lib/commandAck";
+import { safeStorage } from "@/lib/safeStorage";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 type DeviceInsert = Database["public"]["Tables"]["devices"]["Insert"];
@@ -35,8 +36,8 @@ let presenceInitialSynced = false; // ★ Presence 최초 sync 완료 여부
 // ── 모듈 레벨 싱글톤: 기기 선택 상태 (모든 컴포넌트가 공유) ──
 const SELECTED_DEVICE_STORAGE_KEY = "meercop_selected_device_id";
 const SELECTED_SERIAL_STORAGE_KEY = "meercop_selected_serial_key";
-let _selectedDeviceId: string | null = localStorage.getItem(SELECTED_DEVICE_STORAGE_KEY);
-let _selectedSerialKey: string | null = localStorage.getItem(SELECTED_SERIAL_STORAGE_KEY);
+let _selectedDeviceId: string | null = safeStorage.getItem(SELECTED_DEVICE_STORAGE_KEY);
+let _selectedSerialKey: string | null = safeStorage.getItem(SELECTED_SERIAL_STORAGE_KEY);
 let _selectionInitialized = false;
 const _selectionListeners = new Set<() => void>();
 
@@ -48,17 +49,17 @@ function setGlobalSelectedDeviceId(id: string | null, serialKey?: string | null)
   if (_selectedDeviceId === id) return;
   _selectedDeviceId = id;
   if (id) {
-    localStorage.setItem(SELECTED_DEVICE_STORAGE_KEY, id);
+    safeStorage.setItem(SELECTED_DEVICE_STORAGE_KEY, id);
   } else {
-    localStorage.removeItem(SELECTED_DEVICE_STORAGE_KEY);
+    safeStorage.removeItem(SELECTED_DEVICE_STORAGE_KEY);
   }
   // ★ 시리얼 키도 함께 저장 — 새로고침 시 ID가 바뀌어도 시리얼로 복원 가능
   if (serialKey !== undefined) {
     _selectedSerialKey = serialKey ?? null;
     if (serialKey) {
-      localStorage.setItem(SELECTED_SERIAL_STORAGE_KEY, serialKey);
+      safeStorage.setItem(SELECTED_SERIAL_STORAGE_KEY, serialKey);
     } else {
-      localStorage.removeItem(SELECTED_SERIAL_STORAGE_KEY);
+      safeStorage.removeItem(SELECTED_SERIAL_STORAGE_KEY);
     }
   }
   _selectionListeners.forEach(l => l());
@@ -213,7 +214,7 @@ export const useDevices = () => {
   const resolvedDeviceId = (() => {
     // ★ useSyncExternalStore보다 모듈 변수를 직접 사용 (render 타이밍 불일치 방지)
     const savedId = _selectedDeviceId;
-    const savedSerial = _selectedSerialKey || localStorage.getItem(SELECTED_SERIAL_STORAGE_KEY);
+    const savedSerial = _selectedSerialKey || safeStorage.getItem(SELECTED_SERIAL_STORAGE_KEY);
 
     // 1) 저장된 device ID로 직접 매칭
     if (savedId) {

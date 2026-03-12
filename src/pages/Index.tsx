@@ -44,6 +44,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 import { waitForCommandAck } from "@/lib/commandAck";
+import { safeStorage } from "@/lib/safeStorage";
 
 const Index = () => {
   const { t } = useTranslation();
@@ -141,7 +142,7 @@ const Index = () => {
 
   const [remoteAlarmDismissed, setRemoteAlarmDismissed] = useState(false);
   const [bgVersion, setBgVersion] = useState(0);
-  const [mascotVisible, setMascotVisible] = useState(() => localStorage.getItem("meercop-mascot-visible") !== "false");
+  const [mascotVisible, setMascotVisible] = useState(() => safeStorage.getItem("meercop-mascot-visible") !== "false");
   const [showFallbackAlarmButtons, setShowFallbackAlarmButtons] = useState(false);
   const [alarmPlaying, setAlarmPlaying] = useState(false);
 
@@ -466,7 +467,7 @@ const Index = () => {
           onClose={() => closePanel("settings")}
           onDeviceChange={(id) => setSelectedDeviceId(id)}
           onBackgroundChange={() => setBgVersion(v => v + 1)}
-          onMascotChange={() => setMascotVisible(localStorage.getItem("meercop-mascot-visible") !== "false")}
+          onMascotChange={() => setMascotVisible(safeStorage.getItem("meercop-mascot-visible") !== "false")}
         />
       )}
 

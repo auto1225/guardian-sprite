@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { clearCapabilitiesCache } from "@/hooks/usePlanCapabilities";
 import { notifyNativeLoginSuccess, notifyNativeLogout } from "@/lib/nativeBridge";
+import { safeStorage } from "@/lib/safeStorage";
 
 // Legacy keys (cleanup on logout)
 const SERIAL_STORAGE_KEY = "meercop_serial_key";
@@ -272,8 +273,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }
 
-    localStorage.removeItem(SERIAL_STORAGE_KEY);
-    localStorage.removeItem(SERIAL_DATA_KEY);
+    safeStorage.removeItem(SERIAL_STORAGE_KEY);
+    safeStorage.removeItem(SERIAL_DATA_KEY);
     clearCapabilitiesCache();
     setSerials([]);
     setCapabilities({});
