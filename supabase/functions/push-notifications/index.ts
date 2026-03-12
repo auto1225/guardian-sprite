@@ -361,62 +361,149 @@ function buildAes128GcmBody(
   return body;
 }
 
-// ── FCM 전송 (Google FCM HTTP v1 API) ──
+// ── FCM v1 API 전송 (Google OAuth2 + Service Account) ──
+
+let cachedAccessToken: { token: string; expiresAt: number } | null = null;
+
+async function getGoogleAccessToken(): Promise<string> {
+  // 캐시된 토큰이 유효하면 재사용
+  if (cachedAccessToken && Date.now() < cachedAccessToken.expiresAt - 60000) {
+    return cachedAccessToken.token;
+  }
+
+  const serviceAccountJson = Deno.env.get("FCM_SERVICE_ACCOUNT_JSON");
+  if (!serviceAccountJson) {
+    throw new Error("FCM_SERVICE_ACCOUNT_JSON not configured");
+  }
+
+  const sa = JSON.parse(serviceAccountJson);
+  const now = Math.floor(Date.now() / 1000);
+
+  // JWT 헤더 & 페이로드
+  const header = { alg: "RS256", typ: "JWT" };
+  const claimSet = {
+    iss: sa.client_email,
+    scope: "https://www.googleapis.com/auth/firebase.messaging",
+    aud: sa.token_uri,
+    iat: now,
+    exp: now + 3600,
+  };
+
+  const headerB64 = base64urlEncode(new TextEncoder().encode(JSON.stringify(header)));
+  const claimB64 = base64urlEncode(new TextEncoder().encode(JSON.stringify(claimSet)));
+  const unsignedJwt = `${headerB64}.${claimB64}`;
+
+  // PEM → CryptoKey (RSA)
+  const pemBody = sa.private_key
+    .replace("-----BEGIN PRIVATE KEY-----", "")
+    .replace("-----END PRIVATE KEY-----", "")
+    .replace(/\n/g, "");
+  const binaryKey = Uint8Array.from(atob(pemBody), (c) => c.charCodeAt(0));
+
+  const cryptoKey = await crypto.subtle.importKey(
+    "pkcs8",
+    binaryKey,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+
+  const signature = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    cryptoKey,
+    new TextEncoder().encode(unsignedJwt)
+  );
+
+  const jwt = `${unsignedJwt}.${base64urlEncode(new Uint8Array(signature))}`;
+
+  // Google OAuth2 토큰 교환
+  const tokenRes = await fetch(sa.token_uri, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`,
+  });
+
+  if (!tokenRes.ok) {
+    const errText = await tokenRes.text();
+    throw new Error(`Google OAuth2 token error: ${errText}`);
+  }
+
+  const tokenData = await tokenRes.json();
+  cachedAccessToken = {
+    token: tokenData.access_token,
+    expiresAt: Date.now() + tokenData.expires_in * 1000,
+  };
+
+  console.log("[push-notifications] Google access token acquired");
+  return cachedAccessToken.token;
+}
 
 async function sendFCMNotification(
   fcmToken: string,
   payloadJson: string,
-  supabaseAdmin: ReturnType<typeof createClient>
+  _supabaseAdmin: ReturnType<typeof createClient>
 ) {
-  const fcmServerKey = Deno.env.get("FCM_SERVER_KEY");
-  if (!fcmServerKey) {
-    throw new Error("FCM_SERVER_KEY not configured");
-  }
+  const accessToken = await getGoogleAccessToken();
+
+  const serviceAccountJson = Deno.env.get("FCM_SERVICE_ACCOUNT_JSON");
+  const sa = JSON.parse(serviceAccountJson!);
+  const projectId = sa.project_id;
 
   const payload = JSON.parse(payloadJson);
 
-  const response = await fetch("https://fcm.googleapis.com/fcm/send", {
+  const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
+
+  const response = await fetch(fcmUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `key=${fcmServerKey}`,
+      Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify({
-      to: fcmToken,
-      notification: {
-        title: payload.title,
-        body: payload.body,
-        icon: payload.icon || "/pwa-192x192.png",
-        tag: payload.tag,
-        click_action: "OPEN_APP",
+      message: {
+        token: fcmToken,
+        notification: {
+          title: payload.title,
+          body: payload.body,
+        },
+        android: {
+          priority: "HIGH",
+          notification: {
+            icon: "ic_notification",
+            tag: payload.tag,
+            click_action: "OPEN_APP",
+            channel_id: "meercop_alerts",
+            default_sound: true,
+            default_vibrate_timings: true,
+          },
+        },
+        data: {
+          device_id: payload.device_id || "",
+          device_name: payload.device_name || "",
+          type: "meercop_alert",
+        },
       },
-      data: {
-        device_id: payload.device_id || "",
-        device_name: payload.device_name || "",
-        type: "meercop_alert",
-      },
-      priority: "high",
-      time_to_live: 86400,
     }),
   });
 
   if (!response.ok) {
     const text = await response.text();
     const statusCode = response.status;
-    // FCM 토큰 만료/무효
-    if (statusCode === 400 || statusCode === 404) {
+
+    // 토큰 만료/무효 (UNREGISTERED, NOT_FOUND)
+    if (statusCode === 404 || text.includes("UNREGISTERED") || text.includes("NOT_FOUND")) {
       throw { statusCode: 410, message: `FCM token invalid: ${text}` };
+    }
+    // 인증 만료 → 캐시 초기화 후 재시도
+    if (statusCode === 401) {
+      cachedAccessToken = null;
+      throw { statusCode: 401, message: `FCM auth expired: ${text}` };
     }
     throw { statusCode, message: text };
   }
 
   const result = await response.json();
-  // FCM 응답에서 실패한 토큰 확인
-  if (result.failure > 0 && result.results?.[0]?.error === "NotRegistered") {
-    throw { statusCode: 410, message: "FCM token not registered" };
-  }
-
-  console.log(`[push-notifications] FCM sent, success=${result.success}`);
+  console.log(`[push-notifications] FCM v1 sent, name=${result.name}`);
 }
 
 // ══════════════════════════════════════
