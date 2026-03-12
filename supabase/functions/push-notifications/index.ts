@@ -627,11 +627,15 @@ serve(async (req) => {
 
       for (const sub of subs) {
         try {
-          await sendPushNotification(
-            { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-            payload,
-            vapidKeys
-          );
+          if (sub.token_type === "fcm" && sub.fcm_token) {
+            await sendFCMNotification(sub.fcm_token, payload, supabaseAdmin);
+          } else if (sub.endpoint && sub.p256dh && sub.auth) {
+            await sendPushNotification(
+              { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+              payload,
+              vapidKeys
+            );
+          }
           sent++;
         } catch (err: any) {
           console.error("[push-notifications] send-server error:", err);
@@ -639,7 +643,7 @@ serve(async (req) => {
             await supabaseAdmin
               .from("push_subscriptions")
               .delete()
-              .eq("endpoint", sub.endpoint);
+              .eq("id", sub.id);
           }
           errors.push(err?.message || String(err));
         }
