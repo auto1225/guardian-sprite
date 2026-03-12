@@ -288,7 +288,7 @@ const Index = () => {
   }
 
   return (
-    <div className="h-[100dvh] flex flex-col relative overflow-hidden" style={{ background: 'transparent' }}>
+    <div className="h-screen h-[100dvh] flex flex-col relative overflow-hidden" style={{ background: 'transparent' }}>
       {/* Scene Container - Mountain + Character (aspect ratio preserved) */}
       <MeercopCharacter 
         isMonitoring={isMonitoring} 

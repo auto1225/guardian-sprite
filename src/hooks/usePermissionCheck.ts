@@ -20,7 +20,8 @@ export interface PermissionItem {
 
 const DISMISSED_KEY = "meercop_permissions_dismissed";
 const REQUEST_TIMEOUT_MS = 7000;
-const NATIVE_DETECTION_RETRY_MS = 350;
+const NATIVE_DETECTION_MAX_WAIT_MS = 2000;
+const NATIVE_DETECTION_POLL_MS = 120;
 
 function isDismissed(): boolean {
   try {
@@ -38,6 +39,22 @@ function clearDismissed() {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForNativeRuntimeSignal(): Promise<boolean> {
+  if (isRunningInNativeApp()) return true;
+
+  const ua = navigator.userAgent || "";
+  const isMobileRuntime = /Android|iPhone|iPad|iPod/i.test(ua);
+  if (!isMobileRuntime) return false;
+
+  const deadline = Date.now() + NATIVE_DETECTION_MAX_WAIT_MS;
+  while (Date.now() < deadline) {
+    await sleep(NATIVE_DETECTION_POLL_MS);
+    if (isRunningInNativeApp()) return true;
+  }
+
+  return false;
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
@@ -114,14 +131,12 @@ export function usePermissionCheck() {
   const [checked, setChecked] = useState(false);
 
   const checkPermissions = useCallback(async () => {
-    // 네이티브 환경 감지 타이밍 이슈 방지: 짧게 재확인
-    if (!isRunningInNativeApp()) {
-      await sleep(NATIVE_DETECTION_RETRY_MS);
-    }
+    const nativeRuntime = await waitForNativeRuntimeSignal();
 
     // 네이티브 앱에서는 앱 레벨에서 권한을 처리하므로 웹 권한 팝업 스킵
-    if (isRunningInNativeApp()) {
+    if (nativeRuntime) {
       console.log("[PermissionCheck] Native app detected, skipping web permission popup");
+      clearDismissed();
       setPermissions([]);
       setShouldShow(false);
       setChecked(true);
