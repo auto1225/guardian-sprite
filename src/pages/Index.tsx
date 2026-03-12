@@ -142,7 +142,7 @@ const Index = () => {
 
   const [remoteAlarmDismissed, setRemoteAlarmDismissed] = useState(false);
   const [bgVersion, setBgVersion] = useState(0);
-  const [mascotVisible, setMascotVisible] = useState(() => localStorage.getItem("meercop-mascot-visible") !== "false");
+  const [mascotVisible, setMascotVisible] = useState(() => safeStorage.getItem("meercop-mascot-visible") !== "false");
   const [showFallbackAlarmButtons, setShowFallbackAlarmButtons] = useState(false);
   const [alarmPlaying, setAlarmPlaying] = useState(false);
 
