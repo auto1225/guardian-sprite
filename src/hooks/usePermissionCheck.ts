@@ -20,7 +20,8 @@ export interface PermissionItem {
 
 const DISMISSED_KEY = "meercop_permissions_dismissed";
 const REQUEST_TIMEOUT_MS = 7000;
-const NATIVE_DETECTION_RETRY_MS = 350;
+const NATIVE_DETECTION_MAX_WAIT_MS = 2000;
+const NATIVE_DETECTION_POLL_MS = 120;
 
 function isDismissed(): boolean {
   try {
@@ -38,6 +39,22 @@ function clearDismissed() {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForNativeRuntimeSignal(): Promise<boolean> {
+  if (isRunningInNativeApp()) return true;
+
+  const ua = navigator.userAgent || "";
+  const isMobileRuntime = /Android|iPhone|iPad|iPod/i.test(ua);
+  if (!isMobileRuntime) return false;
+
+  const deadline = Date.now() + NATIVE_DETECTION_MAX_WAIT_MS;
+  while (Date.now() < deadline) {
+    await sleep(NATIVE_DETECTION_POLL_MS);
+    if (isRunningInNativeApp()) return true;
+  }
+
+  return false;
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
