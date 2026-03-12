@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { usePermissionCheck, PermissionItem } from "@/hooks/usePermissionCheck";
+import { isRunningInNativeApp } from "@/lib/nativeBridge";
 import { Bell, Camera, MapPin, ShieldAlert, ShieldCheck, X, AlertTriangle, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -88,7 +89,9 @@ export default function PermissionRequestPopup() {
   const { t } = useTranslation();
   const { permissions, shouldShow, dismiss, refresh } = usePermissionCheck();
   const [closing, setClosing] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
   const [checkedMap, setCheckedMap] = useState<Record<string, boolean>>({});
+  const nativeRuntime = isRunningInNativeApp();
 
   // 기본값: 모두 체크됨
   useEffect(() => {
@@ -99,7 +102,14 @@ export default function PermissionRequestPopup() {
     setCheckedMap(initial);
   }, [permissions]);
 
-  if (!shouldShow) return null;
+  // 렌더 타이밍 이슈로 팝업이 잠깐 떠도 네이티브 환경이면 즉시 제거
+  useEffect(() => {
+    if (nativeRuntime && shouldShow) {
+      dismiss();
+    }
+  }, [nativeRuntime, shouldShow, dismiss]);
+
+  if (!shouldShow || nativeRuntime) return null;
 
   const nonGranted = permissions.filter(p => p.status !== "granted");
   const checkedItems = nonGranted.filter(p => checkedMap[p.key]);
@@ -109,6 +119,7 @@ export default function PermissionRequestPopup() {
     setTimeout(() => {
       dismiss();
       setClosing(false);
+      setIsConfirming(false);
     }, 200);
   };
 
@@ -117,11 +128,18 @@ export default function PermissionRequestPopup() {
   };
 
   const handleConfirm = async () => {
-    // 체크된 항목만 권한 요청
-    for (const item of checkedItems) {
-      await item.request();
+    if (isConfirming) return;
+
+    setIsConfirming(true);
+    try {
+      // 일부 Android WebView에서 권한 Promise가 멈추는 케이스가 있어 allSettled + 각 request 내부 timeout 사용
+      await Promise.allSettled(checkedItems.map((item) => item.request()));
+      refresh();
+    } catch (err) {
+      console.warn("[PermissionPopup] Confirm flow error:", err);
+    } finally {
+      handleClose();
     }
-    handleClose();
   };
 
   return (
@@ -173,9 +191,10 @@ export default function PermissionRequestPopup() {
           {checkedItems.length > 0 && (
             <button
               onClick={handleConfirm}
-              className="flex-1 py-2.5 bg-accent text-accent-foreground font-bold text-sm rounded-xl active:scale-95 transition-transform"
+              disabled={isConfirming}
+              className="flex-1 py-2.5 bg-accent text-accent-foreground font-bold text-sm rounded-xl active:scale-95 transition-transform disabled:opacity-60"
             >
-              {t("permissions.confirm")}
+              {isConfirming ? t("common.loading") : t("permissions.confirm")}
             </button>
           )}
           <button
@@ -192,3 +211,4 @@ export default function PermissionRequestPopup() {
     </div>
   );
 }
+

@@ -19,6 +19,8 @@ export interface PermissionItem {
 }
 
 const DISMISSED_KEY = "meercop_permissions_dismissed";
+const REQUEST_TIMEOUT_MS = 7000;
+const NATIVE_DETECTION_RETRY_MS = 350;
 
 function isDismissed(): boolean {
   try {
@@ -34,12 +36,89 @@ function clearDismissed() {
   try { localStorage.removeItem(DISMISSED_KEY); } catch {}
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => resolve(fallback), timeoutMs);
+
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
+
+async function requestNotificationPermission(): Promise<"granted" | "denied"> {
+  if (!("Notification" in window)) return "denied";
+
+  try {
+    return await withTimeout(
+      Notification.requestPermission().then((result) => result === "granted" ? "granted" : "denied"),
+      REQUEST_TIMEOUT_MS,
+      "denied"
+    );
+  } catch {
+    return "denied";
+  }
+}
+
+async function requestCameraPermission(): Promise<"granted" | "denied"> {
+  if (!navigator.mediaDevices?.getUserMedia) return "denied";
+
+  try {
+    return await withTimeout(
+      navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
+        stream.getTracks().forEach((track) => track.stop());
+        return "granted" as const;
+      }),
+      REQUEST_TIMEOUT_MS,
+      "denied"
+    );
+  } catch {
+    return "denied";
+  }
+}
+
+async function requestGeolocationPermission(): Promise<"granted" | "denied"> {
+  if (!navigator.geolocation) return "denied";
+
+  try {
+    return await withTimeout(
+      new Promise<"granted" | "denied">((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          () => resolve("granted"),
+          () => resolve("denied"),
+          { timeout: 5000, maximumAge: 0, enableHighAccuracy: false }
+        );
+      }),
+      REQUEST_TIMEOUT_MS,
+      "denied"
+    );
+  } catch {
+    return "denied";
+  }
+}
+
 export function usePermissionCheck() {
   const [permissions, setPermissions] = useState<PermissionItem[]>([]);
   const [shouldShow, setShouldShow] = useState(false);
   const [checked, setChecked] = useState(false);
 
   const checkPermissions = useCallback(async () => {
+    // 네이티브 환경 감지 타이밍 이슈 방지: 짧게 재확인
+    if (!isRunningInNativeApp()) {
+      await sleep(NATIVE_DETECTION_RETRY_MS);
+    }
+
     // 네이티브 앱에서는 앱 레벨에서 권한을 처리하므로 웹 권한 팝업 스킵
     if (isRunningInNativeApp()) {
       console.log("[PermissionCheck] Native app detected, skipping web permission popup");
@@ -59,10 +138,7 @@ export function usePermissionCheck() {
         name: "permissions.notification",
         description: "permissions.notificationDesc",
         status,
-        request: async () => {
-          const result = await Notification.requestPermission();
-          return result === "granted" ? "granted" : "denied";
-        },
+        request: requestNotificationPermission,
         affectedFeatures: "permissions.notificationFeatures",
       });
     }
@@ -75,13 +151,7 @@ export function usePermissionCheck() {
         name: "permissions.camera",
         description: "permissions.cameraDesc",
         status: camPerm.state as "granted" | "denied" | "prompt",
-        request: async () => {
-          try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            stream.getTracks().forEach(t => t.stop());
-            return "granted";
-          } catch { return "denied"; }
-        },
+        request: requestCameraPermission,
         affectedFeatures: "permissions.cameraFeatures",
       });
     } catch {
@@ -91,13 +161,7 @@ export function usePermissionCheck() {
         name: "permissions.camera",
         description: "permissions.cameraDesc",
         status: "prompt",
-        request: async () => {
-          try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            stream.getTracks().forEach(t => t.stop());
-            return "granted";
-          } catch { return "denied"; }
-        },
+        request: requestCameraPermission,
         affectedFeatures: "permissions.cameraFeatures",
       });
     }
@@ -110,15 +174,7 @@ export function usePermissionCheck() {
         name: "permissions.location",
         description: "permissions.locationDesc",
         status: geoPerm.state as "granted" | "denied" | "prompt",
-        request: async () => {
-          return new Promise<"granted" | "denied">((resolve) => {
-            navigator.geolocation.getCurrentPosition(
-              () => resolve("granted"),
-              () => resolve("denied"),
-              { timeout: 10000 }
-            );
-          });
-        },
+        request: requestGeolocationPermission,
         affectedFeatures: "permissions.locationFeatures",
       });
     } catch {
@@ -127,15 +183,7 @@ export function usePermissionCheck() {
         name: "permissions.location",
         description: "permissions.locationDesc",
         status: "prompt",
-        request: async () => {
-          return new Promise<"granted" | "denied">((resolve) => {
-            navigator.geolocation.getCurrentPosition(
-              () => resolve("granted"),
-              () => resolve("denied"),
-              { timeout: 10000 }
-            );
-          });
-        },
+        request: requestGeolocationPermission,
         affectedFeatures: "permissions.locationFeatures",
       });
     }
@@ -177,3 +225,4 @@ export function usePermissionCheck() {
     refresh,
   };
 }
+
