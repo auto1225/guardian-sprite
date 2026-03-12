@@ -7,6 +7,7 @@ import { deleteLaptopDbDevice } from "@/lib/laptopDb";
 import { websiteSupabase } from "@/lib/websiteAuth";
 import { invokeWithRetry } from "@/lib/invokeWithRetry";
 import { dispatchCommandAck } from "@/lib/commandAck";
+import { safeStorage } from "@/lib/safeStorage";
 
 type Device = Database["public"]["Tables"]["devices"]["Row"];
 type DeviceInsert = Database["public"]["Tables"]["devices"]["Insert"];
@@ -35,8 +36,8 @@ let presenceInitialSynced = false; // ★ Presence 최초 sync 완료 여부
 // ── 모듈 레벨 싱글톤: 기기 선택 상태 (모든 컴포넌트가 공유) ──
 const SELECTED_DEVICE_STORAGE_KEY = "meercop_selected_device_id";
 const SELECTED_SERIAL_STORAGE_KEY = "meercop_selected_serial_key";
-let _selectedDeviceId: string | null = localStorage.getItem(SELECTED_DEVICE_STORAGE_KEY);
-let _selectedSerialKey: string | null = localStorage.getItem(SELECTED_SERIAL_STORAGE_KEY);
+let _selectedDeviceId: string | null = safeStorage.getItem(SELECTED_DEVICE_STORAGE_KEY);
+let _selectedSerialKey: string | null = safeStorage.getItem(SELECTED_SERIAL_STORAGE_KEY);
 let _selectionInitialized = false;
 const _selectionListeners = new Set<() => void>();
 

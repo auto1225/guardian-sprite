@@ -44,6 +44,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 import { waitForCommandAck } from "@/lib/commandAck";
+import { safeStorage } from "@/lib/safeStorage";
 
 const Index = () => {
   const { t } = useTranslation();
