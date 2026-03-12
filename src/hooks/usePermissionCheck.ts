@@ -143,10 +143,13 @@ export function usePermissionCheck() {
 
   const checkPermissions = useCallback(async () => {
     const nativeRuntime = await waitForNativeRuntimeSignal();
+    const bypassWebPopup = shouldBypassWebPermissionPopup(nativeRuntime);
 
-    // 네이티브 앱에서는 앱 레벨에서 권한을 처리하므로 웹 권한 팝업 스킵
-    if (nativeRuntime) {
-      console.log("[PermissionCheck] Native app detected, skipping web permission popup");
+    if (bypassWebPopup) {
+      console.log("[PermissionCheck] Bypassing web permission popup", {
+        nativeRuntime,
+        ua: navigator.userAgent,
+      });
       clearDismissed();
       setPermissions([]);
       setShouldShow(false);
