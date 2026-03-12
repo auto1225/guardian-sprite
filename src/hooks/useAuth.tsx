@@ -231,9 +231,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     const { data, error } = await websiteSupabase.auth.signInWithPassword({ email, password });
+
     if (!error && data.session) {
+      // WebView 환경에서 onAuthStateChange 이벤트가 지연되거나 누락돼도 즉시 상태 반영
+      setSession(data.session);
+      setUser(data.session.user ?? null);
+      setLoading(false);
+      setTimeout(() => loadSerials(data.session!.access_token), 0);
+      subscribeRealtime(data.session.user.id);
+
       notifyNativeLoginSuccess(data.session.access_token, data.session.refresh_token);
     }
+
     return { error: error as Error | null };
   };
 
