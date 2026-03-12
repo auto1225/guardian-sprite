@@ -798,6 +798,27 @@ serve(async (req) => {
       return jsonResponse({ sent, total_subs: subs.length, errors });
     }
 
+    // ── 직접 FCM 토큰 테스트 (서버 전용, JWT 불필요) ──
+    if (action === "test-fcm") {
+      const { fcm_token, title, body: msgBody } = body;
+      if (!fcm_token) return jsonResponse({ error: "fcm_token required" }, 400);
+
+      const payload = JSON.stringify({
+        title: title || "🚨 테스트 경보",
+        body: msgBody || "MeerCOP FCM v1 API 테스트 푸시입니다!",
+        tag: "meercop-test",
+        device_id: "",
+        device_name: "테스트",
+      });
+
+      try {
+        await sendFCMNotification(fcm_token, payload, supabaseAdmin);
+        return jsonResponse({ success: true, message: "FCM test push sent" });
+      } catch (err: any) {
+        return jsonResponse({ error: err?.message || String(err), statusCode: err?.statusCode }, 500);
+      }
+    }
+
     return jsonResponse({ error: "Unknown action" }, 400);
   } catch (err) {
     console.error("[push-notifications] Error:", err);
