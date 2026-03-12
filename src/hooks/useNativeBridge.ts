@@ -89,10 +89,16 @@ export function useNativeBridge({ effectiveUserId, deviceId }: UseNativeBridgeOp
 
   // ── 글로벌 핸들러 등록 ──
   useEffect(() => {
+    const previousIsNativeApp = window.isNativeApp;
+
     window.onNativeToken = handleNativeToken;
     window.onFCMToken = handleFCMToken;
     window.onPushReceived = handlePushReceived;
-    window.isNativeApp = () => !!(window.__IS_NATIVE_APP || window.NativeApp);
+
+    // 네이티브가 이미 주입한 isNativeApp이 있으면 덮어쓰지 않음
+    if (!previousIsNativeApp) {
+      window.isNativeApp = () => !!(window.__IS_NATIVE_APP || window.NativeApp);
+    }
 
     console.log("[NativeBridge] ✅ JS Bridge handlers registered");
 
@@ -100,7 +106,11 @@ export function useNativeBridge({ effectiveUserId, deviceId }: UseNativeBridgeOp
       delete window.onNativeToken;
       delete window.onFCMToken;
       delete window.onPushReceived;
-      delete window.isNativeApp;
+      if (previousIsNativeApp) {
+        window.isNativeApp = previousIsNativeApp;
+      } else {
+        delete window.isNativeApp;
+      }
     };
   }, [handleNativeToken, handleFCMToken, handlePushReceived]);
 
