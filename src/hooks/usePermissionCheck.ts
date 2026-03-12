@@ -40,6 +40,15 @@ export function usePermissionCheck() {
   const [checked, setChecked] = useState(false);
 
   const checkPermissions = useCallback(async () => {
+    // 네이티브 앱에서는 앱 레벨에서 권한을 처리하므로 웹 권한 팝업 스킵
+    if (isRunningInNativeApp()) {
+      console.log("[PermissionCheck] Native app detected, skipping web permission popup");
+      setPermissions([]);
+      setShouldShow(false);
+      setChecked(true);
+      return;
+    }
+
     const items: PermissionItem[] = [];
 
     // 1. Notification
