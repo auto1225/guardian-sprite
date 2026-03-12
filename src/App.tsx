@@ -40,6 +40,7 @@ const App = () => (
     <GlobalErrorGuard>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
+          <NativeBridgeInit />
           <TooltipProvider>
             <Toaster />
             <Sonner />
