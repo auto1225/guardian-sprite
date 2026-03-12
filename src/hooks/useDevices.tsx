@@ -49,17 +49,17 @@ function setGlobalSelectedDeviceId(id: string | null, serialKey?: string | null)
   if (_selectedDeviceId === id) return;
   _selectedDeviceId = id;
   if (id) {
-    localStorage.setItem(SELECTED_DEVICE_STORAGE_KEY, id);
+    safeStorage.setItem(SELECTED_DEVICE_STORAGE_KEY, id);
   } else {
-    localStorage.removeItem(SELECTED_DEVICE_STORAGE_KEY);
+    safeStorage.removeItem(SELECTED_DEVICE_STORAGE_KEY);
   }
   // ★ 시리얼 키도 함께 저장 — 새로고침 시 ID가 바뀌어도 시리얼로 복원 가능
   if (serialKey !== undefined) {
     _selectedSerialKey = serialKey ?? null;
     if (serialKey) {
-      localStorage.setItem(SELECTED_SERIAL_STORAGE_KEY, serialKey);
+      safeStorage.setItem(SELECTED_SERIAL_STORAGE_KEY, serialKey);
     } else {
-      localStorage.removeItem(SELECTED_SERIAL_STORAGE_KEY);
+      safeStorage.removeItem(SELECTED_SERIAL_STORAGE_KEY);
     }
   }
   _selectionListeners.forEach(l => l());
