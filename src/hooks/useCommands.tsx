@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,6 +12,12 @@ type Json = Database["public"]["Tables"]["commands"]["Insert"]["payload"];
 export const useCommands = () => {
   const queryClient = useQueryClient();
   const { effectiveUserId } = useAuth();
+  
+  // Ref to avoid stale closure in async callbacks
+  const effectiveUserIdRef = useRef(effectiveUserId);
+  useEffect(() => {
+    effectiveUserIdRef.current = effectiveUserId;
+  }, [effectiveUserId]);
 
   const sendCommand = useMutation({
     mutationFn: async ({
