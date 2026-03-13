@@ -1,0 +1,1 @@
+DELETE FROM push_subscriptions WHERE fcm_token = 'eq4xzI1vRzG-OneopBLMCQ:APA91bHCgLtLlsmaYDsj3641PhTPM6ElChUgkj-3FrToiDYsACfIQKT3e5Dg8du7eVxXX1jxKU0jhGAAavtL85SUyHWzPphdw16xfTqDXEAx7G77vBm3Nak';
