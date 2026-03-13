@@ -18,7 +18,7 @@ const Auth = () => {
 
   useEffect(() => {
     if (!loading && effectiveUserId) {
-      navigate("/");
+      navigate("/", { replace: true });
     }
   }, [loading, effectiveUserId, navigate]);
 
