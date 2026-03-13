@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
 
     // Support both { device_id, updates: {...} } and { device_id, field1, field2, ... }
     const updates = body.updates || (() => {
-      const { device_id: _, _action: _a, ...rest } = body;
+      const { device_id: _, _action: _a, _skip_push: _sp, ...rest } = body;
       return Object.keys(rest).length > 0 ? rest : null;
     })();
 
