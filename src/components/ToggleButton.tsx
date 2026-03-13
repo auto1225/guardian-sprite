@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { Shield, ShieldCheck, Monitor } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -11,34 +10,14 @@ interface ToggleButtonProps {
 
 const ToggleButton = ({ isOn, onToggle, isCamouflage, onCamouflageToggle }: ToggleButtonProps) => {
   const { t } = useTranslation();
-  const touchHandledRef = useRef(false);
-
-  const createTouchSafeHandlers = (action: () => void) => ({
-    onPointerUp: (e: React.PointerEvent<HTMLButtonElement>) => {
-      if (e.pointerType !== "touch") return;
-      e.preventDefault();
-      touchHandledRef.current = true;
-      action();
-      window.setTimeout(() => {
-        touchHandledRef.current = false;
-      }, 350);
-    },
-    onClick: () => {
-      if (touchHandledRef.current) return;
-      action();
-    },
-  });
-
-  const monitoringHandlers = createTouchSafeHandlers(onToggle);
-  const camouflageHandlers = onCamouflageToggle ? createTouchSafeHandlers(onCamouflageToggle) : null;
 
   return (
     <div className="pb-4 pt-2 flex justify-center items-center z-20 px-6 gap-3 w-full">
-      <button
-        {...monitoringHandlers}
+      <button 
+        onClick={onToggle}
         aria-label={isOn ? t("toggle.stopMonitoring") : t("toggle.startMonitoring")}
         aria-pressed={isOn}
-        className="flex-1 flex items-center justify-center gap-3 px-6 py-3.5 rounded-full font-bold text-lg transition-all border touch-manipulation"
+        className="flex-1 flex items-center justify-center gap-3 px-6 py-3.5 rounded-full font-bold text-lg transition-all border"
         style={{
           background: isOn
             ? 'linear-gradient(135deg, hsla(80, 70%, 45%, 0.35) 0%, hsla(55, 80%, 50%, 0.25) 100%)'
@@ -48,8 +27,6 @@ const ToggleButton = ({ isOn, onToggle, isCamouflage, onCamouflageToggle }: Togg
           boxShadow: isOn
             ? '0 4px 20px hsla(80, 60%, 40%, 0.3), inset 0 1px 0 hsla(0, 0%, 100%, 0.15)'
             : '0 4px 20px hsla(0, 0%, 0%, 0.2), inset 0 1px 0 hsla(0, 0%, 100%, 0.1)',
-          touchAction: 'manipulation',
-          WebkitTapHighlightColor: 'transparent',
         }}
       >
         <div
@@ -69,10 +46,10 @@ const ToggleButton = ({ isOn, onToggle, isCamouflage, onCamouflageToggle }: Togg
 
       {onCamouflageToggle && (
         <button
-          {...(camouflageHandlers ?? {})}
+          onClick={onCamouflageToggle}
           aria-label={isCamouflage ? t("toggle.camouflageOff") : t("toggle.camouflageOn")}
           aria-pressed={!!isCamouflage}
-          className="w-14 h-14 rounded-full flex items-center justify-center transition-all border touch-manipulation"
+          className="w-14 h-14 rounded-full flex items-center justify-center transition-all border"
           style={{
             background: isCamouflage
               ? 'linear-gradient(135deg, hsla(220, 30%, 20%, 0.6) 0%, hsla(220, 25%, 15%, 0.5) 100%)'
@@ -82,8 +59,6 @@ const ToggleButton = ({ isOn, onToggle, isCamouflage, onCamouflageToggle }: Togg
             boxShadow: isCamouflage
               ? '0 4px 15px hsla(220, 40%, 30%, 0.4), inset 0 1px 0 hsla(0, 0%, 100%, 0.1)'
               : '0 4px 15px hsla(0, 0%, 0%, 0.15), inset 0 1px 0 hsla(0, 0%, 100%, 0.1)',
-            touchAction: 'manipulation',
-            WebkitTapHighlightColor: 'transparent',
           }}
         >
           <Monitor className="w-5 h-5" style={{ color: isCamouflage ? 'hsl(210, 60%, 70%)' : 'hsla(0, 0%, 75%, 0.7)' }} />

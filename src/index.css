@@ -103,13 +103,6 @@ html, body, #root {
   padding: 0;
 }
 
-.scene-mask,
-.scene-mask * {
-  pointer-events: none !important;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
 #root {
   min-height: 100vh;
   min-height: 100svh;

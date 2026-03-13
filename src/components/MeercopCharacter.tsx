@@ -126,7 +126,7 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
               alignItems: 'center',
               gap: 0,
               zIndex: 10,
-              pointerEvents: 'none',
+              pointerEvents: 'auto',
             }}
           >
             {/* Speech Bubble - Glued to character hat */}

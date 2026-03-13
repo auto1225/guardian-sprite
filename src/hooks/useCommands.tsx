@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,12 +11,6 @@ type Json = Database["public"]["Tables"]["commands"]["Insert"]["payload"];
 export const useCommands = () => {
   const queryClient = useQueryClient();
   const { effectiveUserId } = useAuth();
-  
-  // Ref to avoid stale closure in async callbacks
-  const effectiveUserIdRef = useRef(effectiveUserId);
-  useEffect(() => {
-    effectiveUserIdRef.current = effectiveUserId;
-  }, [effectiveUserId]);
 
   const sendCommand = useMutation({
     mutationFn: async ({
@@ -61,12 +54,11 @@ export const useCommands = () => {
     }
     
     console.log("[useCommands] toggleMonitoring success, is_monitoring set to:", enable);
-    const currentUserId = effectiveUserIdRef.current;
-    console.log("[useCommands] effectiveUserId for push (from ref):", currentUserId, "deviceName:", deviceName);
+    console.log("[useCommands] effectiveUserId for push:", effectiveUserId, "deviceName:", deviceName);
     
-    if (currentUserId) {
+    if (effectiveUserId) {
       await broadcastCommand({
-        userId: currentUserId,
+        userId: effectiveUserId,
         event: "monitoring_toggle",
         payload: { device_id: deviceId, is_monitoring: enable, serial_key: serialKey },
       });
@@ -83,7 +75,7 @@ export const useCommands = () => {
       supabase.functions.invoke("push-notifications", {
         body: {
           action: "send-server",
-          user_id: currentUserId,
+          user_id: effectiveUserId,
           device_id: deviceId,
           device_name: name,
           title: pushTitle,
