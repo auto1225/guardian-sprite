@@ -42,6 +42,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [serialsLoading, setSerialsLoading] = useState(false);
   const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
   const prevSerialsRef = useRef<UserSerial[]>([]);
+  const initialSessionHydratedRef = useRef(false);
+  const currentUserIdRef = useRef<string | null>(null);
   const { toast } = useToast();
 
   const loadSerials = async (accessToken: string) => {
