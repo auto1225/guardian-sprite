@@ -67,11 +67,12 @@ export function useDeviceHeartbeat() {
             body: { user_id: effectiveUserId },
           });
           const otherDevices = (data?.devices || []).filter(
-            (d: { device_type: string; id: string }) => d.device_type !== "smartphone"
+            (d: { device_type: string; id: string; is_monitoring?: boolean }) =>
+              d.device_type !== "smartphone" && !!d.is_monitoring
           );
           for (const d of otherDevices) {
             await invokeWithRetry("update-device", {
-              body: { device_id: d.id, is_monitoring: false },
+              body: { device_id: d.id, updates: { is_monitoring: false }, _skip_push: true },
             });
           }
         }
