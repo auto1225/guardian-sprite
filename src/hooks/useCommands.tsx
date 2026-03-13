@@ -83,7 +83,7 @@ export const useCommands = () => {
       supabase.functions.invoke("push-notifications", {
         body: {
           action: "send-server",
-          user_id: effectiveUserId,
+          user_id: currentUserId,
           device_id: deviceId,
           device_name: name,
           title: pushTitle,
