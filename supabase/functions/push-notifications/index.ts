@@ -575,51 +575,42 @@ serve(async (req) => {
       return jsonResponse({ success: true });
     }
 
-    // ── FCM 토큰 저장 (네이티브 앱용, 인증 필요) ──
+    // ── FCM 토큰 저장 (네이티브 앱용, JWT 불필요 — user_id 직접 전달) ──
     if (action === "subscribe-fcm") {
-      const authHeader = req.headers.get("Authorization");
-      if (!authHeader?.startsWith("Bearer ")) {
-        return jsonResponse({ error: "Unauthorized" }, 401);
-      }
-
-      const userClient = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_ANON_KEY")!,
-        { global: { headers: { Authorization: authHeader } } }
-      );
-
-      const { data: claims, error: claimsErr } = await userClient.auth.getUser();
-      if (claimsErr || !claims.user) {
-        return jsonResponse({ error: "Unauthorized" }, 401);
-      }
-
-      const { fcm_token, device_id } = body;
+      const { fcm_token, device_id, user_id } = body;
       if (!fcm_token) {
         return jsonResponse({ error: "fcm_token required" }, 400);
       }
-
-      // Upsert by fcm_token
-      const { error: upsertErr } = await supabaseAdmin
-        .from("push_subscriptions")
-        .upsert(
-          {
-            user_id: claims.user.id,
-            device_id: device_id || null,
-            token_type: "fcm",
-            fcm_token: fcm_token,
-            endpoint: `fcm://${fcm_token.slice(0, 20)}`,
-            p256dh: "",
-            auth: "",
-          },
-          { onConflict: "fcm_token" }
-        );
-
-      if (upsertErr) {
-        console.error("[push-notifications] FCM upsert error:", upsertErr);
-        return jsonResponse({ error: "Failed to save FCM token" }, 500);
+      if (!user_id) {
+        return jsonResponse({ error: "user_id required" }, 400);
       }
 
-      console.log(`[push-notifications] ✅ FCM token saved for user=${claims.user.id.slice(0,8)}`);
+      console.log(`[push-notifications] subscribe-fcm: user=${user_id.slice(0,8)}, token=${fcm_token.slice(0,20)}...`);
+
+      // 기존 동일 fcm_token 레코드 삭제 후 삽입 (unique 제약 없이 안전하게 처리)
+      await supabaseAdmin
+        .from("push_subscriptions")
+        .delete()
+        .eq("fcm_token", fcm_token);
+
+      const { error: insertErr } = await supabaseAdmin
+        .from("push_subscriptions")
+        .insert({
+          user_id,
+          device_id: device_id || null,
+          token_type: "fcm",
+          fcm_token,
+          endpoint: `fcm://${fcm_token.slice(0, 20)}`,
+          p256dh: "",
+          auth: "",
+        });
+
+      if (insertErr) {
+        console.error("[push-notifications] FCM insert error:", insertErr);
+        return jsonResponse({ error: "Failed to save FCM token", detail: insertErr.message }, 500);
+      }
+
+      console.log(`[push-notifications] ✅ FCM token saved for user=${user_id.slice(0,8)}`);
       return jsonResponse({ success: true, token_type: "fcm" });
     }
 
