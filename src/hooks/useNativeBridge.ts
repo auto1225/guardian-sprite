@@ -73,22 +73,11 @@ export function useNativeBridge({ effectiveUserId, deviceId }: UseNativeBridgeOp
 
       if (error) {
         console.error("[NativeBridge] FCM token save failed:", error);
-        // 실패 콜백 → 네이티브 앱에 알림
-        if (window.NativeApp?.onFcmTokenSyncResult) {
-          try { window.NativeApp.onFcmTokenSyncResult(false, error.message || String(error)); } catch {}
-        }
       } else {
         console.log("[NativeBridge] ✅ FCM token saved to server");
-        // 성공 콜백 → 네이티브 앱에 알림
-        if (window.NativeApp?.onFcmTokenSyncResult) {
-          try { window.NativeApp.onFcmTokenSyncResult(true, "FCM token saved successfully"); } catch {}
-        }
       }
     } catch (err) {
       console.error("[NativeBridge] FCM token save error:", err);
-      if (window.NativeApp?.onFcmTokenSyncResult) {
-        try { window.NativeApp.onFcmTokenSyncResult(false, String(err)); } catch {}
-      }
     }
   }, []);
 
