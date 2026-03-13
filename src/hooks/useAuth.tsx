@@ -238,13 +238,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    websiteSupabase.auth.getSession().then(({ data: { session: existing } }) => {
-      if (!mounted) return;
+    (async () => {
+      try {
+        const existing = await withTimeout(
+          websiteSupabase.auth.getSession().then(({ data: { session: s } }) => s),
+          SESSION_INIT_TIMEOUT_MS,
+          null
+        );
 
-      initialSessionHydratedRef.current = true;
-      applySessionState(existing, false);
-      setLoading(false);
-    });
+        if (!mounted) return;
+
+        initialSessionHydratedRef.current = true;
+        applySessionState(existing, false);
+      } catch (err) {
+        if (!mounted) return;
+        console.error("[Auth] Initial session hydration failed:", err);
+        initialSessionHydratedRef.current = true;
+        applySessionState(null, false);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
 
     // Reconnect on network restore
     const handleOnline = () => {
