@@ -251,6 +251,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     if (!error && data.session) {
       // WebView 환경에서 onAuthStateChange 이벤트가 지연되거나 누락돼도 즉시 상태 반영
+      initialSessionHydratedRef.current = true;
+      currentUserIdRef.current = data.session.user.id;
       setSession(data.session);
       setUser(data.session.user ?? null);
       setLoading(false);
