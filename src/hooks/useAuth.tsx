@@ -314,6 +314,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const effectiveUserId = user?.id || session?.user?.id || null;
 
   useEffect(() => {
+    currentUserIdRef.current = effectiveUserId;
+  }, [effectiveUserId]);
+
+  useEffect(() => {
     console.log("[Auth] effectiveUserId:", effectiveUserId, "email:", user?.email);
   }, [effectiveUserId, user?.email]);
 
