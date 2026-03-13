@@ -117,7 +117,8 @@ Deno.serve(async (req) => {
       .from("devices")
       .update(updates)
       .eq("id", device_id)
-      .select();
+      .select()
+      .single();
 
     if (error) {
       console.error("update-device error:", error);
@@ -127,8 +128,44 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ★ 감시 ON/OFF 변경 시 서버에서 직접 푸시 알림 전송
+    if (data && "is_monitoring" in updates) {
+      const deviceName = data.name || "기기";
+      const userId = data.user_id;
+      const enable = updates.is_monitoring;
+      const pushTitle = enable
+        ? `🟢 ${deviceName} 감시 시작`
+        : `🔴 ${deviceName} 감시 종료`;
+      const pushBody = enable
+        ? `${deviceName}에 감시를 시작합니다.`
+        : `${deviceName}에 감시를 종료합니다.`;
+
+      // 비동기로 푸시 전송 (응답 지연 방지)
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      
+      fetch(`${supabaseUrl}/functions/v1/push-notifications`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${serviceRoleKey}`,
+        },
+        body: JSON.stringify({
+          action: "send-server",
+          user_id: userId,
+          device_id,
+          device_name: deviceName,
+          title: pushTitle,
+          body: pushBody,
+          tag: `meercop-monitoring-${device_id}`,
+        }),
+      }).catch((err) => {
+        console.warn("[update-device] Monitoring push failed:", err);
+      });
+    }
+
     return new Response(
-      JSON.stringify({ updated: data?.length ?? 0 }),
+      JSON.stringify({ updated: data ? 1 : 0 }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
