@@ -61,29 +61,7 @@ export const useCommands = () => {
         event: "monitoring_toggle",
         payload: { device_id: deviceId, is_monitoring: enable, serial_key: serialKey },
       });
-
-      // 감시 시작/종료 푸시 알림 전송
-      const name = deviceName || "기기";
-      const pushTitle = enable
-        ? `🟢 ${name} 감시 시작`
-        : `🔴 ${name} 감시 종료`;
-      const pushBody = enable
-        ? `${name}에 감시를 시작합니다.`
-        : `${name}에 감시를 종료합니다.`;
-
-      supabase.functions.invoke("push-notifications", {
-        body: {
-          action: "send-server",
-          user_id: effectiveUserId,
-          device_id: deviceId,
-          device_name: name,
-          title: pushTitle,
-          body: pushBody,
-          tag: `meercop-monitoring-${deviceId}`,
-        },
-      }).catch((err) => {
-        console.warn("[useCommands] Monitoring push notification failed:", err);
-      });
+      // ★ 푸시 알림은 서버(update-device Edge Function)에서 직접 전송
     }
     
     // ★ invalidateQueries 제거: Realtime postgres_changes가 자동으로 캐시를 업데이트하므로
