@@ -21,6 +21,7 @@ export interface NativeAppInterface {
   onLoginSuccess: (accessToken: string, refreshToken: string) => void;
   onLogout: () => void;
   onSessionRestored: () => void;
+  onFcmTokenSyncResult?: (success: boolean, message: string) => void;
 }
 
 export interface NativeWebInterface {
