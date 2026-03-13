@@ -912,7 +912,7 @@ const DeviceCard = memo(({
               <span>{isCamouflage ? "ON" : "OFF"}</span>
             </button>
             <button
-              onClick={() => onToggleMonitoring(device.id, !device.is_monitoring)}
+              onClick={() => onToggleMonitoring(device.id, !device.is_monitoring, undefined, device.name)}
               className={`px-5 py-1.5 rounded-lg text-sm font-bold transition-all ${
                 device.is_monitoring
                   ? "bg-status-active text-accent-foreground shadow-[0_0_12px_hsla(48,100%,55%,0.4)]"
