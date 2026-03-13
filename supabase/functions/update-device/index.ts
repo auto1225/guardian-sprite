@@ -129,8 +129,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ★ 감시 ON/OFF 변경 시 서버에서 직접 푸시 알림 전송
-    if (data && "is_monitoring" in updates) {
+    // ★ 감시 ON/OFF 변경 시 서버에서 직접 푸시 알림 전송 (앱 시작 리셋 시에는 스킵)
+    if (data && "is_monitoring" in updates && !skipPush) {
       const deviceName = data.name || "기기";
       const userId = data.user_id;
       const enable = updates.is_monitoring;

@@ -82,7 +82,7 @@ export function useSmartphoneRegistration() {
 
         for (const laptop of laptopDevices) {
           await invokeWithRetry("update-device", {
-            body: { device_id: laptop.id, updates: { is_monitoring: false } },
+            body: { device_id: laptop.id, updates: { is_monitoring: false }, _skip_push: true },
           });
 
           const { broadcastCommand } = await import("@/lib/broadcastCommand");
