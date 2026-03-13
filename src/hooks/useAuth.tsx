@@ -10,6 +10,24 @@ import { safeStorage } from "@/lib/safeStorage";
 // Legacy keys (cleanup on logout)
 const SERIAL_STORAGE_KEY = "meercop_serial_key";
 const SERIAL_DATA_KEY = "meercop_serial_data";
+const SESSION_INIT_TIMEOUT_MS = 5000;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => resolve(fallback), timeoutMs);
+
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
 
 interface AuthContextType {
   user: User | null;
