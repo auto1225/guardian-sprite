@@ -10,6 +10,24 @@ import { safeStorage } from "@/lib/safeStorage";
 // Legacy keys (cleanup on logout)
 const SERIAL_STORAGE_KEY = "meercop_serial_key";
 const SERIAL_DATA_KEY = "meercop_serial_data";
+const SESSION_INIT_TIMEOUT_MS = 5000;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => resolve(fallback), timeoutMs);
+
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
 
 interface AuthContextType {
   user: User | null;
@@ -220,13 +238,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    websiteSupabase.auth.getSession().then(({ data: { session: existing } }) => {
-      if (!mounted) return;
+    (async () => {
+      try {
+        const existing = await withTimeout(
+          websiteSupabase.auth.getSession().then(({ data: { session: s } }) => s),
+          SESSION_INIT_TIMEOUT_MS,
+          null
+        );
 
-      initialSessionHydratedRef.current = true;
-      applySessionState(existing, false);
-      setLoading(false);
-    });
+        if (!mounted) return;
+
+        initialSessionHydratedRef.current = true;
+        applySessionState(existing, false);
+      } catch (err) {
+        if (!mounted) return;
+        console.error("[Auth] Initial session hydration failed:", err);
+        initialSessionHydratedRef.current = true;
+        applySessionState(null, false);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
 
     // Reconnect on network restore
     const handleOnline = () => {
