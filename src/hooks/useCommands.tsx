@@ -41,7 +41,7 @@ export const useCommands = () => {
     },
   });
 
-  const toggleMonitoring = async (deviceId: string, enable: boolean, serialKey?: string) => {
+  const toggleMonitoring = async (deviceId: string, enable: boolean, serialKey?: string, deviceName?: string) => {
     console.log("[useCommands] toggleMonitoring called:", deviceId, "enable:", enable);
     
     const { error } = await invokeWithRetry("update-device", {
@@ -60,6 +60,29 @@ export const useCommands = () => {
         userId: effectiveUserId,
         event: "monitoring_toggle",
         payload: { device_id: deviceId, is_monitoring: enable, serial_key: serialKey },
+      });
+
+      // 감시 시작/종료 푸시 알림 전송
+      const name = deviceName || "기기";
+      const pushTitle = enable
+        ? `🟢 ${name} 감시 시작`
+        : `🔴 ${name} 감시 종료`;
+      const pushBody = enable
+        ? `${name}에 감시를 시작합니다.`
+        : `${name}에 감시를 종료합니다.`;
+
+      supabase.functions.invoke("push-notifications", {
+        body: {
+          action: "send-server",
+          user_id: effectiveUserId,
+          device_id: deviceId,
+          device_name: name,
+          title: pushTitle,
+          body: pushBody,
+          tag: `meercop-monitoring-${deviceId}`,
+        },
+      }).catch((err) => {
+        console.warn("[useCommands] Monitoring push notification failed:", err);
       });
     }
     
