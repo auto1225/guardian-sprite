@@ -612,16 +612,20 @@ const Index = () => {
       />
 
       {/* Help Page */}
-      <HelpPage
-        isOpen={panels.help}
-        onClose={() => closePanel("help")}
-      />
+      {panels.help && (
+        <HelpPage
+          isOpen={panels.help}
+          onClose={() => closePanel("help")}
+        />
+      )}
 
       {/* Legal Page */}
-      <LegalPage
-        isOpen={panels.legal}
-        onClose={() => closePanel("legal")}
-      />
+      {panels.legal && (
+        <LegalPage
+          isOpen={panels.legal}
+          onClose={() => closePanel("legal")}
+        />
+      )}
 
       {/* Remote Commands Panel */}
       <RemoteCommandsPanel
