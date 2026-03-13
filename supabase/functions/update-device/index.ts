@@ -15,6 +15,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const device_id = body.device_id;
     const action = body._action;
+    const skipPush = body._skip_push === true;
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
