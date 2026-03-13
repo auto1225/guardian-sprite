@@ -295,7 +295,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
   const handleBulkMonitoring = async (enable: boolean) => {
     const targetDevices = items.filter(i => i.device && selectedIds.has(itemKey(i))).map(i => i.device!);
     for (const dev of targetDevices) {
-      await toggleMonitoring(dev.id, enable);
+      await toggleMonitoring(dev.id, enable, undefined, dev.name);
     }
     setSelectedIds(new Set());
     toast({ title: t("deviceManage.bulkSuccess"), description: t("deviceManage.bulkSuccessDesc") });

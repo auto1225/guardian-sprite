@@ -206,7 +206,7 @@ const Index = () => {
 
     try {
       const monitorSerialKey = (selectedDevice.metadata as Record<string, unknown>)?.serial_key as string | undefined;
-      await toggleMonitoring(selectedDevice.id, newVal, monitorSerialKey);
+      await toggleMonitoring(selectedDevice.id, newVal, monitorSerialKey, selectedDevice.name);
       
       // 명령 전송 성공 토스트 — UI는 실제 기기가 DB를 업데이트할 때 Realtime으로 반영됨
       toast({
