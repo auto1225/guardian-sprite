@@ -61,11 +61,12 @@ export const useCommands = () => {
     }
     
     console.log("[useCommands] toggleMonitoring success, is_monitoring set to:", enable);
-    console.log("[useCommands] effectiveUserId for push:", effectiveUserId, "deviceName:", deviceName);
+    const currentUserId = effectiveUserIdRef.current;
+    console.log("[useCommands] effectiveUserId for push (from ref):", currentUserId, "deviceName:", deviceName);
     
-    if (effectiveUserId) {
+    if (currentUserId) {
       await broadcastCommand({
-        userId: effectiveUserId,
+        userId: currentUserId,
         event: "monitoring_toggle",
         payload: { device_id: deviceId, is_monitoring: enable, serial_key: serialKey },
       });
