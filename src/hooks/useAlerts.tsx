@@ -153,31 +153,9 @@ export const useAlerts = (deviceId?: string | null) => {
       console.log("[useAlerts] ⏭ Alarm already playing or muted, skipping play");
     }
 
-    // ★ OS 레벨 푸시 알림도 함께 전송 — 사용자가 앱을 떠나도 알림음+배지 표시
-    // 감시 ON/OFF 알림은 update-device Edge Function에서 이미 전송하므로 여기서는 중복 전송 차단
-    const userId = userIdRef.current;
+    // ⚠️ 푸시 전송 권한은 서버로 단일화
+    // 클라이언트에서 send-server를 다시 호출하면 중복 푸시가 발생할 수 있으므로 여기서는 전송하지 않음.
     const logDeviceId = deviceIdRef.current || fromDeviceId;
-    const monitoringPushPattern = /(meercop\s*(on|off))|(감시\s*(on|off|시작|종료|중지|켜짐|꺼짐))|(감시\s*(를|을)?\s*(시작|종료|중지))|(monitor(ing)?\s*(on|off|start|started|stop|stopped|enabled|disabled))/i;
-    const isMonitoringStatusAlert =
-      monitoringPushPattern.test(alert.title || "") ||
-      monitoringPushPattern.test(alert.message || "");
-
-    if (userId && logDeviceId && !isMonitoringStatusAlert) {
-      supabase.functions.invoke("push-notifications", {
-        body: {
-          action: "send-server",
-          user_id: userId,
-          device_id: logDeviceId,
-          title: alert.title,
-          body: alert.message,
-        },
-      }).then(res => {
-        if (res.error) console.warn("[useAlerts] Push send failed:", res.error);
-        else console.log("[useAlerts] 📲 Push notification triggered");
-      }).catch(err => console.warn("[useAlerts] Push send error:", err));
-    } else if (isMonitoringStatusAlert) {
-      console.log("[useAlerts] ⏭ Skip duplicate monitoring push:", alert.title);
-    }
 
     if (logDeviceId) {
       try {
