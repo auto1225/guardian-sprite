@@ -67,7 +67,7 @@ export function useSmartphoneRegistration() {
         // 앱 시작 시 감시 OFF 리셋
         if (deviceId) {
           await invokeWithRetry("update-device", {
-            body: { device_id: deviceId, updates: { is_monitoring: false, status: "online" } },
+            body: { device_id: deviceId, updates: { is_monitoring: false, status: "online" }, _skip_push: true },
           });
         }
 
@@ -82,7 +82,7 @@ export function useSmartphoneRegistration() {
 
         for (const laptop of laptopDevices) {
           await invokeWithRetry("update-device", {
-            body: { device_id: laptop.id, updates: { is_monitoring: false } },
+            body: { device_id: laptop.id, updates: { is_monitoring: false }, _skip_push: true },
           });
 
           const { broadcastCommand } = await import("@/lib/broadcastCommand");

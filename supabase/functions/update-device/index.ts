@@ -15,6 +15,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const device_id = body.device_id;
     const action = body._action;
+    const skipPush = body._skip_push === true;
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -50,7 +51,7 @@ Deno.serve(async (req) => {
 
     // Support both { device_id, updates: {...} } and { device_id, field1, field2, ... }
     const updates = body.updates || (() => {
-      const { device_id: _, _action: _a, ...rest } = body;
+      const { device_id: _, _action: _a, _skip_push: _sp, ...rest } = body;
       return Object.keys(rest).length > 0 ? rest : null;
     })();
 
@@ -128,8 +129,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ★ 감시 ON/OFF 변경 시 서버에서 직접 푸시 알림 전송
-    if (data && "is_monitoring" in updates) {
+    // ★ 감시 ON/OFF 변경 시 서버에서 직접 푸시 알림 전송 (앱 시작 리셋 시에는 스킵)
+    if (data && "is_monitoring" in updates && !skipPush) {
       const deviceName = data.name || "기기";
       const userId = data.user_id;
       const enable = updates.is_monitoring;
