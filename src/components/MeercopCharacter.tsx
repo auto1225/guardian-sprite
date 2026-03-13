@@ -42,7 +42,7 @@ const MeercopCharacter = ({ isMonitoring = false, isAlert = false, statusMessage
           left: 0,
           width: '100%',
           height: '100vh',
-          minHeight: '100dvh',
+          minHeight: '100svh',
           overflow: 'hidden',
           display: 'flex',
           alignItems: 'flex-end',
