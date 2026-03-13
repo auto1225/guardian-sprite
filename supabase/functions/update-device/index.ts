@@ -140,28 +140,31 @@ Deno.serve(async (req) => {
         ? `${deviceName}에 감시를 시작합니다.`
         : `${deviceName}에 감시를 종료합니다.`;
 
-      // 비동기로 푸시 전송 (응답 지연 방지)
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
       
-      fetch(`${supabaseUrl}/functions/v1/push-notifications`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${serviceRoleKey}`,
-        },
-        body: JSON.stringify({
-          action: "send-server",
-          user_id: userId,
-          device_id,
-          device_name: deviceName,
-          title: pushTitle,
-          body: pushBody,
-          tag: `meercop-monitoring-${device_id}`,
-        }),
-      }).catch((err) => {
+      try {
+        const pushRes = await fetch(`${supabaseUrl}/functions/v1/push-notifications`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${serviceRoleKey}`,
+          },
+          body: JSON.stringify({
+            action: "send-server",
+            user_id: userId,
+            device_id,
+            device_name: deviceName,
+            title: pushTitle,
+            body: pushBody,
+            tag: `meercop-monitoring-${device_id}`,
+          }),
+        });
+        const pushResult = await pushRes.text();
+        console.log(`[update-device] Monitoring push result: ${pushRes.status} ${pushResult}`);
+      } catch (err) {
         console.warn("[update-device] Monitoring push failed:", err);
-      });
+      }
     }
 
     return new Response(
