@@ -741,7 +741,7 @@ interface DeviceCardProps {
   onNumberChange: (serialKey: string, num: number | null) => void;
   onDelete: (deviceId: string) => void;
   onViewAlertHistory?: (deviceId: string) => void;
-  onToggleMonitoring: (deviceId: string, enable: boolean) => void;
+  onToggleMonitoring: (deviceId: string, enable: boolean, serialKey?: string, deviceName?: string) => void;
   onToggleCamouflage: (deviceId: string) => void;
   onIconClick?: (deviceId: string, type: "laptop" | "network" | "camera") => void;
   onSettingsClick?: (deviceId: string) => void;
