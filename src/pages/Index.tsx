@@ -459,7 +459,7 @@ const Index = () => {
       />
 
       {/* Settings Page */}
-      {selectedDevice && (
+      {panels.settings && selectedDevice && (
         <SettingsPage
           devices={managedDevices}
           initialDeviceId={selectedDevice.id}
