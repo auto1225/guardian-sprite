@@ -45,7 +45,7 @@ export const useCommands = () => {
     console.log("[useCommands] toggleMonitoring called:", deviceId, "enable:", enable);
     
     const { error } = await invokeWithRetry("update-device", {
-      body: { device_id: deviceId, is_monitoring: enable },
+      body: { device_id: deviceId, updates: { is_monitoring: enable } },
     });
     
     if (error) {
