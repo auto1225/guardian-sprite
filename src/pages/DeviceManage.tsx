@@ -295,7 +295,7 @@ const DeviceManagePage = ({ isOpen, onClose, onSelectDevice, onViewAlertHistory 
   const handleBulkMonitoring = async (enable: boolean) => {
     const targetDevices = items.filter(i => i.device && selectedIds.has(itemKey(i))).map(i => i.device!);
     for (const dev of targetDevices) {
-      await toggleMonitoring(dev.id, enable);
+      await toggleMonitoring(dev.id, enable, undefined, dev.name);
     }
     setSelectedIds(new Set());
     toast({ title: t("deviceManage.bulkSuccess"), description: t("deviceManage.bulkSuccessDesc") });
@@ -741,7 +741,7 @@ interface DeviceCardProps {
   onNumberChange: (serialKey: string, num: number | null) => void;
   onDelete: (deviceId: string) => void;
   onViewAlertHistory?: (deviceId: string) => void;
-  onToggleMonitoring: (deviceId: string, enable: boolean) => void;
+  onToggleMonitoring: (deviceId: string, enable: boolean, serialKey?: string, deviceName?: string) => void;
   onToggleCamouflage: (deviceId: string) => void;
   onIconClick?: (deviceId: string, type: "laptop" | "network" | "camera") => void;
   onSettingsClick?: (deviceId: string) => void;
@@ -912,7 +912,7 @@ const DeviceCard = memo(({
               <span>{isCamouflage ? "ON" : "OFF"}</span>
             </button>
             <button
-              onClick={() => onToggleMonitoring(device.id, !device.is_monitoring)}
+              onClick={() => onToggleMonitoring(device.id, !device.is_monitoring, undefined, device.name)}
               className={`px-5 py-1.5 rounded-lg text-sm font-bold transition-all ${
                 device.is_monitoring
                   ? "bg-status-active text-accent-foreground shadow-[0_0_12px_hsla(48,100%,55%,0.4)]"
