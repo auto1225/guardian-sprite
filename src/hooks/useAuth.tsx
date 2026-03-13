@@ -291,6 +291,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }
 
+    currentUserIdRef.current = null;
     safeStorage.removeItem(SERIAL_STORAGE_KEY);
     safeStorage.removeItem(SERIAL_DATA_KEY);
     clearCapabilitiesCache();
