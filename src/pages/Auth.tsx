@@ -18,7 +18,7 @@ const Auth = () => {
 
   useEffect(() => {
     if (!loading && effectiveUserId) {
-      navigate("/");
+      navigate("/", { replace: true });
     }
   }, [loading, effectiveUserId, navigate]);
 
@@ -42,6 +42,14 @@ const Auth = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-sky-light to-primary flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-light to-primary flex flex-col">

@@ -42,6 +42,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [serialsLoading, setSerialsLoading] = useState(false);
   const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
   const prevSerialsRef = useRef<UserSerial[]>([]);
+  const initialSessionHydratedRef = useRef(false);
+  const currentUserIdRef = useRef<string | null>(null);
   const { toast } = useToast();
 
   const loadSerials = async (accessToken: string) => {
@@ -188,42 +190,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
+    let mounted = true;
+
+    const applySessionState = (nextSession: Session | null, deferSerialLoad: boolean) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+
+      if (nextSession?.access_token && nextSession.user) {
+        if (deferSerialLoad) {
+          setTimeout(() => loadSerials(nextSession.access_token), 0);
+        } else {
+          loadSerials(nextSession.access_token);
+        }
+        subscribeRealtime(nextSession.user.id);
+      } else {
+        setSerials([]);
+        unsubscribeRealtime();
+      }
+    };
+
     const { data: { subscription } } = websiteSupabase.auth.onAuthStateChange(
       (event, newSession) => {
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-        setLoading(false);
-
-        if (newSession?.access_token && newSession.user) {
-          setTimeout(() => loadSerials(newSession.access_token), 0);
-          subscribeRealtime(newSession.user.id);
-        } else {
-          setSerials([]);
-          unsubscribeRealtime();
+        if (!initialSessionHydratedRef.current && event === "INITIAL_SESSION") {
+          return;
         }
+
+        applySessionState(newSession, true);
+        setLoading(false);
       }
     );
 
     websiteSupabase.auth.getSession().then(({ data: { session: existing } }) => {
-      setSession(existing);
-      setUser(existing?.user ?? null);
+      if (!mounted) return;
+
+      initialSessionHydratedRef.current = true;
+      applySessionState(existing, false);
       setLoading(false);
-      if (existing?.access_token && existing.user) {
-        loadSerials(existing.access_token);
-        subscribeRealtime(existing.user.id);
-      }
     });
 
     // Reconnect on network restore
     const handleOnline = () => {
-      if (user?.id) {
+      const currentUserId = currentUserIdRef.current;
+      if (currentUserId) {
         console.log("[Auth] Network restored, re-subscribing to serials...");
-        subscribeRealtime(user.id);
+        subscribeRealtime(currentUserId);
       }
     };
     window.addEventListener("online", handleOnline);
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
       unsubscribeRealtime();
       window.removeEventListener("online", handleOnline);
@@ -235,6 +251,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     if (!error && data.session) {
       // WebView 환경에서 onAuthStateChange 이벤트가 지연되거나 누락돼도 즉시 상태 반영
+      initialSessionHydratedRef.current = true;
+      currentUserIdRef.current = data.session.user.id;
       setSession(data.session);
       setUser(data.session.user ?? null);
       setLoading(false);
@@ -273,6 +291,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }
 
+    currentUserIdRef.current = null;
     safeStorage.removeItem(SERIAL_STORAGE_KEY);
     safeStorage.removeItem(SERIAL_DATA_KEY);
     clearCapabilitiesCache();
@@ -293,6 +312,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const effectiveUserId = user?.id || session?.user?.id || null;
+
+  useEffect(() => {
+    currentUserIdRef.current = effectiveUserId;
+  }, [effectiveUserId]);
 
   useEffect(() => {
     console.log("[Auth] effectiveUserId:", effectiveUserId, "email:", user?.email);
