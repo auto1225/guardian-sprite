@@ -54,7 +54,6 @@ export const useCommands = () => {
     }
     
     console.log("[useCommands] toggleMonitoring success, is_monitoring set to:", enable);
-    console.log("[useCommands] effectiveUserId for push:", effectiveUserId, "deviceName:", deviceName);
     
     if (effectiveUserId) {
       await broadcastCommand({
