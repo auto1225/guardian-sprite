@@ -67,7 +67,7 @@ export function useSmartphoneRegistration() {
         // 앱 시작 시 감시 OFF 리셋
         if (deviceId) {
           await invokeWithRetry("update-device", {
-            body: { device_id: deviceId, updates: { is_monitoring: false, status: "online" } },
+            body: { device_id: deviceId, updates: { is_monitoring: false, status: "online" }, _skip_push: true },
           });
         }
 
