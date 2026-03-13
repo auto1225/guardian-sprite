@@ -188,8 +188,10 @@ const Index = () => {
     }
   }, [latestPhotoAlert?.id]);
 
+  const monitoringInFlight = useRef(false);
   const handleToggleMonitoring = async () => {
     if (!selectedDevice) return;
+    if (monitoringInFlight.current) return; // ★ 중복 호출 방지
     // ★ 기기가 오프라인이면 감시 토글 불가
     if (selectedDevice.status === "offline") {
       toast({
@@ -203,6 +205,7 @@ const Index = () => {
     const newVal = !buttonMonitoring;
     // ★ 버튼 즉시 토글
     setOptimisticMonitoring(newVal);
+    monitoringInFlight.current = true;
 
     try {
       const monitorSerialKey = (selectedDevice.metadata as Record<string, unknown>)?.serial_key as string | undefined;
@@ -243,6 +246,8 @@ const Index = () => {
         description: t("status.statusChangeFailed"),
         variant: "destructive",
       });
+    } finally {
+      monitoringInFlight.current = false;
     }
   };
 
