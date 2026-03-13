@@ -67,6 +67,7 @@ export function useNativeBridge({ effectiveUserId, deviceId }: UseNativeBridgeOp
           action: "subscribe-fcm",
           fcm_token: fcmToken,
           device_id: deviceIdRef.current || null,
+          user_id: userId,
         },
       });
 
