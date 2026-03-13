@@ -157,7 +157,7 @@ export const useAlerts = (deviceId?: string | null) => {
     // 감시 ON/OFF 알림은 update-device Edge Function에서 이미 전송하므로 여기서는 중복 전송 차단
     const userId = userIdRef.current;
     const logDeviceId = deviceIdRef.current || fromDeviceId;
-    const monitoringPushPattern = /(감시\s*(시작|종료|중지))|(monitoring\s*(on|off|start|stop))/i;
+    const monitoringPushPattern = /(meercop\s*(on|off))|(감시\s*(on|off|시작|종료|중지|켜짐|꺼짐))|(감시\s*(를|을)?\s*(시작|종료|중지))|(monitor(ing)?\s*(on|off|start|started|stop|stopped|enabled|disabled))/i;
     const isMonitoringStatusAlert =
       monitoringPushPattern.test(alert.title || "") ||
       monitoringPushPattern.test(alert.message || "");
