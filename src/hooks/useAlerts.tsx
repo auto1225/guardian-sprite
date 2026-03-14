@@ -157,23 +157,27 @@ export const useAlerts = (deviceId?: string | null) => {
 
     // ★ 센서 경보 푸시 전송 — 감시 중 감지된 이벤트를 OS 레벨 푸시로 전달
     const userId = userIdRef.current;
-    if (userId && logDeviceId) {
+    console.log("[useAlerts] 📲 Push check: userId=", userId?.slice(0, 8), "logDeviceId=", logDeviceId?.slice(0, 8), "fromDeviceId=", fromDeviceId?.slice(0, 8));
+    if (userId) {
       const alertTitle = alert.title || "경보 발생";
       const alertBody = alert.message || `${alertTitle}이(가) 감지되었습니다.`;
+      const pushDeviceId = logDeviceId || "unknown";
       supabase.functions.invoke("push-notifications", {
         body: {
           action: "send-server",
           user_id: userId,
-          device_id: logDeviceId,
+          device_id: pushDeviceId,
           title: `🚨 ${alertTitle}`,
           body: alertBody,
-          tag: `meercop-sensor-${logDeviceId}-${alert.id}`,
+          tag: `meercop-sensor-${pushDeviceId}-${alert.id}`,
         },
       }).then(res => {
         console.log("[useAlerts] 📲 Sensor alert push sent:", res.data);
       }).catch(err => {
         console.warn("[useAlerts] Sensor alert push failed:", err);
       });
+    } else {
+      console.warn("[useAlerts] ⚠️ No userId, skipping sensor push");
     }
 
     if (logDeviceId) {
