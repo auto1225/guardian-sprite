@@ -55,7 +55,7 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
   ({ side = "right", className, children, ...props }, ref) => (
     <SheetPortal>
       <SheetOverlay />
-      <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props}>
+      <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} style={{ WebkitOverflowScrolling: "touch", WebkitBackfaceVisibility: "hidden" }} {...props}>
         {children}
         <SheetPrimitive.Close className="absolute right-4 top-4 rounded-full p-1 text-white/80 hover:text-white hover:bg-white/20 ring-offset-background transition-all focus:outline-none focus:ring-2 focus:ring-white/30 focus:ring-offset-2 disabled:pointer-events-none">
           <X className="h-4 w-4" />
