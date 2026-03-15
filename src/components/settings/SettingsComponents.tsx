@@ -232,7 +232,7 @@ export const SoundDialog = ({ open, onOpenChange, selectedSoundId, onSelectSound
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) stopAllSounds(); }}>
-      <DialogContent className="max-h-[80vh] overflow-y-auto border border-white/25 alert-history-scroll" style={{ background: 'hsla(200, 60%, 45%, 0.92)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
+      <DialogContent className="border border-white/25" style={{ background: 'hsla(200, 60%, 45%, 0.92)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
         <DialogHeader>
           <DialogTitle className="text-white">{t("settings.soundDialog.title")}</DialogTitle>
           <DialogDescription className="text-white/70">{t("settings.soundDialog.description")}</DialogDescription>
@@ -240,12 +240,12 @@ export const SoundDialog = ({ open, onOpenChange, selectedSoundId, onSelectSound
 
         {/* Volume slider */}
         <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
+          <div className="mb-2 flex items-center justify-between">
             <span className="text-white font-semibold text-sm">{t("settings.soundDialog.volume")}</span>
             <span className="text-white/70 text-sm font-medium">{volumePercent}%</span>
           </div>
           <div className="flex items-center gap-3">
-            <VolumeX className="w-4 h-4 text-white/60 flex-shrink-0" />
+            <VolumeX className="h-4 w-4 flex-shrink-0 text-white/60" />
             <Slider
               value={[volumePercent]}
               min={0}
@@ -257,7 +257,7 @@ export const SoundDialog = ({ open, onOpenChange, selectedSoundId, onSelectSound
               }}
               className="flex-1"
             />
-            <Volume2 className="w-4 h-4 text-white/60 flex-shrink-0" />
+            <Volume2 className="h-4 w-4 flex-shrink-0 text-white/60" />
           </div>
         </div>
 
@@ -269,7 +269,7 @@ export const SoundDialog = ({ open, onOpenChange, selectedSoundId, onSelectSound
           {ALARM_SOUNDS.map((sound) => (
             <div
               key={sound.id}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer border ${
+              className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-all ${
                 selectedSoundId === sound.id ? "border-white/30 shadow-md" : "border-transparent hover:bg-white/10"
               }`}
               style={{ background: selectedSoundId === sound.id ? 'hsla(52, 100%, 60%, 0.15)' : 'hsla(0,0%,100%,0.08)' }}
@@ -277,22 +277,21 @@ export const SoundDialog = ({ open, onOpenChange, selectedSoundId, onSelectSound
             >
               <button
                 onClick={(e) => { e.stopPropagation(); previewSound(sound.id); }}
-                className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 hover:bg-white/20 transition-colors"
+                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/20"
                 style={{ background: 'hsla(0,0%,100%,0.15)' }}
               >
                 {playingSoundId === sound.id ? (
-                  <Square className="w-4 h-4 fill-current" style={{ color: 'hsla(52, 100%, 60%, 1)' }} />
+                  <Square className="h-4 w-4 fill-current" style={{ color: 'hsla(52, 100%, 60%, 1)' }} />
                 ) : (
-                  <Play className="w-4 h-4 text-white/90 ml-0.5" />
+                  <Play className="ml-0.5 h-4 w-4 text-white/90" />
                 )}
               </button>
-              <span className="text-white font-medium text-sm flex-1">{getSoundLabel(sound.id)}</span>
+              <span className="flex-1 text-sm font-medium text-white">{getSoundLabel(sound.id)}</span>
               {selectedSoundId === sound.id && (
                 <span className="font-bold" style={{ color: 'hsla(52, 100%, 60%, 1)' }}>✓</span>
               )}
             </div>
           ))}
-
         </div>
       </DialogContent>
     </Dialog>

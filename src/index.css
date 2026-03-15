@@ -128,12 +128,15 @@ html, body, #root {
   -webkit-backface-visibility: hidden;
   -webkit-perspective: 1000;
   will-change: transform, opacity;
+  isolation: isolate;
 }
 /* Force children inside dialog/sheet to be visible in WebView */
 [role="dialog"] > *,
 [role="alertdialog"] > * {
   -webkit-transform: translateZ(0);
+  transform: translateZ(0);
   -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 /* WebView-safe scroll containers */
