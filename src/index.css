@@ -136,23 +136,37 @@ html, body, #root {
   -webkit-backface-visibility: hidden;
 }
 
-/* Alert history scrollbar - matches blue theme */
-.alert-history-scroll::-webkit-scrollbar {
+/* WebView-safe scroll containers */
+.alert-history-scroll::-webkit-scrollbar,
+.webview-scroll-fix::-webkit-scrollbar {
   width: 5px;
 }
-.alert-history-scroll::-webkit-scrollbar-track {
+.alert-history-scroll::-webkit-scrollbar-track,
+.webview-scroll-fix::-webkit-scrollbar-track {
   background: transparent;
 }
-.alert-history-scroll::-webkit-scrollbar-thumb {
+.alert-history-scroll::-webkit-scrollbar-thumb,
+.webview-scroll-fix::-webkit-scrollbar-thumb {
   background: hsla(0, 0%, 100%, 0.25);
   border-radius: 10px;
 }
-.alert-history-scroll::-webkit-scrollbar-thumb:hover {
+.alert-history-scroll::-webkit-scrollbar-thumb:hover,
+.webview-scroll-fix::-webkit-scrollbar-thumb:hover {
   background: hsla(0, 0%, 100%, 0.4);
 }
-.alert-history-scroll {
+.alert-history-scroll,
+.webview-scroll-fix {
   scrollbar-width: thin;
   scrollbar-color: hsla(0, 0%, 100%, 0.25) transparent;
+}
+.webview-scroll-fix {
+  min-height: 0;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 /* Alert glass overlay scrollbar */
