@@ -119,13 +119,20 @@ html, body, #root {
   }
 }
 
-/* Android WebView dialog fix - ensure content is visible */
+/* Android WebView dialog fix - GPU acceleration without overriding position */
 [data-radix-popper-content-wrapper] {
   -webkit-transform: translateZ(0);
 }
 [role="dialog"],
 [role="alertdialog"] {
-  -webkit-transform: translate(-50%, -50%) translateZ(0);
+  -webkit-backface-visibility: hidden;
+  -webkit-perspective: 1000;
+  will-change: transform, opacity;
+}
+/* Force children inside dialog/sheet to be visible in WebView */
+[role="dialog"] > *,
+[role="alertdialog"] > * {
+  -webkit-transform: translateZ(0);
   -webkit-backface-visibility: hidden;
 }
 
