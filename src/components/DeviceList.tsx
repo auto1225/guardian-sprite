@@ -119,18 +119,15 @@ const DeviceList = ({ isExpanded, onToggle, selectedDeviceId, selectedDevice, on
 
         {/* Expanded device list */}
         {isExpanded && devices.length > 1 && (
-          <div className="absolute left-4 right-4 top-[calc(100%+0.75rem)] z-20 animate-in slide-in-from-top-2 duration-200 overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-3 shadow-lg backdrop-blur-xl">
-            <div className="mb-2 flex items-center justify-between px-1">
+          <div className="mt-3 animate-in slide-in-from-top-2 duration-200 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-3 shadow-lg">
+            <div className="flex items-center justify-between mb-2 px-1">
               <span className="text-white/70 text-xs font-medium">{t("deviceList.selectDevice")}</span>
-              <button onClick={onToggle} className="text-white/60 transition-colors hover:text-white/90">
-                <X className="h-4 w-4" />
+              <button onClick={onToggle} className="text-white/60 hover:text-white/90 transition-colors">
+                <X className="w-4 h-4" />
               </button>
             </div>
-            <div
-              className="webview-scroll-fix alert-history-scroll space-y-2.5 overflow-y-auto"
-              style={{ maxHeight: "calc(100svh - 12rem)" }}
-            >
-              {devices.map((device) => (
+            <div className="max-h-[50vh] overflow-y-auto space-y-2.5 alert-history-scroll">
+              {devices.map((device, index) => (
                 <DeviceCard
                   key={device.id}
                   device={device}

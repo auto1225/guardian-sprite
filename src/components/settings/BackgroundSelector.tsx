@@ -70,7 +70,7 @@ const BackgroundSelector = ({ open, onOpenChange, onBackgroundChange }: Backgrou
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="border border-white/25"
+        className="max-h-[80vh] overflow-y-auto border border-white/25 alert-history-scroll"
         style={{ background: "hsla(200, 60%, 45%, 0.92)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" }}
       >
         <DialogHeader>
@@ -120,9 +120,9 @@ const BackgroundSelector = ({ open, onOpenChange, onBackgroundChange }: Backgrou
               )}
               <button
                 onClick={handleDeleteCustom}
-                className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 transition-colors hover:bg-red-500"
+                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 flex items-center justify-center hover:bg-red-500 transition-colors"
               >
-                <X className="h-3 w-3 text-white" />
+                <X className="w-3 h-3 text-white" />
               </button>
               <span className="absolute bottom-0 left-0 right-0 text-[9px] text-white font-semibold text-center py-0.5 bg-black/40 truncate px-0.5">
                 {t("bg.custom")}
@@ -133,9 +133,9 @@ const BackgroundSelector = ({ open, onOpenChange, onBackgroundChange }: Backgrou
           {/* Upload button */}
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex aspect-[3/4] flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-white/30 transition-all hover:border-white/50 hover:bg-white/5"
+            className="rounded-xl border-2 border-dashed border-white/30 aspect-[3/4] flex flex-col items-center justify-center gap-1 hover:border-white/50 hover:bg-white/5 transition-all"
           >
-            <Upload className="h-5 w-5 text-white/60" />
+            <Upload className="w-5 h-5 text-white/60" />
             <span className="text-[9px] text-white/60 font-semibold">{t("bg.upload")}</span>
           </button>
         </div>

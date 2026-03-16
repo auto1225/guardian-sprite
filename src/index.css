@@ -119,57 +119,23 @@ html, body, #root {
   }
 }
 
-/* Android WebView dialog fix - GPU acceleration without overriding position */
-[data-radix-popper-content-wrapper] {
-  -webkit-transform: translateZ(0);
-}
-[role="dialog"],
-[role="alertdialog"] {
-  -webkit-backface-visibility: hidden;
-  -webkit-perspective: 1000;
-  will-change: transform, opacity;
-  isolation: isolate;
-}
-/* Force children inside dialog/sheet to be visible in WebView */
-[role="dialog"] > *,
-[role="alertdialog"] > * {
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-}
-
-/* WebView-safe scroll containers */
-.alert-history-scroll::-webkit-scrollbar,
-.webview-scroll-fix::-webkit-scrollbar {
+/* Alert history scrollbar - matches blue theme */
+.alert-history-scroll::-webkit-scrollbar {
   width: 5px;
 }
-.alert-history-scroll::-webkit-scrollbar-track,
-.webview-scroll-fix::-webkit-scrollbar-track {
+.alert-history-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
-.alert-history-scroll::-webkit-scrollbar-thumb,
-.webview-scroll-fix::-webkit-scrollbar-thumb {
+.alert-history-scroll::-webkit-scrollbar-thumb {
   background: hsla(0, 0%, 100%, 0.25);
   border-radius: 10px;
 }
-.alert-history-scroll::-webkit-scrollbar-thumb:hover,
-.webview-scroll-fix::-webkit-scrollbar-thumb:hover {
+.alert-history-scroll::-webkit-scrollbar-thumb:hover {
   background: hsla(0, 0%, 100%, 0.4);
 }
-.alert-history-scroll,
-.webview-scroll-fix {
+.alert-history-scroll {
   scrollbar-width: thin;
   scrollbar-color: hsla(0, 0%, 100%, 0.25) transparent;
-}
-.webview-scroll-fix {
-  min-height: 0;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
 }
 
 /* Alert glass overlay scrollbar */
