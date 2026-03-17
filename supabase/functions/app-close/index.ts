@@ -33,14 +33,8 @@ Deno.serve(async (req) => {
       .eq("id", device_id)
       .eq("user_id", user_id);
 
-    // 2. Turn off monitoring for all non-smartphone devices
-    await supabaseAdmin
-      .from("devices")
-      .update({ is_monitoring: false })
-      .eq("user_id", user_id)
-      .neq("device_type", "smartphone");
-
-    console.log(`[app-close] ✅ Device ${device_id.slice(0, 8)} offline, monitoring OFF for user ${user_id.slice(0, 8)}`);
+    // 감시 상태는 유지 — 앱이 꺼져도 노트북 감시는 계속됨
+    console.log(`[app-close] ✅ Device ${device_id.slice(0, 8)} offline, monitoring state preserved for user ${user_id.slice(0, 8)}`);
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
