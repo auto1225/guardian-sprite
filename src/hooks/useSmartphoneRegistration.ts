@@ -64,38 +64,14 @@ export function useSmartphoneRegistration() {
             : res.text().then(t => console.warn("[SmartphoneReg] ⚠️ Laptop DB register failed:", t)))
           .catch(err => console.warn("[SmartphoneReg] ⚠️ Laptop DB register error:", err));
 
-        // 앱 시작 시 감시 OFF 리셋
+        // 앱 시작 시 스마트폰 상태만 online으로 설정 (감시 상태는 유지)
         if (deviceId) {
           await invokeWithRetry("update-device", {
-            body: { device_id: deviceId, updates: { is_monitoring: false, status: "online" }, _skip_push: true },
+            body: { device_id: deviceId, updates: { status: "online" }, _skip_push: true },
           });
         }
 
-        // 사용자의 모든 노트북/데스크탑 기기도 감시 OFF로 리셋
-        const { data: devicesData } = await supabase.functions.invoke("get-devices", {
-          body: { user_id: effectiveUserId },
-        });
-        const allDevices = devicesData?.devices || [];
-        const laptopDevices = allDevices.filter(
-          (d: any) => d.device_type !== "smartphone" && d.is_monitoring
-        );
-
-        for (const laptop of laptopDevices) {
-          await invokeWithRetry("update-device", {
-            body: { device_id: laptop.id, updates: { is_monitoring: false }, _skip_push: true },
-          });
-
-          const { broadcastCommand } = await import("@/lib/broadcastCommand");
-          await broadcastCommand({
-            userId: effectiveUserId,
-            event: "monitoring_toggle",
-            payload: { device_id: laptop.id, is_monitoring: false },
-            targetDeviceId: laptop.id,
-            timeoutMs: 3000,
-          });
-        }
-
-        console.log("[SmartphoneReg] ♻️ Reset ALL devices monitoring to OFF on app start");
+        console.log("[SmartphoneReg] ✅ Smartphone online, monitoring state preserved");
         registeredRef.current = true;
         queryClient.invalidateQueries({ queryKey: ["devices", effectiveUserId] });
       } catch (err) {

@@ -60,23 +60,8 @@ export function useDeviceHeartbeat() {
         await invokeWithRetry("update-device", {
           body: { device_id: deviceId, status: "offline" },
         });
-        // 모든 기기 감시 OFF (스마트폰 앱 종료 시 감시 해제)
-        if (effectiveUserId) {
-          // Edge Function을 통해 처리 (RLS 우회)
-          const { data } = await supabase.functions.invoke("get-devices", {
-            body: { user_id: effectiveUserId },
-          });
-          const otherDevices = (data?.devices || []).filter(
-            (d: { device_type: string; id: string; is_monitoring?: boolean }) =>
-              d.device_type !== "smartphone" && !!d.is_monitoring
-          );
-          for (const d of otherDevices) {
-            await invokeWithRetry("update-device", {
-              body: { device_id: d.id, updates: { is_monitoring: false }, _skip_push: true },
-            });
-          }
-        }
-        console.log("[Heartbeat] ⚫ Status set to offline + monitoring OFF:", deviceId.slice(0, 8));
+        // 감시 상태는 유지 — 앱이 꺼져도 노트북 감시는 계속됨
+        console.log("[Heartbeat] ⚫ Status set to offline, monitoring preserved:", deviceId.slice(0, 8));
       } catch (err) {
         console.error("[Heartbeat] Failed to set offline:", err);
       }
