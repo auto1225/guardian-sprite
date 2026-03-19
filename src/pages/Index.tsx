@@ -202,7 +202,8 @@ const Index = () => {
       return;
     }
     if (!guard("monitoring_toggle")) return;
-    const newVal = !buttonMonitoring;
+    // ★ DB의 실제 is_monitoring 값을 기준으로 반전 (낙관적 UI가 아닌 실제 상태 기반)
+    const newVal = !selectedDevice.is_monitoring;
     // ★ 버튼 즉시 토글
     setOptimisticMonitoring(newVal);
     monitoringInFlight.current = true;
