@@ -63,9 +63,9 @@ const Index = () => {
   const deviceNameMap = Object.fromEntries(managedDevices.map(d => [d.id, d.name]));
   const { alerts, activeAlert, unreadCount, dismissRemoteAlarm, dismissAll } = useAlerts(selectedDeviceId);
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, subscribe: subscribePush } = usePushSubscription(selectedDeviceId);
-  // ★ 기기가 오프라인이면 is_monitoring이 DB에서 true여도 UI에서는 OFF로 표시
+  // ★ 감시 상태는 DB 값 그대로 표시 — 기기가 오프라인이어도 감시 중이면 ON으로 표시
   const isDeviceOnline = selectedDevice?.status !== "offline";
-  const isMonitoring = isDeviceOnline && (selectedDevice?.is_monitoring ?? false);
+  const isMonitoring = selectedDevice?.is_monitoring ?? false;
   const selectedSerialKey = selectedDevice?.metadata ? (selectedDevice.metadata as Record<string, unknown>)?.serial_key as string | undefined : undefined;
 
   // ★ 버튼 전용 로컬 낙관적 상태 — 버튼은 즉시 토글, pill/badge는 Realtime 반영
@@ -202,7 +202,8 @@ const Index = () => {
       return;
     }
     if (!guard("monitoring_toggle")) return;
-    const newVal = !buttonMonitoring;
+    // ★ DB의 실제 is_monitoring 값을 기준으로 반전 (낙관적 UI가 아닌 실제 상태 기반)
+    const newVal = !selectedDevice.is_monitoring;
     // ★ 버튼 즉시 토글
     setOptimisticMonitoring(newVal);
     monitoringInFlight.current = true;
