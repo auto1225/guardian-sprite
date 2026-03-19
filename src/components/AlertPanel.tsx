@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, forwardRef } from "react";
-import { Bell, Image, Trash2, CheckCheck, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Square, CheckSquare, MinusSquare } from "lucide-react";
+import { Bell, Image, Trash2, CheckCheck, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Square, CheckSquare, MinusSquare, ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AlertItem from "./AlertItem";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
