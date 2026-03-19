@@ -203,10 +203,15 @@ const AlertPanel = ({ deviceId, onViewPhoto }: AlertPanelProps) => {
           )}
         </button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col border-none" style={{ background: 'linear-gradient(180deg, hsla(200, 70%, 55%, 0.85) 0%, hsla(200, 60%, 45%, 0.9) 100%)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
-        <SheetHeader className="p-4 pb-3 pr-12 border-b border-white/20">
+      <SheetContent side="right" hideClose className="w-full sm:max-w-md p-0 flex flex-col border-none" style={{ background: 'linear-gradient(180deg, hsla(200, 70%, 55%, 0.85) 0%, hsla(200, 60%, 45%, 0.9) 100%)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
+        <SheetHeader className="p-4 pb-3 border-b border-white/20">
           <div className="flex items-center justify-between">
-            <SheetTitle className="text-lg font-bold text-white">{t("alertPanel.title")}</SheetTitle>
+            <div className="flex items-center">
+              <button onClick={() => setIsOpen(false)} className="text-primary-foreground mr-3">
+                <ArrowLeft className="w-6 h-6" />
+              </button>
+              <SheetTitle className="text-lg font-bold text-white">{t("alertPanel.title")}</SheetTitle>
+            </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => { setIsSelectMode(!isSelectMode); setSelectedIds(new Set()); }}
