@@ -12,6 +12,7 @@ import { useNativeBridge } from "@/hooks/useNativeBridge";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Install from "./pages/Install";
+import DeleteAccount from "./pages/DeleteAccount";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,7 @@ const App = () => (
               <Routes>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/install" element={<Install />} />
+                <Route path="/delete-account" element={<DeleteAccount />} />
                 <Route
                   path="/"
                   element={
