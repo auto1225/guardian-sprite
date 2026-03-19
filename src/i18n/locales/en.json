@@ -841,5 +841,17 @@
     "contact": "Contact Us",
     "contactDesc": "If you have questions about these terms, please contact us:\n\n📧 Email: <strong>meercop.official@gmail.com</strong>\n🌐 Website: <strong>meercop.com</strong>",
     "footer": "© 2025 MeerCOP. All rights reserved."
+  },
+  "deleteAccount": {
+    "subtitle": "Account Deletion",
+    "title": "Delete Account",
+    "warning": "This action is permanent and cannot be undone. All your data, devices, and serial keys will be permanently deleted.",
+    "confirmLabel": "Type DELETE to confirm",
+    "deleteButton": "Delete My Account",
+    "notice": "Once deleted, your account and all associated data cannot be recovered. Please make sure you want to proceed.",
+    "invalidCredentials": "Invalid email or password. Please try again.",
+    "failed": "Account deletion failed. Please try again or contact support.",
+    "successTitle": "Account Deleted",
+    "successDesc": "Your account has been successfully deleted. You may now close this page."
   }
 }

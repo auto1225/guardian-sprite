@@ -49,6 +49,7 @@ const App = () => (
               <Routes>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/install" element={<Install />} />
+                <Route path="/delete-account" element={<DeleteAccount />} />
                 <Route
                   path="/"
                   element={
