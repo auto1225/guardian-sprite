@@ -196,7 +196,36 @@ export const useDevices = () => {
     const dev = devices.find(d => d.id === id);
     const serial = dev ? (dev.metadata as Record<string, unknown>)?.serial_key as string | undefined : undefined;
     setGlobalSelectedDeviceId(id, serial ?? null);
-  }, [devices]);
+
+    // ★ 선택한 기기를 메인으로 설정, 기존 메인 해제
+    if (id && dev) {
+      const currentMain = devices.find(d => d.id !== id && !!(d.metadata as Record<string, unknown>)?.is_main);
+      // 이미 메인이면 스킵
+      const isAlreadyMain = !!(dev.metadata as Record<string, unknown>)?.is_main;
+      if (!isAlreadyMain) {
+        // 새 기기를 메인으로 설정
+        invokeWithRetry("update-device", {
+          body: { device_id: id, metadata: { is_main: true } },
+        }).catch(err => console.warn("[useDevices] Failed to set main:", err));
+        // 로컬 캐시 즉시 반영
+        queryClient.setQueryData(["devices", effectiveUserId], (old: Device[] | undefined) => {
+          if (!old) return old;
+          return old.map(d => {
+            const meta = (d.metadata as Record<string, unknown>) || {};
+            if (d.id === id) return { ...d, metadata: { ...meta, is_main: true } };
+            if (meta.is_main) return { ...d, metadata: { ...meta, is_main: false } };
+            return d;
+          });
+        });
+        // 기존 메인 기기의 플래그 해제
+        if (currentMain) {
+          invokeWithRetry("update-device", {
+            body: { device_id: currentMain.id, metadata: { is_main: false } },
+          }).catch(err => console.warn("[useDevices] Failed to unset main:", err));
+        }
+      }
+    }
+  }, [devices, queryClient, effectiveUserId]);
 
   // ── 관리 대상 기기 목록: 컨트롤러(시리얼 키 없는 스마트폰)만 제외, sort_order 정렬 ──
   const managedDevices = devices.filter(d => {
