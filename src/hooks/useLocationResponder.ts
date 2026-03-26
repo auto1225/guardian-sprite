@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDevices } from "@/hooks/useDevices";
 import { safeMetadataUpdate } from "@/lib/safeMetadataUpdate";
 import { channelManager } from "@/lib/channelManager";
+import { LAPTOP_DB_URL, LAPTOP_DB_ANON_KEY } from "@/lib/laptopDb";
 
 /**
  * 스마트폰의 위치 응답 훅 (Realtime + Polling 하이브리드)
@@ -52,14 +53,11 @@ export function useLocationResponder() {
 
       // 랩탑 로컬 DB에도 위치 응답 이중 쓰기 (fire-and-forget)
       try {
-        const LAPTOP_DB_URL = "https://dmvbwyfzueywuwxkjuuy.supabase.co";
-        const LAPTOP_DB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtdmJ3eWZ6dWV5d3V3eGtqdXV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyOTI2ODMsImV4cCI6MjA4NTg2ODY4M30.0lDX72JHWonW5fRRPve_cdfJrNVyDMzz5nzshJ0cEuI";
-        
         const userId = effectiveUserId || user?.id;
         if (userId) {
           const res = await fetch(`${LAPTOP_DB_URL}/functions/v1/get-devices`, {
             method: "POST",
-            headers: { "Content-Type": "application/json", apikey: LAPTOP_DB_KEY },
+            headers: { "Content-Type": "application/json", apikey: LAPTOP_DB_ANON_KEY },
             body: JSON.stringify({ user_id: userId }),
           });
           if (res.ok) {

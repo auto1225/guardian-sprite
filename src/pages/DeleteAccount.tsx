@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Mail, Lock, AlertTriangle } from "lucide-react";
-import { websiteSupabase } from "@/lib/websiteAuth";
+import { websiteSupabase, WEBSITE_ANON_KEY, WEBSITE_SUPABASE_URL } from "@/lib/websiteAuth";
 import meercopCharacter from "@/assets/meercop-character.png";
 
 const DeleteAccount = () => {
@@ -42,13 +42,12 @@ const DeleteAccount = () => {
 
       // 2. Call delete-account edge function on website supabase
       const res = await fetch(
-        `https://peqgmuicrorjvvburqly.supabase.co/functions/v1/delete-account`,
+        `${WEBSITE_SUPABASE_URL}/functions/v1/delete-account`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            apikey:
-              "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlcWdtdWljcm9yanZ2YnVycWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NDA1NzQsImV4cCI6MjA4NzUxNjU3NH0.e5HYG3dSMqhm4ahT-en-nNX2mD95KM_TdKIlfuzdMc4",
+            apikey: WEBSITE_ANON_KEY,
             Authorization: `Bearer ${signInData.session.access_token}`,
           },
         }

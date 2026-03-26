@@ -1,6 +1,9 @@
-// 랩탑 프로젝트 DB (dmvbwyfzueywuwxkjuuy) 공유 상수
-export const LAPTOP_DB_URL = "https://dmvbwyfzueywuwxkjuuy.supabase.co";
-export const LAPTOP_DB_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtdmJ3eWZ6dWV5d3V3eGtqdXV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyOTI2ODMsImV4cCI6MjA4NTg2ODY4M30.0lDX72JHWonW5fRRPve_cdfJrNVyDMzz5nzshJ0cEuI";
+// Laptop project DB (currently dmvbwyfzueywuwxkjuuy). Keep env-driven for self-hosted migration.
+export const LAPTOP_DB_URL =
+  import.meta.env.VITE_LAPTOP_SUPABASE_URL || "https://dmvbwyfzueywuwxkjuuy.supabase.co";
+export const LAPTOP_DB_ANON_KEY =
+  import.meta.env.VITE_LAPTOP_SUPABASE_PUBLISHABLE_KEY ||
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtdmJ3eWZ6dWV5d3V3eGtqdXV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyOTI2ODMsImV4cCI6MjA4NTg2ODY4M30.0lDX72JHWonW5fRRPve_cdfJrNVyDMzz5nzshJ0cEuI";
 
 /**
  * 랩탑 로컬 DB에서 기기 삭제 (serial_key 기반 매칭)

@@ -1,8 +1,11 @@
 import { createClient, type SupportedStorage } from "@supabase/supabase-js";
 import { safeStorage } from "@/lib/safeStorage";
 
-const WEBSITE_SUPABASE_URL = "https://peqgmuicrorjvvburqly.supabase.co";
-const WEBSITE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlcWdtdWljcm9yanZ2YnVycWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NDA1NzQsImV4cCI6MjA4NzUxNjU3NH0.e5HYG3dSMqhm4ahT-en-nNX2mD95KM_TdKIlfuzdMc4";
+const WEBSITE_SUPABASE_URL =
+  import.meta.env.VITE_WEB_SUPABASE_URL || "https://peqgmuicrorjvvburqly.supabase.co";
+const WEBSITE_ANON_KEY =
+  import.meta.env.VITE_WEB_SUPABASE_PUBLISHABLE_KEY ||
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlcWdtdWljcm9yanZ2YnVycWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NDA1NzQsImV4cCI6MjA4NzUxNjU3NH0.e5HYG3dSMqhm4ahT-en-nNX2mD95KM_TdKIlfuzdMc4";
 
 const safeWebStorage: SupportedStorage = {
   getItem: (key: string) => safeStorage.getItem(key),
