@@ -153,17 +153,37 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
 
     const isNative = isRunningInNativeApp();
     const productId = `meercop_${selectedPlan}_${selectedPlanInfo.months}m`;
+    const itemQuantity = mode === "upgrade" ? upgradeCount : quantity;
 
     if (isNative && window.NativeApp?.purchaseProduct) {
-      // Trigger native IAP
+      // Build detailed payment metadata for native app
+      const metadata = JSON.stringify({
+        // Product info
+        product_id: productId,
+        plan_type: selectedPlan,
+        plan_name: selectedPlanInfo.name,
+        duration_months: selectedPlanInfo.months,
+        
+        // Pricing
+        unit_price: selectedPlanInfo.price,
+        quantity: itemQuantity,
+        total_amount: totalAmount,
+        currency: "USD",
+        
+        // Purchase context
+        mode, // "new" or "upgrade"
+        serial_keys: mode === "upgrade" ? selectedSerials : [],
+        
+        // User
+        user_id: effectiveUserId,
+        
+        // Server verification endpoint
+        verify_url: "https://www.meercop.com/functions/v1/iap-payment",
+      });
+
       try {
-        window.NativeApp.purchaseProduct(productId, JSON.stringify({
-          plan_type: selectedPlan,
-          quantity: mode === "upgrade" ? upgradeCount : quantity,
-          mode,
-          serial_keys: mode === "upgrade" ? selectedSerials : [],
-          user_id: effectiveUserId,
-        }));
+        console.log("[PricingModal] → Native: purchaseProduct", productId, metadata);
+        window.NativeApp.purchaseProduct(productId, metadata);
       } catch (err) {
         console.error("[PricingModal] Native purchaseProduct error:", err);
         setProcessing(false);
@@ -181,7 +201,7 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
       setProcessing(false);
       onClose();
     }
-  }, [selectedPlan, selectedPlanInfo, mode, quantity, upgradeCount, selectedSerials, effectiveUserId, onClose, toast, t]);
+  }, [selectedPlan, selectedPlanInfo, mode, quantity, upgradeCount, selectedSerials, effectiveUserId, totalAmount, onClose, toast, t]);
 
   const handleClose = () => {
     if (processing) return;
