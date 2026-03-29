@@ -117,9 +117,16 @@ const Auth = () => {
               MeerCOP 웹사이트(
               <a
                 href="https://credit-sparkle-site.lovable.app/auth"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-white underline underline-offset-2"
+                onClick={(e) => {
+                  e.preventDefault();
+                  const url = "https://credit-sparkle-site.lovable.app/auth";
+                  if (window.NativeApp?.openExternalUrl) {
+                    window.NativeApp.openExternalUrl(url);
+                  } else {
+                    window.open(url, "_system") || window.open(url, "_blank");
+                  }
+                }}
+                className="text-white underline underline-offset-2 cursor-pointer"
               >
                 meercop.com
               </a>

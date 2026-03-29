@@ -21,6 +21,7 @@ export interface NativeAppInterface {
   onLoginSuccess: (accessToken: string, refreshToken: string) => void;
   onLogout: () => void;
   onSessionRestored: () => void;
+  openExternalUrl?: (url: string) => void;
 }
 
 export interface NativeWebInterface {
