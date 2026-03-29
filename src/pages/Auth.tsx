@@ -53,15 +53,14 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-light to-primary flex flex-col">
-      {/* Header */}
+      {/* Header - text only */}
       <div className="flex flex-col items-center pt-14 pb-4">
-        <img src={meercopCharacter} alt="MeerCOP" className="w-28 h-auto object-contain mb-2" />
         <p className="text-white font-black text-2xl tracking-wide drop-shadow-md">MeerCOP</p>
         <p className="text-white/70 text-sm mt-1">{t("auth.subtitle")}</p>
       </div>
 
       {/* Login Form */}
-      <div className="flex-1 px-6 pb-8 pt-4">
+      <div className="px-6 pt-4">
         <div className="bg-white/15 backdrop-blur-xl border border-white/25 rounded-3xl p-6 shadow-xl">
           <h2 className="text-xl font-bold text-white text-center mb-2 drop-shadow-sm">
             {t("auth.emailLogin")}
@@ -119,6 +118,11 @@ const Auth = () => {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Character at bottom */}
+      <div className="flex-1 flex items-end justify-center pb-4">
+        <img src={meercopCharacter} alt="MeerCOP" className="w-32 h-auto object-contain" />
       </div>
     </div>
   );
