@@ -178,7 +178,7 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
         user_id: effectiveUserId,
         
         // Server verification endpoint
-        verify_url: "https://www.meercop.com/functions/v1/iap-payment",
+        verify_url: `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/iap-payment`,
       });
 
       try {
