@@ -152,7 +152,7 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
     setStep("processing");
 
     const isNative = isRunningInNativeApp();
-    const productId = `meercop_${selectedPlan}_${selectedPlanInfo.months}m`;
+    const productId = `meercop_${selectedPlan}_${selectedPlanInfo.months}month`;
     const itemQuantity = mode === "upgrade" ? upgradeCount : quantity;
 
     if (isNative && window.NativeApp?.purchaseProduct) {
