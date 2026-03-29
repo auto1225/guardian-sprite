@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { ChevronLeft, User, LogOut, HelpCircle, UserCog, Globe, Crown, Star, Sparkles, ExternalLink, FileText, RefreshCw } from "lucide-react";
+import { ChevronLeft, User, LogOut, HelpCircle, UserCog, Globe, Crown, Star, Sparkles, ExternalLink, FileText, RefreshCw, Plus } from "lucide-react";
+import PricingModal from "@/components/PricingModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -35,6 +36,7 @@ const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps)
   const [deviceNameMap, setDeviceNameMap] = useState<Record<string, string>>({});
   const [isUpdating, setIsUpdating] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [showPricing, setShowPricing] = useState(false);
 
   const handleCheckUpdate = useCallback(async () => {
     setIsUpdating(true);
@@ -181,9 +183,18 @@ const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps)
 
         {/* Serial List */}
         <div className="flex-1 p-4 overflow-hidden flex flex-col">
-          <div className="flex items-center gap-1 mb-2">
-            <span className="text-xs font-bold text-white/70">{t("sideMenu.mySerials")}</span>
-            <span className="text-xs text-white/40">({serials.length})</span>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1">
+              <span className="text-xs font-bold text-white/70">{t("sideMenu.mySerials")}</span>
+              <span className="text-xs text-white/40">({serials.length})</span>
+            </div>
+            <button
+              onClick={() => setShowPricing(true)}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/20 hover:bg-secondary/30 transition-colors text-secondary text-[10px] font-bold"
+            >
+              <Plus className="w-3 h-3" />
+              {t("sideMenu.addSerial")}
+            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-2 pr-1 alert-history-scroll">
@@ -301,6 +312,9 @@ const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps)
           <MenuItem icon={LogOut} label={t("sideMenu.logout")} onClick={handleSignOut} />
         </div>
       </div>
+
+      {/* Pricing Modal */}
+      <PricingModal isOpen={showPricing} onClose={() => setShowPricing(false)} />
     </>
   );
 };
