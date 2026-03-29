@@ -148,7 +148,32 @@
     "updateUpToDate": "You're on the latest version",
     "currentVersion": "Current version",
     "updateAvailable": "A new update is available! Updating shortly.",
-    "updateCheckFailed": "Failed to check for updates"
+    "updateCheckFailed": "Failed to check for updates",
+    "addSerial": "Add"
+  },
+  "pricing": {
+    "title": "Choose a Plan",
+    "freePeriod": "/ 1 day trial",
+    "basicPeriod": "/ 6 months",
+    "premiumPeriod": "/ year",
+    "currentFree": "Current Plan",
+    "subscribe": "Subscribe on meercop.com",
+    "feat": {
+      "detectAlert": "Intrusion Detection & Alert",
+      "streaming": "Real-time Streaming",
+      "multiDevice": "Multi-device Support",
+      "realtimeView": "Real-time Monitoring View",
+      "stealth": "Stealth Mode",
+      "gps": "GPS Location Tracking",
+      "cameraMotion": "Camera / Motion Detection",
+      "sound": "Sound Detection",
+      "lid": "Lid Open/Close Detection",
+      "keyboard": "Keyboard Detection",
+      "mouse": "Mouse Detection",
+      "usb": "USB Device Detection",
+      "power": "Power Status Detection",
+      "history": "Alert History"
+    }
   },
   "errorBoundary": {
     "title": "Something went wrong",

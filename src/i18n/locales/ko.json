@@ -148,7 +148,32 @@
     "updateUpToDate": "현재 최신 버전입니다",
     "currentVersion": "현재 버전",
     "updateAvailable": "새 업데이트가 있습니다! 잠시 후 업데이트됩니다.",
-    "updateCheckFailed": "업데이트 확인에 실패했습니다"
+    "updateCheckFailed": "업데이트 확인에 실패했습니다",
+    "addSerial": "추가"
+  },
+  "pricing": {
+    "title": "플랜 선택",
+    "freePeriod": "/ 1일 체험",
+    "basicPeriod": "/ 6개월",
+    "premiumPeriod": "/ 1년",
+    "currentFree": "현재 플랜",
+    "subscribe": "meercop.com에서 구독하기",
+    "feat": {
+      "detectAlert": "침입 감지 & 알림",
+      "streaming": "실시간 스트리밍",
+      "multiDevice": "다중 기기 지원",
+      "realtimeView": "실시간 모니터링 뷰",
+      "stealth": "위장 모드",
+      "gps": "GPS 위치 추적",
+      "cameraMotion": "카메라 / 움직임 감지",
+      "sound": "소리 감지",
+      "lid": "노트북 뚜껑 감지",
+      "keyboard": "키보드 감지",
+      "mouse": "마우스 감지",
+      "usb": "USB 기기 감지",
+      "power": "전원 상태 감지",
+      "history": "알림 히스토리"
+    }
   },
   "errorBoundary": {
     "title": "문제가 발생했습니다",
