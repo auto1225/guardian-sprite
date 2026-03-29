@@ -483,7 +483,7 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
                     else if (step === "serial_select") setStep("mode");
                     else if (step === "plan_select") setStep("serial_select");
                     else if (step === "quantity") setStep(hasSerials ? "mode" : "plans");
-                    else if (step === "summary") setStep(mode === "upgrade" ? "plan_select" : "quantity");
+                    else if (step === "summary") setStep(mode === "upgrade" ? "serial_select" : "plans");
                   }}
                   className="flex-1 py-3.5 rounded-2xl font-bold text-sm bg-white/10 text-primary-foreground hover:bg-white/15 transition-colors flex items-center justify-center gap-1"
                 >
@@ -503,7 +503,7 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
 
               {step === "serial_select" && (
                 <button
-                  onClick={() => setStep("plan_select")}
+                  onClick={() => setStep("summary")}
                   disabled={selectedSerials.length === 0}
                   className="flex-1 py-3.5 rounded-2xl font-bold text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1"
                 >
