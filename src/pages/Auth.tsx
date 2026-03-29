@@ -122,7 +122,7 @@ const Auth = () => {
                       href="https://credit-sparkle-site.lovable.app/auth"
                       onClick={(e) => {
                         e.preventDefault();
-                        const url = "https://credit-sparkle-site.lovable.app/auth";
+                        const url = "https://www.meercop.com/auth";
                         if (window.NativeApp?.openExternalUrl) {
                           window.NativeApp.openExternalUrl(url);
                         } else {
