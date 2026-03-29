@@ -121,7 +121,7 @@ const Auth = () => {
       </div>
 
       {/* Character at bottom */}
-      <div className="flex-1 flex items-end justify-center pb-4">
+      <div className="flex-1 flex items-center justify-center">
         <img src={meercopCharacter} alt="MeerCOP" className="w-32 h-auto object-contain" />
       </div>
     </div>
