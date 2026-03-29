@@ -119,7 +119,7 @@ const Auth = () => {
                 components={{
                   1: (
                     <a
-                      href="https://credit-sparkle-site.lovable.app/auth"
+                      href="https://www.meercop.com/auth"
                       onClick={(e) => {
                         e.preventDefault();
                         const url = "https://www.meercop.com/auth";
