@@ -68,7 +68,7 @@ export function useLocationResponder() {
               const localMeta = (localSmartphone.metadata as Record<string, unknown>) || {};
               await fetch(`${LAPTOP_DB_URL}/functions/v1/update-device`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json", apikey: LAPTOP_DB_KEY },
+                headers: { "Content-Type": "application/json", apikey: LAPTOP_DB_ANON_KEY },
                 body: JSON.stringify({
                   device_id: localSmartphone.id,
                   updates: {
