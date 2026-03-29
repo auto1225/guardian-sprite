@@ -84,8 +84,19 @@ export function useNativeBridge({ effectiveUserId, deviceId }: UseNativeBridgeOp
   // ── 3. 푸시 수신 핸들러 ──
   const handlePushReceived = useCallback((payload: Record<string, unknown>) => {
     console.log("[NativeBridge] ← Native: onPushReceived", payload);
-    // CustomEvent로 디스패치하여 앱 내 컴포넌트에서 처리 가능
     window.dispatchEvent(new CustomEvent("native_push_received", { detail: payload }));
+  }, []);
+
+  // ── 4. IAP 결과 핸들러 ──
+  const handleIAPResult = useCallback((resultJson: string) => {
+    console.log("[NativeBridge] ← Native: onIAPResult", resultJson);
+    try {
+      const result = JSON.parse(resultJson);
+      window.dispatchEvent(new CustomEvent("iap_result", { detail: result }));
+    } catch (err) {
+      console.error("[NativeBridge] Failed to parse IAP result:", err);
+      window.dispatchEvent(new CustomEvent("iap_result", { detail: { success: false, error: "Invalid result" } }));
+    }
   }, []);
 
   // ── 글로벌 핸들러 등록 ──
@@ -95,8 +106,8 @@ export function useNativeBridge({ effectiveUserId, deviceId }: UseNativeBridgeOp
     window.onNativeToken = handleNativeToken;
     window.onFCMToken = handleFCMToken;
     window.onPushReceived = handlePushReceived;
+    window.onIAPResult = handleIAPResult;
 
-    // 네이티브가 이미 주입한 isNativeApp이 있으면 덮어쓰지 않음
     if (!previousIsNativeApp) {
       window.isNativeApp = () => !!(window.__IS_NATIVE_APP || window.NativeApp);
     }
@@ -107,13 +118,14 @@ export function useNativeBridge({ effectiveUserId, deviceId }: UseNativeBridgeOp
       delete window.onNativeToken;
       delete window.onFCMToken;
       delete window.onPushReceived;
+      delete window.onIAPResult;
       if (previousIsNativeApp) {
         window.isNativeApp = previousIsNativeApp;
       } else {
         delete window.isNativeApp;
       }
     };
-  }, [handleNativeToken, handleFCMToken, handlePushReceived]);
+  }, [handleNativeToken, handleFCMToken, handlePushReceived, handleIAPResult]);
 
   // ── 로그인 후 대기 중인 FCM 토큰 자동 전송 ──
   useEffect(() => {
