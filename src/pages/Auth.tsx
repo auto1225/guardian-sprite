@@ -45,14 +45,14 @@ const Auth = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-sky-light to-primary flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#4295E3' }}>
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-light to-primary flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#4295E3' }}>
       {/* Header - text only */}
       <div className="flex flex-col items-center pt-14 pb-4">
         <p className="text-white font-black text-2xl tracking-wide drop-shadow-md">MeerCOP</p>
