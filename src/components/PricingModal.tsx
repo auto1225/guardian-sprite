@@ -215,24 +215,32 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
               <div className="space-y-3">
                 {PLANS.map((plan) => {
                   const Icon = PLAN_ICONS[plan.type] || Star;
+                  const isSelected = selectedPlan === plan.type;
                   return (
                     <button
                       key={plan.type}
-                      onClick={() => { setSelectedPlan(plan.type); handleBuyNow(); }}
+                      onClick={() => setSelectedPlan(plan.type)}
                       className={`w-full rounded-2xl p-4 text-left transition-all border ${
-                        plan.featured
-                          ? "border-amber-400/40 bg-amber-500/15 ring-1 ring-amber-400/20"
-                          : "border-white/20 bg-white/10 hover:bg-white/15"
+                        isSelected
+                          ? "border-secondary bg-secondary/15 ring-1 ring-secondary/30"
+                          : plan.featured
+                            ? "border-amber-400/40 bg-amber-500/15"
+                            : "border-white/20 bg-white/10 hover:bg-white/15"
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
+                          <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                            isSelected ? "bg-secondary border-secondary" : "border-white/30"
+                          }`}>
+                            {isSelected && <Check className="h-3 w-3 text-secondary-foreground" />}
+                          </div>
                           <Icon className={`w-5 h-5 ${plan.featured ? "text-amber-400" : "text-blue-400"}`} />
                           <span className="font-bold text-primary-foreground">{plan.name}</span>
                         </div>
                         <span className="text-xl font-bold text-primary-foreground">${plan.price.toFixed(2)}</span>
                       </div>
-                      <p className="text-xs text-white/60 ml-7">{plan.period}</p>
+                      <p className="text-xs text-white/60 ml-12">{plan.period}</p>
                     </button>
                   );
                 })}
