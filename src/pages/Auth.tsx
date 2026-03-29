@@ -117,6 +117,20 @@ const Auth = () => {
               {t("auth.loginInfo")}
             </p>
           </div>
+
+          {/* Website link */}
+          <p className="text-white/60 text-xs text-center mt-4">
+            MeerCOP 웹사이트 (
+            <a
+              href="https://credit-sparkle-site.lovable.app/auth"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white underline underline-offset-2"
+            >
+              meercop.com
+            </a>
+            )
+          </p>
         </div>
       </div>
 
