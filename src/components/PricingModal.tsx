@@ -143,7 +143,8 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
       setStep("mode");
     } else {
       setMode("new");
-      setStep("quantity");
+      setQuantity(1);
+      setStep("summary");
     }
   };
 
