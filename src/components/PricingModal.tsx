@@ -143,7 +143,8 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
       setStep("mode");
     } else {
       setMode("new");
-      setStep("quantity");
+      setQuantity(1);
+      setStep("summary");
     }
   };
 
@@ -283,7 +284,7 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
                   </div>
                 </button>
                 <button
-                  onClick={() => { setMode("new"); setStep("quantity"); }}
+                  onClick={() => { setMode("new"); setQuantity(1); setStep("summary"); }}
                   className="w-full border border-white/20 rounded-2xl p-4 text-left hover:bg-white/10 transition-all"
                 >
                   <div className="flex items-center gap-3">
