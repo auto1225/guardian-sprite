@@ -14,8 +14,8 @@ type PurchaseMode = "upgrade" | "new";
 type Step = "plans" | "mode" | "serial_select" | "plan_select" | "quantity" | "summary" | "processing" | "success";
 
 const PLANS = [
-  { type: "basic", name: "Basic Plan", price: 24.90, period: "6 months", months: 6 },
-  { type: "premium", name: "Premium Plan", price: 39.90, period: "1 year", months: 12, featured: true },
+  { type: "basic", name: "Basic Plan", price: 24.99, period: "6 months", months: 6 },
+  { type: "premium", name: "Premium Plan", price: 39.99, period: "1 year", months: 12, featured: true },
 ];
 
 const PLAN_ICONS: Record<string, typeof Crown> = { free: Sparkles, basic: Star, premium: Crown };
