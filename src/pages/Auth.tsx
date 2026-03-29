@@ -111,26 +111,21 @@ const Auth = () => {
             </button>
           </form>
 
-          {/* Info */}
+          {/* Info with link */}
           <div className="mt-6 p-3 rounded-xl bg-white/5 border border-white/10">
             <p className="text-white/50 text-xs text-center leading-relaxed">
-              {t("auth.loginInfo")}
+              MeerCOP 웹사이트(
+              <a
+                href="https://credit-sparkle-site.lovable.app/auth"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white underline underline-offset-2"
+              >
+                meercop.com
+              </a>
+              )에서 회원가입 후 이용하실 수 있습니다.
             </p>
           </div>
-
-          {/* Website link */}
-          <p className="text-white/60 text-xs text-center mt-4">
-            MeerCOP 웹사이트 (
-            <a
-              href="https://credit-sparkle-site.lovable.app/auth"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-white underline underline-offset-2"
-            >
-              meercop.com
-            </a>
-            )
-          </p>
         </div>
       </div>
 
