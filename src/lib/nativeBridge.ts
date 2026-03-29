@@ -22,12 +22,16 @@ export interface NativeAppInterface {
   onLogout: () => void;
   onSessionRestored: () => void;
   openExternalUrl?: (url: string) => void;
+  purchaseProduct?: (productId: string, metadata: string) => void;
+  onFcmTokenSyncResult?: (success: boolean, error?: string) => void;
+  onSessionRestoreResult?: (success: boolean, error?: string) => void;
 }
 
 export interface NativeWebInterface {
   onNativeToken: (accessToken: string, refreshToken: string) => void;
   onFCMToken: (fcmToken: string) => void;
   onPushReceived: (payload: Record<string, unknown>) => void;
+  onIAPResult: (resultJson: string) => void;
   isNativeApp: () => boolean;
 }
 
@@ -38,6 +42,7 @@ declare global {
     onNativeToken?: (accessToken: string, refreshToken: string) => void;
     onFCMToken?: (fcmToken: string) => void;
     onPushReceived?: (payload: Record<string, unknown>) => void;
+    onIAPResult?: (resultJson: string) => void;
     isNativeApp?: () => boolean;
     __NATIVE_FCM_TOKEN?: string;
     __IS_NATIVE_APP?: boolean;
