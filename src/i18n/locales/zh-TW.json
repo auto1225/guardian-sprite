@@ -1,5 +1,18 @@
 {
-  "bg": { "title": "背景", "description": "選擇主畫面背景", "default": "預設", "sunset": "日落", "night": "夜晚", "forest": "森林", "ocean": "海洋", "aurora": "極光", "custom": "自訂", "upload": "上傳", "fileTooLarge": "圖片大小不能超過5MB。", "customSet": "自訂背景已套用。" },
+  "bg": {
+    "title": "背景",
+    "description": "選擇主畫面背景",
+    "default": "預設",
+    "sunset": "日落",
+    "night": "夜晚",
+    "forest": "森林",
+    "ocean": "海洋",
+    "aurora": "極光",
+    "custom": "自訂",
+    "upload": "上傳",
+    "fileTooLarge": "圖片大小不能超過5MB。",
+    "customSet": "自訂背景已套用。"
+  },
   "plan": {
     "free": "1天試用",
     "basic": "基礎方案",
@@ -395,7 +408,8 @@
     "googleLogin": "使用Google繼續",
     "googleLoginFailed": "Google登入失敗",
     "noAccount": "沒有帳號？註冊",
-    "hasAccount": "已有帳號？登入"
+    "hasAccount": "已有帳號？登入",
+    "loginInfo": "請在MeerCOP網站（<1>meercop.com</1>）註冊後使用。"
   },
   "install": {
     "title": "安裝MeerCOP",

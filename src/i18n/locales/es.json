@@ -1,5 +1,18 @@
 {
-  "bg": { "title": "Fondo", "description": "Elige un fondo para la pantalla principal", "default": "Predeterminado", "sunset": "Atardecer", "night": "Noche", "forest": "Bosque", "ocean": "Océano", "aurora": "Aurora", "custom": "Personalizado", "upload": "Subir", "fileTooLarge": "La imagen debe ser menor de 5MB.", "customSet": "Fondo personalizado aplicado." },
+  "bg": {
+    "title": "Fondo",
+    "description": "Elige un fondo para la pantalla principal",
+    "default": "Predeterminado",
+    "sunset": "Atardecer",
+    "night": "Noche",
+    "forest": "Bosque",
+    "ocean": "Océano",
+    "aurora": "Aurora",
+    "custom": "Personalizado",
+    "upload": "Subir",
+    "fileTooLarge": "La imagen debe ser menor de 5MB.",
+    "customSet": "Fondo personalizado aplicado."
+  },
   "plan": {
     "free": "Prueba 1 día",
     "basic": "Plan Básico",
@@ -395,7 +408,8 @@
     "googleLogin": "Continuar con Google",
     "googleLoginFailed": "Error de inicio de sesión con Google",
     "noAccount": "¿No tienes cuenta? Regístrate",
-    "hasAccount": "¿Ya tienes cuenta? Inicia sesión"
+    "hasAccount": "¿Ya tienes cuenta? Inicia sesión",
+    "loginInfo": "Regístrese en el sitio web de MeerCOP (<1>meercop.com</1>) para comenzar a usar el servicio."
   },
   "install": {
     "title": "Instalar MeerCOP",
