@@ -379,7 +379,7 @@
     "login": "Log in",
     "loginFailed": "Login Failed",
     "invalidCredentials": "Invalid email or password.",
-    "loginInfo": "Sign up at MeerCOP website (meercop.com) to get started.",
+    "loginInfo": "Sign up at MeerCOP website (<1>meercop.com</1>) to get started.",
     "loginSuccess": "Connected",
     "loginSuccessDesc": "Successfully connected to MeerCOP!",
     "unexpectedError": "An unexpected error occurred."

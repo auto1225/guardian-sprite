@@ -1,5 +1,18 @@
 {
-  "bg": { "title": "背景", "description": "选择主屏幕背景", "default": "默认", "sunset": "日落", "night": "夜晚", "forest": "森林", "ocean": "海洋", "aurora": "极光", "custom": "自定义", "upload": "上传", "fileTooLarge": "图片大小不能超过5MB。", "customSet": "自定义背景已应用。" },
+  "bg": {
+    "title": "背景",
+    "description": "选择主屏幕背景",
+    "default": "默认",
+    "sunset": "日落",
+    "night": "夜晚",
+    "forest": "森林",
+    "ocean": "海洋",
+    "aurora": "极光",
+    "custom": "自定义",
+    "upload": "上传",
+    "fileTooLarge": "图片大小不能超过5MB。",
+    "customSet": "自定义背景已应用。"
+  },
   "plan": {
     "free": "1天试用",
     "basic": "基础套餐",
@@ -395,7 +408,8 @@
     "googleLogin": "使用Google继续",
     "googleLoginFailed": "Google登录失败",
     "noAccount": "没有账号？注册",
-    "hasAccount": "已有账号？登录"
+    "hasAccount": "已有账号？登录",
+    "loginInfo": "请在MeerCOP网站（<1>meercop.com</1>）注册后使用。"
   },
   "install": {
     "title": "安装MeerCOP",
@@ -685,7 +699,7 @@
   "legal": {
     "title": "使用条款 / 法律声明",
     "effectiveDate": "生效日期：2025年1月1日 | 最后修改：2025年6月1日",
-    "intro": "本文件包含MeerCOP应用程序（以下简称\u201c本应用\u201d或\u201c服务\u201d）的使用条款、隐私政策、免责声明和法律通知。安装、访问或使用本应用即表示您同意这些条款。",
+    "intro": "本文件包含MeerCOP应用程序（以下简称“本应用”或“服务”）的使用条款、隐私政策、免责声明和法律通知。安装、访问或使用本应用即表示您同意这些条款。",
     "tocTitle": "目录",
     "sections": {
       "termsOfUseTitle": "1. 使用条款",
@@ -712,7 +726,7 @@
       "disclaimerTitle": "3. 免责声明",
       "disclaimerContent": "<strong>⚠️ 重要：请仔细阅读本节。</strong>",
       "disclaimerNoWarranty": "3-1. 无保证",
-      "disclaimerNoWarrantyDesc": "本应用按<strong>\u201c原样\u201d</strong>和<strong>\u201c可用状态\u201d</strong>提供。\n\n• 开发者<strong>不作任何明示或暗示保证</strong>\n• 使用风险由用户自行承担",
+      "disclaimerNoWarrantyDesc": "本应用按<strong>“原样”</strong>和<strong>“可用状态”</strong>提供。\n\n• 开发者<strong>不作任何明示或暗示保证</strong>\n• 使用风险由用户自行承担",
       "disclaimerAccuracy": "3-2. 准确性免责",
       "disclaimerAccuracyDesc": "• GPS数据可能存在误差\n• 运动检测可能产生误报\n• 流媒体质量取决于网络\n• 反向地理编码仅供参考",
       "disclaimerAvailability": "3-3. 服务可用性",

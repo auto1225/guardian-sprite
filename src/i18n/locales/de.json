@@ -1,5 +1,18 @@
 {
-  "bg": { "title": "Hintergrund", "description": "Wählen Sie einen Hintergrund für den Hauptbildschirm", "default": "Standard", "sunset": "Sonnenuntergang", "night": "Nacht", "forest": "Wald", "ocean": "Ozean", "aurora": "Aurora", "custom": "Benutzerdefiniert", "upload": "Hochladen", "fileTooLarge": "Das Bild muss kleiner als 5 MB sein.", "customSet": "Benutzerdefinierter Hintergrund angewendet." },
+  "bg": {
+    "title": "Hintergrund",
+    "description": "Wählen Sie einen Hintergrund für den Hauptbildschirm",
+    "default": "Standard",
+    "sunset": "Sonnenuntergang",
+    "night": "Nacht",
+    "forest": "Wald",
+    "ocean": "Ozean",
+    "aurora": "Aurora",
+    "custom": "Benutzerdefiniert",
+    "upload": "Hochladen",
+    "fileTooLarge": "Das Bild muss kleiner als 5 MB sein.",
+    "customSet": "Benutzerdefinierter Hintergrund angewendet."
+  },
   "plan": {
     "free": "1-Tag Testversion",
     "basic": "Basis-Tarif",
@@ -395,7 +408,8 @@
     "googleLogin": "Mit Google fortfahren",
     "googleLoginFailed": "Google-Anmeldung fehlgeschlagen",
     "noAccount": "Noch kein Konto? Registrieren",
-    "hasAccount": "Bereits ein Konto? Anmelden"
+    "hasAccount": "Bereits ein Konto? Anmelden",
+    "loginInfo": "Registrieren Sie sich auf der MeerCOP-Website (<1>meercop.com</1>), um den Dienst zu nutzen."
   },
   "install": {
     "title": "MeerCOP installieren",
@@ -685,7 +699,7 @@
   "legal": {
     "title": "Nutzungsbedingungen / Rechtliche Hinweise",
     "effectiveDate": "Gültig ab: 1. Januar 2025 | Letzte Änderung: 1. Juni 2025",
-    "intro": "Dieses Dokument enth\u00e4lt die Nutzungsbedingungen, Datenschutzrichtlinien, Haftungsausschl\u00fcsse und rechtliche Hinweise der MeerCOP-Anwendung (im Folgenden \u201edie App\u201c oder \u201eder Dienst\u201c). Durch die Installation, den Zugriff oder die Nutzung dieser App stimmen Sie diesen Bedingungen zu.",
+    "intro": "Dieses Dokument enthält die Nutzungsbedingungen, Datenschutzrichtlinien, Haftungsausschlüsse und rechtliche Hinweise der MeerCOP-Anwendung (im Folgenden „die App“ oder „der Dienst“). Durch die Installation, den Zugriff oder die Nutzung dieser App stimmen Sie diesen Bedingungen zu.",
     "tocTitle": "Inhaltsverzeichnis",
     "sections": {
       "termsOfUseTitle": "1. Nutzungsbedingungen",

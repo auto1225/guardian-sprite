@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
+import { useTranslation, Trans } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Lock } from "lucide-react";
@@ -114,23 +114,26 @@ const Auth = () => {
           {/* Info with link */}
           <div className="mt-6 p-3 rounded-xl bg-white/5 border border-white/10">
             <p className="text-white/50 text-xs text-center leading-relaxed">
-              MeerCOP 웹사이트(
-              <a
-                href="https://credit-sparkle-site.lovable.app/auth"
-                onClick={(e) => {
-                  e.preventDefault();
-                  const url = "https://credit-sparkle-site.lovable.app/auth";
-                  if (window.NativeApp?.openExternalUrl) {
-                    window.NativeApp.openExternalUrl(url);
-                  } else {
-                    window.open(url, "_system") || window.open(url, "_blank");
-                  }
+              <Trans
+                i18nKey="auth.loginInfo"
+                components={{
+                  1: (
+                    <a
+                      href="https://credit-sparkle-site.lovable.app/auth"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const url = "https://credit-sparkle-site.lovable.app/auth";
+                        if (window.NativeApp?.openExternalUrl) {
+                          window.NativeApp.openExternalUrl(url);
+                        } else {
+                          window.open(url, "_system") || window.open(url, "_blank");
+                        }
+                      }}
+                      className="text-white underline underline-offset-2 cursor-pointer"
+                    />
+                  ),
                 }}
-                className="text-white underline underline-offset-2 cursor-pointer"
-              >
-                meercop.com
-              </a>
-              )에서 회원가입 후 이용하실 수 있습니다.
+              />
             </p>
           </div>
         </div>

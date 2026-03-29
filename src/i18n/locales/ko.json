@@ -379,7 +379,7 @@
     "login": "로그인",
     "loginFailed": "로그인 실패",
     "invalidCredentials": "이메일 또는 비밀번호가 올바르지 않습니다.",
-    "loginInfo": "MeerCOP 웹사이트(meercop.com)에서 회원가입 후 이용하실 수 있습니다.",
+    "loginInfo": "MeerCOP 웹사이트(<1>meercop.com</1>)에서 회원가입 후 이용하실 수 있습니다.",
     "loginSuccess": "로그인 성공",
     "loginSuccessDesc": "MeerCOP에 연결되었습니다!",
     "unexpectedError": "예기치 않은 오류가 발생했습니다."

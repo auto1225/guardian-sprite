@@ -142,7 +142,7 @@
     "emailLoginDesc": "ウェブサイト登録時のメールアドレスとパスワードを入力してください",
     "email": "メールアドレス", "password": "パスワード", "login": "ログイン",
     "loginFailed": "ログイン失敗", "invalidCredentials": "メールアドレスまたはパスワードが正しくありません。",
-    "loginInfo": "MeerCOPウェブサイト（meercop.com）で新規登録してご利用ください。",
+    "loginInfo": "MeerCOPウェブサイト（<1>meercop.com</1>）で会員登録後にご利用いただけます。",
     "loginSuccess": "接続完了", "loginSuccessDesc": "MeerCOPに接続されました！", "unexpectedError": "予期しないエラーが発生しました。"
   },
   "install": {
