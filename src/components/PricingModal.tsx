@@ -139,6 +139,35 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
     );
   };
 
+  const handleRestorePurchases = useCallback(async () => {
+    if (!effectiveUserId) {
+      toast({ title: t("purchase.restoreLoginRequired"), variant: "destructive" });
+      return;
+    }
+    setRestoring(true);
+    try {
+      if (refreshSerials) await refreshSerials();
+      // After refresh, check if serials were found
+      const activeCount = serials.filter(s => s.status === "active" || s.status === "expired").length;
+      if (activeCount > 0) {
+        toast({
+          title: t("purchase.restoreSuccess"),
+          description: t("purchase.restoreSuccessDesc", { count: activeCount }),
+        });
+      } else {
+        toast({
+          title: t("purchase.restoreNone"),
+          description: t("purchase.restoreNoneDesc"),
+        });
+      }
+    } catch (err) {
+      console.error("[PricingModal] Restore failed:", err);
+      toast({ title: t("purchase.restoreError"), variant: "destructive" });
+    } finally {
+      setRestoring(false);
+    }
+  }, [effectiveUserId, refreshSerials, serials, toast, t]);
+
   const handleBuyNow = () => {
     if (hasSerials) {
       setStep("mode");
