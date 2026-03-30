@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { X, Check, Crown, Star, Sparkles, ArrowLeft, ArrowRight, Minus, Plus, Loader2, RefreshCw, PlusCircle, ShoppingCart, CheckCircle } from "lucide-react";
+import { X, Check, Crown, Star, Sparkles, ArrowLeft, ArrowRight, Minus, Plus, Loader2, RefreshCw, PlusCircle, ShoppingCart, CheckCircle, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { isRunningInNativeApp } from "@/lib/nativeBridge";
@@ -41,6 +41,7 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
   const [selectedPlan, setSelectedPlan] = useState("basic");
   const [quantity, setQuantity] = useState(1);
   const [processing, setProcessing] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
   // Reset on open
   useEffect(() => {
@@ -137,6 +138,35 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
       prev.includes(serialKey) ? prev.filter(k => k !== serialKey) : [...prev, serialKey]
     );
   };
+
+  const handleRestorePurchases = useCallback(async () => {
+    if (!effectiveUserId) {
+      toast({ title: t("purchase.restoreLoginRequired"), variant: "destructive" });
+      return;
+    }
+    setRestoring(true);
+    try {
+      if (refreshSerials) await refreshSerials();
+      // After refresh, check if serials were found
+      const activeCount = serials.filter(s => s.status === "active" || s.status === "expired").length;
+      if (activeCount > 0) {
+        toast({
+          title: t("purchase.restoreSuccess"),
+          description: t("purchase.restoreSuccessDesc", { count: activeCount }),
+        });
+      } else {
+        toast({
+          title: t("purchase.restoreNone"),
+          description: t("purchase.restoreNoneDesc"),
+        });
+      }
+    } catch (err) {
+      console.error("[PricingModal] Restore failed:", err);
+      toast({ title: t("purchase.restoreError"), variant: "destructive" });
+    } finally {
+      setRestoring(false);
+    }
+  }, [effectiveUserId, refreshSerials, serials, toast, t]);
 
   const handleBuyNow = () => {
     if (hasSerials) {
@@ -265,6 +295,20 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
                     </button>
                   );
                 })}
+
+                {/* Restore Purchases button - required by Apple App Store guideline 3.1.1 */}
+                <button
+                  onClick={handleRestorePurchases}
+                  disabled={restoring}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-white/50 hover:text-white/80 transition-colors disabled:opacity-40"
+                >
+                  {restoring ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RotateCcw className="w-4 h-4" />
+                  )}
+                  {restoring ? t("purchase.restoring") : t("purchase.restorePurchases")}
+                </button>
               </div>
             )}
 
