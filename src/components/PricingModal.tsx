@@ -41,6 +41,7 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
   const [selectedPlan, setSelectedPlan] = useState("basic");
   const [quantity, setQuantity] = useState(1);
   const [processing, setProcessing] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
   // Reset on open
   useEffect(() => {
