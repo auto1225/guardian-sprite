@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { X, Check, Crown, Star, Sparkles, ArrowLeft, ArrowRight, Minus, Plus, Loader2, RefreshCw, PlusCircle, ShoppingCart, CheckCircle } from "lucide-react";
+import { X, Check, Crown, Star, Sparkles, ArrowLeft, ArrowRight, Minus, Plus, Loader2, RefreshCw, PlusCircle, ShoppingCart, CheckCircle, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { isRunningInNativeApp } from "@/lib/nativeBridge";

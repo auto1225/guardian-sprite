@@ -201,7 +201,15 @@
     "successTitle": "Payment Successful!",
     "successDesc": "Your serial keys have been activated. You can start using the service now.",
     "done": "Done",
-    "error": "Payment Error"
+    "error": "Payment Error",
+    "restorePurchases": "Restore Purchases",
+    "restoring": "Restoring...",
+    "restoreSuccess": "Purchases restored successfully!",
+    "restoreSuccessDesc": "{{count}} serial(s) found and synced to your account.",
+    "restoreNone": "No purchases to restore",
+    "restoreNoneDesc": "No previous purchases were found for this account.",
+    "restoreError": "Failed to restore purchases",
+    "restoreLoginRequired": "Please log in to restore purchases"
   },
   "errorBoundary": {
     "title": "Something went wrong",
