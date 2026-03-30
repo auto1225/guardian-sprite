@@ -295,6 +295,20 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
                     </button>
                   );
                 })}
+
+                {/* Restore Purchases button - required by Apple App Store guideline 3.1.1 */}
+                <button
+                  onClick={handleRestorePurchases}
+                  disabled={restoring}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-white/50 hover:text-white/80 transition-colors disabled:opacity-40"
+                >
+                  {restoring ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RotateCcw className="w-4 h-4" />
+                  )}
+                  {restoring ? t("purchase.restoring") : t("purchase.restorePurchases")}
+                </button>
               </div>
             )}
 
