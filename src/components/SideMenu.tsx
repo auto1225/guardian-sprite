@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, User, LogOut, HelpCircle, UserCog, Globe, Crown, Star, Sparkles, ExternalLink, FileText, RefreshCw, Plus } from "lucide-react";
+import { isRunningInNativeApp } from "@/lib/nativeBridge";
 import PricingModal from "@/components/PricingModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -189,7 +190,15 @@ const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps)
               <span className="text-xs text-white/40">({serials.length})</span>
             </div>
             <button
-              onClick={() => setShowPricing(true)}
+              onClick={() => {
+                const ua = navigator.userAgent || "";
+                const isIOS = /iPhone|iPad|iPod/i.test(ua);
+                if (isIOS) {
+                  setShowPricing(true);
+                } else {
+                  window.open("https://www.meercop.com/#pricing", "_blank");
+                }
+              }}
               className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/20 hover:bg-secondary/30 transition-colors text-secondary text-[10px] font-bold"
             >
               <Plus className="w-3 h-3" />
