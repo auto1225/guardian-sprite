@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, User, LogOut, HelpCircle, UserCog, Globe, Crown, Star, Sparkles, ExternalLink, FileText, RefreshCw, Plus } from "lucide-react";
+import { isRunningInNativeApp } from "@/lib/nativeBridge";
 import PricingModal from "@/components/PricingModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
