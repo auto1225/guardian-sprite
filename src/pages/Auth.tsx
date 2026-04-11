@@ -234,15 +234,13 @@ const Auth = () => {
           </form>
 
           {/* Toggle login/signup */}
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => setMode(isLogin ? "signup" : "login")}
-              className="text-white/60 text-sm hover:text-white transition-colors"
-            >
-              {isLogin ? t("auth.signup") : t("auth.backToLogin")}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setMode(isLogin ? "signup" : "login")}
+            className="w-full py-3.5 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30 text-white font-bold text-base transition-colors active:scale-[0.98] mt-4"
+          >
+            {isLogin ? t("auth.signup") : t("auth.backToLogin")}
+          </button>
         </div>
       </div>
 
