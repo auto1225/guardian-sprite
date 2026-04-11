@@ -3,18 +3,23 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation, Trans } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Lock } from "lucide-react";
+import { Mail, Lock, User, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { websiteSupabase } from "@/lib/websiteAuth";
 import meercopCharacter from "@/assets/meercop-character.png";
+
+type AuthMode = "login" | "signup" | "emailSent";
 
 const Auth = () => {
   const { t } = useTranslation();
+  const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { effectiveUserId, loading, signIn } = useAuth();
+  const { effectiveUserId, loading, signIn, signUp } = useAuth();
 
   useEffect(() => {
     if (!loading && effectiveUserId) {
@@ -22,7 +27,7 @@ const Auth = () => {
     }
   }, [loading, effectiveUserId, navigate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
       toast({ title: t("auth.loginFailed"), description: t("auth.invalidCredentials"), variant: "destructive" });
@@ -43,6 +48,48 @@ const Auth = () => {
     }
   };
 
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password.trim()) {
+      toast({ title: t("auth.signupFailed"), description: t("auth.invalidCredentials"), variant: "destructive" });
+      return;
+    }
+    if (password.length < 6) {
+      toast({ title: t("auth.signupFailed"), description: "Password must be at least 6 characters.", variant: "destructive" });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const { error, emailSent } = await signUp(email, password, name || undefined);
+      if (error) {
+        toast({ title: t("auth.signupFailed"), description: error.message, variant: "destructive" });
+        return;
+      }
+      if (emailSent) {
+        setMode("emailSent");
+      } else {
+        toast({ title: t("auth.signupSuccess"), description: t("auth.signupSuccessDesc") });
+      }
+    } catch {
+      toast({ title: t("common.error"), description: t("auth.unexpectedError"), variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResendEmail = async () => {
+    setIsSubmitting(true);
+    try {
+      const { error } = await websiteSupabase.auth.resend({ type: "signup", email });
+      if (error) throw error;
+      toast({ title: t("auth.resendSuccess") });
+    } catch {
+      toast({ title: t("auth.resendFailed"), variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#4295E3' }}>
@@ -51,25 +98,99 @@ const Auth = () => {
     );
   }
 
+  // Email verification sent screen
+  if (mode === "emailSent") {
+    return (
+      <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#4295E3' }}>
+        <div className="flex flex-col items-center pt-14 pb-4">
+          <p className="text-white font-black text-2xl tracking-wide drop-shadow-md">MeerCOP</p>
+        </div>
+        <div className="px-6 pt-4">
+          <div className="bg-white/15 backdrop-blur-xl border border-white/25 rounded-3xl p-6 shadow-xl text-center">
+            <Mail className="w-12 h-12 text-white mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-white mb-2">{t("auth.emailVerifyTitle")}</h2>
+            <p className="text-white/70 text-sm leading-relaxed mb-2">
+              <Trans
+                i18nKey="auth.emailVerifyDesc"
+                values={{ email }}
+                components={{ 1: <span className="font-bold text-white" /> }}
+              />
+            </p>
+            <p className="text-white/50 text-xs mb-6">{t("auth.emailVerifySpam")}</p>
+
+            <button
+              onClick={handleResendEmail}
+              disabled={isSubmitting}
+              className="text-white/70 text-sm hover:text-white transition-colors disabled:opacity-50"
+            >
+              {isSubmitting ? t("auth.resending") : t("auth.resendEmail")}
+            </button>
+
+            <div className="mt-4">
+              <button
+                onClick={() => { setMode("login"); setPassword(""); }}
+                className="flex items-center gap-1 text-white/60 text-sm hover:text-white transition-colors mx-auto"
+              >
+                <ArrowLeft className="w-3 h-3" />
+                {t("auth.backToLogin")}
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <img src={meercopCharacter} alt="MeerCOP" className="w-32 h-auto object-contain" />
+        </div>
+      </div>
+    );
+  }
+
+  const isLogin = mode === "login";
+
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#4295E3' }}>
-      {/* Header - text only */}
+      {/* Header */}
       <div className="flex flex-col items-center pt-14 pb-4">
         <p className="text-white font-black text-2xl tracking-wide drop-shadow-md">MeerCOP</p>
         <p className="text-white/70 text-sm mt-1">{t("auth.subtitle")}</p>
       </div>
 
-      {/* Login Form */}
+      {/* Form */}
       <div className="px-6 pt-4">
         <div className="bg-white/15 backdrop-blur-xl border border-white/25 rounded-3xl p-6 shadow-xl">
           <h2 className="text-xl font-bold text-white text-center mb-2 drop-shadow-sm">
-            {t("auth.emailLogin")}
+            {isLogin ? t("auth.emailLogin") : t("auth.signupTitle")}
           </h2>
           <p className="text-white/60 text-xs text-center mb-6">
-            {t("auth.emailLoginDesc")}
+            {isLogin ? t("auth.emailLoginDesc") : t("auth.signupDesc")}
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Trial notice for signup */}
+          {!isLogin && (
+            <div className="mb-4 p-3 rounded-xl bg-white/10 border border-white/15">
+              <p className="text-white/80 text-xs text-center font-medium">{t("auth.trialNotice")}</p>
+            </div>
+          )}
+
+          <form onSubmit={isLogin ? handleLogin : handleSignUp} className="space-y-4">
+            {/* Name field (signup only) */}
+            {!isLogin && (
+              <div className="space-y-2">
+                <label className="text-white/80 text-sm font-medium flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  {t("auth.name")}
+                </label>
+                <Input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t("auth.namePlaceholder")}
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-white/50"
+                  autoComplete="name"
+                  maxLength={100}
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <label className="text-white/80 text-sm font-medium flex items-center gap-2">
                 <Mail className="w-4 h-4" />
@@ -96,7 +217,8 @@ const Auth = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-white/50"
-                autoComplete="current-password"
+                autoComplete={isLogin ? "current-password" : "new-password"}
+                minLength={6}
               />
             </div>
 
@@ -107,34 +229,19 @@ const Auth = () => {
             >
               {isSubmitting ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mx-auto" />
-              ) : t("auth.login")}
+              ) : isLogin ? t("auth.login") : t("auth.signup")}
             </button>
           </form>
 
-          {/* Info with link */}
-          <div className="mt-6 p-3 rounded-xl bg-white/5 border border-white/10">
-            <p className="text-white/50 text-xs text-center leading-relaxed">
-              <Trans
-                i18nKey="auth.loginInfo"
-                components={{
-                  1: (
-                    <a
-                      href="https://www.meercop.com/auth"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        const url = "https://www.meercop.com/auth";
-                        if (window.NativeApp?.openExternalUrl) {
-                          window.NativeApp.openExternalUrl(url);
-                        } else {
-                          window.open(url, "_system") || window.open(url, "_blank");
-                        }
-                      }}
-                      className="text-white underline underline-offset-2 cursor-pointer"
-                    />
-                  ),
-                }}
-              />
-            </p>
+          {/* Toggle login/signup */}
+          <div className="mt-6 text-center">
+            <button
+              type="button"
+              onClick={() => setMode(isLogin ? "signup" : "login")}
+              className="text-white/60 text-sm hover:text-white transition-colors"
+            >
+              {isLogin ? t("auth.signup") : t("auth.backToLogin")}
+            </button>
           </div>
         </div>
       </div>
