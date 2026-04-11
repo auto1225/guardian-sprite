@@ -160,16 +160,9 @@ const Auth = () => {
           <h2 className="text-xl font-bold text-white text-center mb-2 drop-shadow-sm">
             {isLogin ? t("auth.emailLogin") : t("auth.signupTitle")}
           </h2>
-          <p className="text-white/60 text-xs text-center mb-6">
+          <p className="text-white/60 text-xs text-center mb-6 whitespace-pre-line">
             {isLogin ? t("auth.emailLoginDesc") : t("auth.signupDesc")}
           </p>
-
-          {/* Trial notice for signup */}
-          {!isLogin && (
-            <div className="mb-4 p-3 rounded-xl bg-white/10 border border-white/15">
-              <p className="text-white/80 text-xs text-center font-medium">{t("auth.trialNotice")}</p>
-            </div>
-          )}
 
           <form onSubmit={isLogin ? handleLogin : handleSignUp} className="space-y-4">
             {/* Name field (signup only) */}
