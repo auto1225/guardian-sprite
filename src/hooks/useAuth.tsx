@@ -38,7 +38,7 @@ interface AuthContextType {
   capabilities: ServerCapabilities;
   planCapabilities: PlanCapabilitiesMap;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, name?: string) => Promise<{ error: Error | null; emailSent?: boolean }>;
   signOut: () => Promise<void>;
   effectiveUserId: string | null;
   refreshSerials: () => Promise<void>;
@@ -297,8 +297,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return { error: error as Error | null };
   };
 
-  const signUp = async (_email: string, _password: string) => {
-    return { error: new Error("Signup is only available on the MeerCOP website.") };
+  const signUp = async (email: string, password: string, name?: string) => {
+    const { data, error } = await websiteSupabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: name ? { full_name: name } : undefined,
+        emailRedirectTo: window.location.origin,
+      },
+    });
+    if (error) return { error: error as Error, emailSent: false };
+    // If email confirmation is required, user won't have a session yet
+    const hasSession = !!data.session;
+    if (hasSession) {
+      initialSessionHydratedRef.current = true;
+      currentUserIdRef.current = data.session!.user.id;
+      setSession(data.session);
+      setUser(data.session!.user ?? null);
+      setLoading(false);
+      setTimeout(() => loadSerials(data.session!.access_token), 0);
+      subscribeRealtime(data.session!.user.id);
+      notifyNativeLoginSuccess(data.session!.access_token, data.session!.refresh_token);
+    }
+    return { error: null, emailSent: !hasSession };
   };
 
   const signOut = async () => {
