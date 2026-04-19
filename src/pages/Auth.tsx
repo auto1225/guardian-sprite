@@ -224,8 +224,46 @@ const Auth = () => {
               />
             </div>
 
-            <button
-              type="submit"
+            {/* Terms & Privacy agreement (signup only) */}
+            {!isLogin && (
+              <div className="space-y-2 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={agreeTerms}
+                    onChange={(e) => setAgreeTerms(e.target.checked)}
+                    className="w-4 h-4 accent-white shrink-0 cursor-pointer"
+                  />
+                  <a
+                    href={TERMS_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-white/80 text-sm underline underline-offset-2 hover:text-white"
+                  >
+                    {t("auth.agreeTerms")}
+                  </a>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={agreePrivacy}
+                    onChange={(e) => setAgreePrivacy(e.target.checked)}
+                    className="w-4 h-4 accent-white shrink-0 cursor-pointer"
+                  />
+                  <a
+                    href={PRIVACY_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-white/80 text-sm underline underline-offset-2 hover:text-white"
+                  >
+                    {t("auth.agreePrivacy")}
+                  </a>
+                </label>
+              </div>
+            )}
+
               disabled={isSubmitting}
               className="w-full py-3.5 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30 text-white font-bold text-base transition-colors disabled:opacity-50 active:scale-[0.98] mt-2"
             >
