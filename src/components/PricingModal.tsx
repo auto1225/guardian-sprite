@@ -114,10 +114,10 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
   const activeSerials = serials.filter(s => s.status === "active" || s.status === "expired");
   const hasSerials = activeSerials.length > 0;
 
-  const selectedPlanInfo = PLANS.find(p => p.type === selectedPlan) || PLANS[0];
+  const selectedPlanInfo = PLANS.find(p => p.type === selectedPlan) || PLANS[0] || { type: "basic" as const, name: "Basic Plan", nameLocal: "베이직 플랜", price: 0, period: "", periodLocal: "", months: 6, featured: false, iosProductId: "", id: "" };
   const upgradeCount = selectedSerials.length || 1;
   const totalAmount = mode === "upgrade" ? selectedPlanInfo.price * upgradeCount : selectedPlanInfo.price * quantity;
-  const newDays = selectedPlanInfo.type === "basic" ? 180 : 365;
+  const newDays = selectedPlanInfo.months > 0 ? selectedPlanInfo.months * 30 : (selectedPlanInfo.type === "basic" ? 180 : 365);
 
   const canSelectPlan = (planType: string): boolean => {
     if (mode !== "upgrade" || selectedSerials.length === 0) return true;
