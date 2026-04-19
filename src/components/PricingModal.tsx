@@ -222,17 +222,38 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
         toast({ title: t("purchase.error"), description: "Failed to start payment", variant: "destructive" });
       }
     } else {
-      // Fallback: redirect to web payment
-      const url = `https://www.meercop.com/auth?redirect=/my-account?buy=${selectedPlan}`;
-      if (window.NativeApp?.openExternalUrl) {
-        window.NativeApp.openExternalUrl(url);
-      } else {
-        window.open(url, "_blank");
+      // Non-iOS: open meercop.com checkout (PayPal) with full purchase context
+      const params = new URLSearchParams({
+        buy: selectedPlan,
+        plan: selectedPlan,
+        qty: String(itemQuantity),
+        mode,
+        months: String(selectedPlanInfo.months),
+        amount: String(totalAmount),
+        currency: "USD",
+        provider: "paypal",
+      });
+      if (effectiveUserId) params.set("user_id", effectiveUserId);
+      if (mode === "upgrade" && selectedSerials.length > 0) {
+        params.set("serials", selectedSerials.join(","));
       }
+      const checkoutUrl = `https://www.meercop.com/auth?redirect=${encodeURIComponent(`/my-account?${params.toString()}`)}`;
+
+      if (window.NativeApp?.openExternalUrl) {
+        window.NativeApp.openExternalUrl(checkoutUrl);
+      } else {
+        window.open(checkoutUrl, "_blank", "noopener,noreferrer");
+      }
+
+      // Show success-pending step; user finishes payment on website, then taps Done to refresh
       setProcessing(false);
-      onClose();
+      setStep("success");
+      toast({
+        title: t("purchase.checkoutOpened"),
+        description: t("purchase.checkoutOpenedDesc"),
+      });
     }
-  }, [selectedPlan, selectedPlanInfo, mode, quantity, upgradeCount, selectedSerials, effectiveUserId, totalAmount, onClose, toast, t]);
+  }, [selectedPlan, selectedPlanInfo, mode, quantity, upgradeCount, selectedSerials, effectiveUserId, totalAmount, toast, t]);
 
   const handleClose = () => {
     if (processing) return;
