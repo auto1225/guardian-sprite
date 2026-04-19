@@ -10,12 +10,17 @@ import meercopCharacter from "@/assets/meercop-character.png";
 
 type AuthMode = "login" | "signup" | "emailSent";
 
+const TERMS_URL = "https://meercop.com/terms";
+const PRIVACY_URL = "https://meercop.com/privacy";
+
 const Auth = () => {
   const { t } = useTranslation();
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
