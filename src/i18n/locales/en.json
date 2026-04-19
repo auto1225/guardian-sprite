@@ -452,6 +452,7 @@
     "agreeTerms": "I agree to the Terms of Service",
     "agreePrivacy": "I agree to the Privacy Policy",
     "agreeRequired": "Please agree to the Terms of Service and Privacy Policy.",
+    "nameRequired": "Please enter your name.",
     "signupSuccess": "Sign up complete!",
     "signupSuccessDesc": "Please check your email for verification.",
     "signupFailed": "Sign up failed",
