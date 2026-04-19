@@ -20,7 +20,8 @@ const getLegalUrls = (lang: string) => {
 };
 
 const Auth = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const { terms: TERMS_URL, privacy: PRIVACY_URL } = getLegalUrls(i18n.language);
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
