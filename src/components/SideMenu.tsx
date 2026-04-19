@@ -190,15 +190,7 @@ const SideMenu = ({ isOpen, onClose, onHelpClick, onLegalClick }: SideMenuProps)
               <span className="text-xs text-white/40">({serials.length})</span>
             </div>
             <button
-              onClick={() => {
-                const ua = navigator.userAgent || "";
-                const isIOS = /iPhone|iPad|iPod/i.test(ua);
-                if (isIOS) {
-                  setShowPricing(true);
-                } else {
-                  window.open("https://www.meercop.com/#pricing", "_blank");
-                }
-              }}
+              onClick={() => setShowPricing(true)}
               className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/20 hover:bg-secondary/30 transition-colors text-secondary text-[10px] font-bold"
             >
               <Plus className="w-3 h-3" />
