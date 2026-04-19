@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { isRunningInNativeApp } from "@/lib/nativeBridge";
 import { useToast } from "@/hooks/use-toast";
+import { usePricingPlans } from "@/hooks/usePricingPlans";
 
 interface PricingModalProps {
   isOpen: boolean;
@@ -12,11 +13,6 @@ interface PricingModalProps {
 
 type PurchaseMode = "upgrade" | "new";
 type Step = "plans" | "mode" | "serial_select" | "plan_select" | "quantity" | "summary" | "processing" | "success";
-
-const PLANS = [
-  { type: "basic", name: "Basic Plan", price: 24.99, period: "6 months", months: 6 },
-  { type: "premium", name: "Premium Plan", price: 39.99, period: "1 year", months: 12, featured: true },
-];
 
 const PLAN_ICONS: Record<string, typeof Crown> = { free: Sparkles, basic: Star, premium: Crown };
 const PLAN_BADGE_CLS: Record<string, string> = {
@@ -31,9 +27,11 @@ const getRemainingDays = (expiresAt: string | null): number => {
 };
 
 const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { serials, effectiveUserId, refreshSerials } = useAuth();
   const { toast } = useToast();
+  const { plans: PLANS, loading: plansLoading } = usePricingPlans();
+  const isKorean = (i18n.language || "").toLowerCase().startsWith("ko");
 
   const [step, setStep] = useState<Step>("plans");
   const [mode, setMode] = useState<PurchaseMode>("new");
@@ -116,10 +114,10 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
   const activeSerials = serials.filter(s => s.status === "active" || s.status === "expired");
   const hasSerials = activeSerials.length > 0;
 
-  const selectedPlanInfo = PLANS.find(p => p.type === selectedPlan) || PLANS[0];
+  const selectedPlanInfo = PLANS.find(p => p.type === selectedPlan) || PLANS[0] || { type: "basic" as const, name: "Basic Plan", nameLocal: "베이직 플랜", price: 0, period: "", periodLocal: "", months: 6, featured: false, iosProductId: "", id: "" };
   const upgradeCount = selectedSerials.length || 1;
   const totalAmount = mode === "upgrade" ? selectedPlanInfo.price * upgradeCount : selectedPlanInfo.price * quantity;
-  const newDays = selectedPlanInfo.type === "basic" ? 180 : 365;
+  const newDays = selectedPlanInfo.months > 0 ? selectedPlanInfo.months * 30 : (selectedPlanInfo.type === "basic" ? 180 : 365);
 
   const canSelectPlan = (planType: string): boolean => {
     if (mode !== "upgrade" || selectedSerials.length === 0) return true;
@@ -183,7 +181,8 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
     setStep("processing");
 
     const isNative = isRunningInNativeApp();
-    const productId = `meercop_${selectedPlan}_${selectedPlanInfo.months}month`;
+    // Prefer the IAP product id configured on the website's CMS; fall back to a derived id.
+    const productId = selectedPlanInfo.iosProductId || `meercop_${selectedPlan}_${selectedPlanInfo.months}month`;
     const itemQuantity = mode === "upgrade" ? upgradeCount : quantity;
 
     if (isNative && window.NativeApp?.purchaseProduct) {
@@ -308,11 +307,11 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
                             {isSelected && <Check className="h-3 w-3 text-secondary-foreground" />}
                           </div>
                           <Icon className={`w-5 h-5 ${plan.featured ? "text-amber-400" : "text-blue-400"}`} />
-                          <span className="font-bold text-primary-foreground">{plan.name}</span>
+                          <span className="font-bold text-primary-foreground">{isKorean ? plan.nameLocal : plan.name}</span>
                         </div>
                         <span className="text-xl font-bold text-primary-foreground">${plan.price.toFixed(2)}</span>
                       </div>
-                      <p className="text-xs text-white/60 ml-12">{plan.period}</p>
+                      <p className="text-xs text-white/60 ml-12">{(isKorean ? plan.periodLocal : plan.period).replace(/^\/\s*/, "")}</p>
                     </button>
                   );
                 })}
@@ -432,10 +431,10 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold text-primary-foreground">{plan.name}</span>
+                        <span className="font-bold text-primary-foreground">{isKorean ? plan.nameLocal : plan.name}</span>
                         <span className="text-xl font-bold text-primary-foreground">${plan.price.toFixed(2)}</span>
                       </div>
-                      <p className="text-xs text-white/60">{plan.period}</p>
+                      <p className="text-xs text-white/60">{(isKorean ? plan.periodLocal : plan.period).replace(/^\/\s*/, "")}</p>
                       {disabled && <p className="text-xs text-red-400 mt-1">{t("purchase.cannotDowngrade")}</p>}
                     </button>
                   );
@@ -498,7 +497,7 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
                 )}
                 <div className="flex justify-between text-sm">
                   <span className="text-white/60">{t("purchase.planLabel")}</span>
-                  <span className="font-bold text-primary-foreground">{selectedPlanInfo.name}</span>
+                  <span className="font-bold text-primary-foreground">{isKorean ? selectedPlanInfo.nameLocal : selectedPlanInfo.name}</span>
                 </div>
                 {mode === "new" && (
                   <div className="flex justify-between text-sm">
