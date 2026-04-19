@@ -209,7 +209,9 @@
     "restoreNone": "No purchases to restore",
     "restoreNoneDesc": "No previous purchases were found for this account.",
     "restoreError": "Failed to restore purchases",
-    "restoreLoginRequired": "Please log in to restore purchases"
+    "restoreLoginRequired": "Please log in to restore purchases",
+    "checkoutOpened": "Checkout opened",
+    "checkoutOpenedDesc": "Complete payment in the new tab, then tap Done to refresh your serials."
   },
   "errorBoundary": {
     "title": "Something went wrong",
@@ -498,7 +500,6 @@
       "installPhoneDesc": "Open the MeerCOP site on your smartphone's web browser.<br/><br/><strong>Android:</strong> An \"Install App\" popup appears automatically. If not, tap the browser menu (⋮) → \"Install App\" or \"Add to Home Screen\".<br/><br/><strong>iOS (iPhone):</strong> Only Safari is supported. Tap the share button (□↑) at the bottom → \"Add to Home Screen\" → \"Add\".<br/><br/>⚠️ On iOS, the app must be installed as a PWA for push notifications to work.",
       "installPhonePermissions": "④ Permission Setup",
       "installPhonePermissionsDesc": "On first launch, permission request popups will appear:<br/><br/>• <strong>Notifications</strong> — Required for receiving push alerts when threats are detected<br/>• <strong>Camera</strong> — Required for live streaming features<br/>• <strong>Location</strong> — Required for location tracking<br/><br/>We strongly recommend setting all permissions to \"Allow\". You can change them later in browser settings.",
-
       "mainScreen": "3. Main Screen Layout",
       "mainScreenOverview": "The main screen consists of the following elements:",
       "headerArea": "Header Area",
@@ -513,7 +514,6 @@
       "monitoringToggleDesc": "A large circular button at the bottom of the screen.\n\n• <strong>MeerCOP ON</strong> — Starts monitoring. All detection sensors on the laptop are activated.\n• <strong>MeerCOP OFF</strong> — Stops monitoring.\n\nThe button toggles immediately when tapped. The device name pill at the top updates only when the laptop confirms the command. If the laptop is offline, an error message appears and the button does not toggle.\n\nThe character image and background color change based on monitoring status.",
       "camouflageMode": "Camouflage Mode Button",
       "camouflageModeDesc": "A monitor-shaped icon next to the monitoring toggle. Tapping this button:\n\n• <strong>Camouflage ON</strong> — The laptop screen is covered in black, appearing off. Monitoring continues.\n• <strong>Camouflage OFF</strong> — The laptop screen returns to normal.\n\nThe button toggles immediately, while the STEALTH badge next to the device name updates only when the laptop confirms the change. If the laptop is offline, the button is disabled.\n\nUseful for making the laptop appear unused when leaving your seat at a cafe, to detect theft attempts.",
-
       "monitoringFeature": "4. Monitoring Details",
       "monitoringOn": "Monitoring ON",
       "monitoringOnDesc": "When monitoring is enabled, the laptop's accelerometer, camera, keyboard/mouse input, and other sensors are activated. Any anomaly triggers an immediate alert to your smartphone and sounds an alarm on the laptop.",
@@ -532,7 +532,6 @@
       "powerChangeDesc": "Alerts trigger when the charger is disconnected or connected. Useful for detecting attempts to unplug the charger and carry away the laptop.",
       "screenTouchDetection": "👆 Screen Touch Detection",
       "screenTouchDetectionDesc": "Alerts trigger when someone touches the screen. Available on all device types (Laptop, Desktop, Tablet, Smartphone). Useful for detecting unauthorized screen interactions.",
-
       "alertTitle": "5. When Alerts Trigger",
       "alertDesc": "When a sensor detects an anomaly, the following happen simultaneously:\n\n• 📱 Push notification sent to smartphone\n• 🔊 Alarm sounds on both smartphone and laptop\n• 📷 Auto photo capture from laptop camera\n• 📍 Current location auto-recorded\n• 📺 Full-screen alert mode activated",
       "alertScreenTitle": "Alert Screen Layout (3 sections)",
@@ -545,7 +544,6 @@
       "alertDismissComputer": "🔇 <strong>Dismiss Computer Alarm (End Alert)</strong> — Remotely stops the laptop alarm as well. This ends the entire alert. If the laptop's PIN requirement is enabled, PIN entry is also required on the laptop.",
       "alertPhotoDetail": "Photo Viewing Details",
       "alertPhotoDetailDesc": "Alert photos support the following features:\n\n• <strong>Grid View</strong> — View all photos as thumbnails at a glance\n• <strong>Slide View</strong> — View photos one by one in full size\n• <strong>Selection Mode</strong> — Select specific photos to save\n• <strong>Save All</strong> — Save all photos at once\n• Each photo includes change rate (%) and location info",
-
       "cameraFeature": "6. Camera Features",
       "cameraFeatureDesc": "Tap the camera (📷) icon on the main screen to enter the camera view. Live streaming starts automatically when entering the camera page.",
       "cameraLiveStreaming": "🎥 <strong>Live Streaming</strong> — Uses WebRTC technology for real-time video from the laptop camera. Mute/unmute toggle available.",
@@ -554,7 +552,6 @@
       "cameraPause": "⏸️ <strong>Pause/Resume</strong> — Temporarily pause or resume the stream. The WebRTC connection is maintained.",
       "cameraSwitching": "🔄 <strong>Camera Switch</strong> — Switch between front/rear cameras if the laptop has multiple cameras.",
       "cameraAutoReconnect": "🔗 <strong>Auto Reconnect</strong> — If the camera connection is lost and restored, streaming automatically restarts.",
-
       "locationTracking": "7. Location Tracking",
       "locationTrackingDesc": "Tap the location (📍) icon on the main screen to view the laptop's current location on a map.",
       "locationFeatures": "Location Features",
@@ -565,12 +562,10 @@
       "locationHistoryDesc": "View past location records in chronological order. Locations are automatically recorded when alerts trigger.",
       "locationMapFeatures": "Map Features",
       "locationMapFeaturesDesc": "• Zoomable interactive map\n• Precise location marked with a pin\n• Latitude/longitude coordinates displayed\n• Last update time shown\n• Refresh button to request latest location",
-
       "networkInfo": "8. Network Info",
       "networkInfoDesc": "Tap the network (🌐) icon on the main screen to view the laptop's network connection status.",
       "networkInfoDetails": "Displayed Information",
       "networkInfoDetailsDesc": "• <strong>Connection Status</strong> — Online/Offline\n• <strong>IP Address</strong> — Currently assigned IP address\n• <strong>Connection Type</strong> — Wi-Fi, Ethernet, Cellular, Bluetooth, etc.\n• <strong>Speed</strong> — Network speed\n• <strong>Latency</strong> — Network latency (RTT)\n• <strong>Effective Grade</strong> — 2G/3G/4G grade\n\n📡 Based on browser Network Information API. Actual speed may differ.",
-
       "settingsTitle": "9. Settings",
       "settingsOverview": "The Settings screen lets you change various settings per device. If multiple devices are registered, you can select the target device at the top.",
       "settingNickname": "📝 Device Nickname",
@@ -601,7 +596,6 @@
       "settingBackgroundDesc": "Customize the main screen background. Choose from 6 preset gradients (Default, Sunset, Night, Forest, Ocean, Aurora) or upload your own image (max 5MB). Settings are saved locally on this device.",
       "settingMascot": "🐾 Show Mascot",
       "settingMascotDesc": "Show or hide the MeerCOP mascot character and speech bubble on the main screen. When hidden, only the background is displayed. This setting is saved locally on this device.",
-
       "deviceManage": "10. Device Management",
       "deviceManageDesc": "Tap the Device Management button on the right side of the header to manage all registered devices.",
       "deviceManageFeatures": "Device Management Features",
@@ -616,12 +610,10 @@
       "deviceManageDragDesc": "Long-press the ≡ handle on the left of a device card and drag up/down to reorder. Changes are saved automatically.",
       "deviceManageNumber": "Set Device Number",
       "deviceManageNumberDesc": "Assign a custom number to each device. Used for number-based sorting.",
-
       "sideMenuTitle": "11. Side Menu",
       "sideMenuDesc": "Tap the ☰ menu button at the top left of the main screen to open the side menu.",
       "sideMenuContents": "Side Menu Contents",
       "sideMenuContentsDesc": "• <strong>User Info</strong> — Displays the logged-in user's name and email\n• <strong>My Serials</strong> — Lists registered serial numbers with plan info and connected devices. Pagination is supported for 5+ serials\n• <strong>Edit Profile</strong> — Link to edit your profile on meercop.com\n• <strong>User Guide / FAQ</strong> — Opens the user guide and FAQ page\n• <strong>Terms / Legal Notice</strong> — View terms of use, disclaimers, and privacy policy\n• <strong>Language Selection</strong> — Choose from 17 languages for the app interface\n• <strong>Logout</strong> — Safely log out",
-
       "remoteCommands": "12. Remote Commands",
       "remoteCommandsDesc": "Remote command features are accessible from the device management screen.",
       "remoteCommandsLock": "🔒 Screen Lock",
@@ -629,19 +621,14 @@
       "remoteCommandsMessage": "💬 Send Message",
       "remoteCommandsMessageDesc": "Display a message on the laptop screen. Up to 500 characters. Example: Display a warning message like \"This laptop is being monitored\".",
       "remoteCommandsOffline": "Remote commands cannot be sent when the device is offline.",
-
       "photoHistory": "13. Photo Alert History",
       "photoHistoryDesc": "View photos auto-captured during alerts in chronological order.\n\n• Each alert entry shows the number of photos, time, and location info\n• Tap a photo for full-screen view and saving\n• Individual entries can be deleted\n• Grid/slide view toggle available",
-
       "alertHistory": "14. Alert History",
       "alertHistoryDesc": "Tap the alert bell icon in the header to view all alert history.\n\n• <strong>All</strong> — Shows all alert history\n• <strong>📸 Photo</strong> — Filters only alerts with photos\n• <strong>🔔 Alert</strong> — Filters only general alerts\n\nIn selection mode, you can select multiple alerts for bulk deletion. The \"Mark All Read\" button marks all alerts as read.",
-
       "pushNotification": "15. Push Notifications",
       "pushNotificationDesc": "Push notifications are auto-subscribed when you select a device.\n\n• Receive alerts even when the app is in the background\n• Browser notification permission must be set to \"Allow\"\n• On iOS, the app must be installed as a PWA for push support\n• Notifications may be delayed in power saving or low power mode",
-
       "planInfo": "16. Plan Information",
       "planInfoDesc": "MeerCOP offers 3 plans:\n\n• <strong>🌟 1-Day Trial (Free)</strong> — Try basic features\n• <strong>⭐ Basic</strong> — Access core monitoring features\n• <strong>👑 Premium</strong> — Unlimited access to all features\n\nAvailable features vary by plan. Attempting to use a locked feature will show an upgrade prompt. Plan renewal is available at meercop.com.",
-
       "licenseExpired": "17. License Expiration",
       "licenseExpiredDesc": "When your plan expires, an expiration overlay appears on the app screen. Renew your subscription at meercop.com and restart the app to reactivate."
     },
@@ -848,7 +835,6 @@
       "termsEligibilityDesc": "• This Service is available to individuals aged 14 or older, or legal entities\n• Users must only install and use this App on devices they own or have authorized access to\n• <strong>Unauthorized installation on others' devices or using the App for surveillance purposes without consent may be punishable under applicable laws</strong>\n• Users are responsible for complying with all applicable local, national, and international laws and regulations",
       "termsAccountSecurity": "1-3. Account Security",
       "termsAccountSecurityDesc": "• Users are responsible for securely managing their account credentials (email, password, PIN, etc.)\n• The developer is not liable for any damages resulting from credential leaks or unauthorized use of accounts\n• If suspicious activity is detected, immediately change your password and notify the developer\n• The developer may suspend accounts without prior notice when security threats are detected",
-
       "privacyPolicyTitle": "2. Privacy Policy",
       "privacyDataCollected": "2-1. Data We Collect",
       "privacyDataCollectedDesc": "This App collects the following information to provide the Service:\n\n• <strong>Account Information</strong> — Email address, display name, profile photo\n• <strong>Device Information</strong> — Device type, device name, IP address, battery level, network status\n• <strong>Location Data</strong> — GPS coordinates (latitude/longitude), reverse-geocoded addresses\n• <strong>Camera Data</strong> — Photos automatically captured during alerts, live streaming video\n• <strong>Sensor Data</strong> — Motion detection, lid open/close, keyboard/mouse input detection\n• <strong>Push Notification Tokens</strong> — Device tokens for sending notifications\n• <strong>Usage Logs</strong> — App access records, alert history, command execution logs",
@@ -862,7 +848,6 @@
       "privacyUserRightsDesc": "• Users may request access to, correction of, or deletion of their personal data\n• Location tracking and camera features can be disabled at any time through device permission settings\n• Users may opt out of receiving push notifications\n• Users may request deletion of all personal data through account deletion\n• For privacy-related inquiries, please contact meercop.official@gmail.com",
       "privacyCookies": "2-6. Cookies and Local Storage",
       "privacyCookiesDesc": "• This App uses local storage (localStorage) to improve user experience\n• Stored information includes: language settings, device selection state, app preferences\n• This data is not transmitted to servers and is stored only on the user's device\n• It can be deleted at any time through browser settings",
-
       "disclaimerTitle": "3. Disclaimers",
       "disclaimerContent": "<strong>⚠️ IMPORTANT: Please read this section carefully.</strong>",
       "disclaimerNoWarranty": "3-1. No Warranty",
@@ -873,7 +858,6 @@
       "disclaimerAvailabilityDesc": "• The developer does not guarantee uninterrupted service operation\n• Service may be temporarily suspended due to server maintenance, updates, or technical issues\n• The developer is not liable for service interruptions caused by force majeure events such as natural disasters, wars, terrorism, or government actions\n• The developer may modify, suspend, or terminate all or part of the Service without prior notice",
       "disclaimerSecurity": "3-4. Security Disclaimer",
       "disclaimerSecurityDesc": "• <strong>This App is a supplementary tool for theft prevention and is not a complete security solution</strong>\n• There is no guarantee that using this App will prevent theft, loss, or damage to devices\n• The developer is not liable for any losses or damages resulting from failure of the App's security features\n• Users are encouraged to implement additional physical security measures\n• The developer is not liable for security vulnerabilities that may occur during WebRTC streaming or data transmission",
-
       "limitationOfLiabilityTitle": "4. Limitation of Liability",
       "limitationContent": "This section defines the scope of the developer's legal liability.",
       "limitationDamages": "4-1. Limitation of Damages",
@@ -882,7 +866,6 @@
       "limitationIndemnificationDesc": "Users agree to <strong>indemnify and hold harmless the developer, its officers, employees, and agents from all claims, damages, and costs (including attorney fees)</strong> related to:\n\n• User's violation of these terms\n• Infringement of third-party rights related to the user's use of the App\n• User's inappropriate or illegal use of the App\n• Inaccuracy or incompleteness of data provided by the user",
       "limitationForceOverride": "4-3. Force Majeure",
       "limitationForceOverrideDesc": "The developer is not liable for service failures or damages caused by force majeure events, including:\n\n• Natural disasters (earthquakes, floods, typhoons, etc.)\n• Wars, terrorism, riots\n• Government regulations or orders\n• Communication failures, internet service interruptions\n• Power outages\n• Third-party service provider failures\n• Malware, hacking, cyber attacks\n• Other causes beyond the developer's reasonable control",
-
       "intellectualPropertyTitle": "5. Intellectual Property",
       "intellectualPropertyContent": "All intellectual property contained in this App is protected by law.",
       "ipCopyright": "5-1. Copyright",
@@ -891,21 +874,18 @@
       "ipTrademarkDesc": "• \"MeerCOP\", \"미어캅\" and associated logos are trademarks of the developer\n• They may not be used for commercial purposes without prior written consent\n• Third-party trademarks displayed in the App are the property of their respective owners",
       "ipLicense": "5-3. License",
       "ipLicenseDesc": "• Users are granted a limited, non-exclusive, non-transferable license to use this App for personal, non-commercial purposes\n• Reverse engineering, decompilation, disassembly, or source code extraction of this App is prohibited\n• Serial keys may only be used by the registered user and may not be transferred or resold\n• Upon license expiration, services linked to the corresponding serial will be restricted",
-
       "prohibitedUseTitle": "6. Prohibited Use",
       "prohibitedUseContent": "Users shall not engage in the following activities when using this App.",
       "prohibitedActivities": "6-1. Prohibited Activities",
       "prohibitedActivitiesDesc": "• Installing this App on others' devices without their consent or monitoring them\n• <strong>Using the App for illegal surveillance purposes such as stalking, following, or privacy invasion</strong>\n• Violating others' privacy through the use of this App\n• Interfering with normal service operation (hacking, DDoS attacks, etc.)\n• Attempting to bypass or disable the App's security features\n• Illegally generating, duplicating, or distributing serial keys\n• Commercially exploiting or selling data collected through the App to third parties\n• Using the App in any manner that violates applicable laws or regulations\n• Illegal surveillance of minors\n• Modifying, altering the App's code, or creating derivative works",
       "prohibitedConsequences": "6-2. Consequences of Violations",
       "prohibitedConsequencesDesc": "• The developer may suspend or delete accounts without prior notice upon confirmation of prohibited activities\n• Serial keys may be deactivated and service access restricted\n• Appropriate responses, including legal action, may be taken\n• <strong>All legal liability for prohibited activities lies solely with the user</strong>",
-
       "thirdPartyServicesTitle": "7. Third-Party Services",
       "thirdPartyContent": "This App utilizes the following third-party services for service delivery.",
       "thirdPartyList": "7-1. Third-Party Services Used",
       "thirdPartyListDesc": "• <strong>Cloud Servers</strong> — Data storage and authentication processing\n• <strong>Map Services</strong> — Location display and reverse geocoding (OpenStreetMap / Leaflet)\n• <strong>WebRTC</strong> — Real-time video streaming\n• <strong>Web Push</strong> — Push notification delivery\n• <strong>PWA Technology</strong> — App installation and offline support",
       "thirdPartyDisclaimer": "7-2. Third-Party Service Disclaimer",
       "thirdPartyDisclaimerDesc": "• The developer is not liable for service impacts caused by third-party service failures, changes, or terminations\n• Third-party services are subject to their own terms of use and privacy policies\n• The developer is not liable for security issues that may arise during data transmission with third-party services\n• The developer has no obligation to provide prior notice of service changes due to third-party price or policy changes",
-
       "changesAndTerminationTitle": "8. Changes and Miscellaneous",
       "changesPolicy": "8-1. Changes to Terms",
       "changesPolicyDesc": "• The developer may modify these terms as necessary\n• Significant changes will be notified through in-app announcements or email\n• If you do not agree to modified terms, you must stop using the Service and delete your account\n• Continued use of the Service after changes constitutes acceptance of the modified terms",

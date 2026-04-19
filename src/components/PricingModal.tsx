@@ -597,7 +597,12 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
 
               {step === "success" && (
                 <button
-                  onClick={handleClose}
+                  onClick={async () => {
+                    if (refreshSerials) {
+                      try { await refreshSerials(); } catch { /* ignore */ }
+                    }
+                    handleClose();
+                  }}
                   className="flex-1 py-3.5 rounded-2xl font-bold text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
                 >
                   {t("purchase.done")}
