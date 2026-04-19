@@ -181,7 +181,8 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
     setStep("processing");
 
     const isNative = isRunningInNativeApp();
-    const productId = `meercop_${selectedPlan}_${selectedPlanInfo.months}month`;
+    // Prefer the IAP product id configured on the website's CMS; fall back to a derived id.
+    const productId = selectedPlanInfo.iosProductId || `meercop_${selectedPlan}_${selectedPlanInfo.months}month`;
     const itemQuantity = mode === "upgrade" ? upgradeCount : quantity;
 
     if (isNative && window.NativeApp?.purchaseProduct) {
