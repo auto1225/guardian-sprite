@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { isRunningInNativeApp } from "@/lib/nativeBridge";
 import { useToast } from "@/hooks/use-toast";
+import { usePricingPlans } from "@/hooks/usePricingPlans";
 
 interface PricingModalProps {
   isOpen: boolean;
@@ -12,11 +13,6 @@ interface PricingModalProps {
 
 type PurchaseMode = "upgrade" | "new";
 type Step = "plans" | "mode" | "serial_select" | "plan_select" | "quantity" | "summary" | "processing" | "success";
-
-const PLANS = [
-  { type: "basic", name: "Basic Plan", price: 24.99, period: "6 months", months: 6 },
-  { type: "premium", name: "Premium Plan", price: 39.99, period: "1 year", months: 12, featured: true },
-];
 
 const PLAN_ICONS: Record<string, typeof Crown> = { free: Sparkles, basic: Star, premium: Crown };
 const PLAN_BADGE_CLS: Record<string, string> = {
