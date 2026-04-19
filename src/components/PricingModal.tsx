@@ -431,10 +431,10 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold text-primary-foreground">{plan.name}</span>
+                        <span className="font-bold text-primary-foreground">{isKorean ? plan.nameLocal : plan.name}</span>
                         <span className="text-xl font-bold text-primary-foreground">${plan.price.toFixed(2)}</span>
                       </div>
-                      <p className="text-xs text-white/60">{plan.period}</p>
+                      <p className="text-xs text-white/60">{(isKorean ? plan.periodLocal : plan.period).replace(/^\/\s*/, "")}</p>
                       {disabled && <p className="text-xs text-red-400 mt-1">{t("purchase.cannotDowngrade")}</p>}
                     </button>
                   );
