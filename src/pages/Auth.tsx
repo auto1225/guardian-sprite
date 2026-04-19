@@ -55,6 +55,10 @@ const Auth = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!name.trim()) {
+      toast({ title: t("auth.signupFailed"), description: t("auth.nameRequired"), variant: "destructive" });
+      return;
+    }
     if (!email.trim() || !password.trim()) {
       toast({ title: t("auth.signupFailed"), description: t("auth.invalidCredentials"), variant: "destructive" });
       return;
