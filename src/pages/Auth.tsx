@@ -264,6 +264,8 @@ const Auth = () => {
               </div>
             )}
 
+            <button
+              type="submit"
               disabled={isSubmitting}
               className="w-full py-3.5 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30 text-white font-bold text-base transition-colors disabled:opacity-50 active:scale-[0.98] mt-2"
             >
