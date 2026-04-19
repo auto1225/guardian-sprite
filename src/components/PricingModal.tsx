@@ -307,11 +307,11 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
                             {isSelected && <Check className="h-3 w-3 text-secondary-foreground" />}
                           </div>
                           <Icon className={`w-5 h-5 ${plan.featured ? "text-amber-400" : "text-blue-400"}`} />
-                          <span className="font-bold text-primary-foreground">{plan.name}</span>
+                          <span className="font-bold text-primary-foreground">{isKorean ? plan.nameLocal : plan.name}</span>
                         </div>
                         <span className="text-xl font-bold text-primary-foreground">${plan.price.toFixed(2)}</span>
                       </div>
-                      <p className="text-xs text-white/60 ml-12">{plan.period}</p>
+                      <p className="text-xs text-white/60 ml-12">{(isKorean ? plan.periodLocal : plan.period).replace(/^\/\s*/, "")}</p>
                     </button>
                   );
                 })}
