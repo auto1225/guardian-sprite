@@ -63,6 +63,10 @@ const Auth = () => {
       toast({ title: t("auth.signupFailed"), description: "Password must be at least 6 characters.", variant: "destructive" });
       return;
     }
+    if (!agreeTerms || !agreePrivacy) {
+      toast({ title: t("auth.signupFailed"), description: t("auth.agreeRequired"), variant: "destructive" });
+      return;
+    }
     setIsSubmitting(true);
     try {
       const { error, emailSent } = await signUp(email, password, name || undefined);
