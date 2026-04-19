@@ -27,9 +27,11 @@ const getRemainingDays = (expiresAt: string | null): number => {
 };
 
 const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { serials, effectiveUserId, refreshSerials } = useAuth();
   const { toast } = useToast();
+  const { plans: PLANS, loading: plansLoading } = usePricingPlans();
+  const isKorean = (i18n.language || "").toLowerCase().startsWith("ko");
 
   const [step, setStep] = useState<Step>("plans");
   const [mode, setMode] = useState<PurchaseMode>("new");
