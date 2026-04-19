@@ -497,7 +497,7 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
                 )}
                 <div className="flex justify-between text-sm">
                   <span className="text-white/60">{t("purchase.planLabel")}</span>
-                  <span className="font-bold text-primary-foreground">{selectedPlanInfo.name}</span>
+                  <span className="font-bold text-primary-foreground">{isKorean ? selectedPlanInfo.nameLocal : selectedPlanInfo.name}</span>
                 </div>
                 {mode === "new" && (
                   <div className="flex justify-between text-sm">
