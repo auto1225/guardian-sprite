@@ -10,11 +10,18 @@ import meercopCharacter from "@/assets/meercop-character.png";
 
 type AuthMode = "login" | "signup" | "emailSent";
 
-const TERMS_URL = "https://meercop.com/terms";
-const PRIVACY_URL = "https://meercop.com/privacy";
+const getLegalUrls = (lang: string) => {
+  const isKorean = lang?.toLowerCase().startsWith("ko");
+  const prefix = isKorean ? "/ko" : "";
+  return {
+    terms: `https://meercop.com${prefix}/terms`,
+    privacy: `https://meercop.com${prefix}/privacy`,
+  };
+};
 
 const Auth = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const { terms: TERMS_URL, privacy: PRIVACY_URL } = getLegalUrls(i18n.language);
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
