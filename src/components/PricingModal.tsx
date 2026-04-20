@@ -95,15 +95,34 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
           setProcessing(false);
         }
       } else {
-        // Payment cancelled or failed
+        // Payment cancelled or failed — always reset UI state
         setProcessing(false);
-        if (detail.error) {
-          toast({
-            title: t("purchase.error"),
-            description: detail.error,
-            variant: "destructive",
-          });
+        setStep("summary");
+
+        const rawError = typeof detail.error === "string" ? detail.error.trim() : "";
+        const errorCode = typeof detail.code === "string" ? detail.code : "";
+        const isUserCancel =
+          errorCode === "user_cancelled" ||
+          /cancel/i.test(rawError) ||
+          /SKErrorPaymentCancelled/i.test(rawError) ||
+          detail.cancelled === true;
+
+        if (isUserCancel) {
+          // Silent: user explicitly cancelled the Apple payment sheet
+          console.log("[PricingModal] Payment cancelled by user");
+          return;
         }
+
+        // Surface the real Apple/Google error message instead of a generic "Payment Error"
+        const description =
+          rawError ||
+          (errorCode ? `Error: ${errorCode}` : t("purchase.errorUnknown", { defaultValue: "Payment could not be completed. Please try again or contact support." }));
+
+        toast({
+          title: t("purchase.error"),
+          description,
+          variant: "destructive",
+        });
       }
     };
 
