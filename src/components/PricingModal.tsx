@@ -93,6 +93,7 @@ const PricingModal = ({ isOpen, onClose }: PricingModalProps) => {
             variant: "destructive",
           });
           setProcessing(false);
+          setStep("summary");
         }
       } else {
         // Payment cancelled or failed — always reset UI state
